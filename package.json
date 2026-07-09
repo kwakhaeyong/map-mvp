@@ -13,6 +13,8 @@
     "react-dom": "latest"
   },
   "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
     "postcss": "latest",
     "tailwindcss": "^3.4.17",
     "typescript": "latest"
