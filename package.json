@@ -8,15 +8,15 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest"
-  },
-  "devDependencies": {
     "@types/node": "latest",
     "@types/react": "latest",
-    "postcss": "latest",
-    "tailwindcss": "^3.4.17",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
     "typescript": "latest"
+  },
+  "devDependencies": {
+    "postcss": "latest",
+    "tailwindcss": "^3.4.17"
   }
 }
