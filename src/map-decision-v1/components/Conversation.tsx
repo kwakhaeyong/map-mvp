@@ -12,6 +12,7 @@ import { MapCanvas } from "./MapCanvas";
 function cx(...classes: Array<string | false | null | undefined>) { return classes.filter(Boolean).join(" "); }
 
 export function Conversation({ session, setSession, onFinish, onReset }: { session: MapSession; setSession: Dispatch<SetStateAction<MapSession>>; onFinish: () => void; onReset: () => void }) {
+  const safeReset = () => { if (window.confirm("새 MAP을 만들까요? 지금 내용은 이 브라우저에 저장되어 있지만 새로 시작하면 현재 화면에서는 사라져요.")) onReset(); };
   const [draft, setDraft] = useState("");
   const [correction, setCorrection] = useState("");
   const [mapOpen, setMapOpen] = useState(false);
@@ -41,26 +42,26 @@ export function Conversation({ session, setSession, onFinish, onReset }: { sessi
   };
 
   return (
-    <main className="min-h-screen bg-[#fbf7ef] text-slate-950">
+    <main className="min-h-screen text-[var(--map-navy)]">
       <header className="sticky top-0 z-30 border-b border-white/70 bg-[#fbf7ef]/85 px-4 py-3 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
+        <div className="mx-auto flex map-container items-center justify-between">
           <Brand />
           <div className="flex gap-2">
-            <button className="rounded-full border bg-white px-4 py-2 text-sm font-black" onClick={onReset}>새 MAP</button>
-            <button className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white" onClick={onFinish}>현재 MAP 보기</button>
+            <button className="btn btn-secondary px-4 py-2 text-sm" onClick={safeReset}>새 MAP</button>
+            <button className="btn btn-primary px-4 py-2 text-sm" onClick={onFinish}>현재 MAP 보기</button>
           </div>
         </div>
       </header>
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-5 lg:grid-cols-[minmax(0,0.92fr)_minmax(24rem,1.08fr)]">
+      <section className="mx-auto grid map-container gap-6 px-4 py-5 lg:grid-cols-[minmax(0,0.92fr)_minmax(24rem,1.08fr)]">
         <aside className="order-2 hidden lg:order-1 lg:block">
           <MapCanvas session={session} />
-          <p className="mt-3 rounded-2xl bg-white/80 p-3 text-sm font-bold text-slate-500">작성 내용은 이 브라우저에 임시 저장돼요. MAP은 말할수록 바로 자라납니다.</p>
+          <p className="mt-3 rounded-2xl bg-white/80 p-3 text-sm font-bold text-slate-500">작성 내용은 이 브라우저에 임시 저장돼요. 말할수록 보이는 흐름이 자라납니다.</p>
         </aside>
-        <section className="order-1 flex min-h-[72vh] flex-col rounded-[2rem] border border-white bg-white/88 shadow-2xl shadow-slate-200/70" aria-label="MAP 대화">
-          <button className="mx-4 mt-4 block rounded-2xl border border-blue-100 bg-blue-50 p-3 text-left font-black text-blue-800 lg:hidden" onClick={() => setMapOpen(true)}>지금 보이는 MAP 열기 · 노드 {session.nodes.length}개</button>
+        <section className="order-1 flex min-h-[72vh] flex-col map-card" aria-label="MAP 대화">
+          <button className="mx-4 mt-4 block rounded-[20px] border border-[var(--map-line)] bg-white/75 p-3 text-left font-extrabold text-[var(--map-indigo)] lg:hidden" onClick={() => setMapOpen(true)}>지금 보이는 MAP 열기</button>
           <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
             {session.messages.map((message) => (
-              <div key={message.id} className={cx("max-w-[86%] rounded-[1.5rem] p-4 leading-7 shadow-sm", message.role === "user" ? "ml-auto bg-blue-700 font-bold text-white" : "bg-slate-50 font-semibold text-slate-750")}>
+              <div key={message.id} className={cx("max-w-[86%] rounded-[1.5rem] p-4 leading-7 shadow-sm", message.role === "user" ? "message-in ml-auto bg-[var(--map-indigo)] font-semibold text-white" : "message-in bg-white font-medium text-[var(--map-navy)] border border-[var(--map-line)]")}>
                 <p className="whitespace-pre-line">{message.text}</p>
                 {message.checkpoint ? <CheckpointControls setSession={setSession} /> : null}
               </div>
@@ -78,7 +79,7 @@ export function Conversation({ session, setSession, onFinish, onReset }: { sessi
           <Composer draft={draft} setDraft={setDraft} speech={speech} onSubmit={() => submit()} onFinish={onFinish} />
         </section>
       </section>
-      {mapOpen ? <div className="fixed inset-0 z-50 bg-slate-950/55 p-3 backdrop-blur-sm lg:hidden" role="dialog" aria-modal="true" aria-label="전체 MAP"><div className="h-full overflow-y-auto rounded-[2rem] bg-[#fbf7ef] p-3"><button className="mb-3 rounded-full bg-slate-950 px-4 py-2 font-black text-white" onClick={() => setMapOpen(false)}>닫기</button><MapCanvas session={session} /></div></div> : null}
+      {mapOpen ? <div className="fixed inset-0 z-50 bg-slate-950/55 p-3 backdrop-blur-sm lg:hidden" role="dialog" aria-modal="true" aria-label="전체 MAP"><div className="h-full overflow-y-auto rounded-[2rem] bg-[var(--map-ivory)] p-3"><button className="mb-3 rounded-full bg-slate-950 px-4 py-2 font-black text-white" onClick={() => setMapOpen(false)}>닫기</button><MapCanvas session={session} /></div></div> : null}
     </main>
   );
 }
@@ -86,7 +87,7 @@ export function Conversation({ session, setSession, onFinish, onReset }: { sessi
 function CheckpointControls({ setSession }: { setSession: Dispatch<SetStateAction<MapSession>> }) {
   return (
     <div className="mt-4 flex flex-wrap gap-2">
-      <button className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white" onClick={() => setSession((session) => ({ ...session, checkpointStatus: "confirmed", messages: [...session.messages, { id: createId("ai"), role: "ai", provider: "local", text: "좋아요. 확인된 이해로 표시해둘게요. 이제 빠진 정보와 다음 행동을 더 선명하게 볼 수 있어요.", timestamp: now() }], nodes: session.nodes.map((node) => ({ ...node, confidence: node.confidence === "user" ? "confirmed" : node.confidence })) }))}>맞아요</button>
+      <button className="btn btn-primary px-4 py-2 text-sm" onClick={() => setSession((session) => ({ ...session, checkpointStatus: "confirmed", messages: [...session.messages, { id: createId("ai"), role: "ai", provider: "local", text: "좋아요. 확인된 이해로 표시해둘게요. 이제 빠진 정보와 다음 행동을 더 선명하게 볼 수 있어요.", timestamp: now() }], nodes: session.nodes.map((node) => ({ ...node, confidence: node.confidence === "user" ? "confirmed" : node.confidence })) }))}>맞아요</button>
       <button className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-700" onClick={() => setSession((session) => ({ ...session, checkpointStatus: "correcting" }))}>조금 달라요</button>
     </div>
   );
