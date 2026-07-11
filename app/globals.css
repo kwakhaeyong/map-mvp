@@ -1,29 +1,30 @@
+@import "../src/styles/design-tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --map-ivory: #fbf7ef;
-  --map-mist: #f4f7fb;
-  --map-surface: rgba(255,255,255,.86);
-  --map-surface-solid: #ffffff;
-  --map-navy: #15213b;
-  --map-muted: #61708a;
-  --map-line: rgba(21,33,59,.12);
+ :root {
+  --map-ivory: var(--color-background);
+  --map-mist: var(--color-background-subtle);
+  --map-surface: var(--color-surface);
+  --map-surface-solid: var(--color-surface-elevated);
+  --map-navy: var(--color-text-primary);
+  --map-muted: var(--color-text-muted);
+  --map-line: var(--color-border);
   --map-indigo: #5b5bd6;
-  --map-blue: #dcedff;
-  --map-lavender: #eee7ff;
-  --map-mint: #dcf8ee;
-  --map-amber: #fff0c9;
-  --map-coral: #ffe1dc;
-  --map-radius: 28px;
-  --map-shadow-sm: 0 10px 24px rgba(21,33,59,.07);
-  --map-shadow-md: 0 22px 60px rgba(21,33,59,.10);
-  --map-shadow-lg: 0 32px 90px rgba(21,33,59,.14);
-  color: var(--map-navy);
-  background: var(--map-ivory);
+  --map-blue: var(--color-fact);
+  --map-lavender: var(--color-feeling);
+  --map-mint: var(--color-option);
+  --map-amber: var(--color-uncertainty);
+  --map-coral: var(--color-risk);
+  --map-radius: var(--radius-large);
+  --map-shadow-sm: var(--shadow-subtle);
+  --map-shadow-md: var(--shadow-floating);
+  --map-shadow-lg: var(--shadow-modal);
+  color: var(--color-text-primary);
+  background: var(--color-background);
 }
-
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; text-size-adjust: 100%; }
 body {

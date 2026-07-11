@@ -1,0 +1,37 @@
+:root {
+  --color-background: #fbf7ef;
+  --color-background-subtle: #f4f7fb;
+  --color-surface: rgba(255, 255, 255, 0.86);
+  --color-surface-elevated: #ffffff;
+  --color-border: rgba(21, 33, 59, 0.12);
+  --color-border-strong: rgba(21, 33, 59, 0.24);
+  --color-text-primary: #15213b;
+  --color-text-secondary: #465672;
+  --color-text-muted: #61708a;
+  --color-primary: #15213b;
+  --color-primary-hover: #24345a;
+  --color-primary-foreground: #ffffff;
+  --color-focus: rgba(91, 91, 214, 0.34);
+  --color-fact: #dcedff;
+  --color-feeling: #eee7ff;
+  --color-value: #e7ddff;
+  --color-option: #dcf8ee;
+  --color-uncertainty: #fff0c9;
+  --color-risk: #ffe1dc;
+  --color-action: #dff5ff;
+  --color-success: #2f8f6b;
+  --color-error: #b94b43;
+  --radius-small: 12px;
+  --radius-medium: 18px;
+  --radius-large: 28px;
+  --radius-pill: 999px;
+  --shadow-none: none;
+  --shadow-subtle: 0 10px 24px rgba(21, 33, 59, 0.07);
+  --shadow-floating: 0 22px 60px rgba(21, 33, 59, 0.10);
+  --shadow-modal: 0 32px 90px rgba(21, 33, 59, 0.14);
+  --duration-fast: 160ms;
+  --duration-normal: 240ms;
+  --duration-slow: 360ms;
+  --easing-standard: cubic-bezier(.2, 0, 0, 1);
+  --easing-emphasized: cubic-bezier(.16, 1, .3, 1);
+}
