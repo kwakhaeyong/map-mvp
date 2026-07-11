@@ -32,5 +32,5 @@ export function createLandingSession(): MapSession {
 
 export function isValidSession(value: unknown): value is MapSession {
   const session = value as MapSession;
-  return Boolean(session && session.version === SCHEMA_VERSION && Array.isArray(session.messages) && Array.isArray(session.nodes) && Array.isArray(session.relations) && typeof session.stage === "string");
+  return Boolean(session && Array.isArray(session.messages) && Array.isArray(session.nodes) && Array.isArray(session.relations) && typeof session.stage === "string");
 }

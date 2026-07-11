@@ -14,6 +14,7 @@ function cx(...classes: Array<string | false | null | undefined>) { return class
 export function Conversation({ session, setSession, onFinish, onReset }: { session: MapSession; setSession: Dispatch<SetStateAction<MapSession>>; onFinish: () => void; onReset: () => void }) {
   const [draft, setDraft] = useState("");
   const [correction, setCorrection] = useState("");
+  const [mapOpen, setMapOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const speech = useWebSpeech((text) => setDraft((current) => `${current}${current ? " " : ""}${text}`));
 
@@ -51,11 +52,12 @@ export function Conversation({ session, setSession, onFinish, onReset }: { sessi
         </div>
       </header>
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-5 lg:grid-cols-[minmax(0,0.92fr)_minmax(24rem,1.08fr)]">
-        <aside className="order-2 lg:order-1">
+        <aside className="order-2 hidden lg:order-1 lg:block">
           <MapCanvas session={session} />
           <p className="mt-3 rounded-2xl bg-white/80 p-3 text-sm font-bold text-slate-500">작성 내용은 이 브라우저에 임시 저장돼요. MAP은 말할수록 바로 자라납니다.</p>
         </aside>
         <section className="order-1 flex min-h-[72vh] flex-col rounded-[2rem] border border-white bg-white/88 shadow-2xl shadow-slate-200/70" aria-label="MAP 대화">
+          <button className="mx-4 mt-4 block rounded-2xl border border-blue-100 bg-blue-50 p-3 text-left font-black text-blue-800 lg:hidden" onClick={() => setMapOpen(true)}>지금 보이는 MAP 열기 · 노드 {session.nodes.length}개</button>
           <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
             {session.messages.map((message) => (
               <div key={message.id} className={cx("max-w-[86%] rounded-[1.5rem] p-4 leading-7 shadow-sm", message.role === "user" ? "ml-auto bg-blue-700 font-bold text-white" : "bg-slate-50 font-semibold text-slate-750")}>
@@ -72,9 +74,11 @@ export function Conversation({ session, setSession, onFinish, onReset }: { sessi
               <button className="mt-2 rounded-full bg-rose-600 px-4 py-2 font-black text-white" onClick={() => submit(correction, true)}>수정 반영하기</button>
             </div>
           ) : null}
+          <ResponseChips onPick={(text) => setDraft((current) => current ? `${current} ${text}` : text)} />
           <Composer draft={draft} setDraft={setDraft} speech={speech} onSubmit={() => submit()} onFinish={onFinish} />
         </section>
       </section>
+      {mapOpen ? <div className="fixed inset-0 z-50 bg-slate-950/55 p-3 backdrop-blur-sm lg:hidden" role="dialog" aria-modal="true" aria-label="전체 MAP"><div className="h-full overflow-y-auto rounded-[2rem] bg-[#fbf7ef] p-3"><button className="mb-3 rounded-full bg-slate-950 px-4 py-2 font-black text-white" onClick={() => setMapOpen(false)}>닫기</button><MapCanvas session={session} /></div></div> : null}
     </main>
   );
 }
@@ -94,7 +98,7 @@ function Composer({ draft, setDraft, speech, onSubmit, onFinish }: { draft: stri
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-black">{speech.listening ? "듣고 있어요" : "말하거나 입력해 주세요"}</p>
-          <p className="text-sm font-bold text-slate-500">{speech.listening ? `편하게 계속 말해 주세요 · ${speech.seconds}초` : "텍스트로 확인한 뒤 수정할 수 있어요"}</p>
+          <p className="text-sm font-bold text-slate-500">{speech.listening ? `편하게 계속 말해 주세요 · ${speech.seconds}초` : "말한 내용을 글로 옮기고 있어요 · 확인하고 수정할 수 있어요"}</p>
           {speech.interimTranscript ? <p className="mt-1 text-sm font-bold text-blue-700">{speech.interimTranscript}</p> : null}
           {speech.error ? <p className="mt-1 text-sm font-bold text-rose-600">{speech.error}</p> : null}
           {!speech.supported ? <p className="mt-1 text-sm font-bold text-amber-700">음성 미지원 브라우저라 텍스트 입력으로 이어갈게요.</p> : null}
@@ -111,4 +115,9 @@ function Composer({ draft, setDraft, speech, onSubmit, onFinish }: { draft: stri
       </div>
     </div>
   );
+}
+
+function ResponseChips({ onPick }: { onPick: (text: string) => void }) {
+  const chips = ["이 부분이 제일 마음에 걸려요", "아직 확인할 정보가 있어요", "지금 마음은 이쪽에 가까워요"];
+  return <div className="border-t border-slate-100 px-4 py-3"><p className="mb-2 text-xs font-black text-slate-500">가볍게 이어서 말하기</p><div className="flex flex-wrap gap-2">{chips.map((chip) => <button key={chip} className="rounded-full bg-slate-50 px-3 py-2 text-sm font-black text-slate-700 hover:bg-blue-50" onClick={() => onPick(chip)}>{chip}</button>)}</div></div>;
 }

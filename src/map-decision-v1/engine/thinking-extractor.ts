@@ -2,12 +2,13 @@ import { MapNode, MapRelation, MapSession, NodeKind, RelationKind } from "../typ
 import { createId, now } from "./session";
 
 export const nodeLabels: Record<NodeKind, string> = {
-  topic: "핵심 주제", trigger: "계기", emotion: "감정", person: "사람", value: "가치", reason: "이유", constraint: "제약", option: "선택지", benefit: "장점", risk: "리스크", missing: "확인할 정보", direction: "방향", action: "행동", correction: "수정된 이해",
+  topic: "핵심 주제", trigger: "계기", fact: "사실", emotion: "감정", person: "사람", value: "가치", reason: "이유", constraint: "제약", option: "선택지", benefit: "장점", risk: "리스크", missing: "확인할 정보", direction: "방향", action: "행동", correction: "수정된 이해",
 };
 
 export function inferNodeKind(text: string, existing: MapNode[]): NodeKind {
   const normalized = text.toLowerCase();
   if (!existing.some((node) => node.kind === "topic")) return "topic";
+  if (/회사|학교|기간|월급|비용|성적|조건|상황|현재|이미/.test(normalized)) return "fact";
   if (/불안|걱정|답답|좋|싫|무섭|기대|아쉽|후회|편해|힘들|설레|지침/.test(normalized)) return "emotion";
   if (/성장|자유|안정|돈|시간|관계|건강|경험|커리어|가치|배움|자율/.test(normalized)) return "value";
   if (/선택|방법|하거나|또는|갈까|살까|할까|남|옮|시작|유학|여행|자취|고백/.test(normalized)) return "option";

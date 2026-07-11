@@ -9,6 +9,7 @@ function truncate(text: string, length = 54) {
 const followUps: Record<NodeKind, string> = {
   topic: "그 생각이 요즘 특히 커진 계기는 무엇에 가까워요?",
   trigger: "그 안에서 마음을 가장 흔드는 감정은 무엇인가요?",
+  fact: "확인된 사실과 아직 추측인 부분을 나눠보면 무엇이 남나요?",
   emotion: "그 감정 뒤에 지키고 싶은 기준이나 가치가 있다면 뭐라고 느껴져요?",
   value: "그 기준을 놓고 보면 현실적으로 가능한 선택지는 어떤 것들이 있나요?",
   reason: "반대로 이 선택을 어렵게 만드는 제약이나 조건은 무엇인가요?",
