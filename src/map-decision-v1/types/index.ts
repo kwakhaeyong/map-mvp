@@ -22,6 +22,8 @@ export type MapSession = {
   checkpointStatus?: "pending" | "confirmed" | "correcting";
   startedAt: string;
   updatedAt: string;
+  isDemo?: boolean;
+  demoStep?: number;
 };
 
 export type ConversationProvider = {

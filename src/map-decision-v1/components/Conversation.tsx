@@ -8,11 +8,10 @@ import { MapSession, Message } from "../types";
 import { useWebSpeech } from "../voice/use-web-speech";
 import { Brand } from "./Landing";
 import { MapCanvas } from "./MapCanvas";
+import { BottomSheet, Button, Card, CheckpointCard, MessageBubble, ResponseChip, Textarea, VoiceButton } from "./ui/primitives";
 
-function cx(...classes: Array<string | false | null | undefined>) { return classes.filter(Boolean).join(" "); }
-
-export function Conversation({ session, setSession, onFinish, onReset }: { session: MapSession; setSession: Dispatch<SetStateAction<MapSession>>; onFinish: () => void; onReset: () => void }) {
-  const safeReset = () => { if (window.confirm("새 MAP을 만들까요? 지금 내용은 이 브라우저에 저장되어 있지만 새로 시작하면 현재 화면에서는 사라져요.")) onReset(); };
+export function Conversation({ session, setSession, onFinish, onReset, onRealStart, onDemoChoice }: { session: MapSession; setSession: Dispatch<SetStateAction<MapSession>>; onFinish: () => void; onReset: () => void; onRealStart: () => void; onDemoChoice: () => void }) {
+  const safeReset = () => { if (session.isDemo || window.confirm("새 MAP을 만들까요? 지금 내용은 이 브라우저에 저장되어 있어요.")) onReset(); };
   const [draft, setDraft] = useState("");
   const [correction, setCorrection] = useState("");
   const [mapOpen, setMapOpen] = useState(false);
@@ -24,101 +23,53 @@ export function Conversation({ session, setSession, onFinish, onReset }: { sessi
   const submit = (text = draft, isCorrection = false) => {
     const clean = text.trim();
     if (!clean) return;
-    setDraft("");
-    setCorrection("");
+    setDraft(""); setCorrection("");
     setSession((previous) => {
       const userMessage: Message = { id: createId("user"), role: "user", text: clean, timestamp: now() };
       const extracted = extractThinking(clean, previous, isCorrection);
-      const intermediate: MapSession = {
-        ...previous,
-        checkpointStatus: isCorrection ? "confirmed" : previous.checkpointStatus,
-        messages: [...previous.messages, userMessage],
-        nodes: [...previous.nodes, ...extracted.nodes],
-        relations: [...previous.relations, ...extracted.relations],
-        updatedAt: now(),
-      };
+      const intermediate: MapSession = { ...previous, checkpointStatus: isCorrection ? "confirmed" : previous.checkpointStatus, messages: [...previous.messages, userMessage], nodes: [...previous.nodes, ...extracted.nodes], relations: [...previous.relations, ...extracted.relations], updatedAt: now() };
       return { ...intermediate, messages: [...intermediate.messages, localConversationProvider.nextReply(intermediate, clean)] };
     });
   };
 
   return (
-    <main className="min-h-screen text-[var(--map-navy)]">
-      <header className="sticky top-0 z-30 border-b border-white/70 bg-[#fbf7ef]/85 px-4 py-3 backdrop-blur-xl">
-        <div className="mx-auto flex map-container items-center justify-between">
+    <main className="min-h-screen text-text-primary">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/90 px-4 py-3 backdrop-blur">
+        <div className="mx-auto flex map-container items-center justify-between gap-3">
           <Brand />
-          <div className="flex gap-2">
-            <button className="btn btn-secondary px-4 py-2 text-sm" onClick={safeReset}>새 MAP</button>
-            <button className="btn btn-primary px-4 py-2 text-sm" onClick={onFinish}>현재 MAP 보기</button>
-          </div>
+          <div className="flex gap-2">{session.isDemo ? <Button variant="secondary" onClick={onRealStart}>직접 해보기</Button> : null}<Button variant="secondary" onClick={safeReset}>{session.isDemo ? "처음으로" : "새 MAP"}</Button><Button onClick={onFinish}>현재 MAP 보기</Button></div>
         </div>
       </header>
-      <section className="mx-auto grid map-container gap-6 px-4 py-5 lg:grid-cols-[minmax(0,0.92fr)_minmax(24rem,1.08fr)]">
-        <aside className="order-2 hidden lg:order-1 lg:block">
-          <MapCanvas session={session} />
-          <p className="mt-3 rounded-2xl bg-white/80 p-3 text-sm font-bold text-slate-500">작성 내용은 이 브라우저에 임시 저장돼요. 말할수록 보이는 흐름이 자라납니다.</p>
-        </aside>
-        <section className="order-1 flex min-h-[72vh] flex-col map-card" aria-label="MAP 대화">
-          <button className="mx-4 mt-4 block rounded-[20px] border border-[var(--map-line)] bg-white/75 p-3 text-left font-extrabold text-[var(--map-indigo)] lg:hidden" onClick={() => setMapOpen(true)}>지금 보이는 MAP 열기</button>
+      <section className="mx-auto grid map-container gap-6 px-4 py-5 lg:grid-cols-[minmax(0,58%)_minmax(22rem,42%)]">
+        <section className="flex min-h-[76vh] flex-col rounded-large border border-border bg-surface shadow-floating" aria-label="MAP 대화">
+          {session.isDemo ? <Card className="mx-4 mt-4 p-4"><p className="font-extrabold">30초 체험 중</p><p className="mt-1 text-sm font-semibold text-text-secondary">로그인, 마이크, 입력 없이 MAP이 자라는 흐름을 볼 수 있어요.</p></Card> : null}
+          <div className="px-4 pt-4 lg:hidden"><button className="w-full text-left" onClick={() => setMapOpen(true)} aria-label="현재 MAP 전체 보기"><MapCanvas session={session} compact /></button></div>
           <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
-            {session.messages.map((message) => (
-              <div key={message.id} className={cx("max-w-[86%] rounded-[1.5rem] p-4 leading-7 shadow-sm", message.role === "user" ? "message-in ml-auto bg-[var(--map-indigo)] font-semibold text-white" : "message-in bg-white font-medium text-[var(--map-navy)] border border-[var(--map-line)]")}>
-                <p className="whitespace-pre-line">{message.text}</p>
-                {message.checkpoint ? <CheckpointControls setSession={setSession} /> : null}
-              </div>
-            ))}
+            {session.messages.map((message) => <MessageBubble key={message.id} role={message.role === "user" ? "user" : "assistant"}><p className="whitespace-pre-line">{message.text}</p>{message.checkpoint ? <CheckpointControls setSession={setSession} /> : null}</MessageBubble>)}
             <div ref={endRef} />
           </div>
-          {session.checkpointStatus === "correcting" ? (
-            <div className="border-t border-slate-100 p-4">
-              <label className="text-sm font-black text-rose-700" htmlFor="correction">어떤 부분이 달랐나요?</label>
-              <textarea id="correction" className="mt-2 min-h-20 w-full rounded-2xl border p-3 focus:outline-none focus:ring-4 focus:ring-rose-100" value={correction} onChange={(event) => setCorrection(event.target.value)} placeholder="예: 성장보다 안정이 더 중요한 것 같아요." />
-              <button className="mt-2 rounded-full bg-rose-600 px-4 py-2 font-black text-white" onClick={() => submit(correction, true)}>수정 반영하기</button>
-            </div>
-          ) : null}
-          <ResponseChips onPick={(text) => setDraft((current) => current ? `${current} ${text}` : text)} />
-          <Composer draft={draft} setDraft={setDraft} speech={speech} onSubmit={() => submit()} onFinish={onFinish} />
+          {session.checkpointStatus === "correcting" ? <CheckpointCard className="mx-4 mb-3 p-4"><label className="text-sm font-black" htmlFor="correction">어떤 부분이 달랐나요?</label><Textarea id="correction" className="mt-2 min-h-20" value={correction} onChange={(event) => setCorrection(event.target.value)} placeholder="예: 성장보다 안정이 더 중요한 것 같아요." /><Button className="mt-2" onClick={() => submit(correction, true)}>수정 반영하기</Button></CheckpointCard> : null}
+          <ResponseChips session={session} onPick={(text) => session.isDemo ? onDemoChoice() : setDraft((current) => current ? `${current} ${text}` : text)} />
+          <Composer draft={draft} setDraft={setDraft} speech={speech} onSubmit={() => submit()} onFinish={onFinish} disabled={Boolean(session.isDemo)} onRealStart={onRealStart} />
         </section>
+        <aside className="hidden lg:block"><MapCanvas session={session} /><p className="mt-3 rounded-medium bg-surface p-3 text-sm font-bold text-text-muted">작성 내용은 이 브라우저에 임시 저장돼요. 말할수록 보이는 흐름이 자라납니다.</p></aside>
       </section>
-      {mapOpen ? <div className="fixed inset-0 z-50 bg-slate-950/55 p-3 backdrop-blur-sm lg:hidden" role="dialog" aria-modal="true" aria-label="전체 MAP"><div className="h-full overflow-y-auto rounded-[2rem] bg-[var(--map-ivory)] p-3"><button className="mb-3 rounded-full bg-slate-950 px-4 py-2 font-black text-white" onClick={() => setMapOpen(false)}>닫기</button><MapCanvas session={session} /></div></div> : null}
+      {mapOpen ? <BottomSheet className="inset-0 z-50 h-full overflow-y-auto rounded-none lg:hidden"><Button className="mb-3" onClick={() => setMapOpen(false)}>닫기</Button><MapCanvas session={session} /></BottomSheet> : null}
     </main>
   );
 }
 
 function CheckpointControls({ setSession }: { setSession: Dispatch<SetStateAction<MapSession>> }) {
-  return (
-    <div className="mt-4 flex flex-wrap gap-2">
-      <button className="btn btn-primary px-4 py-2 text-sm" onClick={() => setSession((session) => ({ ...session, checkpointStatus: "confirmed", messages: [...session.messages, { id: createId("ai"), role: "ai", provider: "local", text: "좋아요. 확인된 이해로 표시해둘게요. 이제 빠진 정보와 다음 행동을 더 선명하게 볼 수 있어요.", timestamp: now() }], nodes: session.nodes.map((node) => ({ ...node, confidence: node.confidence === "user" ? "confirmed" : node.confidence })) }))}>맞아요</button>
-      <button className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-700" onClick={() => setSession((session) => ({ ...session, checkpointStatus: "correcting" }))}>조금 달라요</button>
-    </div>
-  );
+  return <div className="mt-4 flex flex-wrap gap-2"><Button onClick={() => setSession((session) => ({ ...session, checkpointStatus: "confirmed", messages: [...session.messages, { id: createId("ai"), role: "ai", provider: "local", text: "좋아요. 확인된 이해로 표시해둘게요. 이제 빠진 정보와 다음 행동을 더 선명하게 볼 수 있어요.", timestamp: now() }], nodes: session.nodes.map((node) => ({ ...node, confidence: node.confidence === "user" ? "confirmed" : node.confidence })) }))}>맞아요</Button><Button variant="secondary" onClick={() => setSession((session) => ({ ...session, checkpointStatus: "correcting" }))}>조금 달라요</Button></div>;
 }
 
-function Composer({ draft, setDraft, speech, onSubmit, onFinish }: { draft: string; setDraft: (value: string) => void; speech: ReturnType<typeof useWebSpeech>; onSubmit: () => void; onFinish: () => void }) {
-  return (
-    <div className="sticky bottom-0 rounded-b-[2rem] border-t border-slate-100 bg-white/95 p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="font-black">{speech.listening ? "듣고 있어요" : "말하거나 입력해 주세요"}</p>
-          <p className="text-sm font-bold text-slate-500">{speech.listening ? `편하게 계속 말해 주세요 · ${speech.seconds}초` : "말한 내용을 글로 옮기고 있어요 · 확인하고 수정할 수 있어요"}</p>
-          {speech.interimTranscript ? <p className="mt-1 text-sm font-bold text-blue-700">{speech.interimTranscript}</p> : null}
-          {speech.error ? <p className="mt-1 text-sm font-bold text-rose-600">{speech.error}</p> : null}
-          {!speech.supported ? <p className="mt-1 text-sm font-bold text-amber-700">음성 미지원 브라우저라 텍스트 입력으로 이어갈게요.</p> : null}
-        </div>
-        <div className="flex gap-2">
-          <button aria-label={speech.listening ? "녹음 중지" : "마이크로 말하기"} className={cx("grid size-14 place-items-center rounded-full text-xl font-black text-white shadow-xl", speech.listening ? "animate-pulse bg-rose-600" : "bg-blue-700")} onClick={speech.listening ? speech.stop : speech.start}>🎙</button>
-          {speech.listening ? <button className="rounded-full border px-4 py-2 font-black" onClick={speech.cancel}>취소</button> : null}
-        </div>
-      </div>
-      <textarea className="min-h-24 w-full resize-y rounded-[1.25rem] border border-slate-200 p-4 text-lg font-semibold leading-8 focus:outline-none focus:ring-4 focus:ring-blue-100" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="예: 이직을 고민하고 있는데 사람들은 좋고 성장하는 느낌은 없어요." />
-      <div className="mt-3 flex justify-between">
-        <button className="rounded-full border bg-white px-5 py-3 font-black" onClick={onFinish}>MAP 미리보기</button>
-        <button className="rounded-full bg-slate-950 px-6 py-3 font-black text-white disabled:opacity-40" disabled={!draft.trim()} onClick={onSubmit}>보내기</button>
-      </div>
-    </div>
-  );
+function Composer({ draft, setDraft, speech, onSubmit, onFinish, disabled, onRealStart }: { draft: string; setDraft: (value: string) => void; speech: ReturnType<typeof useWebSpeech>; onSubmit: () => void; onFinish: () => void; disabled: boolean; onRealStart: () => void }) {
+  return <div className="sticky bottom-0 rounded-b-large border-t border-border bg-surface-elevated p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="font-black">{speech.listening ? "듣고 있어요" : "말하거나 입력해 주세요"}</p><p className="text-sm font-bold text-text-muted">{speech.listening ? `편하게 계속 말해 주세요 · ${speech.seconds}초` : "말한 내용은 확인하고 수정할 수 있어요"}</p>{speech.interimTranscript ? <p className="mt-1 text-sm font-bold text-primary">{speech.interimTranscript}</p> : null}{speech.error ? <p className="mt-1 text-sm font-bold text-error">{speech.error}</p> : null}{!speech.supported ? <p className="mt-1 text-sm font-bold text-text-secondary">음성 미지원 브라우저라 텍스트 입력으로 이어갈게요.</p> : null}</div><div className="flex gap-2"><VoiceButton aria-label={speech.listening ? "녹음 중지" : "마이크로 말하기"} listening={speech.listening} onClick={speech.listening ? speech.stop : speech.start} disabled={disabled}>{speech.listening ? "멈추기" : "말하기"}</VoiceButton>{speech.listening ? <Button variant="secondary" onClick={speech.cancel}>취소</Button> : null}</div></div>{disabled ? <Button className="w-full" onClick={onRealStart}>직접 해보기</Button> : <><Textarea className="min-h-24" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="예: 이직을 고민하고 있는데 사람들은 좋고 성장하는 느낌은 없어요." /><div className="mt-3 flex justify-between gap-3"><Button variant="secondary" onClick={onFinish}>MAP 미리보기</Button><Button disabled={!draft.trim()} onClick={onSubmit}>보내기</Button></div></>}</div>;
 }
 
-function ResponseChips({ onPick }: { onPick: (text: string) => void }) {
-  const chips = ["이 부분이 제일 마음에 걸려요", "아직 확인할 정보가 있어요", "지금 마음은 이쪽에 가까워요"];
-  return <div className="border-t border-slate-100 px-4 py-3"><p className="mb-2 text-xs font-black text-slate-500">가볍게 이어서 말하기</p><div className="flex flex-wrap gap-2">{chips.map((chip) => <button key={chip} className="rounded-full bg-slate-50 px-3 py-2 text-sm font-black text-slate-700 hover:bg-blue-50" onClick={() => onPick(chip)}>{chip}</button>)}</div></div>;
+function ResponseChips({ session, onPick }: { session: MapSession; onPick: (text: string) => void }) {
+  const demoChips = ["성장감이 제일 걸려요", "생활비가 부담돼요", "먼저 확인해볼게요"];
+  const chips = session.isDemo ? demoChips.slice(session.demoStep || 0, (session.demoStep || 0) + 1) : ["이 부분이 제일 마음에 걸려요", "아직 확인할 정보가 있어요", "지금 마음은 이쪽에 가까워요"];
+  if (!chips.length) return null;
+  return <div className="border-t border-border px-4 py-3"><p className="mb-2 text-xs font-black text-text-muted">{session.isDemo ? "하나를 눌러 흐름을 이어보세요" : "가볍게 이어서 말하기"}</p><div className="flex flex-wrap gap-2">{chips.map((chip) => <ResponseChip key={chip} onClick={() => onPick(chip)}>{chip}</ResponseChip>)}</div></div>;
 }
