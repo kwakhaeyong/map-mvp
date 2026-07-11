@@ -6,6 +6,9 @@ export default function Home() {
     <main className="overflow-hidden bg-white text-slate-950">
       <section className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 pb-20 pt-5 sm:px-8 lg:px-12">
         <div className="pointer-events-none absolute left-1/2 top-0 h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-gradient-to-br from-rose-100 via-fuchsia-100 to-sky-100 blur-3xl" />
+        <div className="relative z-10 mb-4 rounded-full border border-sky-100 bg-sky-50 px-4 py-2 text-center text-sm font-black text-sky-600 shadow-sm">
+          Codex Pipeline Test · v0.1.1
+        </div>
         <nav className="relative z-10 flex items-center justify-between rounded-full border border-white/80 bg-white/70 px-5 py-3 shadow-xl shadow-slate-100 backdrop-blur-2xl">
           <div className="flex items-center gap-2">
             <span className="flex size-8 items-center justify-center rounded-full bg-slate-950 text-xs font-black text-white">M</span>
