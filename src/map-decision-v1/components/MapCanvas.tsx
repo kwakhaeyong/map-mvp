@@ -53,7 +53,7 @@ export function MapCanvas({ session, sample = false, className, compact = false 
         {outer.map((node) => {
           const relation = session.relations.find((item) => item.to === node.id);
           return (
-            <article key={node.id} className={cx("min-w-0 rounded-2xl border p-3 shadow-sm", nodeClass[node.kind])}>
+            <article key={node.id} className={cx("min-w-0 overflow-hidden rounded-2xl border p-3 shadow-sm", nodeClass[node.kind])}>
               <div className="flex min-w-0 items-center justify-between gap-2">
                 <p className="truncate text-[0.68rem] font-extrabold opacity-75">{node.label} · {confidenceLabel(node)}</p>
                 <span className={cx("shrink-0 rounded-full px-2 py-0.5 text-[0.62rem] font-black", relation?.strength === "dotted" ? "border border-current bg-white/40" : "bg-white/55")}>{relation?.kind || "영향"}</span>

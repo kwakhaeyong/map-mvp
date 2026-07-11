@@ -15,13 +15,13 @@ export function Landing({ hasDraft, onStart, onResume }: { hasDraft: boolean; on
       </header>
 
       <section className="mx-auto grid max-w-7xl items-center gap-10 py-12 sm:py-16 lg:grid-cols-[minmax(0,0.92fr)_minmax(26rem,1.08fr)] lg:gap-14 lg:py-20">
-        <div className="max-w-2xl">
+        <div className="min-w-0 max-w-2xl">
           <p className="inline-flex max-w-full rounded-full bg-white px-4 py-2 text-xs font-black leading-5 text-blue-700 shadow-sm sm:text-sm">로그인 없이 바로 시작 · 첫 MAP까지 약 5분 · 자동 저장</p>
           <h1 className="mt-5 max-w-2xl whitespace-pre-line break-keep text-[2.25rem] font-black leading-[1.16] tracking-[-0.025em] sm:text-5xl lg:text-[4rem]">머릿속이 조금 복잡한가요?{`\n`}편하게 이야기해 주세요.</h1>
           <p className="mt-5 max-w-xl whitespace-pre-line break-keep text-base font-semibold leading-8 text-slate-600 sm:text-lg">말하거나 입력하면, 생각의 핵심과 선택지, 걸리는 부분과 다음 행동을 한 장의 MAP으로 정리해드려요.</p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <button className="min-h-14 rounded-full bg-slate-950 px-7 py-4 text-base font-black text-white shadow-lg shadow-slate-300 transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-200 sm:text-lg" onClick={() => onStart()}>🎙 말로 시작하기</button>
-            <button className="min-h-14 rounded-full border border-slate-300 bg-white px-7 py-4 text-base font-black text-slate-900 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:text-lg" onClick={() => onStart()}>⌨️ 직접 입력하기</button>
+            <button className="inline-flex min-h-14 items-center justify-center rounded-full bg-slate-950 px-7 py-4 text-base font-black text-white shadow-lg shadow-slate-300 transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-200 sm:text-lg" onClick={() => onStart()}>🎙 말로 시작하기</button>
+            <button className="inline-flex min-h-14 items-center justify-center rounded-full border border-slate-300 bg-white px-7 py-4 text-base font-black text-slate-900 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:text-lg" onClick={() => onStart()}>⌨️ 직접 입력하기</button>
           </div>
           <div className="mt-6 grid gap-2 text-sm font-extrabold text-slate-500 sm:grid-cols-2">
             <span>작성 중 자동 저장</span>
