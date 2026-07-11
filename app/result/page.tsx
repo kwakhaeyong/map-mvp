@@ -1,22 +1,39 @@
-import Link from "next/link";
-import { IdealTypeResult } from "../components/IdealTypeResult";
+"use client";
+
+import { useState } from "react";
+import { createSession } from "../../src/map-decision-v1/engine/session";
+import { MapSession, MapOutputType } from "../../src/map-decision-v1/types";
+import { Result } from "../../src/map-decision-v1/components/Result";
+
+function sampleResult(): MapSession {
+  const session = createSession("이직할까?");
+  return {
+    ...session,
+    stage: "result",
+    preferredMapType: "decision",
+    messages: [...session.messages, { id: "route-user", role: "user", text: "성장감은 줄었지만 생활비와 팀 분위기는 안정적이라 바로 움직이기 망설여져요.", timestamp: session.startedAt }],
+    nodes: [
+      ...session.nodes,
+      { id: "route-fact", kind: "fact", label: "내가 말한 상황", text: "성장감은 줄었지만 팀 분위기는 안정적", confidence: "user", createdAt: session.startedAt },
+      { id: "route-value", kind: "value", label: "중요한 기준", text: "성장과 안정의 균형", confidence: "confirmed", createdAt: session.startedAt },
+      { id: "route-option", kind: "option", label: "가능한 방향", text: "바로 퇴사보다 내부 이동과 채용시장 확인", confidence: "ai", createdAt: session.startedAt },
+      { id: "route-risk", kind: "risk", label: "걸리는 부분", text: "생활비 공백과 새 조직 적응 부담", confidence: "ai", createdAt: session.startedAt },
+      { id: "route-missing", kind: "missing", label: "확인할 내용", text: "관심 회사 조건과 3개월 생활비", confidence: "ai", createdAt: session.startedAt },
+      { id: "route-action", kind: "action", label: "다음 행동", text: "이번 주 안에 채용공고 3개와 내부 이동 가능성을 확인하기", confidence: "ai", createdAt: session.startedAt },
+    ],
+    relations: [
+      { id: "route-rel-1", from: "topic", to: "route-fact", kind: "원인", strength: "solid" },
+      { id: "route-rel-2", from: "topic", to: "route-value", kind: "영향", strength: "accent" },
+      { id: "route-rel-3", from: "topic", to: "route-option", kind: "대안", strength: "solid" },
+      { id: "route-rel-4", from: "topic", to: "route-risk", kind: "리스크", strength: "dotted" },
+      { id: "route-rel-5", from: "topic", to: "route-missing", kind: "확인 필요", strength: "dotted" },
+      { id: "route-rel-6", from: "topic", to: "route-action", kind: "다음 행동", strength: "accent" },
+    ],
+  };
+}
 
 export default function ResultPage() {
-  return (
-    <main className="min-h-screen overflow-hidden bg-white text-slate-950">
-      <section className="relative mx-auto min-h-screen w-full max-w-[31rem] px-5 pb-10 pt-5 sm:max-w-[34rem]">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-80 rounded-b-[4rem] bg-gradient-to-br from-rose-100 via-white to-sky-100" />
-        <nav className="relative z-10 mb-8 flex items-center justify-between rounded-full border border-white/80 bg-white/70 px-4 py-3 shadow-xl shadow-rose-100/50 backdrop-blur-2xl">
-          <Link className="flex items-center gap-2" href="/">
-            <span className="flex size-8 items-center justify-center rounded-full bg-slate-950 text-xs font-black text-white">M</span>
-            <span className="text-sm font-black tracking-[0.18em] text-slate-500">MAP RESULT</span>
-          </Link>
-          <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-500">save & send</span>
-        </nav>
-        <div className="relative z-10">
-          <IdealTypeResult />
-        </div>
-      </section>
-    </main>
-  );
+  const [session, setSession] = useState<MapSession>(() => sampleResult());
+  const selectType = (type: MapOutputType) => setSession((current) => ({ ...current, preferredMapType: type }));
+  return <Result session={session} onContinue={() => setSession((current) => ({ ...current, stage: "conversation" }))} onReset={() => setSession(sampleResult())} onSelectType={selectType} onRealStart={() => setSession(createSession())} />;
 }

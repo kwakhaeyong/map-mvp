@@ -9,7 +9,7 @@ test("landing golden screen", async ({ page }) => {
 
 test("conversation golden screen", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /직접 입력하기|말로 바로 시작하기/ }).first().click();
+  await page.getByRole("button", { name: /직접 입력하기|말로 시작하기/ }).first().click();
   await expect(page.getByText(/브라우저에 임시 저장|말하거나 입력/).first()).toBeVisible();
   await page.screenshot({ path: `test-results/visual/conversation-${test.info().project.name}.png`, fullPage: true });
 });
