@@ -23,6 +23,7 @@ export type MapSession = {
   startedAt: string;
   updatedAt: string;
   isDemo?: boolean;
+  demoStep?: number;
 };
 
 export type ConversationProvider = {

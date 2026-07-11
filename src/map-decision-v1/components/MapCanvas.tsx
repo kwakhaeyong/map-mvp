@@ -31,13 +31,13 @@ export function MapCanvas({ session, sample = false, className, compact = false,
   const nodes = sample ? (realNodes.length ? realNodes : sampleNodes) : realNodes;
   const center = nodes.find((node) => node.kind === "topic") || nodes[0];
   const outer = nodes.filter((node) => node.id !== center?.id).slice(0, compact ? 5 : 8);
-  const h = result ? "h-[34rem] sm:h-[38rem]" : compact ? "h-[20rem] sm:h-[22rem]" : "h-[30rem]";
+  const h = result ? "h-[32rem] sm:h-[36rem]" : compact ? "h-[16rem] sm:h-[19rem]" : "h-[28rem]";
 
   return (
     <Card className={cx("thinking-map overflow-hidden p-4 sm:p-5", className)} aria-label="실시간 생각 MAP">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div><p className="kicker">보이는 흐름</p><h2 className="mt-1 text-xl font-extrabold tracking-[-0.02em] sm:text-2xl">말하면 생각이 보입니다.</h2></div>
-        <Badge tone={outer.length ? "success" : "default"}>{outer.length ? `${outer.length + 1}개 조각` : "비어 있음"}</Badge>
+        {!compact ? <Badge tone={outer.length ? "success" : "default"}>{outer.length ? "흐름 정리 중" : "비어 있음"}</Badge> : null}
       </div>
       <div className={cx("relative overflow-hidden rounded-large border border-border bg-surface", h)}>
         <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -46,7 +46,7 @@ export function MapCanvas({ session, sample = false, className, compact = false,
         {center ? <MapNodeView node={center} x={50} y={50} center compact={compact} /> : <div className="absolute inset-0 grid place-items-center p-8"><EmptyState>첫 이야기를 하면 생각의 중심이 나타나요.</EmptyState></div>}
         {outer.map((node, index) => <MapNodeView key={node.id} node={node} x={positions[index].x} y={positions[index].y} compact={compact} />)}
       </div>
-      <div className="mt-4"><MapLegend items={["fact", "feeling", "option", "uncertainty", "risk", "action"]} /></div>
+      {!compact ? <div className="mt-4"><MapLegend items={["fact", "feeling", "option", "uncertainty", "risk", "action"]} /></div> : null}
     </Card>
   );
 }

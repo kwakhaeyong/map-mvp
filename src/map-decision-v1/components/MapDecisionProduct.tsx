@@ -13,6 +13,7 @@ function createDemoSession(): MapSession {
   return {
     ...session,
     isDemo: true,
+    demoStep: 0,
     messages: [
       ...session.messages,
       { id: "demo-user-1", role: "user", text: "요즘 일은 익숙한데 성장하는 느낌이 거의 없어요.", timestamp: now() },
@@ -31,6 +32,28 @@ function createDemoSession(): MapSession {
     ],
   };
 }
+
+
+const demoReplies = [
+  {
+    user: "성장감이 제일 걸려요.",
+    ai: "성장감이 줄어든 감각이 중심에 놓였네요. 지금은 바로 떠날지보다, 무엇이 회복되면 남을 수 있는지도 같이 볼 수 있어요.",
+    node: { id: "demo-emotion", kind: "emotion", label: "걸리는 부분", text: "성장감이 줄어든 감각", confidence: "user" },
+    relation: { id: "demo-rel-4", from: "topic", to: "demo-emotion", kind: "영향", strength: "accent" },
+  },
+  {
+    user: "생활비 때문에 바로 움직이긴 부담돼요.",
+    ai: "움직이고 싶은 마음과 생활비 부담이 같이 있네요. 그래서 확인할 정보가 생기면 선택이 더 안전해질 수 있어요.",
+    node: { id: "demo-risk", kind: "risk", label: "걸리는 부분", text: "생활비 공백에 대한 부담", confidence: "user" },
+    relation: { id: "demo-rel-5", from: "topic", to: "demo-risk", kind: "리스크", strength: "dotted" },
+  },
+  {
+    user: "먼저 채용공고랑 내부 이동을 확인해볼게요.",
+    ai: "좋아요. 지금 보이는 흐름은 ‘바로 결론’보다 확인 후 움직이는 쪽에 가까워요. 이 상태로 MAP을 열어보면 관계가 더 잘 보입니다.",
+    node: { id: "demo-action", kind: "action", label: "다음 행동", text: "채용공고와 내부 이동 가능성 확인", confidence: "user" },
+    relation: { id: "demo-rel-6", from: "topic", to: "demo-action", kind: "다음 행동", strength: "accent" },
+  },
+] as const;
 
 export function MapDecisionProduct() {
   const [session, setSession] = useState<MapSession>(() => createLandingSession());
@@ -56,6 +79,24 @@ export function MapDecisionProduct() {
   const reset = () => { if (!session.isDemo) clearSession(); setHasSavedDraft(false); setSession(createLandingSession()); };
   const selectType = (type: MapOutputType) => setSession((current) => ({ ...current, preferredMapType: type }));
   const exitDemoToReal = () => setSession(createSession());
+  const advanceDemo = () => setSession((current) => {
+    const step = current.demoStep || 0;
+    const reply = demoReplies[Math.min(step, demoReplies.length - 1)];
+    if (!current.isDemo || step >= demoReplies.length) return current;
+    const createdAt = now();
+    return {
+      ...current,
+      demoStep: step + 1,
+      messages: [
+        ...current.messages,
+        { id: `demo-user-step-${step}`, role: "user", text: reply.user, timestamp: createdAt },
+        { id: `demo-ai-step-${step}`, role: "ai", provider: "local", text: reply.ai, timestamp: createdAt },
+      ],
+      nodes: [...current.nodes, { ...reply.node, createdAt }],
+      relations: [...current.relations, reply.relation],
+      updatedAt: createdAt,
+    } as MapSession;
+  });
 
   if (session.stage === "landing" || (!session.messages.length && !session.nodes.length)) {
     return <Landing hasDraft={hasSavedDraft} onStart={start} onResume={() => setSession((current) => ({ ...current, stage: "conversation" }))} onDemo={startDemo} />;
@@ -63,5 +104,5 @@ export function MapDecisionProduct() {
   if (session.stage === "result") {
     return <Result session={session} onContinue={() => setSession((current) => ({ ...current, stage: "conversation" }))} onReset={reset} onSelectType={selectType} onRealStart={exitDemoToReal} />;
   }
-  return <Conversation session={session} setSession={setSession} onFinish={() => setSession((current) => ({ ...current, stage: "result" }))} onReset={reset} onRealStart={exitDemoToReal} />;
+  return <Conversation session={session} setSession={setSession} onFinish={() => setSession((current) => ({ ...current, stage: "result" }))} onReset={reset} onRealStart={exitDemoToReal} onDemoChoice={advanceDemo} />;
 }

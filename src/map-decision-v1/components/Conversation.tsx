@@ -10,7 +10,7 @@ import { Brand } from "./Landing";
 import { MapCanvas } from "./MapCanvas";
 import { BottomSheet, Button, Card, CheckpointCard, MessageBubble, ResponseChip, Textarea, VoiceButton } from "./ui/primitives";
 
-export function Conversation({ session, setSession, onFinish, onReset, onRealStart }: { session: MapSession; setSession: Dispatch<SetStateAction<MapSession>>; onFinish: () => void; onReset: () => void; onRealStart: () => void }) {
+export function Conversation({ session, setSession, onFinish, onReset, onRealStart, onDemoChoice }: { session: MapSession; setSession: Dispatch<SetStateAction<MapSession>>; onFinish: () => void; onReset: () => void; onRealStart: () => void; onDemoChoice: () => void }) {
   const safeReset = () => { if (session.isDemo || window.confirm("새 MAP을 만들까요? 지금 내용은 이 브라우저에 저장되어 있어요.")) onReset(); };
   const [draft, setDraft] = useState("");
   const [correction, setCorrection] = useState("");
@@ -42,14 +42,14 @@ export function Conversation({ session, setSession, onFinish, onReset, onRealSta
       </header>
       <section className="mx-auto grid map-container gap-6 px-4 py-5 lg:grid-cols-[minmax(0,58%)_minmax(22rem,42%)]">
         <section className="flex min-h-[76vh] flex-col rounded-large border border-border bg-surface shadow-floating" aria-label="MAP 대화">
-          <button className="mx-4 mt-4 block rounded-medium border border-border bg-surface-elevated p-3 text-left font-extrabold text-primary lg:hidden" onClick={() => setMapOpen(true)}>지금 보이는 MAP 열기</button>
           {session.isDemo ? <Card className="mx-4 mt-4 p-4"><p className="font-extrabold">30초 체험 중</p><p className="mt-1 text-sm font-semibold text-text-secondary">로그인, 마이크, 입력 없이 MAP이 자라는 흐름을 볼 수 있어요.</p></Card> : null}
+          <div className="px-4 pt-4 lg:hidden"><button className="w-full text-left" onClick={() => setMapOpen(true)} aria-label="현재 MAP 전체 보기"><MapCanvas session={session} compact /></button></div>
           <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
             {session.messages.map((message) => <MessageBubble key={message.id} role={message.role === "user" ? "user" : "assistant"}><p className="whitespace-pre-line">{message.text}</p>{message.checkpoint ? <CheckpointControls setSession={setSession} /> : null}</MessageBubble>)}
             <div ref={endRef} />
           </div>
           {session.checkpointStatus === "correcting" ? <CheckpointCard className="mx-4 mb-3 p-4"><label className="text-sm font-black" htmlFor="correction">어떤 부분이 달랐나요?</label><Textarea id="correction" className="mt-2 min-h-20" value={correction} onChange={(event) => setCorrection(event.target.value)} placeholder="예: 성장보다 안정이 더 중요한 것 같아요." /><Button className="mt-2" onClick={() => submit(correction, true)}>수정 반영하기</Button></CheckpointCard> : null}
-          <ResponseChips onPick={(text) => setDraft((current) => current ? `${current} ${text}` : text)} />
+          <ResponseChips session={session} onPick={(text) => session.isDemo ? onDemoChoice() : setDraft((current) => current ? `${current} ${text}` : text)} />
           <Composer draft={draft} setDraft={setDraft} speech={speech} onSubmit={() => submit()} onFinish={onFinish} disabled={Boolean(session.isDemo)} onRealStart={onRealStart} />
         </section>
         <aside className="hidden lg:block"><MapCanvas session={session} /><p className="mt-3 rounded-medium bg-surface p-3 text-sm font-bold text-text-muted">작성 내용은 이 브라우저에 임시 저장돼요. 말할수록 보이는 흐름이 자라납니다.</p></aside>
@@ -67,7 +67,9 @@ function Composer({ draft, setDraft, speech, onSubmit, onFinish, disabled, onRea
   return <div className="sticky bottom-0 rounded-b-large border-t border-border bg-surface-elevated p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="font-black">{speech.listening ? "듣고 있어요" : "말하거나 입력해 주세요"}</p><p className="text-sm font-bold text-text-muted">{speech.listening ? `편하게 계속 말해 주세요 · ${speech.seconds}초` : "말한 내용은 확인하고 수정할 수 있어요"}</p>{speech.interimTranscript ? <p className="mt-1 text-sm font-bold text-primary">{speech.interimTranscript}</p> : null}{speech.error ? <p className="mt-1 text-sm font-bold text-error">{speech.error}</p> : null}{!speech.supported ? <p className="mt-1 text-sm font-bold text-text-secondary">음성 미지원 브라우저라 텍스트 입력으로 이어갈게요.</p> : null}</div><div className="flex gap-2"><VoiceButton aria-label={speech.listening ? "녹음 중지" : "마이크로 말하기"} listening={speech.listening} onClick={speech.listening ? speech.stop : speech.start} disabled={disabled}>{speech.listening ? "멈추기" : "말하기"}</VoiceButton>{speech.listening ? <Button variant="secondary" onClick={speech.cancel}>취소</Button> : null}</div></div>{disabled ? <Button className="w-full" onClick={onRealStart}>직접 해보기</Button> : <><Textarea className="min-h-24" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="예: 이직을 고민하고 있는데 사람들은 좋고 성장하는 느낌은 없어요." /><div className="mt-3 flex justify-between gap-3"><Button variant="secondary" onClick={onFinish}>MAP 미리보기</Button><Button disabled={!draft.trim()} onClick={onSubmit}>보내기</Button></div></>}</div>;
 }
 
-function ResponseChips({ onPick }: { onPick: (text: string) => void }) {
-  const chips = ["이 부분이 제일 마음에 걸려요", "아직 확인할 정보가 있어요", "지금 마음은 이쪽에 가까워요"];
-  return <div className="border-t border-border px-4 py-3"><p className="mb-2 text-xs font-black text-text-muted">가볍게 이어서 말하기</p><div className="flex flex-wrap gap-2">{chips.map((chip) => <ResponseChip key={chip} onClick={() => onPick(chip)}>{chip}</ResponseChip>)}</div></div>;
+function ResponseChips({ session, onPick }: { session: MapSession; onPick: (text: string) => void }) {
+  const demoChips = ["성장감이 제일 걸려요", "생활비가 부담돼요", "먼저 확인해볼게요"];
+  const chips = session.isDemo ? demoChips.slice(session.demoStep || 0, (session.demoStep || 0) + 1) : ["이 부분이 제일 마음에 걸려요", "아직 확인할 정보가 있어요", "지금 마음은 이쪽에 가까워요"];
+  if (!chips.length) return null;
+  return <div className="border-t border-border px-4 py-3"><p className="mb-2 text-xs font-black text-text-muted">{session.isDemo ? "하나를 눌러 흐름을 이어보세요" : "가볍게 이어서 말하기"}</p><div className="flex flex-wrap gap-2">{chips.map((chip) => <ResponseChip key={chip} onClick={() => onPick(chip)}>{chip}</ResponseChip>)}</div></div>;
 }
