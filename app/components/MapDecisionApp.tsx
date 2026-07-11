@@ -1,475 +1,167 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-const STORAGE_KEY = "map-decision-progress-v2";
+const STORAGE_KEY = "map-decision-thinking-os-v1";
+const SCHEMA_VERSION = 1;
 
-type SavedProgress = {
-  currentStep: number;
-  answers: string[];
+type Role = "ai" | "user";
+type MapType = "thinking" | "decision";
+type NodeKind = "topic" | "trigger" | "emotion" | "person" | "value" | "reason" | "constraint" | "option" | "benefit" | "risk" | "missing" | "direction" | "action" | "correction";
+type RelationKind = "원인" | "영향" | "충돌" | "대안" | "장점" | "리스크" | "확인 필요" | "다음 행동";
+
+type Message = { id: string; role: Role; text: string; timestamp: string; checkpoint?: boolean };
+type MapNode = { id: string; kind: NodeKind; label: string; text: string; confidence: "user" | "ai" | "confirmed"; createdAt: string };
+type MapRelation = { id: string; from: string; to: string; kind: RelationKind; strength: "solid" | "dotted" | "accent" };
+type Session = {
+  version: number;
+  messages: Message[];
+  nodes: MapNode[];
+  relations: MapRelation[];
+  selectedTopic?: string;
+  stage: "landing" | "conversation" | "result";
+  preferredMapType?: MapType;
+  checkpointStatus?: "pending" | "confirmed" | "correcting";
   startedAt: string;
-  lastUpdatedAt: string;
+  updatedAt: string;
 };
 
-type MicState = "idle" | "recording" | "converting";
+type SpeechRecognitionEventLike = Event & { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> };
+type SpeechRecognitionErrorLike = Event & { error?: string };
+type SpeechRecognitionLike = EventTarget & {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorLike) => void) | null;
+};
 
-const thinkingPrompts = [
-  {
-    mapType: "Topic",
-    nodeLabel: "정리하고 싶은 생각",
-    ai: "오늘 머릿속에서 가장 자주 돌아오는 생각은 뭐예요?",
-    followUp: "결정처럼 쓰지 않아도 괜찮아요. 지금 떠오르는 문장 그대로 말해도 돼요.",
-    reaction: "좋아요. 이제 생각의 중심이 조금 보이기 시작했어요.",
-  },
-  {
-    mapType: "Reason",
-    nodeLabel: "지금 중요한 이유",
-    ai: "그 생각이 하필 지금 크게 느껴지는 이유가 있을까요?",
-    followUp: "마감, 감정 변화, 기회, 반복되는 불편함처럼 ‘지금성’을 만든 단서를 찾아볼게요.",
-    reaction: "그 부분이 꽤 중요한 신호처럼 보여요.",
-  },
-  {
-    mapType: "Tension",
-    nodeLabel: "마음이 걸리는 지점",
-    ai: "그 안에서 제일 마음이 걸리는 건 무엇에 가까워요?",
-    followUp: "두려움일 수도 있고, 놓치기 싫은 가치일 수도 있어요. 애매해도 그대로 남겨둘게요.",
-    reaction: "망설임의 모양이 조금 더 선명해졌어요.",
-  },
-  {
-    mapType: "Choices",
-    nodeLabel: "가능한 선택들",
-    ai: "현실적으로 가능한 선택지를 모두 펼쳐보면 어떤 것들이 있나요?",
-    followUp: "완벽한 답이 아니라 실제로 할 수 있는 선택을 짧게 나열해도 좋아요.",
-    reaction: "선택지가 보이면 생각이 덜 뭉쳐 보여요.",
-  },
-  {
-    mapType: "Upside",
-    nodeLabel: "끌리는 이유",
-    ai: "각 선택이 나에게 줄 수 있는 좋은 점은 뭐라고 느껴져요?",
-    followUp: "성장, 안정, 자유, 관계, 돈, 시간처럼 끌리는 이유를 찾아볼게요.",
-    reaction: "어떤 가치에 마음이 움직이는지 드러나고 있어요.",
-  },
-  {
-    mapType: "Risk",
-    nodeLabel: "부담과 리스크",
-    ai: "반대로 조심해야 할 부담이나 리스크는 무엇인가요?",
-    followUp: "비용, 관계, 시간, 후회 가능성, 되돌리기 어려운 점을 솔직히 적어도 괜찮아요.",
-    reaction: "좋아요. 낙관과 걱정을 같이 놓고 볼 수 있게 됐어요.",
-  },
-  {
-    mapType: "Direction",
-    nodeLabel: "지금의 방향",
-    ai: "지금 이야기한 기준으로 보면, 현재의 나에게 더 현실적인 방향은 어디에 가까워요?",
-    followUp: "최종 결론이 아니어도 돼요. 오늘 기준의 ‘임시 방향’을 잡아볼게요.",
-    reaction: "결정이 아니라 방향이 생겼어요. 이 정도면 충분히 의미 있어요.",
-  },
-  {
-    mapType: "Action",
-    nodeLabel: "24시간 첫 행동",
-    ai: "그 방향을 확인하기 위해 24시간 안에 할 수 있는 아주 작은 행동은 뭐가 있을까요?",
-    followUp: "검색하기, 메시지 보내기, 30분 정리하기처럼 작고 구체적이면 좋아요.",
-    reaction: "이제 생각이 행동으로 이어질 수 있어요.",
-  },
-];
+declare global { interface Window { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike } }
 
-const sampleAnswers = [
-  "이직할지, 지금 회사에 남을지 계속 고민돼요.",
-  "요즘 성장 속도가 느려졌다는 느낌이 크고, 주변 친구들이 움직이는 걸 보며 더 신경 쓰여요.",
-  "안정적인 팀과 좋은 동료를 잃는 건 아쉽지만, 커리어가 멈추는 느낌도 싫어요.",
-  "1. 3개월 더 남아보기\n2. 이직 준비를 조용히 시작하기\n3. 내부 이동 가능성을 알아보기",
-  "이직 준비는 가능성을 넓혀주고, 남는 선택은 생활 리듬과 안정감을 지켜줘요.",
-  "준비 없이 나가면 수입과 적응 리스크가 있고, 남으면 같은 고민이 반복될 수 있어요.",
-  "바로 퇴사보다 3개월 동안 이직 준비와 내부 이동 탐색을 병행하는 쪽.",
-  "이번 주말에 포트폴리오를 업데이트하고, 믿을 만한 선배 한 명에게 커피챗을 요청하기.",
-];
+function now() { return new Date().toISOString(); }
+function id(prefix = "id") { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
+function cx(...classes: Array<string | false | null | undefined>) { return classes.filter(Boolean).join(" "); }
+function truncate(text: string, n = 56) { const clean = text.trim(); return clean.length > n ? `${clean.slice(0, n)}…` : clean; }
 
-const mapPalette = [
-  "border-slate-300 bg-slate-950 text-white",
-  "border-blue-200 bg-blue-50 text-blue-950",
-  "border-rose-200 bg-rose-50 text-rose-950",
-  "border-amber-200 bg-amber-50 text-amber-950",
-  "border-emerald-200 bg-emerald-50 text-emerald-950",
-  "border-orange-200 bg-orange-50 text-orange-950",
-  "border-indigo-200 bg-indigo-50 text-indigo-950",
-  "border-sky-200 bg-sky-50 text-sky-950",
-];
-
-function createEmptyProgress(): SavedProgress {
-  const now = new Date().toISOString();
-  return { currentStep: 0, answers: Array(thinkingPrompts.length).fill(""), startedAt: now, lastUpdatedAt: now };
+function createSession(topic?: string): Session {
+  const t = now();
+  const starter = topic ? `“${topic}”부터 같이 한 장으로 정리해볼까요? 편하게 말해 주세요.` : "오늘은 어떤 생각을 같이 정리해볼까요? 말로 해도, 짧게 써도 괜찮아요.";
+  const nodes: MapNode[] = topic ? [{ id: "topic", kind: "topic", label: "핵심 주제", text: topic, confidence: "user", createdAt: t }] : [];
+  return { version: SCHEMA_VERSION, selectedTopic: topic, stage: "conversation", messages: [{ id: id("ai"), role: "ai", text: starter, timestamp: t }], nodes, relations: [], startedAt: t, updatedAt: t };
 }
 
-function isValidProgress(value: unknown): value is SavedProgress {
-  if (!value || typeof value !== "object") return false;
-  const progress = value as SavedProgress;
-  return (
-    Number.isInteger(progress.currentStep) &&
-    progress.currentStep >= 0 &&
-    progress.currentStep <= thinkingPrompts.length &&
-    Array.isArray(progress.answers) &&
-    progress.answers.length === thinkingPrompts.length &&
-    progress.answers.every((answer) => typeof answer === "string") &&
-    typeof progress.startedAt === "string" &&
-    typeof progress.lastUpdatedAt === "string"
-  );
+function isSession(value: unknown): value is Session {
+  const s = value as Session;
+  return Boolean(s && s.version === SCHEMA_VERSION && Array.isArray(s.messages) && Array.isArray(s.nodes) && Array.isArray(s.relations) && typeof s.stage === "string");
 }
 
-function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(" ");
+const topicGroups = [
+  ["일과 진로", ["이직할까, 조금 더 다닐까?", "대학원에 갈까?", "잠깐 쉬어도 될까?", "부업을 시작할까?", "이 프로젝트를 계속할까?"]],
+  ["관계", ["먼저 연락할까?", "고백할까?", "솔직하게 말할까?", "이 관계를 계속 이어갈까?"]],
+  ["돈과 소비", ["아이패드 살까?", "PT 등록할까?", "자취를 시작할까?", "여행 갈까, 저축할까?"]],
+  ["일상", ["이번 주말 뭐 하지?", "어떤 운동을 시작할까?", "시험을 다시 준비할까?", "어떤 일부터 먼저 할까?"]],
+] as const;
+
+const labels: Record<NodeKind, string> = { topic: "핵심 주제", trigger: "계기", emotion: "감정", person: "사람", value: "가치", reason: "이유", constraint: "제약", option: "선택지", benefit: "장점", risk: "리스크", missing: "확인할 정보", direction: "방향", action: "행동", correction: "수정된 이해" };
+const kindClass: Record<NodeKind, string> = { topic: "bg-slate-950 text-white border-slate-950", trigger: "bg-amber-50 text-amber-950 border-amber-200", emotion: "bg-rose-50 text-rose-950 border-rose-200", person: "bg-violet-50 text-violet-950 border-violet-200", value: "bg-blue-50 text-blue-950 border-blue-200", reason: "bg-sky-50 text-sky-950 border-sky-200", constraint: "bg-orange-50 text-orange-950 border-orange-200", option: "bg-emerald-50 text-emerald-950 border-emerald-200", benefit: "bg-teal-50 text-teal-950 border-teal-200", risk: "bg-red-50 text-red-950 border-red-200", missing: "bg-stone-50 text-stone-950 border-dashed border-stone-300", direction: "bg-indigo-50 text-indigo-950 border-indigo-200", action: "bg-lime-50 text-lime-950 border-lime-200", correction: "bg-fuchsia-50 text-fuchsia-950 border-fuchsia-200" };
+
+function inferKind(text: string, existing: MapNode[]): NodeKind {
+  const t = text.toLowerCase();
+  if (!existing.some((n) => n.kind === "topic")) return "topic";
+  if (/불안|걱정|답답|좋|싫|무섭|기대|아쉽|후회|편해|힘들/.test(t)) return "emotion";
+  if (/성장|자유|안정|돈|시간|관계|건강|경험|커리어|가치/.test(t)) return "value";
+  if (/선택|방법|하거나|또는|갈까|살까|할까|남|옮|시작/.test(t)) return "option";
+  if (/리스크|위험|부담|비용|잃|문제|단점/.test(t)) return "risk";
+  if (/확인|모르|알아보|정보|조건|물어/.test(t)) return "missing";
+  if (/오늘|내일|이번 주|24시간|먼저|예약|보내|정리|검색/.test(t)) return "action";
+  if (/때문|왜냐|이유|느낌|계기/.test(t)) return "reason";
+  return existing.length < 2 ? "trigger" : existing.length < 5 ? "reason" : "direction";
 }
 
-function shortText(text: string, fallback: string, length = 82) {
-  const clean = text.trim();
-  if (!clean) return fallback;
-  return clean.length > length ? `${clean.slice(0, length)}…` : clean;
+function extractNodes(text: string, session: Session, correction = false): { nodes: MapNode[]; relations: MapRelation[] } {
+  const pieces = text.split(/[\n.!?。]|그리고|하지만|반대로|,/).map((p) => p.trim()).filter((p) => p.length > 1).slice(0, 3);
+  const created = (pieces.length ? pieces : [text]).map((piece) => {
+    const kind = correction ? "correction" : inferKind(piece, [...session.nodes]);
+    return { id: id("node"), kind, label: labels[kind], text: piece, confidence: correction ? "confirmed" : "user", createdAt: now() } satisfies MapNode;
+  });
+  const center = session.nodes.find((n) => n.kind === "topic")?.id || created.find((n) => n.kind === "topic")?.id;
+  const relations = created.filter((n) => center && n.id !== center).map((n) => ({ id: id("rel"), from: center!, to: n.id, kind: relationFor(n.kind), strength: n.kind === "risk" || n.kind === "missing" ? "dotted" : n.kind === "value" || n.kind === "action" ? "accent" : "solid" } satisfies MapRelation));
+  return { nodes: created, relations };
+}
+function relationFor(kind: NodeKind): RelationKind { return kind === "option" ? "대안" : kind === "benefit" ? "장점" : kind === "risk" ? "리스크" : kind === "missing" ? "확인 필요" : kind === "action" ? "다음 행동" : kind === "emotion" ? "영향" : "원인"; }
+
+function buildReply(session: Session, userText: string): Message {
+  const kinds = new Set(session.nodes.map((n) => n.kind));
+  const topic = session.nodes.find((n) => n.kind === "topic")?.text || session.selectedTopic || truncate(userText, 32);
+  const missing = (["value", "option", "risk", "missing", "action"] as NodeKind[]).find((k) => !kinds.has(k));
+  const checkpoints = session.messages.filter((m) => m.role === "user").length >= 3 && session.checkpointStatus !== "confirmed";
+  if (checkpoints) {
+    const bullets = session.nodes.slice(0, 4).map((n) => `- ${n.label}: ${truncate(n.text, 42)}`).join("\n");
+    return { id: id("ai"), role: "ai", checkpoint: true, timestamp: now(), text: `지금까지 이야기한 걸 보면\n\n${bullets}\n\n제가 이해한 게 맞나요?` };
+  }
+  const question: Record<string, string> = {
+    value: "이 선택에서 가장 지키고 싶은 기준은 무엇에 가까워요?",
+    option: "현실적으로 가능한 선택지를 2~3개만 펼쳐보면 뭐가 있을까요?",
+    risk: "반대로 마음에 걸리는 리스크나 부담은 무엇인가요?",
+    missing: "결정 전에 확인해야 할 정보가 있다면 무엇일까요?",
+    action: "지금 방향을 확인하기 위해 24시간 안에 할 수 있는 아주 작은 행동은 뭘까요?",
+  };
+  const theme = session.nodes.find((n) => n.kind === "value")?.text || session.nodes.find((n) => n.kind === "emotion")?.text;
+  return { id: id("ai"), role: "ai", timestamp: now(), text: `말해주신 내용을 보면 “${truncate(topic, 34)}” 안에서 ${theme ? `“${truncate(theme, 28)}”가 꽤 중요한 단서처럼 보여요.` : "중심이 조금씩 보이기 시작했어요."}\n\n지금까지 이야기만 보면 결론을 서두르기보다 기준을 더 선명하게 보면 좋겠어요.\n\n${missing ? question[missing] : "현재 마음은 어느 방향에 조금 더 가까워 보여요?"}` };
 }
 
-function formatDate(value: string, options: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat("ko-KR", options).format(new Date(value));
-}
-
-function ThoughtMap({ answers, sample = false, compact = false }: { answers: string[]; sample?: boolean; compact?: boolean }) {
-  const source = sample ? sampleAnswers : answers;
-  const filled = source.map((answer, index) => ({ ...thinkingPrompts[index], answer: answer.trim(), active: Boolean(answer.trim()) }));
-  const visible = filled.filter((node, index) => sample || node.active || index === 0);
-  const center = shortText(source[0], sample ? sampleAnswers[0] : "생각의 중심이 여기에 생겨요", 68);
-
-  return (
-    <div className={cx("thinking-map relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/80 p-4 shadow-2xl shadow-slate-200/70 backdrop-blur-xl", compact ? "min-h-[25rem]" : "min-h-[34rem] sm:min-h-[39rem]")}> 
-      <div className="absolute inset-6 rounded-[1.5rem] border border-dashed border-slate-200/80" />
-      <svg className="absolute inset-0 h-full w-full text-slate-300/80" aria-hidden="true">
-        {visible.slice(1).map((_, index) => {
-          const coordinates = [[50, 50, 23, 22], [50, 50, 77, 21], [50, 50, 18, 52], [50, 50, 82, 52], [50, 50, 27, 82], [50, 50, 73, 82], [50, 50, 50, 90]][index] || [50, 50, 50, 50];
-          return <line key={index} x1={`${coordinates[0]}%`} y1={`${coordinates[1]}%`} x2={`${coordinates[2]}%`} y2={`${coordinates[3]}%`} stroke="currentColor" strokeWidth="1.5" strokeDasharray="6 8" />;
-        })}
-      </svg>
-
-      <div className="absolute left-1/2 top-1/2 z-20 w-[76%] max-w-[19rem] -translate-x-1/2 -translate-y-1/2 rounded-[1.75rem] bg-slate-950 p-5 text-white shadow-2xl shadow-slate-400/40 sm:w-[42%]">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-200">Thinking core</p>
-        <h3 className="mt-2 line-clamp-4 text-xl font-black leading-snug tracking-[-0.02em]">{center}</h3>
-      </div>
-
-      {visible.slice(1, 8).map((node, index) => {
-        const positions = ["left-[5%] top-[9%]", "right-[5%] top-[10%]", "left-[3%] top-[43%]", "right-[3%] top-[43%]", "left-[11%] bottom-[9%]", "right-[11%] bottom-[9%]", "left-1/2 bottom-[3%] -translate-x-1/2"];
-        return (
-          <article className={cx("absolute z-10 hidden w-[13rem] rounded-2xl border p-4 shadow-xl shadow-slate-200/70 sm:block", mapPalette[index + 1], positions[index])} key={node.mapType}>
-            <p className="text-[0.68rem] font-black uppercase tracking-[0.13em] opacity-70">{node.mapType}</p>
-            <h4 className="mt-1 text-sm font-black">{node.nodeLabel}</h4>
-            <p className="mt-2 line-clamp-3 text-sm font-semibold leading-5 opacity-80">{shortText(node.answer, "이야기하면 노드가 생겨요", 74)}</p>
-          </article>
-        );
-      })}
-
-      <div className="absolute inset-x-4 bottom-4 z-30 grid gap-2 sm:hidden">
-        {visible.slice(1, 4).map((node) => (
-          <div className="rounded-2xl border border-white bg-white/95 p-3 text-sm font-bold shadow-lg" key={node.mapType}>
-            <span className="text-blue-700">{node.nodeLabel}</span> · <span className="text-slate-600">{shortText(node.answer, "말하면 여기에 나타나요", 46)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ExpandableAnswer({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const isLong = text.length > 150;
-  const visibleText = !isLong || expanded ? text : `${text.slice(0, 150)}…`;
-
-  return (
-    <div>
-      <p className="whitespace-pre-line text-[0.95rem] font-semibold leading-7 text-slate-650">{visibleText || "아직 비어 있어요."}</p>
-      {isLong ? (
-        <button className="mt-3 text-sm font-black text-blue-700" type="button" onClick={() => setExpanded((value) => !value)}>
-          {expanded ? "접기" : "더보기"}
-        </button>
-      ) : null}
-    </div>
-  );
+function useWebSpeech(onAppend: (text: string) => void) {
+  const recognition = useRef<SpeechRecognitionLike | null>(null);
+  const [supported, setSupported] = useState(true);
+  const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
+  const [error, setError] = useState("");
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => { setSupported(typeof window !== "undefined" && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition)); }, []);
+  useEffect(() => { if (!listening) return; const timer = window.setInterval(() => setSeconds((s) => s + 1), 1000); return () => window.clearInterval(timer); }, [listening]);
+  const start = () => {
+    const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Ctor) { setSupported(false); setError("이 브라우저에서는 음성 입력을 바로 사용할 수 없어 텍스트 입력으로 이어갈게요."); return; }
+    const r = new Ctor(); recognition.current = r; r.lang = "ko-KR"; r.interimResults = true; r.continuous = true;
+    r.onstart = () => { setSeconds(0); setError(""); setListening(true); };
+    r.onend = () => setListening(false);
+    r.onerror = (e) => { setListening(false); setError(e.error === "not-allowed" ? "마이크 권한이 꺼져 있어요. 텍스트로도 바로 이어갈 수 있어요." : "음성이 잠시 불안정해요. 말한 내용을 텍스트로 적어도 괜찮아요."); };
+    r.onresult = (event) => { let finalText = ""; let interimText = ""; for (let i = event.resultIndex; i < event.results.length; i += 1) { const txt = event.results[i][0].transcript; if (event.results[i].isFinal) finalText += txt; else interimText += txt; } setInterim(interimText); if (finalText.trim()) onAppend(finalText.trim()); };
+    r.start();
+  };
+  return { supported, listening, interim, error, seconds, start, stop: () => recognition.current?.stop(), cancel: () => { recognition.current?.abort(); setInterim(""); setListening(false); } };
 }
 
 export function MapDecisionApp() {
-  const [progress, setProgress] = useState<SavedProgress>(() => createEmptyProgress());
+  const [session, setSession] = useState<Session>(() => createSession());
   const [hydrated, setHydrated] = useState(false);
-  const [mode, setMode] = useState<"home" | "conversation">("home");
-  const [micState, setMicState] = useState<MicState>("idle");
-
-  const answeredCount = progress.answers.filter((answer) => answer.trim()).length;
-  const isResult = progress.currentStep >= thinkingPrompts.length;
-  const currentIndex = Math.min(progress.currentStep, thinkingPrompts.length - 1);
-  const currentPrompt = thinkingPrompts[currentIndex];
-  const mapCompletion = Math.round((answeredCount / thinkingPrompts.length) * 100);
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as unknown;
-        if (isValidProgress(parsed)) {
-          setProgress(parsed);
-          setMode(parsed.answers.some((answer) => answer.trim()) || parsed.currentStep > 0 ? "conversation" : "home");
-        } else {
-          window.localStorage.removeItem(STORAGE_KEY);
-        }
-      }
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-    } finally {
-      setHydrated(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...progress, lastUpdatedAt: new Date().toISOString() }));
-  }, [hydrated, progress]);
-
-  const lastUpdatedLabel = useMemo(() => formatDate(progress.lastUpdatedAt, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }), [progress.lastUpdatedAt]);
-  const generatedLabel = useMemo(() => formatDate(progress.lastUpdatedAt, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }), [progress.lastUpdatedAt]);
-
-  const updateAnswer = (value: string) => {
-    setProgress((prev) => {
-      const answers = [...prev.answers];
-      answers[prev.currentStep] = value;
-      return { ...prev, answers, lastUpdatedAt: new Date().toISOString() };
-    });
-  };
-
-  const goTo = (step: number) => setProgress((prev) => ({ ...prev, currentStep: Math.max(0, Math.min(step, thinkingPrompts.length)), lastUpdatedAt: new Date().toISOString() }));
-
-  const startNew = () => {
-    const empty = createEmptyProgress();
-    window.localStorage.removeItem(STORAGE_KEY);
-    setProgress(empty);
-    setMode("conversation");
-    setMicState("idle");
-  };
-
-  const startThinking = () => setMode("conversation");
-
-  const handleMic = () => {
-    if (micState !== "idle") return;
-    setMicState("recording");
-    window.setTimeout(() => setMicState("converting"), 900);
-    window.setTimeout(() => {
-      setMicState("idle");
-      updateAnswer(progress.answers[progress.currentStep] || "음성으로 말한 생각이 여기에 텍스트로 바뀌어 들어옵니다. 자유롭게 고쳐 쓸 수 있어요.");
-    }, 1700);
-  };
-
-  return (
-    <main className="min-h-screen overflow-hidden bg-[#f8f3ea] text-slate-950">
-      {mode === "home" ? (
-        <Landing answeredCount={answeredCount} onStart={startThinking} />
-      ) : isResult ? (
-        <Result progress={progress} answeredCount={answeredCount} generatedLabel={generatedLabel} lastUpdatedLabel={lastUpdatedLabel} onEdit={() => goTo(0)} onNew={startNew} />
-      ) : (
-        <Conversation progress={progress} currentPrompt={currentPrompt} answeredCount={answeredCount} mapCompletion={mapCompletion} lastUpdatedLabel={lastUpdatedLabel} micState={micState} onMic={handleMic} onAnswer={updateAnswer} onPrev={() => goTo(progress.currentStep - 1)} onNext={() => goTo(progress.currentStep + 1)} onHome={() => setMode("home")} />
-      )}
-    </main>
-  );
+  useEffect(() => { try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) { const parsed = JSON.parse(raw); if (isSession(parsed)) setSession(parsed); else localStorage.removeItem(STORAGE_KEY); } } catch { localStorage.removeItem(STORAGE_KEY); } finally { setHydrated(true); } }, []);
+  useEffect(() => { if (hydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...session, updatedAt: now() })); }, [hydrated, session]);
+  const start = (topic?: string) => setSession(createSession(topic));
+  const reset = () => { localStorage.removeItem(STORAGE_KEY); setSession({ ...createSession(), stage: "landing", messages: [], nodes: [], relations: [] }); };
+  if (session.stage === "landing" || (!session.messages.length && !session.nodes.length)) return <Landing hasDraft={hydrated && Boolean(localStorage.getItem(STORAGE_KEY))} onStart={start} onResume={() => setSession((s) => ({ ...s, stage: "conversation" }))} />;
+  if (session.stage === "result") return <Result session={session} onContinue={() => setSession((s) => ({ ...s, stage: "conversation" }))} onReset={reset} onType={(type) => setSession((s) => ({ ...s, preferredMapType: type }))} />;
+  return <Conversation session={session} setSession={setSession} onFinish={() => setSession((s) => ({ ...s, stage: "result", preferredMapType: s.preferredMapType || "thinking" }))} onReset={reset} />;
 }
 
-function BrandMark() {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="grid size-9 place-items-center rounded-full bg-slate-950 text-sm font-black text-white">M</span>
-      <span className="text-lg font-black tracking-[-0.02em]">MAP Decision</span>
-    </div>
-  );
+function Brand() { return <div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-full bg-slate-950 text-sm font-black text-white">M</span><span className="font-black tracking-[-0.02em]">MAP Decision</span></div>; }
+function Landing({ hasDraft, onStart, onResume }: { hasDraft: boolean; onStart: (topic?: string) => void; onResume: () => void }) { return <main className="min-h-screen bg-[#fbf7ef] px-4 py-4 text-slate-950 sm:px-6"><header className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white bg-white/80 px-4 py-3 shadow-lg"><Brand />{hasDraft ? <button className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white" onClick={onResume}>이어하기</button> : null}</header><section className="mx-auto grid max-w-7xl items-center gap-10 py-12 lg:grid-cols-[0.9fr_1.1fr] lg:py-20"><div><p className="inline-flex rounded-full bg-white px-4 py-2 text-sm font-black text-blue-700 shadow-sm">로그인 없이 바로 시작 · 첫 MAP까지 약 5분 · 작성 중에도 자동 저장</p><h1 className="mt-6 whitespace-pre-line text-5xl font-black leading-[1.08] tracking-[-0.045em] sm:text-7xl">머릿속이 조금 복잡한가요?{`\n`}같이 한 장으로 정리해볼까요?</h1><p className="mt-6 max-w-2xl whitespace-pre-line text-xl font-semibold leading-9 text-slate-600">편하게 말하거나 입력해 주세요.{`\n`}생각의 핵심, 선택지, 걸리는 부분과 다음 행동을 하나의 MAP으로 정리해드려요.</p><div className="mt-8 flex flex-col gap-3 sm:flex-row"><button className="rounded-full bg-blue-700 px-8 py-4 text-lg font-black text-white shadow-xl shadow-blue-200" onClick={() => onStart()}>🎙 말로 시작하기</button><button className="rounded-full border border-slate-200 bg-white px-8 py-4 text-lg font-black" onClick={() => onStart()}>⌨️ 직접 입력하기</button></div><p className="mt-6 font-black text-slate-500">가벼운 고민부터 인생의 큰 선택까지.</p></div><LiveMap session={createSession("말하면 생각이 보이는 MAP")} sample /></section><section className="mx-auto max-w-7xl pb-16"><div className="grid gap-4 md:grid-cols-4">{topicGroups.map(([group, items]) => <article key={group} className="rounded-[1.5rem] border border-white bg-white/80 p-5 shadow-xl shadow-slate-200/60"><h2 className="font-black text-blue-700">{group}</h2><div className="mt-4 flex flex-wrap gap-2">{items.map((item) => <button key={item} className="rounded-full bg-slate-50 px-3 py-2 text-left text-sm font-bold hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-100" onClick={() => onStart(item)}>{item}</button>)}</div></article>)}</div></section></main>; }
+
+function Conversation({ session, setSession, onFinish, onReset }: { session: Session; setSession: React.Dispatch<React.SetStateAction<Session>>; onFinish: () => void; onReset: () => void }) {
+  const [draft, setDraft] = useState(""); const [correction, setCorrection] = useState(""); const endRef = useRef<HTMLDivElement>(null);
+  const speech = useWebSpeech((text) => setDraft((d) => `${d}${d ? " " : ""}${text}`));
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [session.messages.length]);
+  const submit = (text = draft, isCorrection = false) => { const clean = text.trim(); if (!clean) return; setDraft(""); setCorrection(""); setSession((prev) => { const user: Message = { id: id("user"), role: "user", text: clean, timestamp: now() }; const extracted = extractNodes(clean, prev, isCorrection); const mid: Session = { ...prev, checkpointStatus: isCorrection ? "confirmed" : prev.checkpointStatus, messages: [...prev.messages, user], nodes: [...prev.nodes, ...extracted.nodes], relations: [...prev.relations, ...extracted.relations], updatedAt: now() }; return { ...mid, messages: [...mid.messages, buildReply(mid, clean)] }; }); };
+  const lastCheckpoint = [...session.messages].reverse().find((m) => m.checkpoint);
+  return <main className="min-h-screen bg-[#fbf7ef] text-slate-950"><header className="sticky top-0 z-30 border-b border-white/70 bg-[#fbf7ef]/85 px-4 py-3 backdrop-blur-xl"><div className="mx-auto flex max-w-7xl items-center justify-between"><Brand /><div className="flex gap-2"><button className="rounded-full border bg-white px-4 py-2 text-sm font-black" onClick={onReset}>새 MAP</button><button className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white" onClick={onFinish}>현재 MAP 보기</button></div></div></header><section className="mx-auto grid max-w-7xl gap-6 px-4 py-5 lg:grid-cols-[minmax(0,0.92fr)_minmax(24rem,1.08fr)]"><div className="order-2 lg:order-1"><LiveMap session={session} /><p className="mt-3 rounded-2xl bg-white/80 p-3 text-sm font-bold text-slate-500">작성 내용은 이 브라우저에 임시 저장돼요. MAP은 말할수록 바로 자라납니다.</p></div><div className="order-1 flex min-h-[72vh] flex-col rounded-[2rem] border border-white bg-white/88 shadow-2xl shadow-slate-200/70"><div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">{session.messages.map((m) => <div key={m.id} className={cx("max-w-[86%] rounded-[1.5rem] p-4 leading-7 shadow-sm", m.role === "user" ? "ml-auto bg-blue-700 font-bold text-white" : "bg-slate-50 font-semibold text-slate-750")}><p className="whitespace-pre-line">{m.text}</p>{m.checkpoint ? <div className="mt-4 flex flex-wrap gap-2"><button className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white" onClick={() => setSession((s) => ({ ...s, checkpointStatus: "confirmed", messages: [...s.messages, { id: id("ai"), role: "ai", text: "좋아요. 확인된 이해로 표시해둘게요. 이제 빠진 정보와 다음 행동을 더 선명하게 볼 수 있어요.", timestamp: now() }], nodes: s.nodes.map((n) => ({ ...n, confidence: n.confidence === "user" ? "confirmed" : n.confidence })) }))}>맞아요</button><button className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-700" onClick={() => setSession((s) => ({ ...s, checkpointStatus: "correcting" }))}>조금 달라요</button></div> : null}</div>)}<div ref={endRef} /></div>{session.checkpointStatus === "correcting" && lastCheckpoint ? <div className="border-t border-slate-100 p-4"><label className="text-sm font-black text-rose-700">어떤 부분이 달랐나요?</label><textarea className="mt-2 min-h-20 w-full rounded-2xl border p-3 focus:outline-none focus:ring-4 focus:ring-rose-100" value={correction} onChange={(e) => setCorrection(e.target.value)} placeholder="예: 성장보다 안정이 더 중요한 것 같아요." /><button className="mt-2 rounded-full bg-rose-600 px-4 py-2 font-black text-white" onClick={() => submit(correction, true)}>수정 반영하기</button></div> : null}<div className="sticky bottom-0 rounded-b-[2rem] border-t border-slate-100 bg-white/95 p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="font-black">{speech.listening ? "듣고 있어요" : "말하거나 입력해 주세요"}</p><p className="text-sm font-bold text-slate-500">{speech.listening ? `편하게 계속 말해 주세요 · ${speech.seconds}초` : "텍스트로 확인한 뒤 수정할 수 있어요"}</p>{speech.interim ? <p className="mt-1 text-sm font-bold text-blue-700">{speech.interim}</p> : null}{speech.error ? <p className="mt-1 text-sm font-bold text-rose-600">{speech.error}</p> : null}{!speech.supported ? <p className="mt-1 text-sm font-bold text-amber-700">음성 미지원 브라우저라 텍스트 입력으로 이어갈게요.</p> : null}</div><div className="flex gap-2"><button aria-label={speech.listening ? "녹음 중지" : "마이크로 말하기"} className={cx("grid size-14 place-items-center rounded-full text-xl font-black text-white shadow-xl", speech.listening ? "animate-pulse bg-rose-600" : "bg-blue-700")} onClick={speech.listening ? speech.stop : speech.start}>🎙</button>{speech.listening ? <button className="rounded-full border px-4 py-2 font-black" onClick={speech.cancel}>취소</button> : null}</div></div><textarea className="min-h-24 w-full resize-y rounded-[1.25rem] border border-slate-200 p-4 text-lg font-semibold leading-8 focus:outline-none focus:ring-4 focus:ring-blue-100" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="예: 이직을 고민하고 있는데 사람들은 좋고 성장하는 느낌은 없어요." /><div className="mt-3 flex justify-between"><button className="rounded-full border bg-white px-5 py-3 font-black" onClick={onFinish}>MAP 미리보기</button><button className="rounded-full bg-slate-950 px-6 py-3 font-black text-white disabled:opacity-40" disabled={!draft.trim()} onClick={() => submit()}>보내기</button></div></div></div></section></main>;
 }
 
-function Landing({ answeredCount, onStart }: { answeredCount: number; onStart: () => void }) {
-  return (
-    <div className="px-4 py-3 sm:px-6 lg:px-8">
-      <header className="sticky top-3 z-40 mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white/80 bg-white/80 px-4 py-3 shadow-lg shadow-slate-200/60 backdrop-blur-xl sm:px-6">
-        <BrandMark />
-        <nav className="hidden items-center gap-6 text-sm font-bold text-slate-600 md:flex">
-          <a href="#voice">Voice first</a>
-          <a href="#live-map">Live MAP</a>
-          <a href="#output">Result</a>
-          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">v0.3.0</span>
-        </nav>
-        <button className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-black text-white shadow-lg shadow-slate-300/60 transition hover:-translate-y-0.5" type="button" onClick={onStart}>
-          {answeredCount ? "내 생각 이어보기" : "같이 정리하기"}
-        </button>
-      </header>
+function LiveMap({ session, sample = false }: { session: Session; sample?: boolean }) { const nodes = sample ? [...session.nodes, { id: "n1", kind: "value", label: "가치", text: "중요한 기준", confidence: "ai", createdAt: now() } as MapNode, { id: "n2", kind: "risk", label: "리스크", text: "걸리는 부분", confidence: "ai", createdAt: now() } as MapNode, { id: "n3", kind: "action", label: "행동", text: "24시간 첫 행동", confidence: "ai", createdAt: now() } as MapNode] : session.nodes; const center = nodes.find((n) => n.kind === "topic") || nodes[0]; const outer = nodes.filter((n) => n.id !== center?.id).slice(0, 8); const pos = [[14,18],[72,16],[8,48],[72,48],[18,76],[65,76],[42,10],[42,84]]; return <div className="relative min-h-[28rem] overflow-hidden rounded-[2rem] border border-white bg-white/85 p-4 shadow-2xl shadow-slate-200/70"><div className="absolute inset-6 rounded-[1.5rem] border border-dashed border-slate-200"/><svg className="absolute inset-0 h-full w-full" aria-label="생각 MAP 관계선">{outer.map((n,i)=><line key={n.id} x1="50%" y1="50%" x2={`${pos[i][0]+8}%`} y2={`${pos[i][1]+6}%`} stroke={n.kind==="risk"||n.kind==="missing"?"#94a3b8":"#2563eb"} strokeWidth={n.kind==="value"||n.kind==="action"?3:1.7} strokeDasharray={n.kind==="risk"||n.kind==="missing"?"6 7":""}/>)}</svg><article className="absolute left-1/2 top-1/2 z-10 w-[72%] max-w-[20rem] -translate-x-1/2 -translate-y-1/2 rounded-[1.5rem] bg-slate-950 p-5 text-white shadow-2xl"><p className="text-xs font-black text-blue-200">핵심 주제</p><h3 className="mt-2 text-xl font-black leading-snug">{center ? truncate(center.text, 76) : "첫 이야기를 하면 중심 노드가 생겨요"}</h3></article>{outer.map((n,i)=><article key={n.id} className={cx("absolute z-20 w-[12.5rem] rounded-2xl border p-3 shadow-xl transition", kindClass[n.kind])} style={{left:`${pos[i][0]}%`,top:`${pos[i][1]}%`}}><p className="text-[0.68rem] font-black opacity-70">{n.label} · {n.confidence === "confirmed" ? "확인됨" : n.confidence === "user" ? "직접 말함" : "AI 해석"}</p><p className="mt-1 text-sm font-black leading-5">{truncate(n.text, 58)}</p></article>)}</div>; }
 
-      <section className="mx-auto grid max-w-7xl items-center gap-12 py-16 lg:grid-cols-[0.88fr_1.12fr] lg:py-24">
-        <div>
-          <p className="mb-5 inline-flex rounded-full border border-white bg-white/75 px-4 py-2 text-sm font-black text-rose-600 shadow-sm">머릿속이 조금 복잡한가요?</p>
-          <h1 className="max-w-4xl text-5xl font-black leading-[1.05] tracking-[-0.045em] text-slate-950 sm:text-7xl lg:text-8xl">
-            말하면,
-            <br />생각이 MAP이 됩니다.
-          </h1>
-          <p className="mt-7 max-w-2xl text-xl font-semibold leading-9 text-slate-650 sm:text-2xl sm:leading-10">
-            답을 주는 서비스가 아니라, 내 생각의 구조를 같이 발견하는 Thinking Operating System.
-          </p>
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <button className="rounded-full bg-blue-700 px-8 py-4 text-lg font-black text-white shadow-xl shadow-blue-200 transition hover:-translate-y-1" onClick={onStart} type="button">🎙 Tell me</button>
-            <button className="rounded-full border border-slate-200 bg-white px-8 py-4 text-lg font-black text-slate-800" onClick={onStart} type="button">⌨ Or type</button>
-          </div>
-          <div className="mt-7 flex flex-wrap gap-2 text-sm font-bold text-slate-500">
-            {["이직할까?", "고백할까?", "아이패드 살까?", "자취할까?", "운동 시작할까?"].map((item) => <span className="rounded-full bg-white/75 px-3 py-1.5" key={item}>{item}</span>)}
-          </div>
-        </div>
-        <ThoughtMap answers={sampleAnswers} sample />
-      </section>
-
-      <section id="voice" className="mx-auto max-w-7xl py-10">
-        <SectionTitle eyebrow="Voice first" title="입력하는 순간보다 말하는 순간에 가깝게." />
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {[
-            ["🎙 말하기", "마이크를 누르면 녹음 중 상태와 변환 중 상태가 보여요."],
-            ["✍️ 고쳐 쓰기", "변환된 문장은 언제든 직접 수정할 수 있어요."],
-            ["🧭 이어가기", "AI는 답을 강요하지 않고 다음 관점을 부드럽게 열어줘요."],
-          ].map(([title, copy]) => <InfoCard key={title} title={title} copy={copy} />)}
-        </div>
-      </section>
-
-      <section id="live-map" className="mx-auto grid max-w-7xl gap-8 py-12 lg:grid-cols-[0.9fr_1.1fr]">
-        <div>
-          <SectionTitle eyebrow="Live MAP" title="이야기할수록 내 생각이 보입니다." />
-          <p className="mt-5 text-lg font-semibold leading-8 text-slate-600">Topic, Reason, Value, Constraint, Choice, Risk, Action이 대화 중 바로 노드가 되어 자라납니다. 마지막 결과만 기다리는 제품이 아닙니다.</p>
-          <div className="mt-7 grid gap-3">
-            {["패턴을 찾고", "모순을 부드럽게 보여주고", "빠진 관점을 제안하고", "결정 대신 이해를 돕습니다"].map((item) => <div className="rounded-2xl bg-white/75 p-4 font-black shadow-sm" key={item}>{item}</div>)}
-          </div>
-        </div>
-        <ThoughtMap answers={sampleAnswers} sample compact />
-      </section>
-
-      <section id="output" className="mx-auto max-w-7xl py-12">
-        <div className="rounded-[2rem] bg-slate-950 p-8 text-white shadow-2xl shadow-slate-300/50 md:p-12">
-          <SectionTitle eyebrow="Final output" title="결론보다 먼저, 내 생각을 이해합니다." dark />
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {["Thinking Map", "Alternative choices", "Missing information", "Risks", "Decision summary", "24시간 첫 행동"].map((item) => <div className="rounded-2xl bg-white/10 p-5 font-black" key={item}>{item}</div>)}
-          </div>
-        </div>
-      </section>
-
-      <Footer />
-    </div>
-  );
-}
-
-function SectionTitle({ eyebrow, title, dark = false }: { eyebrow: string; title: string; dark?: boolean }) {
-  return <div><p className={cx("text-sm font-black uppercase tracking-[0.14em]", dark ? "text-blue-200" : "text-blue-700")}>{eyebrow}</p><h2 className={cx("mt-3 text-3xl font-black leading-tight tracking-[-0.04em] sm:text-5xl", dark ? "text-white" : "text-slate-950")}>{title}</h2></div>;
-}
-
-function InfoCard({ title, copy }: { title: string; copy: string }) {
-  return <article className="card p-7"><h3 className="text-2xl font-black">{title}</h3><p className="mt-3 font-semibold leading-7 text-slate-600">{copy}</p></article>;
-}
-
-function Footer() {
-  return <footer className="mx-auto flex max-w-7xl flex-col gap-3 border-t border-slate-200 py-8 text-sm font-bold text-slate-500 sm:flex-row sm:items-center sm:justify-between"><span>MAP Decision · Thinking Operating System v0.3.0</span><span>저장 방식: 브라우저 localStorage</span><span>© 2026 MAP Decision</span></footer>;
-}
-
-function Conversation(props: { progress: SavedProgress; currentPrompt: (typeof thinkingPrompts)[number]; answeredCount: number; mapCompletion: number; lastUpdatedLabel: string; micState: MicState; onMic: () => void; onAnswer: (value: string) => void; onPrev: () => void; onNext: () => void; onHome: () => void }) {
-  const { progress, currentPrompt, answeredCount, mapCompletion, lastUpdatedLabel, micState, onMic, onAnswer, onPrev, onNext, onHome } = props;
-  const currentAnswer = progress.answers[progress.currentStep];
-  const hasAnswer = currentAnswer.trim().length > 0;
-  const checkpoint = answeredCount >= 3 && progress.currentStep === 3;
-
-  return (
-    <div className="min-h-screen px-4 py-4 sm:px-6 lg:px-8">
-      <header className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white bg-white/85 px-4 py-3 shadow-lg shadow-slate-200/60 backdrop-blur-xl">
-        <BrandMark />
-        <div className="hidden min-w-[15rem] items-center gap-3 md:flex">
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-700 transition-all" style={{ width: `${mapCompletion}%` }} /></div>
-          <span className="text-xs font-black text-slate-500">MAP {mapCompletion}%</span>
-        </div>
-        <button className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black" onClick={onHome} type="button">처음으로</button>
-      </header>
-
-      <section className="mx-auto grid max-w-7xl gap-8 py-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(22rem,1.08fr)] lg:py-12">
-        <div className="order-2 lg:order-1">
-          <ThoughtMap answers={progress.answers} />
-          <div className="mt-4 rounded-[1.5rem] border border-white bg-white/80 p-4 shadow-lg shadow-slate-200/50">
-            <div className="flex items-center justify-between text-sm font-black text-slate-500"><span>생각 조각 {answeredCount}/8</span><span>자동 저장 · {lastUpdatedLabel}</span></div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-700" style={{ width: `${mapCompletion}%` }} /></div>
-          </div>
-        </div>
-
-        <div className="order-1 flex flex-col justify-center lg:order-2">
-          <div className="rounded-[2rem] border border-white bg-white/90 p-5 shadow-2xl shadow-slate-200/70 backdrop-blur-xl sm:p-8">
-            <div className="flex items-start gap-4">
-              <div className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-950 text-white">AI</div>
-              <div>
-                <p className="text-sm font-black uppercase tracking-[0.14em] text-blue-700">Thinking partner</p>
-                <h1 className="mt-3 text-3xl font-black leading-tight tracking-[-0.035em] sm:text-5xl">{currentPrompt.ai}</h1>
-                <p className="mt-4 text-lg font-semibold leading-8 text-slate-600">{currentPrompt.followUp}</p>
-              </div>
-            </div>
-
-            {progress.currentStep > 0 ? <p className="mt-6 rounded-3xl bg-blue-50 p-4 font-bold leading-7 text-blue-950">{thinkingPrompts[progress.currentStep - 1].reaction}</p> : null}
-
-            {checkpoint ? (
-              <div className="mt-5 rounded-3xl border border-rose-100 bg-rose-50 p-5">
-                <p className="font-black text-rose-950">지금까지 보면, 중심 고민과 가능한 선택지가 분리되기 시작했어요. 제가 이해한 방향이 맞나요?</p>
-                <div className="mt-4 flex gap-2"><button className="rounded-full bg-rose-600 px-4 py-2 text-sm font-black text-white" type="button">맞아요</button><button className="rounded-full bg-white px-4 py-2 text-sm font-black text-rose-700" type="button">조금 달라요</button></div>
-              </div>
-            ) : null}
-
-            <div className="mt-7 rounded-[1.75rem] border border-slate-200 bg-slate-50/80 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-black text-slate-500">🎙 Tell me</p>
-                  <p className="text-xs font-bold text-slate-400">음성은 데모 상태이며 변환된 문장을 직접 수정할 수 있어요.</p>
-                </div>
-                <button className={cx("relative rounded-full px-5 py-3 font-black text-white shadow-lg transition", micState === "recording" ? "bg-rose-600 shadow-rose-200" : micState === "converting" ? "bg-amber-500 shadow-amber-200" : "bg-blue-700 shadow-blue-200 hover:-translate-y-0.5")} onClick={onMic} type="button">
-                  {micState === "recording" ? "● Recording" : micState === "converting" ? "Converting…" : "마이크로 말하기"}
-                </button>
-              </div>
-              <textarea className="mt-4 min-h-32 w-full resize-y rounded-[1.25rem] border border-white bg-white p-4 text-lg font-semibold leading-8 outline-none transition placeholder:text-slate-300 focus:border-blue-300 focus:ring-4 focus:ring-blue-100" value={currentAnswer} onChange={(event) => onAnswer(event.target.value)} placeholder="말하거나, 여기에서 바로 써도 괜찮아요." />
-            </div>
-
-            <div className="mt-6 flex items-center justify-between gap-3">
-              <button className="rounded-full border border-slate-200 bg-white px-6 py-3 font-black disabled:cursor-not-allowed disabled:opacity-40" disabled={progress.currentStep === 0} onClick={onPrev} type="button">이전 생각</button>
-              <button className="rounded-full bg-slate-950 px-7 py-3 font-black text-white shadow-lg shadow-slate-300/60" onClick={onNext} type="button">{progress.currentStep === thinkingPrompts.length - 1 ? "내 MAP 확인하기" : hasAnswer ? "계속 이야기하기" : "건너뛰고 이어가기"}</button>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function Result({ progress, answeredCount, generatedLabel, lastUpdatedLabel, onEdit, onNew }: { progress: SavedProgress; answeredCount: number; generatedLabel: string; lastUpdatedLabel: string; onEdit: () => void; onNew: () => void }) {
-  const missing = thinkingPrompts.filter((_, index) => !progress.answers[index].trim()).map((prompt) => prompt.nodeLabel);
-
-  return (
-    <div className="px-4 py-6 sm:px-6 lg:px-8">
-      <section className="mx-auto max-w-7xl">
-        <header className="flex flex-col gap-4 rounded-[2rem] bg-white/85 p-5 shadow-xl shadow-slate-200/60 sm:flex-row sm:items-center sm:justify-between sm:p-7">
-          <div>
-            <p className="text-sm font-black text-blue-700">생성 시간 · {generatedLabel}</p>
-            <h1 className="mt-2 text-4xl font-black tracking-[-0.05em] sm:text-6xl">내 생각의 MAP</h1>
-            <p className="mt-3 font-bold text-slate-500">생각 조각 {answeredCount}/8 · 마지막 저장 {lastUpdatedLabel}</p>
-          </div>
-          <div className="flex gap-2"><button className="rounded-full border border-slate-200 bg-white px-5 py-3 font-black" onClick={onEdit} type="button">다시 이야기하기</button><button className="rounded-full bg-blue-700 px-5 py-3 font-black text-white" onClick={onNew} type="button">새 MAP</button></div>
-        </header>
-
-        <div className="mt-8"><ThoughtMap answers={progress.answers} /></div>
-
-        <div className="mt-8 grid gap-4 lg:grid-cols-2">
-          {thinkingPrompts.map((prompt, index) => <article className="card p-6" key={prompt.mapType}><p className="text-sm font-black uppercase tracking-[0.13em] text-blue-700">{prompt.mapType}</p><h2 className="mt-2 text-2xl font-black">{prompt.nodeLabel}</h2><div className="mt-3"><ExpandableAnswer text={progress.answers[index]} /></div></article>)}
-        </div>
-
-        <div className="mt-8 grid gap-4 lg:grid-cols-3">
-          <SummaryCard title="Decision Summary" body={progress.answers[6] || "아직 방향이 비어 있어요. 다시 이야기하면서 오늘 기준의 임시 방향을 잡아보세요."} dark />
-          <SummaryCard title="Alternative choices" body={progress.answers[3] || "선택지를 더 펼치면 생각이 덜 막혀 보여요."} />
-          <SummaryCard title="Missing information" body={missing.length ? `${missing.join(", ")}에 대한 정보가 더 있으면 MAP이 선명해져요.` : "빠진 조각 없이 충분히 선명한 MAP이에요."} />
-          <SummaryCard title="Risks" body={progress.answers[5] || "리스크가 비어 있어요. 조심해야 할 조건을 더 적어보세요."} />
-          <SummaryCard title="Next action" body={progress.answers[7] || "24시간 안에 할 아주 작은 행동을 정해보세요."} dark />
-          <SummaryCard title="AI role" body="MAP Decision은 결정을 대신하지 않습니다. 당신의 생각 안에 이미 있던 패턴을 보이게 합니다." />
-        </div>
-
-        <div className="mt-8 flex flex-col gap-3 pb-10 sm:flex-row sm:justify-center"><button className="rounded-full border border-slate-200 bg-white px-7 py-3 font-black" onClick={onEdit} type="button">다시 이야기하기</button><button className="rounded-full bg-blue-700 px-7 py-3 font-black text-white" onClick={onNew} type="button">새 MAP 만들기</button></div>
-      </section>
-    </div>
-  );
-}
-
-function SummaryCard({ title, body, dark = false }: { title: string; body: string; dark?: boolean }) {
-  return <article className={cx("rounded-[1.5rem] p-6 shadow-xl", dark ? "bg-slate-950 text-white shadow-slate-300/50" : "border border-white bg-white/80 text-slate-950 shadow-slate-200/60")}><p className={cx("text-sm font-black uppercase tracking-[0.13em]", dark ? "text-blue-200" : "text-blue-700")}>{title}</p><p className="mt-4 whitespace-pre-line text-lg font-bold leading-8">{body}</p></article>;
-}
+function Result({ session, onContinue, onReset, onType }: { session: Session; onContinue: () => void; onReset: () => void; onType: (type: MapType) => void }) { const by = (k: NodeKind) => session.nodes.filter((n) => n.kind === k).map((n) => n.text).join("\n") || "아직 더 이야기하면 선명해져요."; const missing = by("missing"); const action = by("action"); const direction = by("direction") !== "아직 더 이야기하면 선명해져요." ? by("direction") : "현재 이야기만 보면 즉시 결론보다 조건을 확인하면서 가능성을 검증하는 방향이 현실적이에요."; const exportImage = () => window.print(); return <main className="min-h-screen bg-[#fbf7ef] px-4 py-6 text-slate-950 print:bg-white"><section className="mx-auto max-w-7xl"><header className="rounded-[2rem] bg-white/90 p-6 shadow-xl print:shadow-none"><p className="font-black text-blue-700">이야기해주신 내용을 한 장으로 정리했어요.</p><h1 className="mt-2 text-4xl font-black sm:text-6xl">{session.preferredMapType === "decision" ? "의사결정 MAP" : "생각정리 MAP"}</h1><p className="mt-3 font-bold text-slate-500">사용자가 직접 말한 내용, AI가 해석한 내용, 아직 확인이 필요한 내용을 구분했어요.</p><div className="mt-5 flex flex-wrap gap-2 print:hidden"><button className="rounded-full bg-blue-700 px-5 py-3 font-black text-white" onClick={() => onType("thinking")}>생각정리 MAP</button><button className="rounded-full bg-slate-950 px-5 py-3 font-black text-white" onClick={() => onType("decision")}>의사결정 MAP</button><button className="rounded-full border bg-white px-5 py-3 font-black" onClick={onContinue}>다시 이야기하기</button><button className="rounded-full border bg-white px-5 py-3 font-black" onClick={onContinue}>특정 내용 수정하기</button><button className="rounded-full border bg-white px-5 py-3 font-black" onClick={exportImage}>이미지로 저장</button><button className="rounded-full border bg-white px-5 py-3 font-black" onClick={() => window.print()}>인쇄 / PDF 저장</button><button className="rounded-full border bg-white px-5 py-3 font-black" onClick={() => alert("공유 링크는 아직 만들지 않았어요. 이 화면에는 이 브라우저의 임시 저장 내용만 사용됩니다.")}>공유용 화면 보기</button><button className="rounded-full bg-rose-600 px-5 py-3 font-black text-white" onClick={onReset}>새 MAP 만들기</button></div></header><div className="mt-6"><LiveMap session={session} /></div><div className="mt-6 grid gap-4 lg:grid-cols-3"><ResultCard title="사용자가 직접 말한 내용" body={session.nodes.filter((n)=>n.confidence!=="ai").slice(0,6).map((n)=>`• ${n.label}: ${n.text}`).join("\n") || "아직 직접 말한 조각이 적어요."}/><ResultCard title="AI가 해석한 내용" body={`지금 이야기는 ‘생각정리 MAP’으로 먼저 보고, 그다음 ‘의사결정 MAP’까지 이어가면 좋을 것 같아요.\n\n현재 마음은 ${truncate(direction,80)} 쪽에 가까워 보여요.`}/><ResultCard title="아직 확인이 필요한 내용" body={missing}/><ResultCard title="선택지와 장점" body={`${by("option")}\n\n${by("benefit")}`}/><ResultCard title="리스크" body={by("risk")}/><ResultCard dark title="24시간 첫 행동" body={action !== "아직 더 이야기하면 선명해져요." ? action : "오늘 안에 관련 조건 하나를 확인하거나, 믿을 만한 사람 한 명에게 현재 고민을 10분만 설명해보세요."}/></div><article className="mt-6 rounded-[2rem] bg-slate-950 p-7 text-white"><h2 className="text-2xl font-black">현실적인 현재 방향</h2><p className="mt-4 whitespace-pre-line text-xl font-bold leading-9">현재 이야기만 보면 중요한 기준을 더 확인하면서 움직이는 것이 좋아 보여요. 다만 이 MAP은 결정을 대신하지 않아요. 확인할 정보가 채워졌을 때 다시 보고, 방향이 여전히 맞는지 검토해보세요.\n\n다음 리뷰 조건: 확인할 정보 1개를 얻었거나 24시간 첫 행동을 실행한 뒤.</p></article></section></main>; }
+function ResultCard({ title, body, dark = false }: { title: string; body: string; dark?: boolean }) { return <article className={cx("rounded-[1.5rem] p-6 shadow-xl", dark ? "bg-blue-700 text-white" : "bg-white/85 text-slate-950")}><h2 className="font-black text-lg">{title}</h2><p className="mt-3 whitespace-pre-line font-semibold leading-7">{body}</p></article>; }
