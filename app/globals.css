@@ -66,3 +66,8 @@ textarea { letter-spacing: -0.01em; }
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
   to { opacity: 1; }
 }
+
+button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.35); outline-offset: 3px; }
+@media (max-width: 640px) { body { overflow-x: hidden; } .text-slate-750 { color: #334155; } }
+@media print { header .print\:hidden, .print\:hidden { display: none !important; } main { background: white !important; } .shadow-xl, .shadow-2xl { box-shadow: none !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }
