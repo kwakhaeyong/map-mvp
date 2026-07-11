@@ -1,213 +1,206 @@
 # MAP Decision Constitution
 
-MAP Decision is the first product of an Executive AI / Thinking OS. This document is the source of truth for product, design, AI conversation, voice, map, business, and engineering decisions.
+MAP Decision is the first product of a broader **Executive AI / Thinking OS**. This document is the source of truth for future product, Codex, design, conversation, map, business, and engineering work.
 
 ## 1. Product identity
 
-MAP Decision is **not** a survey, fixed questionnaire, generic chatbot, therapy service, answer machine, consulting report, or decorative mind-map generator.
+MAP Decision is **not** a survey, fixed questionnaire, generic chatbot, ChatGPT clone, therapy service, consulting report, simple mind-map editor, or AI that decides for the user.
 
-MAP Decision is a voice-first thinking product where a person speaks or types naturally, AI helps uncover their own thinking, the structure becomes visible while the conversation continues, and the final output is one actionable visual MAP.
+MAP Decision is a **voice-first thinking partner** where the user speaks or types naturally, the system communicates based on what was said, the user's thinking becomes visible while the conversation continues, and the result becomes an actionable visual MAP.
 
-Core promise:
+Core philosophy:
 
 > 정답을 대신 주는 AI가 아니라, 내 생각이 보이게 만드는 AI.
 
-The final output should feel like **my own thinking, organized visually**.
+The final output must feel like the user's own thinking, not a conclusion imposed by AI.
 
-## 2. Desired emotional arc
+## 2. Target users and launch tone
 
-The product must create this progression:
+Primary launch audience: university students, job seekers, early-career professionals, young professionals in their 20s and early 30s, first-time founders, side-project builders, and people making ordinary but meaningful daily choices.
 
-1. “그냥 편하게 말하면 되는구나.”
-2. “내 말을 이해하고 있네.”
-3. “내 생각이 실제로 보이기 시작한다.”
-4. “이제 내가 무엇을 중요하게 생각하는지 알겠다.”
-5. “무엇부터 확인하거나 행동하면 될지 알겠다.”
+Tone: easy to approach, light but not shallow, modern, mobile-first, useful within 3–10 minutes, not corporate, not heavy counseling, and not childish.
 
-## 3. Experience principles
+Product principle:
 
-1. Entry is light.
-2. Conversation is natural.
-3. Structure is deep.
-4. Change is immediately visible.
-5. The result is understandable at a glance.
-6. The product never forces a conclusion.
-7. Every MAP connects to a next action.
-8. The first useful reward appears within the first minute.
-9. The user may stop before a perfect answer and still receive value.
-10. Expansion should be broad: personal, work, education, healthcare, government, and operations.
+> 진입은 가볍게, 소통은 자연스럽게, 구조는 깊게, 결과는 실행 가능하게.
 
-## 4. Anti-patterns
+The engine must still support expansion to experienced professionals, teams, education, hospitals, public institutions, founders, and B2B workflows.
 
-Never make the primary experience feel like:
+## 3. Communication philosophy
 
-- a numbered survey
-- a form with required fields
-- ChatGPT with a different skin
-- therapy or emotional diagnosis
-- corporate consulting
-- a report generator
-- disconnected decorative circles
-- a career-only service
+Visible UX language must be about **이야기, 소통, 같이 정리하기, 이어서 말하기, 제가 이해한 내용, 지금 보이는 흐름, 조금 더 살펴보기**.
 
-## 5. Target users and launch tone
+Avoid positioning the experience as **질문, 문항, 설문, 질문 1/8, 답변 제출**. Internally the system may ask follow-ups, but externally the user should feel they are communicating.
 
-Initial launch focuses on 18–30 users: students, job seekers, young professionals, founders, and people making everyday decisions.
+Conversation pattern:
 
-The tone is mobile-first, light, modern, fast to try, and useful in 3–10 minutes. It must support both light and meaningful decisions: travel, iPad purchase, moving, confession, study abroad, quitting, changing jobs, side business, priorities, relationships, and daily plans.
+1. acknowledge
+2. briefly reflect
+3. identify one emerging theme when useful
+4. continue with one concise follow-up
 
-## 6. Voice principle
+The system must not repeatedly ask for information already provided and must not use robotic or therapy-like phrasing.
+
+## 4. Voice principle
 
 Voice is the default path; typing is always available.
 
-Voice must be real where supported, using browser microphone capabilities with Korean recognition. The user must be able to record, stop, cancel, see a timer, see interim/final transcript, edit transcript, continue speaking, and submit the edited text.
+Version 1 uses a Web Speech API provider with `ko-KR` recognition where supported. Required states are microphone permission request, listening state, timer, interim transcript, final transcript, stop, cancel, continue speaking, editable transcript, permission-denied recovery, unsupported-browser recovery, and mixed voice/text conversation.
 
-Voice failure must never block progress. Unsupported browsers and permission denial fall back to text with friendly language.
+Voice technology is a provider abstraction. Future providers may include OpenAI Realtime, Whisper, Gemini Live, or another speech provider. Voice failure must never block progress.
 
-Speech technology is a provider, not a product dependency. The architecture must allow replacement with OpenAI Realtime, Whisper, Gemini Live, or another provider.
+## 5. AI interpretation and no-forced-answer principle
 
-## 7. Conversation principle
-
-The AI is a thinking partner. It should acknowledge, reflect, identify one emerging theme when useful, and ask one concise follow-up question.
-
-It must not interrogate. It must not ask all categories in a fixed order. It must not repeat information already provided.
-
-The AI may internally extract topic, trigger, emotion, people, values, reasons, constraints, options, benefits, risks, missing information, leaning, and action. Externally, this should feel like conversation.
-
-## 8. Interpretation and safety principle
-
-The AI never says “you must do this” or “this is the answer.”
+The product never decides for the user. Do not say “이직해야 합니다”, “이 선택이 정답입니다”, or “반드시 이렇게 하세요”.
 
 Use language such as:
 
-- “지금까지 이야기만 보면…”
-- “제가 이해한 게 맞을까요?”
-- “이 부분은 아직 확인이 더 필요해 보여요.”
-- “현재 마음은 이쪽에 조금 더 가까워 보여요.”
+- 지금까지 이야기만 보면
+- 현재 마음은 이 방향에 조금 더 가까워 보여요
+- 아직 확인할 정보가 남아 있어요
+- 제가 이해한 게 맞을까요?
+- 이 선택을 검증해보기 위한 작은 행동은 무엇일까요?
 
-Important interpretations must be confirmable or correctable. User corrections become higher-confidence information.
+Always distinguish:
 
-## 9. Live MAP principle
+- 내가 직접 말한 내용
+- 대화를 통해 정리된 내용
+- 아직 확인이 필요한 내용
+- 검증하거나 리뷰해야 할 조건
 
-The MAP grows during conversation, not only at the end. Every meaningful statement should create visible structure.
+Corrections are higher-confidence than previous interpretations.
 
-The MAP must include meaningful node types and relationships. Lines communicate cause, influence, conflict, alternative, benefit, risk, verification need, or next action.
+## 6. Adaptive conversation architecture
 
-Visual conventions:
+Conversation must be modular through a `ConversationProvider` architecture.
 
-- confirmed direct relationship: solid line
-- uncertain / needs verification: dotted line
-- important value or action: stronger accent line
-- node styles distinguish fact, feeling, value, option, risk, missing information, and action
+Version 1 has a deterministic local fallback that works without external AI credentials. The local provider must adapt to selected topic, keywords, prior messages, existing map nodes, missing information, corrections, and confirmed interpretations.
 
-## 10. Final MAP principle
+Future external AI must be routed through server/environment configuration with no committed secrets. The UI must not pretend a live AI model is connected when only the local provider is active.
 
-The final output is a beautiful thinking map, not a collection of cards and not a report.
+Internal thinking structure supports topic, trigger, facts, emotion, people, values, reasons, constraints, options, advantages, risks, missing information, current leaning, action, and review condition. This structure must not be exposed as a fixed sequence.
 
-It must include:
+## 7. Understanding checkpoints
 
-- central topic
-- values, emotions, constraints, reasons, alternatives, risks, unresolved information
-- current leaning without forced conclusion
-- user-said content vs AI interpretation vs information to verify
-- first action within 24 hours
-- next review condition
+Periodically show short understanding summaries and ask whether the interpretation is right. Actions are **맞아요** and **조금 달라요**.
 
-## 11. Output roadmap
+If the user selects **조금 달라요**, allow voice/text correction, treat corrected information as higher-confidence, update messages, update structured data, and update the live MAP immediately.
 
-Architecture must support:
+## 8. Immediate reward and live MAP principle
 
-- Thinking MAP
-- Decision MAP
-- Execution MAP
-- Priority MAP
-- Comparison MAP
-- Career MAP
-- Patient Journey MAP
-- Handover MAP
-- Process MAP
+The MAP grows during communication, not only at the end. The first meaningful node should appear within the first 30 seconds after a meaningful statement or topic selection.
 
-Version 1 prioritizes Thinking MAP and Decision MAP while keeping the domain model extensible.
+Required node types: 핵심 주제, 계기, 사실, 감정, 사람, 가치, 이유, 제약, 선택지, 장점, 리스크, 확인할 정보, 현재 방향, 다음 행동.
 
-## 12. Login philosophy
+Relationships communicate 원인, 영향, 충돌, 선택지, 장점, 리스크, 확인 필요, 다음 행동. Solid lines are confirmed, dotted lines are uncertain/verification-needed, and thicker/accent lines indicate important relationships.
 
-No signup before the first meaningful experience.
+The map must be calm, minimal, premium, readable, and screenshot-worthy—not decorative disconnected bubbles.
 
-If authentication is introduced later, it must be one-click and familiar: Google, Apple, Kakao, and Naver. Authentication should save, sync, or share MAPs; it must not block first thinking.
+## 9. Final MAP principle
 
-## 13. Payment philosophy
+The final screen begins with:
 
-No complicated checkout.
+> 이야기해주신 내용을 한 장으로 정리했어요.
 
-Future paid flows should require only a few taps and support Apple Pay, Google Pay, Naver Pay, Kakao Pay, and Toss Pay. Payment should unlock saving, export, collaboration, templates, or domain workflows without interrupting the first MAP.
+It includes a Thinking MAP, decision structure, interpretation layers, action, and user controls. It must show alternatives, benefits, risks, missing information, current leaning, first action within 24 hours, information to verify, and review condition.
 
-## 14. Business expansion principle
+Final controls include more conversation, edit/correct, reorganize MAP, new MAP, print/PDF, future-safe image export, and future-safe share flow.
 
-Start B2C, but design the architecture so the same engine can expand to companies, hospitals, education, public services, meetings, handovers, patient journeys, and process planning.
+## 10. Multiple MAP types
 
-Domain expansion must reuse the same primitives: conversation, extraction, map structure, confirmation, output mode, action, and review condition.
+Architecture must support 생각정리 MAP, 의사결정 MAP, 비교분석 MAP, 실행계획 MAP, 우선순위 MAP, 커리어 MAP, 프로세스 MAP, 인수인계 MAP, and 환자 여정 MAP.
 
-## 15. Technical architecture principle
+For this release, Thinking MAP and Decision MAP are functional. The product recommends an output after enough communication and does not force users to choose a technical map type before starting.
 
-Separate concerns:
+## 11. No-login-first and social login
 
-- product shell and landing
-- conversation UI
-- voice provider
-- conversation provider
-- thinking extraction
-- MAP renderer
-- result renderer
-- storage and schema migration
-- export and sharing adapters
-- future auth/payment adapters
+No signup before starting, talking, viewing the live MAP, or completing the first MAP. Local no-login usage remains the default.
 
-No API keys in the repository. Live AI and speech services must be environment-based server integrations.
+If account functionality is introduced, preferred providers are Google, Apple, Kakao, and Naver. No email/password-first flow, no long registration form, and no mandatory profile setup.
 
-Local deterministic fallback is required so previews work without a backend, but the UI must not pretend a live model is connected.
+Social authentication must not be faked. Without provider credentials/backend, keep only truthful local/no-login mode visible and document unavailable integrations for developers.
 
-## 16. Development philosophy
+## 12. Fast payment and monetization
 
-Every future task must ask:
+Payment must not interrupt thinking. Do not create long checkout, repeated confirmations, mandatory account creation, or complex pricing during the first experience.
 
-1. Does this make entry lighter?
-2. Does it make conversation more natural?
-3. Does it make thinking more visible?
-4. Does it avoid forcing conclusions?
-5. Does it create a useful next action?
-6. Does it preserve future expansion?
-7. Does it remove prototype feelings?
+Payment appears only when the user requests paid value: premium export, additional MAP type, deeper comparison, history/cloud sync, advanced sharing, or professional templates.
 
-If not, do not build it.
+Desired payment options: Apple Pay, Google Pay, Naver Pay, Kakao Pay, Toss Pay. Without credentials/providers, keep checkout disabled or explicit demo/requirements mode and never claim a payment completed.
 
-## 17. Version roadmap
+Preserve a useful free experience. The first MAP must demonstrate value before asking for payment.
 
-### Version 1
+## 13. Storage and continuity
 
-- voice-first no-login start
-- text fallback
-- natural guided conversation
-- deterministic local conversation provider
-- live growing MAP
-- understanding checkpoint and correction
-- Thinking/Decision final MAP
-- local autosave/resume
-- print/PDF-friendly output
+Use localStorage autosave with a versioned schema. Preserve messages, voice transcript/draft, structured nodes, relationships, checkpoints, user corrections, result state, timestamps, reset/new MAP, and safe migration of legacy/corrupted data.
 
-### Version 2
+Visible wording:
 
-- server-side LLM provider
-- stronger semantic extraction
-- account sync with one-click login
-- real share links with privacy controls
-- image export service
-- payments for advanced exports/history/templates
-- domain-specific MAP modes
+> 작성 내용은 이 브라우저에 임시 저장돼요.
 
-### Version 3
+Future architecture should support account sync, cross-device history, share links, and cloud persistence.
 
-- collaborative MAP sessions
-- B2B workspaces
-- domain workflows for education, healthcare, government, and operations
-- multimodal voice/meeting capture
-- structured integrations and longitudinal thinking memory
+## 14. Design and accessibility
+
+Visual direction: friendly but intelligent, light but meaningful, premium but approachable, modern, mobile-first, and worth sharing. Reference quality bar: Apple, Linear, Notion, Arc, without copying layouts.
+
+Use warm neutral backgrounds, dark slate/navy typography, restrained accents, generous whitespace, strong Korean readability, subtle shadows, polished micro-interactions, visible focus states, and consistent primitives.
+
+Avoid excessive gradients, neon, generic SaaS dashboards, corporate consulting copy, therapy aesthetics, meaningless motion, and instruction-heavy screens.
+
+Accessibility requirements: verify 375px, 768px, 1440px; no horizontal overflow; no overlapping map nodes; mobile keyboard should not cover composer; Korean text wraps correctly; full-screen mobile MAP works; recording state is clear; keyboard accessibility; proper aria labels; visible focus; reduced-motion support; and no information communicated only by color.
+
+## 15. Technical architecture
+
+Separate concerns for product shell/landing, conversation UI, voice provider, conversation provider, thinking extraction, map rendering, result rendering, storage and schema migration, export/share adapters, auth adapters, and payment adapters.
+
+No API keys or secrets in the repository. Live AI and external speech services must be server/environment-based integrations.
+
+## 16. Release validation
+
+Every release must validate landing, example topics, voice or truthful fallback, text journey, mixed voice/text journey, microphone denial, unsupported-browser fallback, autosave/resume, checkpoint correction, live map update, final Thinking MAP, final Decision MAP, edit/reset, mobile/tablet/desktop, print/PDF, no console errors, and old storage handling.
+
+## 17. Practical roadmap
+
+### Implemented now
+
+- No-login landing with broad university, early-career, relationship, money, and daily-life examples
+- Voice-first Web Speech API provider with typing fallback
+- Conversation UI with history, chips, checkpoint, correction, and mixed input
+- Deterministic local conversation provider
+- Thinking extraction into nodes and relationships
+- Live MAP preview on desktop and full-screen mobile MAP
+- Final Thinking/Decision MAP result with interpretation layers, risks, missing information, 24-hour action, print/PDF
+- Versioned localStorage migration and reset/new MAP
+- Truthful local-only save and disabled/requirements-style premium entry points
+
+### Working local fallback
+
+- Local conversation replies without pretending a live model is connected
+- Local auth storage only in the current browser
+- Free print/PDF export through browser print
+
+### Integration-ready
+
+- `ConversationProvider` for future AI APIs
+- `VoiceProvider` abstraction for future speech providers
+- Auth provider interface for Google, Apple, Kakao, Naver
+- Payment provider interface for Apple Pay, Google Pay, Naver Pay, Kakao Pay, Toss Pay
+- Map output type model for future MAP variants
+
+### Requires external credentials/backend
+
+- Real LLM conversation route
+- OpenAI Realtime/Whisper/Gemini Live speech providers
+- Social login and cross-device sync
+- Share links and cloud history
+- Payment gateway/orchestration and premium entitlements
+- Stable server-side image export
+
+### Future release
+
+- Stronger semantic extraction and relationship weighting
+- Multiple output generation from one conversation
+- Collaboration and team workspaces
+- Education, hospital, public institution, founder, and B2B workflow templates
+- Longitudinal thinking memory and privacy controls
