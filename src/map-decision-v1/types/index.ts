@@ -24,6 +24,7 @@ export type MapSession = {
   updatedAt: string;
   isDemo?: boolean;
   demoStep?: number;
+  localDraft?: string;
 };
 
 export type ConversationProvider = {

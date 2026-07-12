@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createLandingSession, createSession, now } from "../engine/session";
 import { clearSession, loadSession, saveSession } from "../storage/session-storage";
 import { MapOutputType, MapSession } from "../types";
@@ -59,26 +59,68 @@ export function MapDecisionProduct() {
   const [session, setSession] = useState<MapSession>(() => createLandingSession());
   const [hydrated, setHydrated] = useState(false);
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
+  const [saveState, setSaveState] = useState<"loading" | "saved" | "saving">("loading");
+  const routeReady = useRef(false);
 
   useEffect(() => {
     const saved = loadSession();
     if (saved) {
       setSession(saved);
-      setHasSavedDraft(saved.messages.length > 0 || saved.nodes.length > 0);
+      setHasSavedDraft(saved.messages.length > 0 || saved.nodes.length > 0 || Boolean(saved.localDraft?.trim()));
     }
+    setSaveState("saved");
     setHydrated(true);
   }, []);
 
   useEffect(() => {
     if (!hydrated || session.isDemo) return;
-    saveSession({ ...session, updatedAt: now() });
+    setSaveState("saving");
+    const timer = window.setTimeout(() => {
+      saveSession({ ...session, updatedAt: now() });
+      setHasSavedDraft(session.messages.length > 0 || session.nodes.length > 0 || Boolean(session.localDraft?.trim()));
+      setSaveState("saved");
+    }, 220);
+    return () => window.clearTimeout(timer);
   }, [hydrated, session]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const current = window.history.state as { mapStage?: string } | null;
+    if (!current?.mapStage) {
+      window.history.replaceState({ mapStage: session.stage }, "", window.location.href);
+    }
+    routeReady.current = true;
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || !routeReady.current) return;
+    const current = window.history.state as { mapStage?: string } | null;
+    if (current?.mapStage !== session.stage) {
+      window.history.pushState({ mapStage: session.stage }, "", window.location.href);
+    }
+  }, [hydrated, session.stage]);
+
+  useEffect(() => {
+    const onPopState = (event: PopStateEvent) => {
+      const stage = (event.state as { mapStage?: MapSession["stage"] } | null)?.mapStage;
+      if (stage === "landing" || stage === "conversation" || stage === "result") {
+        setSession((current) => ({ ...current, stage }));
+        return;
+      }
+      setSession((current) => ({ ...current, stage: current.messages.length || current.nodes.length ? "conversation" : "landing" }));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   const start = (topic?: string) => setSession(createSession(topic));
   const startDemo = () => setSession(createDemoSession());
-  const reset = () => { if (!session.isDemo) clearSession(); setHasSavedDraft(false); setSession(createLandingSession()); };
+  const reset = () => { if (!session.isDemo) clearSession(); setHasSavedDraft(false); setSaveState("saved"); setSession(createLandingSession()); };
   const selectType = (type: MapOutputType) => setSession((current) => ({ ...current, preferredMapType: type }));
   const exitDemoToReal = () => setSession(createSession());
+  const goConversation = useCallback(() => setSession((current) => ({ ...current, stage: "conversation" })), []);
+  const goResult = useCallback(() => setSession((current) => ({ ...current, stage: "result" })), []);
+
   const advanceDemo = () => setSession((current) => {
     const step = current.demoStep || 0;
     const reply = demoReplies[Math.min(step, demoReplies.length - 1)];
@@ -99,10 +141,10 @@ export function MapDecisionProduct() {
   });
 
   if (session.stage === "landing" || (!session.messages.length && !session.nodes.length)) {
-    return <Landing hasDraft={hasSavedDraft} onStart={start} onResume={() => setSession((current) => ({ ...current, stage: "conversation" }))} onDemo={startDemo} />;
+    return <Landing hasDraft={hasSavedDraft} onStart={start} onResume={goConversation} onDemo={startDemo} saveState={saveState} />;
   }
   if (session.stage === "result") {
-    return <Result session={session} onContinue={() => setSession((current) => ({ ...current, stage: "conversation" }))} onReset={reset} onSelectType={selectType} onRealStart={exitDemoToReal} />;
+    return <Result session={session} onContinue={goConversation} onReset={reset} onSelectType={selectType} onRealStart={exitDemoToReal} saveState={saveState} />;
   }
-  return <Conversation session={session} setSession={setSession} onFinish={() => setSession((current) => ({ ...current, stage: "result" }))} onReset={reset} onRealStart={exitDemoToReal} onDemoChoice={advanceDemo} />;
+  return <Conversation session={session} setSession={setSession} onFinish={goResult} onReset={reset} onRealStart={exitDemoToReal} onDemoChoice={advanceDemo} saveState={saveState} />;
 }

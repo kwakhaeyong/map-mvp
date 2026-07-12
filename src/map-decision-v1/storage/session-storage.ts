@@ -15,6 +15,7 @@ function migrateSession(value: unknown): MapSession | null {
     checkpointStatus: candidate.checkpointStatus,
     startedAt: candidate.startedAt || now(),
     updatedAt: now(),
+    localDraft: typeof candidate.localDraft === "string" ? candidate.localDraft : "",
   };
 }
 

@@ -3,11 +3,11 @@
 import { MapOutputType, MapSession, NodeKind } from "../types";
 import { demoPaymentProvider, localAuthProvider, plannedPaymentProviders } from "../engine/integration-providers";
 import { MapCanvas } from "./MapCanvas";
-import { Badge, Button, ReflectionCard, ResultActionBar } from "./ui/primitives";
+import { Badge, Button, ReflectionCard, ResultActionBar, Toast } from "./ui/primitives";
 
 function shorten(text: string, length = 90) { return text.trim().length > length ? `${text.trim().slice(0, length)}…` : text.trim(); }
 
-export function Result({ session, onContinue, onReset, onSelectType, onRealStart }: { session: MapSession; onContinue: () => void; onReset: () => void; onSelectType: (type: MapOutputType) => void; onRealStart: () => void }) {
+export function Result({ session, onContinue, onReset, onSelectType, onRealStart, saveState = "saved" }: { session: MapSession; onContinue: () => void; onReset: () => void; onSelectType: (type: MapOutputType) => void; onRealStart: () => void; saveState?: "loading" | "saved" | "saving" }) {
   const byKind = (kind: NodeKind) => session.nodes.filter((node) => node.kind === kind).map((node) => node.text).join("\n") || "아직 더 이야기하면 선명해져요.";
   const direction = byKind("direction") !== "아직 더 이야기하면 선명해져요." ? byKind("direction") : "결론을 서두르기보다 확인할 내용을 채우며 움직이는 방향";
   const safeReset = () => { if (session.isDemo || window.confirm("새 MAP을 만들까요? 취소하면 지금 결과로 돌아옵니다.")) onReset(); };
@@ -15,6 +15,7 @@ export function Result({ session, onContinue, onReset, onSelectType, onRealStart
   return (
     <main className="min-h-screen px-4 py-6 text-text-primary print:bg-surface-elevated">
       <section className="map-container">
+        <Toast className="mb-4 flex items-center justify-between gap-3 print:hidden"><span>{saveState === "saving" ? "자동 저장 중" : "자동 저장됨"}</span><Button variant="secondary" onClick={onContinue}>대화로 돌아가기</Button></Toast>
         <header className="rounded-large border border-border bg-surface p-6 shadow-floating sm:p-8 print:shadow-none">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl"><p className="kicker">이야기해주신 내용을 한 장으로 정리했어요.</p><h1 className="mt-2 text-balance text-4xl font-black tracking-[-0.04em] sm:text-6xl">{session.preferredMapType === "decision" ? "Decision MAP" : "Thinking MAP"}</h1><p className="mt-4 break-keep text-lg font-medium leading-8 text-text-secondary">현재 가까운 방향은 <strong className="font-extrabold text-text-primary">{shorten(direction, 62)}</strong>입니다. 정답을 대신 고르지 않고, 말한 내용과 확인할 내용을 나눠두었어요.</p></div>
