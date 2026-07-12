@@ -60,9 +60,12 @@ textarea { letter-spacing: -0.01em; }
 .thinking-map { background: radial-gradient(circle at 50% 45%, rgba(91,91,214,.09), transparent 17rem), linear-gradient(145deg, rgba(255,255,255,.96), rgba(244,247,251,.88)); }
 .map-line { stroke: rgba(91,91,214,.36); stroke-width: 1.7; stroke-linecap: round; }
 .map-line-dotted { stroke-dasharray: 5 7; stroke: rgba(180,126,34,.45); }
-.map-node { filter: drop-shadow(0 12px 18px rgba(21,33,59,.10)); animation: node-in .32s ease both; }
+.map-node { filter: drop-shadow(0 12px 18px rgba(21,33,59,.10)); }
+.map-node-enter { animation: node-in var(--duration-slow) var(--easing-emphasized) both; }
+.map-edge { animation: edge-draw var(--duration-slow) var(--easing-standard) both; }
 .message-in { animation: message-in .24s ease both; }
-@keyframes node-in { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes node-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes edge-draw { from { opacity: 0; } to { opacity: 1; } }
 @keyframes message-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 button:focus-visible, textarea:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid rgba(91,91,214,.34); outline-offset: 3px; }
 @media print { .print\:hidden { display: none !important; } main { background: white !important; padding: 0 !important; } .map-card, .shadow-xl, .shadow-2xl { box-shadow: none !important; } }
