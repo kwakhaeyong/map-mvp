@@ -17,8 +17,8 @@ export function Landing({ hasDraft, onStart, onResume, onDemo }: { hasDraft: boo
         {hasDraft ? <Button variant="secondary" onClick={onResume}>이어서 하기</Button> : null}
       </header>
 
-      <section className="map-container py-8 lg:py-12">
-        <div className="mx-auto max-w-3xl text-center">
+      <section className="map-container grid gap-8 py-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.45fr)] lg:items-start lg:py-12">
+        <div className="text-center lg:sticky lg:top-6 lg:text-left">
           <p className="kicker">말하면, 생각이 보입니다.</p>
           <h1 className="mt-4 text-balance break-keep text-[2.125rem] font-black leading-[1.12] tracking-[-0.04em] sm:text-5xl lg:text-[3.25rem]">지금 가장 마음에 걸리는 건 뭐예요?</h1>
           <p className="mt-5 max-w-xl whitespace-pre-line break-keep text-lg font-medium leading-8 text-text-secondary">말하거나 하나만 골라보세요.{`\n`}생각의 흐름을 바로 보여드릴게요.</p>
@@ -32,16 +32,16 @@ export function Landing({ hasDraft, onStart, onResume, onDemo }: { hasDraft: boo
             {hasDraft ? <Button className="mt-3 w-full" variant="default" onClick={onResume}>저장된 이야기 이어서 하기</Button> : null}
           </Card>
 
-          <div className="mt-5 flex flex-wrap justify-center gap-2" aria-label="빠른 시작">
+          <div className="mt-5 flex flex-wrap justify-center gap-2 lg:justify-start" aria-label="빠른 시작">
             {topics.map((topic) => <ResponseChip key={topic} onClick={() => onStart(topic)}>{topic}</ResponseChip>)}
           </div>
-          <div className="mt-5 grid gap-2 text-center text-xs font-bold text-text-muted sm:grid-cols-4">
+          <div className="mt-5 grid gap-2 text-center text-xs font-bold text-text-muted sm:grid-cols-2">
             {["로그인 없이 시작", "자동 저장", "언제든 이어서 수정", "첫 변화는 30초 안에"].map((item) => <span key={item} className="rounded-pill border border-border bg-surface px-3 py-2">{item}</span>)}
           </div>
         </div>
-      </section>
 
-      <ExampleShowcase onStart={onStart} />
+        <ExampleShowcase onStart={onStart} />
+      </section>
     </main>
   );
 }
