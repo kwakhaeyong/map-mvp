@@ -25,83 +25,171 @@ export function Brand() {
 const topics = ["이직할까?", "먼저 연락할까?", "휴학할까?"];
 
 const thinkingExample: MapSession = {
-  ...createSession("이직할까?"),
+  ...createSession("내 이상형은 어떤 사람일까?"),
+  preferredMapType: "thinking",
+  stage: "result",
   nodes: [
     {
       id: "thinking-topic",
       kind: "topic",
-      label: "핵심 주제",
-      text: "이직할까?",
-      confidence: "user",
+      label: "탐색 주제",
+      text: "내 이상형은 어떤 사람일까?",
+      confidence: "confirmed",
       createdAt: "",
     },
     {
-      id: "thinking-fact",
-      kind: "fact",
-      label: "내가 말한 상황",
-      text: "성장감이 줄어든 일",
-      confidence: "user",
+      id: "thinking-emotion",
+      kind: "emotion",
+      label: "반복 감정",
+      text: "편안함을 느낄 때 마음이 열림",
+      confidence: "ai",
       createdAt: "",
     },
     {
       id: "thinking-value",
       kind: "value",
-      label: "중요한 기준",
-      text: "안정과 성장 사이",
+      label: "중요한 가치",
+      text: "존중받는 대화와 생활 리듬",
       confidence: "ai",
       createdAt: "",
     },
     {
-      id: "thinking-missing",
-      kind: "missing",
-      label: "확인할 내용",
-      text: "다른 팀 기회와 생활비",
+      id: "thinking-person",
+      kind: "person",
+      label: "관계 선호",
+      text: "말을 재촉하지 않는 사람",
+      confidence: "user",
+      createdAt: "",
+    },
+    {
+      id: "thinking-discovery",
+      kind: "reason",
+      label: "새로 보인 발견",
+      text: "설렘보다 안정감을 더 오래 기억함",
       confidence: "ai",
+      createdAt: "",
+    },
+    {
+      id: "thinking-question",
+      kind: "missing",
+      label: "열린 질문",
+      text: "편안함과 익숙함은 어떻게 다를까?",
+      confidence: "ai",
+      createdAt: "",
+    },
+    {
+      id: "thinking-correction",
+      kind: "correction",
+      label: "내가 고칠 수 있음",
+      text: "이상형은 정답이 아니라 계속 수정되는 기준",
+      confidence: "confirmed",
       createdAt: "",
     },
   ],
   relations: [
     {
-      id: "thinking-rel-1",
+      id: "thinking-edge-1",
       from: "thinking-topic",
-      to: "thinking-fact",
+      to: "thinking-emotion",
+      kind: "영향",
+      strength: "accent",
+    },
+    {
+      id: "thinking-edge-2",
+      from: "thinking-emotion",
+      to: "thinking-value",
+      kind: "원인",
+      strength: "solid",
+    },
+    {
+      id: "thinking-edge-3",
+      from: "thinking-value",
+      to: "thinking-person",
       kind: "영향",
       strength: "solid",
     },
     {
-      id: "thinking-rel-2",
-      from: "thinking-topic",
-      to: "thinking-value",
-      kind: "충돌",
+      id: "thinking-edge-4",
+      from: "thinking-emotion",
+      to: "thinking-discovery",
+      kind: "영향",
       strength: "dotted",
     },
     {
-      id: "thinking-rel-3",
-      from: "thinking-topic",
-      to: "thinking-missing",
+      id: "thinking-edge-5",
+      from: "thinking-discovery",
+      to: "thinking-question",
       kind: "확인 필요",
       strength: "dotted",
+    },
+    {
+      id: "thinking-edge-6",
+      from: "thinking-question",
+      to: "thinking-correction",
+      kind: "다음 행동",
+      strength: "accent",
     },
   ],
 };
 
 const decisionExample: MapSession = {
-  ...createSession("팀 이동을 먼저 확인하기"),
+  ...createSession("커리어 방향을 어떻게 정할까?"),
   preferredMapType: "decision",
+  stage: "result",
   nodes: [
     {
       id: "decision-topic",
       kind: "topic",
-      label: "결정 방향",
-      text: "팀 이동을 먼저 확인하기",
+      label: "결정 주제",
+      text: "커리어 방향을 어떻게 정할까?",
       confidence: "confirmed",
       createdAt: "",
     },
     {
-      id: "decision-option",
+      id: "decision-current",
+      kind: "fact",
+      label: "현재 상황",
+      text: "익숙한 업무는 안정적이지만 성장감이 낮음",
+      confidence: "user",
+      createdAt: "",
+    },
+    {
+      id: "decision-value",
+      kind: "value",
+      label: "중요한 기준",
+      text: "생활 안정과 배우는 속도를 함께 보고 싶음",
+      confidence: "ai",
+      createdAt: "",
+    },
+    {
+      id: "decision-constraint",
+      kind: "constraint",
+      label: "확인할 제약",
+      text: "저축 여유, 채용 시장, 팀 이동 가능성",
+      confidence: "ai",
+      createdAt: "",
+    },
+    {
+      id: "decision-stay",
       kind: "option",
-      label: "가능한 선택",
-      text: "바로 퇴사보다 내부 기회 확인",
+      label: "선택지 A",
+      text: "현재 회사에서 역할 조정 요청",
+      confidence: "ai",
+      createdAt: "",
+    },
+    {
+      id: "decision-move",
+      kind: "option",
+      label: "선택지 B",
+      text: "이직 준비를 조용히 병행",
+      confidence: "ai",
+      createdAt: "",
+    },
+    {
+      id: "decision-benefit",
+      kind: "benefit",
+      label: "기대 효과",
+      text: "성장 가능성은 높이고 생활 충격은 낮추기",
       confidence: "ai",
       createdAt: "",
     },
@@ -109,37 +197,94 @@ const decisionExample: MapSession = {
       id: "decision-risk",
       kind: "risk",
       label: "리스크",
-      text: "확인 없이 옮기면 불안정",
+      text: "준비 없이 떠나면 생활비 공백이 커짐",
       confidence: "ai",
+      createdAt: "",
+    },
+    {
+      id: "decision-direction",
+      kind: "direction",
+      label: "현재 방향",
+      text: "바로 퇴사보다 확인 후 이동",
+      confidence: "confirmed",
       createdAt: "",
     },
     {
       id: "decision-action",
       kind: "action",
       label: "24시간 행동",
-      text: "내일 리더에게 면담 요청하기",
+      text: "내일 면담 요청과 채용공고 3개 확인",
       confidence: "confirmed",
       createdAt: "",
     },
   ],
   relations: [
     {
-      id: "decision-rel-1",
+      id: "decision-edge-1",
       from: "decision-topic",
-      to: "decision-option",
+      to: "decision-current",
+      kind: "원인",
+      strength: "solid",
+    },
+    {
+      id: "decision-edge-2",
+      from: "decision-current",
+      to: "decision-value",
+      kind: "영향",
+      strength: "solid",
+    },
+    {
+      id: "decision-edge-3",
+      from: "decision-current",
+      to: "decision-constraint",
+      kind: "확인 필요",
+      strength: "dotted",
+    },
+    {
+      id: "decision-edge-4",
+      from: "decision-value",
+      to: "decision-stay",
       kind: "대안",
       strength: "solid",
     },
     {
-      id: "decision-rel-2",
-      from: "decision-topic",
+      id: "decision-edge-5",
+      from: "decision-value",
+      to: "decision-move",
+      kind: "대안",
+      strength: "solid",
+    },
+    {
+      id: "decision-edge-6",
+      from: "decision-stay",
+      to: "decision-benefit",
+      kind: "장점",
+      strength: "solid",
+    },
+    {
+      id: "decision-edge-7",
+      from: "decision-move",
       to: "decision-risk",
       kind: "리스크",
       strength: "dotted",
     },
     {
-      id: "decision-rel-3",
-      from: "decision-topic",
+      id: "decision-edge-8",
+      from: "decision-benefit",
+      to: "decision-direction",
+      kind: "영향",
+      strength: "accent",
+    },
+    {
+      id: "decision-edge-9",
+      from: "decision-risk",
+      to: "decision-direction",
+      kind: "영향",
+      strength: "dotted",
+    },
+    {
+      id: "decision-edge-10",
+      from: "decision-direction",
       to: "decision-action",
       kind: "다음 행동",
       strength: "accent",
@@ -155,24 +300,24 @@ function ExampleShowcase() {
           <div>
             <p className="kicker">Thinking MAP</p>
             <h2 className="mt-1 text-lg font-black tracking-[-0.03em]">
-              흩어진 생각을 먼저 보이게
+              이상형 탐색을 결과처럼 보이게
             </h2>
           </div>
           <Badge tone="value">정리 중</Badge>
         </div>
-        <MapCanvas session={thinkingExample} sample compact />
+        <MapCanvas session={thinkingExample} sample result />
       </Card>
       <Card className="p-4 sm:p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="kicker">Decision MAP</p>
             <h2 className="mt-1 text-lg font-black tracking-[-0.03em]">
-              첫 행동까지 이어지게
+              커리어 결정이 첫 행동까지 이어지게
             </h2>
           </div>
           <Badge tone="action">24시간 행동</Badge>
         </div>
-        <MapCanvas session={decisionExample} sample compact />
+        <MapCanvas session={decisionExample} sample result />
       </Card>
     </div>
   );
