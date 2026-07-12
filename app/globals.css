@@ -70,3 +70,14 @@ textarea { letter-spacing: -0.01em; }
 button:focus-visible, textarea:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid rgba(91,91,214,.34); outline-offset: 3px; }
 @media print { .print\:hidden { display: none !important; } main { background: white !important; padding: 0 !important; } .map-card, .shadow-xl, .shadow-2xl { box-shadow: none !important; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+
+@supports (padding: max(0px)) {
+  .pt-safe-top { padding-top: max(0.75rem, env(safe-area-inset-top)); }
+  .pb-safe-bottom { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+}
+@media (max-width: 480px) {
+  .map-container { width: 100%; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .thinking-map .map-node { filter: none; }
+}
