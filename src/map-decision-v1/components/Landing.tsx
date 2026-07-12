@@ -1,5 +1,5 @@
 import { createSession } from "../engine/session";
-import { Button, Card, ResponseChip, VoiceButton } from "./ui/primitives";
+import { Badge, Button, Card, ResponseChip, VoiceButton } from "./ui/primitives";
 import { MapCanvas } from "./MapCanvas";
 
 export function Brand() {
@@ -8,12 +8,12 @@ export function Brand() {
 
 const topics = ["이직할까?", "먼저 연락할까?", "휴학할까?"];
 
-export function Landing({ hasDraft, onStart, onResume, onDemo }: { hasDraft: boolean; onStart: (topic?: string) => void; onResume: () => void; onDemo: () => void }) {
+export function Landing({ hasDraft, onStart, onResume, onDemo, saveState = "saved" }: { hasDraft: boolean; onStart: (topic?: string) => void; onResume: () => void; onDemo: () => void; saveState?: "loading" | "saved" | "saving" }) {
   return (
     <main className="min-h-screen px-4 py-4 sm:px-6 lg:px-8">
       <header className="map-container flex items-center justify-between rounded-pill border border-border bg-surface px-4 py-3 shadow-subtle backdrop-blur">
         <Brand />
-        {hasDraft ? <Button variant="secondary" onClick={onResume}>이어서 하기</Button> : null}
+        <div className="flex items-center gap-2"><Badge tone={saveState === "saving" ? "default" : "success"}>{saveState === "loading" ? "불러오는 중" : saveState === "saving" ? "자동 저장 중" : "자동 저장됨"}</Badge>{hasDraft ? <Button variant="secondary" onClick={onResume}>이어서 하기</Button> : null}</div>
       </header>
 
       <section className="map-container grid items-center gap-8 py-8 lg:grid-cols-[minmax(0,.95fr)_minmax(26rem,1.05fr)] lg:gap-12 lg:py-12">
