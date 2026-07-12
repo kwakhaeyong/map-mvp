@@ -4,7 +4,6 @@ import {
   Badge,
   Button,
   Card,
-  EmptyState,
   MapLegend,
   MapNode as MapNodePrimitive,
 } from "./ui/primitives";
@@ -91,12 +90,313 @@ const sampleNodes: MapNode[] = [
   },
 ];
 
+type ExampleKind = "thinking" | "decision";
 type Point = { x: number; y: number };
 type PlacedNode = {
   node: MapNode;
   point: Point;
   relation?: MapRelation;
   delay: string;
+};
+type ExampleMap = {
+  kind: ExampleKind;
+  title: string;
+  subtitle: string;
+  nodes: MapNode[];
+  relations: MapRelation[];
+  layout: Record<string, Point>;
+};
+
+const exampleMaps: Record<ExampleKind, ExampleMap> = {
+  thinking: {
+    kind: "thinking",
+    title: "내 이상형은 어떤 사람일까?",
+    subtitle:
+      "감정 패턴, 가치, 관계 선호, 발견과 열린 질문을 흐름으로 보여줘요.",
+    nodes: [
+      {
+        id: "thinking-topic",
+        kind: "topic",
+        label: "탐색 주제",
+        text: "내 이상형은 어떤 사람일까?",
+        confidence: "confirmed",
+        createdAt: "",
+      },
+      {
+        id: "thinking-emotion",
+        kind: "emotion",
+        label: "반복 감정",
+        text: "편안함을 느낄 때 마음이 열림",
+        confidence: "ai",
+        createdAt: "",
+      },
+      {
+        id: "thinking-value",
+        kind: "value",
+        label: "중요한 가치",
+        text: "존중받는 대화와 생활 리듬",
+        confidence: "ai",
+        createdAt: "",
+      },
+      {
+        id: "thinking-person",
+        kind: "person",
+        label: "관계 선호",
+        text: "말을 재촉하지 않는 사람",
+        confidence: "user",
+        createdAt: "",
+      },
+      {
+        id: "thinking-discovery",
+        kind: "reason",
+        label: "새로 보인 발견",
+        text: "설렘보다 안정감을 더 오래 기억함",
+        confidence: "ai",
+        createdAt: "",
+      },
+      {
+        id: "thinking-question",
+        kind: "missing",
+        label: "열린 질문",
+        text: "편안함과 익숙함은 어떻게 다를까?",
+        confidence: "ai",
+        createdAt: "",
+      },
+      {
+        id: "thinking-correction",
+        kind: "correction",
+        label: "내가 고칠 수 있음",
+        text: "이상형은 정답이 아니라 계속 수정되는 기준",
+        confidence: "confirmed",
+        createdAt: "",
+      },
+    ],
+    relations: [
+      {
+        id: "thinking-edge-1",
+        from: "thinking-topic",
+        to: "thinking-emotion",
+        kind: "영향",
+        strength: "accent",
+      },
+      {
+        id: "thinking-edge-2",
+        from: "thinking-emotion",
+        to: "thinking-value",
+        kind: "원인",
+        strength: "solid",
+      },
+      {
+        id: "thinking-edge-3",
+        from: "thinking-value",
+        to: "thinking-person",
+        kind: "영향",
+        strength: "solid",
+      },
+      {
+        id: "thinking-edge-4",
+        from: "thinking-emotion",
+        to: "thinking-discovery",
+        kind: "영향",
+        strength: "dotted",
+      },
+      {
+        id: "thinking-edge-5",
+        from: "thinking-discovery",
+        to: "thinking-question",
+        kind: "확인 필요",
+        strength: "dotted",
+      },
+      {
+        id: "thinking-edge-6",
+        from: "thinking-question",
+        to: "thinking-correction",
+        kind: "다음 행동",
+        strength: "accent",
+      },
+    ],
+    layout: {
+      "thinking-topic": { x: 18, y: 24 },
+      "thinking-emotion": { x: 42, y: 20 },
+      "thinking-value": { x: 63, y: 34 },
+      "thinking-person": { x: 78, y: 58 },
+      "thinking-discovery": { x: 42, y: 58 },
+      "thinking-question": { x: 56, y: 80 },
+      "thinking-correction": { x: 24, y: 76 },
+    },
+  },
+  decision: {
+    kind: "decision",
+    title: "회사를 계속 다닐까, 이직할까?",
+    subtitle:
+      "상황, 통제 가능성, 선택지, 영향, 리스크와 24시간 행동을 구조화해요.",
+    nodes: [
+      {
+        id: "decision-topic",
+        kind: "topic",
+        label: "결정 주제",
+        text: "회사를 계속 다닐까, 이직할까?",
+        confidence: "confirmed",
+        createdAt: "",
+      },
+      {
+        id: "decision-current",
+        kind: "fact",
+        label: "현재 상황",
+        text: "성장감은 낮고 생활 안정성은 있음",
+        confidence: "user",
+        createdAt: "",
+      },
+      {
+        id: "decision-control",
+        kind: "value",
+        label: "통제 가능",
+        text: "면담 요청, 시장 조사, 지출 점검",
+        confidence: "confirmed",
+        createdAt: "",
+      },
+      {
+        id: "decision-uncontrol",
+        kind: "constraint",
+        label: "통제 어려움",
+        text: "채용 시장, 팀 개편 시점",
+        confidence: "ai",
+        createdAt: "",
+      },
+      {
+        id: "decision-stay",
+        kind: "option",
+        label: "선택지 A",
+        text: "남아서 역할 조정 요청",
+        confidence: "ai",
+        createdAt: "",
+      },
+      {
+        id: "decision-move",
+        kind: "option",
+        label: "선택지 B",
+        text: "이직 준비를 병행",
+        confidence: "ai",
+        createdAt: "",
+      },
+      {
+        id: "decision-benefit",
+        kind: "benefit",
+        label: "영향 매트릭스",
+        text: "성장 가능성은 높이고 생활 충격은 낮추기",
+        confidence: "ai",
+        createdAt: "",
+      },
+      {
+        id: "decision-risk",
+        kind: "risk",
+        label: "리스크",
+        text: "준비 없이 떠나면 생활비 공백",
+        confidence: "ai",
+        createdAt: "",
+      },
+      {
+        id: "decision-direction",
+        kind: "direction",
+        label: "현재 방향",
+        text: "바로 퇴사보다 확인 후 이동",
+        confidence: "confirmed",
+        createdAt: "",
+      },
+      {
+        id: "decision-action",
+        kind: "action",
+        label: "24시간 행동",
+        text: "내일 면담 요청과 채용공고 3개 확인",
+        confidence: "confirmed",
+        createdAt: "",
+      },
+    ],
+    relations: [
+      {
+        id: "decision-edge-1",
+        from: "decision-topic",
+        to: "decision-current",
+        kind: "원인",
+        strength: "solid",
+      },
+      {
+        id: "decision-edge-2",
+        from: "decision-current",
+        to: "decision-control",
+        kind: "영향",
+        strength: "solid",
+      },
+      {
+        id: "decision-edge-3",
+        from: "decision-current",
+        to: "decision-uncontrol",
+        kind: "확인 필요",
+        strength: "dotted",
+      },
+      {
+        id: "decision-edge-4",
+        from: "decision-control",
+        to: "decision-stay",
+        kind: "대안",
+        strength: "solid",
+      },
+      {
+        id: "decision-edge-5",
+        from: "decision-control",
+        to: "decision-move",
+        kind: "대안",
+        strength: "solid",
+      },
+      {
+        id: "decision-edge-6",
+        from: "decision-stay",
+        to: "decision-benefit",
+        kind: "장점",
+        strength: "solid",
+      },
+      {
+        id: "decision-edge-7",
+        from: "decision-move",
+        to: "decision-risk",
+        kind: "리스크",
+        strength: "dotted",
+      },
+      {
+        id: "decision-edge-8",
+        from: "decision-benefit",
+        to: "decision-direction",
+        kind: "영향",
+        strength: "accent",
+      },
+      {
+        id: "decision-edge-9",
+        from: "decision-risk",
+        to: "decision-direction",
+        kind: "영향",
+        strength: "dotted",
+      },
+      {
+        id: "decision-edge-10",
+        from: "decision-direction",
+        to: "decision-action",
+        kind: "다음 행동",
+        strength: "accent",
+      },
+    ],
+    layout: {
+      "decision-topic": { x: 50, y: 10 },
+      "decision-current": { x: 50, y: 25 },
+      "decision-control": { x: 31, y: 40 },
+      "decision-uncontrol": { x: 69, y: 40 },
+      "decision-stay": { x: 24, y: 58 },
+      "decision-move": { x: 45, y: 58 },
+      "decision-benefit": { x: 24, y: 76 },
+      "decision-risk": { x: 69, y: 62 },
+      "decision-direction": { x: 55, y: 78 },
+      "decision-action": { x: 55, y: 93 },
+    },
+  },
 };
 
 const layoutRings = {
@@ -162,20 +462,31 @@ export function MapCanvas({
   className,
   compact = false,
   result = false,
+  onStartExample,
 }: {
   session: MapSession;
   sample?: boolean;
   className?: string;
   compact?: boolean;
   result?: boolean;
+  onStartExample?: () => void;
 }) {
   const [zoom, setZoom] = useState(0);
-  const realNodes = session.nodes.length ? session.nodes : [];
-  const nodes = sample
-    ? realNodes.length
-      ? realNodes
-      : sampleNodes
-    : realNodes;
+  const [exampleKind, setExampleKind] = useState<ExampleKind>(
+    session.preferredMapType === "decision" ? "decision" : "thinking",
+  );
+  const hasRealNodes = session.nodes.length > 0;
+  const showExample = !sample && !hasRealNodes;
+  const activeExample = exampleMaps[exampleKind];
+  const realNodes = hasRealNodes ? session.nodes : [];
+  const nodes = showExample
+    ? activeExample.nodes
+    : sample
+      ? realNodes.length
+        ? realNodes
+        : sampleNodes
+      : realNodes;
+  const relations = showExample ? activeExample.relations : session.relations;
   const center = nodes.find((node) => node.kind === "topic") || nodes[0];
   const outerLimit = result ? 10 : compact ? 5 : 8;
   const outer = nodes
@@ -188,47 +499,120 @@ export function MapCanvas({
       : "h-[28rem] max-h-[68dvh] sm:h-[30rem]";
   const centerPoint = { x: 50, y: compact ? 52 : 50 };
   const viewport = getViewport(zoom, compact, result);
-  const visibleLabel = outer.length
-    ? `${outer.length + 1}개 조각`
-    : "비어 있음";
+  const visibleLabel = showExample
+    ? "예시 MAP"
+    : outer.length
+      ? `${outer.length + 1}개 조각`
+      : "비어 있음";
 
   const placedNodes = useMemo<PlacedNode[]>(
     () =>
-      outer.map((node, index) => ({
-        node,
-        point: (compact ? layoutRings.mobile : layoutRings.desktop)[
-          index %
-            (compact ? layoutRings.mobile.length : layoutRings.desktop.length)
-        ],
-        relation: session.relations.find(
-          (rel) =>
-            rel.to === node.id ||
-            (rel.from === node.id && rel.to === center?.id),
-        ),
-        delay: `${Math.min(index * 60, 360)}ms`,
-      })),
-    [center?.id, compact, outer, session.relations],
+      showExample
+        ? activeExample.nodes.map((node, index) => ({
+            node,
+            point: activeExample.layout[node.id] || centerPoint,
+            relation: relations.find((rel) => rel.to === node.id),
+            delay: `${Math.min(index * 60, 360)}ms`,
+          }))
+        : outer.map((node, index) => ({
+            node,
+            point: (compact ? layoutRings.mobile : layoutRings.desktop)[
+              index %
+                (compact
+                  ? layoutRings.mobile.length
+                  : layoutRings.desktop.length)
+            ],
+            relation: relations.find(
+              (rel) =>
+                rel.to === node.id ||
+                (rel.from === node.id && rel.to === center?.id),
+            ),
+            delay: `${Math.min(index * 60, 360)}ms`,
+          })),
+    [
+      activeExample.layout,
+      activeExample.nodes,
+      center?.id,
+      centerPoint,
+      compact,
+      outer,
+      relations,
+      showExample,
+    ],
+  );
+
+  const pointById = useMemo(
+    () =>
+      placedNodes.reduce<Record<string, Point>>((points, placed) => {
+        points[placed.node.id] = placed.point;
+        return points;
+      }, {}),
+    [placedNodes],
   );
 
   return (
     <Card
       className={cx("thinking-map overflow-hidden p-4 sm:p-6", className)}
-      aria-label="실시간 생각 MAP"
+      aria-label={showExample ? "예시 MAP" : "실시간 생각 MAP"}
     >
       <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="kicker">보이는 흐름</p>
+          <p className="kicker">{showExample ? "예시 MAP" : "보이는 흐름"}</p>
           <h2 className="mt-1 text-xl font-black tracking-[-0.03em] sm:text-2xl">
-            말하면 생각이 보입니다.
+            {showExample ? activeExample.title : "말하면 생각이 보입니다."}
           </h2>
+          {showExample ? (
+            <p className="mt-2 max-w-2xl break-keep text-sm font-bold leading-6 text-text-secondary">
+              {activeExample.subtitle}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {showExample ? <Badge tone="default">예시 MAP</Badge> : null}
           {!compact ? (
-            <Badge tone={outer.length ? "success" : "default"}>
-              {outer.length ? "흐름 정리 중" : visibleLabel}
+            <Badge tone={outer.length || showExample ? "success" : "default"}>
+              {showExample
+                ? activeExample.kind === "decision"
+                  ? "Decision MAP"
+                  : "Thinking MAP"
+                : outer.length
+                  ? "흐름 정리 중"
+                  : visibleLabel}
             </Badge>
           ) : null}
-          {!compact && center ? (
+          {showExample ? (
+            <div className="flex flex-wrap gap-2" aria-label="예시 MAP 선택">
+              <Button
+                size="sm"
+                variant={exampleKind === "thinking" ? "primary" : "secondary"}
+                onClick={() => setExampleKind("thinking")}
+              >
+                Thinking MAP
+              </Button>
+              <Button
+                size="sm"
+                variant={exampleKind === "decision" ? "primary" : "secondary"}
+                onClick={() => setExampleKind("decision")}
+              >
+                Decision MAP
+              </Button>
+              <Button size="sm" variant="secondary" onClick={onStartExample}>
+                나도 시작하기
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() =>
+                  setExampleKind((current) =>
+                    current === "thinking" ? "decision" : "thinking",
+                  )
+                }
+              >
+                다른 예시 보기
+              </Button>
+            </div>
+          ) : null}
+          {!compact && center && !showExample ? (
             <div className="flex gap-2" aria-label="MAP 보기 조절">
               <Button
                 size="sm"
@@ -254,15 +638,32 @@ export function MapCanvas({
           h,
         )}
       >
-        {center ? (
-          <>
-            <svg
-              className="absolute inset-0 h-full w-full transition-all duration-slow ease-emphasized motion-reduce:transition-none"
-              viewBox={viewport}
-              preserveAspectRatio="xMidYMid meet"
-              aria-hidden="true"
-            >
-              {placedNodes.map(({ node, point, relation, delay }, index) => (
+        <svg
+          className="absolute inset-0 h-full w-full transition-all duration-slow ease-emphasized motion-reduce:transition-none"
+          viewBox={viewport}
+          preserveAspectRatio="xMidYMid meet"
+          aria-hidden="true"
+        >
+          {showExample
+            ? relations.map((relation, index) => {
+                const from = pointById[relation.from];
+                const to = pointById[relation.to];
+                const node = nodes.find((item) => item.id === relation.to);
+                if (!from || !to || !node) return null;
+                return (
+                  <path
+                    key={relation.id}
+                    d={edgePath(from, to, index)}
+                    className={cx(
+                      "map-edge fill-none",
+                      relationClass(node, relation),
+                    )}
+                    strokeLinecap="round"
+                    style={{ animationDelay: `${Math.min(index * 60, 360)}ms` }}
+                  />
+                );
+              })
+            : placedNodes.map(({ node, point, relation, delay }, index) => (
                 <path
                   key={node.id}
                   d={edgePath(centerPoint, point, index)}
@@ -274,7 +675,21 @@ export function MapCanvas({
                   style={{ animationDelay: delay }}
                 />
               ))}
-            </svg>
+        </svg>
+        {showExample ? (
+          placedNodes.map(({ node, point, delay }) => (
+            <MapNodeView
+              key={node.id}
+              node={node}
+              x={point.x}
+              y={point.y}
+              center={node.kind === "topic" || node.kind === "direction"}
+              compact={compact}
+              delay={delay}
+            />
+          ))
+        ) : center ? (
+          <>
             <MapNodeView
               node={center}
               x={centerPoint.x}
@@ -294,18 +709,7 @@ export function MapCanvas({
               />
             ))}
           </>
-        ) : (
-          <div className="absolute inset-0 grid place-items-center p-8">
-            <EmptyState>
-              <p className="font-extrabold text-text-primary">
-                아직 MAP이 비어 있어요.
-              </p>
-              <p className="mt-2">
-                첫 이야기를 하면 중심 노드와 관계가 여기에서 자라납니다.
-              </p>
-            </EmptyState>
-          </div>
-        )}
+        ) : null}
       </div>
       {!compact ? (
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
@@ -320,7 +724,9 @@ export function MapCanvas({
             ]}
           />
           <p className="text-xs font-bold text-text-muted">
-            확정 관계는 실선, 추정·확인 필요 관계는 점선으로 표시돼요.
+            {showExample
+              ? "예시는 저장되지 않으며, 실제 이야기를 시작하면 내 MAP으로 바로 바뀌어요."
+              : "확정 관계는 실선, 추정·확인 필요 관계는 점선으로 표시돼요."}
           </p>
         </div>
       ) : null}

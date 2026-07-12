@@ -130,7 +130,7 @@ export function Result({
         </header>
 
         <div className="mt-8">
-          <MapCanvas session={session} result />
+          <MapCanvas session={session} result onStartExample={onRealStart} />
         </div>
 
         <section className="mt-8 grid gap-4 lg:grid-cols-3">
