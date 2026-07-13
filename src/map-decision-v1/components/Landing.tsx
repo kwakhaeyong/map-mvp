@@ -36,14 +36,14 @@ function CareerMapShowcase({ onStart }: { onStart: (topic?: string) => void }) {
       </div>
 
       <a
-        href="/showcases/career-decision-map.png"
+        href="/showcases/career-decision-map.png.png"
         target="_blank"
         rel="noreferrer"
         className="group block overflow-hidden rounded-large border border-border bg-surface-elevated shadow-floating focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
         aria-label="이직 Decision MAP 원본 크게 보기"
       >
         <img
-          src="/showcases/career-decision-map.png"
+          src="/showcases/career-decision-map.png.png"
           alt="이직 고민을 스트레스 요인, 통제 가능 영역, 선택지, 영향력 매트릭스, 시나리오, 1년 로드맵과 행동 계획으로 정리한 완성형 Decision MAP"
           className="h-auto w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"
           loading="eager"
@@ -53,7 +53,7 @@ function CareerMapShowcase({ onStart }: { onStart: (topic?: string) => void }) {
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Button variant="default" size="lg" onClick={() => onStart("이직할까?")}>나도 이런 MAP 만들기</Button>
         <a
-          href="/showcases/career-decision-map.png"
+          href="/showcases/career-decision-map.png.png"
           target="_blank"
           rel="noreferrer"
           className="inline-flex min-h-12 items-center justify-center rounded-pill border border-border bg-surface px-5 text-sm font-black shadow-subtle transition hover:-translate-y-0.5 hover:shadow-floating"
