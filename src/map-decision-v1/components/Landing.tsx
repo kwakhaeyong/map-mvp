@@ -17,43 +17,69 @@ export function Brand() {
   );
 }
 
-const topics = ["이직할까?", "먼저 연락할까?", "휴학할까?"];
+const topics = ["내 이상형은?", "이직할까?", "먼저 연락할까?", "휴학할까?"];
 
-function CareerMapShowcase({ onStart }: { onStart: (topic?: string) => void }) {
+type ShowcaseCardProps = {
+  kicker: string;
+  title: string;
+  description: string;
+  badge: string;
+  badgeTone: "action" | "value";
+  imageSrc: string;
+  imageAlt: string;
+  imageLabel: string;
+  startTopic: string;
+  onStart: (topic?: string) => void;
+};
+
+function ShowcaseCard({
+  kicker,
+  title,
+  description,
+  badge,
+  badgeTone,
+  imageSrc,
+  imageAlt,
+  imageLabel,
+  startTopic,
+  onStart,
+}: ShowcaseCardProps) {
   return (
-    <Card className="overflow-hidden p-4 sm:p-5" aria-label="완성형 Decision MAP 예시">
+    <Card className="overflow-hidden p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="kicker">Decision MAP 예시 · 완성 결과물</p>
+        <div className="max-w-2xl">
+          <p className="kicker">{kicker}</p>
           <h2 className="mt-1 text-xl font-black tracking-[-0.03em] sm:text-2xl">
-            이직 고민 정리 MAP & 행동 계획
+            {title}
           </h2>
           <p className="mt-2 break-keep text-sm font-semibold leading-6 text-text-secondary">
-            현재 상황, 선택지, 영향력 매트릭스, 1년 로드맵과 첫 행동까지 한 장에 정리합니다.
+            {description}
           </p>
         </div>
-        <Badge tone="action">최종 결과물</Badge>
+        <Badge tone={badgeTone}>{badge}</Badge>
       </div>
 
       <a
-        href="/showcases/career-decision-map.png.png"
+        href={imageSrc}
         target="_blank"
         rel="noreferrer"
         className="group block overflow-hidden rounded-large border border-border bg-surface-elevated shadow-floating focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
-        aria-label="이직 Decision MAP 원본 크게 보기"
+        aria-label={imageLabel}
       >
         <img
-          src="/showcases/career-decision-map.png.png"
-          alt="이직 고민을 스트레스 요인, 통제 가능 영역, 선택지, 영향력 매트릭스, 시나리오, 1년 로드맵과 행동 계획으로 정리한 완성형 Decision MAP"
+          src={imageSrc}
+          alt={imageAlt}
           className="h-auto w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"
           loading="eager"
         />
       </a>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Button variant="default" size="lg" onClick={() => onStart("이직할까?")}>나도 이런 MAP 만들기</Button>
+        <Button variant="default" size="lg" onClick={() => onStart(startTopic)}>
+          나도 이런 MAP 만들기
+        </Button>
         <a
-          href="/showcases/career-decision-map.png.png"
+          href={imageSrc}
           target="_blank"
           rel="noreferrer"
           className="inline-flex min-h-12 items-center justify-center rounded-pill border border-border bg-surface px-5 text-sm font-black shadow-subtle transition hover:-translate-y-0.5 hover:shadow-floating"
@@ -62,6 +88,38 @@ function CareerMapShowcase({ onStart }: { onStart: (topic?: string) => void }) {
         </a>
       </div>
     </Card>
+  );
+}
+
+function MapShowcaseGallery({ onStart }: { onStart: (topic?: string) => void }) {
+  return (
+    <div className="grid gap-5" aria-label="완성형 MAP 결과물 예시">
+      <ShowcaseCard
+        kicker="Thinking MAP 예시 · 여성 타깃"
+        title="여성의 남성 이상형 Thinking MAP"
+        description="끌리는 순간부터 장기 관계 적합도, 필수·선호·타협 기준, 그린·레드 플래그, 30일 탐색 로드맵과 첫 행동까지 한 장에 정리합니다."
+        badge="대표 Thinking MAP"
+        badgeTone="value"
+        imageSrc="/showcases/ideal-partner-thinking-map.png"
+        imageAlt="여성이 자신과 잘 맞는 남성 이상형을 끌림, 관계 적합도, 필수 조건, 선호 조건, 타협 가능 조건, 반복 패턴, 그린 플래그, 주의 신호, 30일 관계 탐색 로드맵과 24시간 첫 행동으로 정리한 Thinking MAP"
+        imageLabel="여성의 남성 이상형 Thinking MAP 원본 크게 보기"
+        startTopic="내가 원하는 남성 이상형은 어떤 사람일까?"
+        onStart={onStart}
+      />
+
+      <ShowcaseCard
+        kicker="Decision MAP 예시 · 완성 결과물"
+        title="이직 고민 정리 MAP & 행동 계획"
+        description="현재 상황, 선택지, 영향력 매트릭스, 1년 로드맵과 첫 행동까지 한 장에 정리합니다."
+        badge="대표 Decision MAP"
+        badgeTone="action"
+        imageSrc="/showcases/career-decision-map.png.png"
+        imageAlt="이직 고민을 스트레스 요인, 통제 가능 영역, 선택지, 영향력 매트릭스, 시나리오, 1년 로드맵과 행동 계획으로 정리한 완성형 Decision MAP"
+        imageLabel="이직 Decision MAP 원본 크게 보기"
+        startTopic="이직할까?"
+        onStart={onStart}
+      />
+    </div>
   );
 }
 
@@ -96,7 +154,7 @@ export function Landing({
         </div>
       </header>
 
-      <section className="map-container grid items-start gap-10 py-10 lg:grid-cols-[minmax(0,.78fr)_minmax(34rem,1.22fr)] lg:gap-14 lg:py-16">
+      <section className="map-container grid items-start gap-10 py-10 lg:grid-cols-[minmax(0,.72fr)_minmax(36rem,1.28fr)] lg:gap-14 lg:py-16">
         <div className="max-w-2xl lg:sticky lg:top-8">
           <p className="kicker">말하면, 생각이 보입니다.</p>
           <h1 className="mt-4 text-balance break-keep text-[2.125rem] font-black leading-[1.12] tracking-[-0.04em] sm:text-5xl lg:text-[3.25rem]">
@@ -135,7 +193,7 @@ export function Landing({
           </div>
         </div>
 
-        <CareerMapShowcase onStart={onStart} />
+        <MapShowcaseGallery onStart={onStart} />
       </section>
     </main>
   );
