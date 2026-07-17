@@ -20,15 +20,15 @@ export function Brand() {
 const topics = ["내 이상형은?", "진로를 정하고 싶어", "요즘 내가 지쳐", "부업을 시작할까?"];
 
 const thinkingTopics = [
-  { title: "이상형 & 관계", subtitle: "끌림과 안정감을 함께 주는 사람", icon: "♡", tone: "from-pink-100 to-rose-50", topic: "내가 원하는 남성 이상형은 어떤 사람일까?" },
-  { title: "커리어 & 진로", subtitle: "좋아하고 잘하는 일을 찾는 길", icon: "↗", tone: "from-sky-100 to-blue-50", topic: "내 진로와 커리어 방향을 정리하고 싶어" },
-  { title: "자기개발 & 성장", subtitle: "매일 1%씩 더 나은 나", icon: "✦", tone: "from-violet-100 to-purple-50", topic: "내 성장 계획을 만들고 싶어" },
-  { title: "건강 & 운동", subtitle: "몸과 마음의 지속 가능한 루틴", icon: "+", tone: "from-cyan-100 to-teal-50", topic: "건강과 운동 루틴을 만들고 싶어" },
-  { title: "여행 & 경험", subtitle: "새로운 곳에서 나를 발견하기", icon: "✈", tone: "from-indigo-100 to-sky-50", topic: "나에게 맞는 여행과 경험을 정리하고 싶어" },
-  { title: "취미 & 즐거움", subtitle: "일상에 기쁨을 더하는 시간", icon: "☕", tone: "from-rose-100 to-orange-50", topic: "나에게 맞는 취미를 찾고 싶어" },
-  { title: "인간관계 & 소통", subtitle: "더 깊고 편안한 관계 만들기", icon: "◎", tone: "from-emerald-100 to-green-50", topic: "인간관계와 소통을 정리하고 싶어" },
-  { title: "학업 & 자격증", subtitle: "배움을 성취로 연결하는 계획", icon: "□", tone: "from-fuchsia-100 to-pink-50", topic: "학업과 자격증 계획을 세우고 싶어" },
-  { title: "창업 & 부업", subtitle: "작게 실험하고 크게 키우는 길", icon: "△", tone: "from-orange-100 to-amber-50", topic: "창업이나 부업 아이디어를 정리하고 싶어" },
+  { title: "이상형 & 관계", subtitle: "끌림과 안정감을 함께 주는 사람", imageSrc: "/showcases/ideal-partner-thinking-map.png", topic: "내가 원하는 남성 이상형은 어떤 사람일까?" },
+  { title: "커리어 & 진로", subtitle: "좋아하고 잘하는 일을 찾는 길", imageSrc: "/showcases/career-thinking-map.png", topic: "내 진로와 커리어 방향을 정리하고 싶어" },
+  { title: "자기개발 & 성장", subtitle: "매일 1%씩 더 나은 나", imageSrc: "/showcases/growth-thinking-map.png", topic: "내 성장 계획을 만들고 싶어" },
+  { title: "건강 & 운동", subtitle: "몸과 마음의 지속 가능한 루틴", imageSrc: "/showcases/health-thinking-map.png", topic: "건강과 운동 루틴을 만들고 싶어" },
+  { title: "여행 & 경험", subtitle: "새로운 곳에서 나를 발견하기", imageSrc: "/showcases/travel-thinking-map.png", topic: "나에게 맞는 여행과 경험을 정리하고 싶어" },
+  { title: "취미 & 즐거움", subtitle: "일상에 기쁨을 더하는 시간", imageSrc: "/showcases/hobby-thinking-map.png", topic: "나에게 맞는 취미를 찾고 싶어" },
+  { title: "인간관계 & 소통", subtitle: "더 깊고 편안한 관계 만들기", imageSrc: "/showcases/relationship-thinking-map.png", topic: "인간관계와 소통을 정리하고 싶어" },
+  { title: "학업 & 자격증", subtitle: "배움을 성취로 연결하는 계획", imageSrc: "/showcases/study-thinking-map.png", topic: "학업과 자격증 계획을 세우고 싶어" },
+  { title: "창업 & 부업", subtitle: "작게 실험하고 크게 키우는 길", imageSrc: "/showcases/startup-thinking-map.png", topic: "창업이나 부업 아이디어를 정리하고 싶어" },
 ];
 
 type ShowcaseCardProps = {
@@ -72,19 +72,24 @@ function TopicGallery({ onStart }: { onStart: (topic?: string) => void }) {
       <div className="mx-auto max-w-3xl text-center">
         <p className="kicker">Thinking MAP 둘러보기</p>
         <h2 id="thinking-gallery-title" className="mt-3 text-3xl font-black tracking-[-0.04em] sm:text-4xl">지금의 나를 이해하는 9가지 지도</h2>
-        <p className="mt-4 break-keep text-base font-semibold leading-7 text-text-secondary">가벼운 관심사부터 오래 고민한 문제까지, 대화를 시작하면 나만의 완성형 MAP으로 이어집니다.</p>
+        <p className="mt-4 break-keep text-base font-semibold leading-7 text-text-secondary">먼저 완성 결과를 보고, 마음에 드는 지도를 골라 바로 시작해보세요.</p>
       </div>
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {thinkingTopics.map((item) => (
-          <button key={item.title} type="button" onClick={() => onStart(item.topic)} className={`group min-h-56 rounded-large border border-border bg-gradient-to-br ${item.tone} p-5 text-left shadow-subtle transition duration-300 hover:-translate-y-1 hover:shadow-floating focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20`}>
-            <div className="flex items-start justify-between gap-4">
-              <span className="grid size-12 place-items-center rounded-full border border-white/70 bg-white/75 text-xl font-black shadow-subtle">{item.icon}</span>
-              <span className="rounded-pill border border-white/70 bg-white/70 px-3 py-1 text-xs font-black text-text-muted">Thinking MAP</span>
+          <article key={item.title} className="group overflow-hidden rounded-large border border-border bg-surface shadow-subtle transition duration-300 hover:-translate-y-1 hover:shadow-floating">
+            <a href={item.imageSrc} target="_blank" rel="noreferrer" className="block aspect-[4/3] overflow-hidden border-b border-border bg-surface-elevated" aria-label={`${item.title} Thinking MAP 원본 크게 보기`}>
+              <img src={item.imageSrc} alt={`${item.title} Thinking MAP 완성 결과물 미리보기`} className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]" loading="lazy" />
+            </a>
+            <div className="p-5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="rounded-pill border border-border bg-surface-elevated px-3 py-1 text-xs font-black text-text-muted">Thinking MAP</span>
+                <a href={item.imageSrc} target="_blank" rel="noreferrer" className="text-xs font-black text-text-muted hover:text-text-primary">크게 보기 ↗</a>
+              </div>
+              <h3 className="mt-4 text-xl font-black tracking-[-0.03em]">{item.title}</h3>
+              <p className="mt-2 break-keep text-sm font-semibold leading-6 text-text-secondary">{item.subtitle}</p>
+              <Button className="mt-5 w-full" variant="secondary" size="lg" onClick={() => onStart(item.topic)}>이 MAP으로 시작하기</Button>
             </div>
-            <h3 className="mt-8 text-xl font-black tracking-[-0.03em]">{item.title}</h3>
-            <p className="mt-2 break-keep text-sm font-semibold leading-6 text-text-secondary">{item.subtitle}</p>
-            <span className="mt-6 inline-flex items-center gap-2 text-sm font-black">이 MAP 시작하기 <span className="transition group-hover:translate-x-1">→</span></span>
-          </button>
+          </article>
         ))}
       </div>
     </section>
