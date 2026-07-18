@@ -1,108 +1,58 @@
 # MAP MVP
 
-MAP is a new self-expression format.
+MAP Decision은 사용자의 생각과 고민을 대화로 끌어내어, 글이 아니라 시각화된 지도(MAP)로 보여주는 의사결정 시각화 AI 플랫폼입니다.
 
-> 사람은 분류되는 존재가 아니라, 표현되는 존재입니다.
+> 정답을 대신 주는 AI가 아니라, 내 생각이 보이게 만드는 AI.
 
-## MAP OS Diagram
+## 기준 문서 (Source of Truth)
 
-```text
-Question Engine
-      ↓
-Conversation Memory
-      ↓
-Theme Engine
-      ↓
-Value Engine
-      ↓
-Emotion Engine
-      ↓
-Pattern Engine
-      ↓
-Story Engine
-      ↓
-Identity Engine
-      ↓
-MAP Renderer
-      ↓
-Share Renderer
-```
+이 README는 개요만 담습니다. 제품 정의와 화면 규칙은 아래 두 문서를 기준으로 삼으세요:
 
-## Data Flow
+- [`docs/MAP_CONSTITUTION.md`](docs/MAP_CONSTITUTION.md) — 제품 정체성, AI/대화/저장 원칙
+- [`docs/MAP_DESIGN_SYSTEM.md`](docs/MAP_DESIGN_SYSTEM.md) — 디자인 토큰, 타이포, Golden Screens 규칙
 
-1. **Question Engine** plans the next prompts for a MAP category or mode.
-2. **Conversation Memory** turns answers into a reusable memory snapshot.
-3. **Theme Engine** extracts the main themes from memory.
-4. **Value Engine** detects user values from memory and themes.
-5. **Emotion Engine** reads emotional tones and intensity.
-6. **Pattern Engine** finds repeated expression patterns.
-7. **Story Engine** creates the user-facing story. This must happen before rendering.
-8. **Identity Engine** stores reusable identity profile data across MAP surfaces.
-9. **MAP Renderer** visualizes only the Story Engine output plus identity context.
-10. **Share Renderer** packages the final story and rendered MAP into a share artifact.
+개발 시 지켜야 할 절차와 제약은 [`CLAUDE.md`](CLAUDE.md), [`AGENTS.md`](AGENTS.md)를 참고하세요.
 
-## Folder Structure
+## 실제로 운영 중인 코드
+
+이 저장소에서 실제로 배포되는 서비스 코드는 **`src/map-decision-v1`** 하나입니다.
 
 ```text
-src/map-os/
-  question-engine/       prompt planning interfaces
-  conversation-memory/   memory snapshot interfaces
-  theme-engine/          theme extraction interfaces
-  value-engine/          value detection interfaces
-  emotion-engine/        emotional signal interfaces
-  pattern-engine/        repeated pattern interfaces
-  story-engine/          story generation interfaces
-  identity-engine/       reusable identity profile interfaces
-  map-renderer/          story visualization interfaces
-  share-renderer/        share artifact interfaces
-  shared/                common MAP OS data types
-  journal/               future Journal surface
-  compare/               future Compare surface
-  expression-map/        future Expression MAP surface
-  life-map/              future Life MAP surface
-  friend-map/            future Friend MAP surface
-  work-map/              future Work MAP surface
+app/
+  page.tsx                  랜딩 페이지 진입점
+  result/page.tsx           결과(Result) 페이지 진입점
+  components/MapDecisionApp.tsx   src/map-decision-v1의 MapDecisionProduct를 렌더링
+
+src/map-decision-v1/
+  components/
+    Landing.tsx              랜딩 화면
+    Conversation.tsx         대화 + 라이브 MAP 화면
+    Result.tsx                결과 MAP 화면
+    MapCanvas.tsx             MAP 시각화 캔버스
+    MapDecisionProduct.tsx    화면 전환을 담당하는 최상위 컴포넌트
+    ui/primitives.tsx         공유 UI 프리미티브 (버튼/카드/노드 등)
+  engine/
+    session.ts                세션 생성/진행 로직
+    local-conversation-provider.ts  로컬(결정론적) 대화 응답 생성
+    thinking-extractor.ts     대화에서 구조(사실/감정/가치/옵션 등) 추출
+    topics.ts                 토픽 정의
+    integration-providers.ts  외부 AI 연동을 위한 인터페이스
+  storage/session-storage.ts  로컬 자동저장
+  voice/use-web-speech.ts     Web Speech API 연동
+  types/index.ts              세션/노드/관계 타입 정의
 ```
 
-## Responsibilities
+## 정리된 실험 코드
 
-### Question Engine
-Owns question strategy. It decides what to ask next, but does not generate a result.
+과거 여러 시점에 시도된 "대화 → 인사이트 → 스토리 → MAP" 아키텍처 실험(`map-os`, `conversation-engine`, `discovery-engine`, `story-engine`, `map-engine`)은 어디서도 사용되지 않는 고립된 코드였으며, 정리 PR을 통해 삭제했습니다. 필요하면 git 히스토리에서 확인할 수 있습니다.
 
-### Conversation Memory
-Stores the conversation as a structured memory snapshot. It separates durable signals from temporary or unresolved signals.
+## 개발 명령
 
-### Theme Engine
-Finds recurring topics and themes in memory.
-
-### Value Engine
-Detects what the user appears to value right now.
-
-### Emotion Engine
-Reads emotional tone. It is separate from values so MAP can express both what matters and how it feels.
-
-### Pattern Engine
-Finds repeated behavior, preference, or expression patterns.
-
-### Story Engine
-Turns themes, values, emotions, and patterns into a story. Story is the source of meaning for rendering.
-
-### Identity Engine
-Stores reusable identity profile data. This enables future Journal, Compare, Expression MAP, Life MAP, Friend MAP, and Work MAP experiences to share a common identity layer.
-
-### MAP Renderer
-Visualizes Story Engine output. It must not invent new meaning or bypass Story Engine.
-
-### Share Renderer
-Creates share-ready artifacts that users want to screenshot, save, and send to friends.
-
-## Architecture Rules
-
-- MAP is not a chatbot.
-- MAP is not an AI assistant.
-- MAP is a self-expression operating system.
-- Every engine is separated behind an interface.
-- Story must always be generated before MAP rendering.
-- MAP Renderer only visualizes Story Engine output.
-- Identity Engine owns reusable identity profile data.
-- Future surfaces must use MAP OS instead of creating one-off pipelines.
+```bash
+npm run dev            # 로컬 개발 서버
+npm run build           # 프로덕션 빌드
+npm run typecheck       # 타입 검사
+npm run harness:check   # 필수 문서/브랜딩 가드
+npm run design:check    # 디자인 토큰(raw 색상값 금지) 가드
+npm run visual:test     # Playwright 시각 회귀 테스트
+```
