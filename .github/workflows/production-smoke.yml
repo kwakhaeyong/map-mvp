@@ -1,0 +1,42 @@
+name: Production Smoke Check
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Wait for Vercel production
+        run: sleep 90
+      - name: Check mapdecision.com
+        id: check
+        run: |
+          set -e
+          for i in {1..10}; do
+            STATUS=$(curl -L -sS -o /tmp/home.html -w '%{http_code}' --max-time 20 https://mapdecision.com || true)
+            if [ "$STATUS" = "200" ] && grep -q "MAP Decision" /tmp/home.html; then
+              echo "Production is healthy"
+              exit 0
+            fi
+            echo "Attempt $i failed with HTTP $STATUS"
+            sleep 30
+          done
+          exit 1
+      - name: Create incident issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "${{ github.repository }}" \
+            --title "Production smoke check failed" \
+            --body "mapdecision.com did not return a healthy MAP Decision page after the latest main deployment. Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
