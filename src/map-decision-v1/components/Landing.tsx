@@ -111,6 +111,7 @@ export function Landing({ hasDraft, onStart, onResume, onDemo, saveState = "save
         <div className="max-w-2xl">
           <p className="kicker">말하면, 생각이 보입니다.</p>
           <h1 className="mt-4 text-balance break-keep text-[2.25rem] font-black leading-[1.08] tracking-[-0.05em] sm:text-5xl lg:text-[3.5rem]">복잡한 생각을,<br />한 장의 나로.</h1>
+          <p className="mt-3 break-keep text-[12px] font-semibold leading-[1.45] text-text-muted sm:text-[13px]">정답을 대신 주는 AI가 아니라, 내 생각이 보이게 만드는 AI.</p>
           <p className="mt-5 max-w-xl whitespace-pre-line break-keep text-lg font-medium leading-8 text-text-secondary">말하거나 하나만 골라보세요.{`\n`}5분 후, 생각과 선택지를 완성된 MAP으로 받아볼 수 있어요.</p>
           <Card className="mt-8 p-3 sm:p-4">
             <VoiceButton className="min-h-24 w-full justify-start px-6 text-left text-lg" onClick={() => onStart()}>
