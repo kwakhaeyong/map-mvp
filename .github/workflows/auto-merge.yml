@@ -1,0 +1,40 @@
+name: Guarded Auto Merge
+
+on:
+  workflow_run:
+    workflows: ["MAP Quality Gate"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          PR=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[0].number // empty')
+          test -n "$PR"
+          echo "number=$PR" >> "$GITHUB_OUTPUT"
+      - name: Merge approved automation branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.pr.outputs.number }}
+        run: |
+          BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName --jq .headRefName)
+          case "$BRANCH" in
+            feature/*|fix/*|chore/*|codex/*) ;;
+            *) echo "Branch not eligible for auto merge: $BRANCH"; exit 1 ;;
+          esac
+          gh pr merge "$PR" --repo "$REPO" --squash --delete-branch
