@@ -39,15 +39,15 @@ const heroExampleSession: MapSession = {
 };
 
 const thinkingTopics = [
-  { title: "이상형 & 관계", subtitle: "끌림과 안정감을 함께 주는 사람", imageSrc: "/showcases/ideal-partner-thinking-map.png", topic: "내가 원하는 남성 이상형은 어떤 사람일까?" },
-  { title: "커리어 & 진로", subtitle: "좋아하고 잘하는 일을 찾는 길", imageSrc: "/showcases/career-thinking-map.png", topic: "내 진로와 커리어 방향을 정리하고 싶어" },
-  { title: "자기개발 & 성장", subtitle: "매일 1%씩 더 나은 나", imageSrc: "/showcases/growth-thinking-map.png", topic: "내 성장 계획을 만들고 싶어" },
-  { title: "건강 & 운동", subtitle: "몸과 마음의 지속 가능한 루틴", imageSrc: "/showcases/health-thinking-map.png", topic: "건강과 운동 루틴을 만들고 싶어" },
-  { title: "여행 & 경험", subtitle: "새로운 곳에서 나를 발견하기", imageSrc: "/showcases/travel-thinking-map.png", topic: "나에게 맞는 여행과 경험을 정리하고 싶어" },
-  { title: "취미 & 즐거움", subtitle: "일상에 기쁨을 더하는 시간", imageSrc: "/showcases/hobby-thinking-map.png", topic: "나에게 맞는 취미를 찾고 싶어" },
-  { title: "인간관계 & 소통", subtitle: "더 깊고 편안한 관계 만들기", imageSrc: "/showcases/relationship-thinking-map.png", topic: "인간관계와 소통을 정리하고 싶어" },
-  { title: "학업 & 자격증", subtitle: "배움을 성취로 연결하는 계획", imageSrc: "/showcases/study-thinking-map.png", topic: "학업과 자격증 계획을 세우고 싶어" },
-  { title: "창업 & 부업", subtitle: "작게 실험하고 크게 키우는 길", imageSrc: "/showcases/startup-thinking-map.png", topic: "창업이나 부업 아이디어를 정리하고 싶어" },
+  { title: "이상형 & 관계", subtitle: "끌림과 안정감을 함께 주는 사람", imageSrc: "/showcases/ideal-partner-thinking-map.png", previewSrc: "/showcases/ideal-partner-thinking-map.webp", topic: "내가 원하는 남성 이상형은 어떤 사람일까?" },
+  { title: "커리어 & 진로", subtitle: "좋아하고 잘하는 일을 찾는 길", imageSrc: "/showcases/career-thinking-map.png", previewSrc: "/showcases/career-thinking-map.webp", topic: "내 진로와 커리어 방향을 정리하고 싶어" },
+  { title: "자기개발 & 성장", subtitle: "매일 1%씩 더 나은 나", imageSrc: "/showcases/growth-thinking-map.png", previewSrc: "/showcases/growth-thinking-map.webp", topic: "내 성장 계획을 만들고 싶어" },
+  { title: "건강 & 운동", subtitle: "몸과 마음의 지속 가능한 루틴", imageSrc: "/showcases/health-thinking-map.png", previewSrc: "/showcases/health-thinking-map.webp", topic: "건강과 운동 루틴을 만들고 싶어" },
+  { title: "여행 & 경험", subtitle: "새로운 곳에서 나를 발견하기", imageSrc: "/showcases/travel-thinking-map.png", previewSrc: "/showcases/travel-thinking-map.webp", topic: "나에게 맞는 여행과 경험을 정리하고 싶어" },
+  { title: "취미 & 즐거움", subtitle: "일상에 기쁨을 더하는 시간", imageSrc: "/showcases/hobby-thinking-map.png", previewSrc: "/showcases/hobby-thinking-map.webp", topic: "나에게 맞는 취미를 찾고 싶어" },
+  { title: "인간관계 & 소통", subtitle: "더 깊고 편안한 관계 만들기", imageSrc: "/showcases/relationship-thinking-map.png", previewSrc: "/showcases/relationship-thinking-map.webp", topic: "인간관계와 소통을 정리하고 싶어" },
+  { title: "학업 & 자격증", subtitle: "배움을 성취로 연결하는 계획", imageSrc: "/showcases/study-thinking-map.png", previewSrc: "/showcases/study-thinking-map.webp", topic: "학업과 자격증 계획을 세우고 싶어" },
+  { title: "창업 & 부업", subtitle: "작게 실험하고 크게 키우는 길", imageSrc: "/showcases/startup-thinking-map.png", previewSrc: "/showcases/startup-thinking-map.webp", topic: "창업이나 부업 아이디어를 정리하고 싶어" },
 ];
 
 type ShowcaseCardProps = {
@@ -57,13 +57,14 @@ type ShowcaseCardProps = {
   badge: string;
   badgeTone: "action" | "value";
   imageSrc: string;
+  previewSrc: string;
   imageAlt: string;
   imageLabel: string;
   startTopic: string;
   onStart: (topic?: string) => void;
 };
 
-function ShowcaseCard({ kicker, title, description, badge, badgeTone, imageSrc, imageAlt, imageLabel, startTopic, onStart }: ShowcaseCardProps) {
+function ShowcaseCard({ kicker, title, description, badge, badgeTone, imageSrc, previewSrc, imageAlt, imageLabel, startTopic, onStart }: ShowcaseCardProps) {
   return (
     <Card className="overflow-hidden p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -75,7 +76,7 @@ function ShowcaseCard({ kicker, title, description, badge, badgeTone, imageSrc, 
         <Badge tone={badgeTone}>{badge}</Badge>
       </div>
       <a href={imageSrc} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-large border border-border bg-surface-elevated shadow-floating focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20" aria-label={imageLabel}>
-        <img src={imageSrc} alt={imageAlt} className="h-auto w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]" loading="eager" />
+        <img src={previewSrc} alt={imageAlt} width={1600} height={900} className="h-auto w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]" loading="lazy" />
       </a>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Button variant="default" size="lg" onClick={() => onStart(startTopic)}>나도 이런 MAP 만들기</Button>
@@ -97,7 +98,7 @@ function TopicGallery({ onStart }: { onStart: (topic?: string) => void }) {
         {thinkingTopics.map((item) => (
           <article key={item.title} className="group overflow-hidden rounded-large border border-border bg-surface shadow-subtle transition duration-300 hover:-translate-y-1 hover:shadow-floating">
             <a href={item.imageSrc} target="_blank" rel="noreferrer" className="block aspect-[4/3] overflow-hidden border-b border-border bg-surface-elevated" aria-label={`${item.title} Thinking MAP 원본 크게 보기`}>
-              <img src={item.imageSrc} alt={`${item.title} Thinking MAP 완성 결과물 미리보기`} className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]" loading="lazy" />
+              <img src={item.previewSrc} alt={`${item.title} Thinking MAP 완성 결과물 미리보기`} width={960} height={640} className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]" loading="lazy" />
             </a>
             <div className="p-5">
               <div className="flex items-center justify-between gap-3">
@@ -172,7 +173,7 @@ export function Landing({ hasDraft, onStart, onResume, onDemo, saveState = "save
           <h2 id="decision-title" className="mt-3 text-3xl font-black tracking-[-0.04em] sm:text-4xl">생각을 정리한 뒤, 선택까지 이어집니다.</h2>
           <p className="mt-4 break-keep text-base font-semibold leading-7 text-text-secondary">선택지, 리스크, 통제 가능 영역, 시나리오와 첫 행동을 한눈에 볼 수 있습니다.</p>
         </div>
-        <ShowcaseCard kicker="Decision MAP 예시 · 완성 결과물" title="이직 고민 정리 MAP & 행동 계획" description="현재 상황, 선택지, 영향력 매트릭스, 1년 로드맵과 첫 행동까지 한 장에 정리합니다." badge="대표 Decision MAP" badgeTone="action" imageSrc="/showcases/career-decision-map.png.png" imageAlt="이직 고민을 선택지와 실행 계획으로 정리한 완성형 Decision MAP" imageLabel="이직 Decision MAP 원본 크게 보기" startTopic="이직할까?" onStart={onStart} />
+        <ShowcaseCard kicker="Decision MAP 예시 · 완성 결과물" title="이직 고민 정리 MAP & 행동 계획" description="현재 상황, 선택지, 영향력 매트릭스, 1년 로드맵과 첫 행동까지 한 장에 정리합니다." badge="대표 Decision MAP" badgeTone="action" imageSrc="/showcases/career-decision-map.png.png" previewSrc="/showcases/career-decision-map.webp" imageAlt="이직 고민을 선택지와 실행 계획으로 정리한 완성형 Decision MAP" imageLabel="이직 Decision MAP 원본 크게 보기" startTopic="이직할까?" onStart={onStart} />
       </section>
 
       <section className="map-container pb-20">
@@ -180,8 +181,8 @@ export function Landing({ hasDraft, onStart, onResume, onDemo, saveState = "save
           <p className="text-sm font-black text-primary-foreground/75">지금 떠오르는 생각 하나면 충분해요.</p>
           <h2 className="mt-3 text-3xl font-black tracking-[-0.04em] sm:text-4xl">당신의 첫 MAP을 시작해보세요.</h2>
           <div className="mx-auto mt-7 grid max-w-xl gap-3 sm:grid-cols-2">
-            <Button variant="secondary" size="lg" onClick={() => onStart()}>직접 입력하기</Button>
-            <Button variant="secondary" size="lg" onClick={onDemo}>30초 체험하기</Button>
+            <Button variant="default" size="lg" onClick={() => onStart()}>직접 입력하기</Button>
+            <Button variant="ghost" size="lg" className="!border !border-primary-foreground !bg-transparent !text-primary-foreground !shadow-none hover:!bg-surface-elevated hover:!text-text-primary" onClick={onDemo}>30초 체험하기</Button>
           </div>
         </div>
       </section>
