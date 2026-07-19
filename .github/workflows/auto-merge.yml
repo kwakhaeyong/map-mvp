@@ -27,35 +27,9 @@ jobs:
           test -n "$PR"
           echo "number=$PR" >> "$GITHUB_OUTPUT"
       - name: Merge after Quality Gate success
-        id: merge
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ steps.pr.outputs.number }}
         run: |
-          TITLE=$(gh pr view "$PR" --repo "$REPO" --json title --jq .title)
           gh pr merge "$PR" --repo "$REPO" --squash --delete-branch
-          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
-          echo "merged_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-
-      - name: Skip n8n merge notification when webhook secret is missing
-        if: ${{ secrets.N8N_MERGE_WEBHOOK == '' }}
-        run: echo "N8N_MERGE_WEBHOOK is not configured yet; skipping notification."
-
-      - name: Notify n8n of merge
-        if: ${{ secrets.N8N_MERGE_WEBHOOK != '' }}
-        env:
-          WEBHOOK_URL: ${{ secrets.N8N_MERGE_WEBHOOK }}
-          PR: ${{ steps.pr.outputs.number }}
-          TITLE: ${{ steps.merge.outputs.title }}
-          MERGED_AT: ${{ steps.merge.outputs.merged_at }}
-        run: |
-          payload=$(jq -n \
-            --arg pr_number "$PR" \
-            --arg title "$TITLE" \
-            --arg merged_at "$MERGED_AT" \
-            '{title: $title, pr_number: ($pr_number | tonumber), merged_at: $merged_at}')
-          curl --fail-with-body --show-error --silent \
-            --retry 3 --retry-delay 5 \
-            -H "Content-Type: application/json" \
-            -X POST -d "$payload" "$WEBHOOK_URL"
