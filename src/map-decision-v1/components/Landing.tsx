@@ -1,9 +1,10 @@
+import { MapSession, SCHEMA_VERSION } from "../types";
+import { MapCanvas } from "./MapCanvas";
 import {
   Badge,
   Button,
   Card,
   ResponseChip,
-  VoiceButton,
 } from "./ui/primitives";
 
 export function Brand() {
@@ -18,6 +19,24 @@ export function Brand() {
 }
 
 const topics = ["내 이상형은?", "진로를 정하고 싶어", "요즘 내가 지쳐", "부업을 시작할까?"];
+
+const heroExampleSession: MapSession = {
+  version: SCHEMA_VERSION,
+  stage: "landing",
+  preferredMapType: "decision",
+  messages: [],
+  nodes: [
+    { id: "hero-topic", kind: "topic", label: "핵심 주제", text: "이직할까?", confidence: "user", createdAt: "" },
+    { id: "hero-fact", kind: "fact", label: "내가 말한 상황", text: "성장감이 줄어든 일", confidence: "user", createdAt: "" },
+    { id: "hero-option", kind: "option", label: "가능한 방향", text: "확인하고 결정하기", confidence: "ai", createdAt: "" },
+  ],
+  relations: [
+    { id: "hero-rel-1", from: "hero-topic", to: "hero-fact", kind: "원인", strength: "solid" },
+    { id: "hero-rel-2", from: "hero-topic", to: "hero-option", kind: "대안", strength: "accent" },
+  ],
+  startedAt: "",
+  updatedAt: "",
+};
 
 const thinkingTopics = [
   { title: "이상형 & 관계", subtitle: "끌림과 안정감을 함께 주는 사람", imageSrc: "/showcases/ideal-partner-thinking-map.png", topic: "내가 원하는 남성 이상형은 어떤 사람일까?" },
@@ -108,27 +127,41 @@ export function Landing({ hasDraft, onStart, onResume, onDemo, saveState = "save
       </header>
 
       <section className="map-container grid items-center gap-10 py-12 lg:grid-cols-[minmax(0,.74fr)_minmax(34rem,1.26fr)] lg:gap-14 lg:py-20">
-        <div className="max-w-2xl">
+        <div className="order-2 max-w-2xl lg:order-1">
           <p className="kicker">말하면, 생각이 보입니다.</p>
           <h1 className="mt-4 text-balance break-keep text-[2.25rem] font-black leading-[1.08] tracking-[-0.05em] sm:text-5xl lg:text-[3.5rem]">복잡한 생각을,<br />한 장의 나로.</h1>
           <p className="mt-3 break-keep text-[12px] font-semibold leading-[1.45] text-text-muted sm:text-[13px]">정답을 대신 주는 AI가 아니라, 내 생각이 보이게 만드는 AI.</p>
           <p className="mt-5 max-w-xl whitespace-pre-line break-keep text-lg font-medium leading-8 text-text-secondary">말하거나 하나만 골라보세요.{`\n`}5분 후, 생각과 선택지를 완성된 MAP으로 받아볼 수 있어요.</p>
           <Card className="mt-8 p-3 sm:p-4">
-            <VoiceButton className="min-h-24 w-full justify-start px-6 text-left text-lg" onClick={() => onStart()}>
-              <span className="text-2xl">🎙</span>
-              <span><span className="block">말로 시작하기</span><span className="block text-sm font-semibold text-primary-foreground/80">마이크 권한이 없어도 입력으로 이어갈 수 있어요.</span></span>
-            </VoiceButton>
+            <Button variant="primary" size="lg" className="min-h-24 w-full justify-start gap-3 px-6 text-left text-lg" onClick={() => onStart()}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-6 shrink-0">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+              <span><span className="block">질문을 입력해서 시작하기</span><span className="block text-sm font-semibold text-primary-foreground/80">지금 고민을 적으면 구조화된 그림으로 정리해드려요.</span></span>
+            </Button>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <Button variant="secondary" size="lg" onClick={() => onStart()}>직접 입력하기</Button>
-              <Button variant="default" size="lg" onClick={onDemo}>30초 체험해보기</Button>
+              <Button variant="ghost" size="md" className="gap-2" onClick={() => onStart()}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-4 shrink-0">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <path d="M12 19v4" />
+                  <path d="M8 23h8" />
+                </svg>
+                말로 시작하기
+              </Button>
+              <Button variant="secondary" size="md" onClick={onDemo}>30초 체험해보기</Button>
             </div>
-            {hasDraft ? <Button className="mt-3 w-full" variant="default" onClick={onResume}>저장된 이야기 이어서 하기</Button> : null}
+            {hasDraft ? <Button className="mt-3 w-full" variant="secondary" onClick={onResume}>저장된 이야기 이어서 하기</Button> : null}
           </Card>
-          <div className="mt-5 flex flex-wrap gap-2" aria-label="빠른 시작">{topics.map((topic) => <ResponseChip key={topic} onClick={() => onStart(topic)}>{topic}</ResponseChip>)}</div>
-          <div className="mt-5 grid gap-2 text-center text-xs font-bold text-text-muted sm:grid-cols-4">{["로그인 없이 시작", "자동 저장", "언제든 이어서 수정", "첫 변화는 30초 안에"].map((item) => <span key={item} className="rounded-pill border border-border bg-surface px-3 py-2 shadow-subtle">{item}</span>)}</div>
+          <div className="mt-4 flex flex-wrap gap-1.5" aria-label="빠른 시작">{topics.map((topic) => <ResponseChip key={topic} className="!min-h-7 !border-transparent !bg-transparent !px-3 !text-xs !font-semibold !text-text-muted !shadow-none hover:!bg-surface hover:!text-text-primary" onClick={() => onStart(topic)}>{topic}</ResponseChip>)}</div>
+          <div className="mt-4 flex flex-wrap justify-center gap-1.5 text-center text-[10px] font-semibold text-text-muted/80 sm:justify-start">{["로그인 없이 시작", "자동 저장", "언제든 이어서 수정", "첫 변화는 30초 안에"].map((item) => <span key={item} className="rounded-pill border border-border/60 px-2.5 py-1">{item}</span>)}</div>
         </div>
 
-        <ShowcaseCard kicker="대표 Thinking MAP · 여성 타깃" title="나에게 맞는 이상형을 결과처럼 보기" description="끌리는 순간부터 장기 관계 적합도, 필수·선호 기준, 그린·레드 플래그와 30일 탐색 로드맵까지 한 장에 정리합니다." badge="대표 결과물" badgeTone="value" imageSrc="/showcases/ideal-partner-thinking-map.png" imageAlt="여성의 남성 이상형 Thinking MAP 완성 결과물" imageLabel="여성의 남성 이상형 Thinking MAP 원본 크게 보기" startTopic="내가 원하는 남성 이상형은 어떤 사람일까?" onStart={onStart} />
+        <div className="order-1 lg:order-2">
+          <p className="kicker mb-3">예시로 미리 보는 완성 MAP</p>
+          <MapCanvas session={heroExampleSession} compact />
+        </div>
       </section>
 
       <TopicGallery onStart={onStart} />
