@@ -14,15 +14,17 @@ jobs:
   notify:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    env:
+      N8N_WEBHOOK: ${{ secrets.N8N_MERGE_WEBHOOK }}
     steps:
       - name: Skip when webhook secret is missing
-        if: ${{ secrets.N8N_MERGE_WEBHOOK == '' }}
+        if: ${{ env.N8N_WEBHOOK == '' }}
         run: echo "N8N_MERGE_WEBHOOK is not configured yet; skipping notification."
 
       - name: Notify n8n of merge
-        if: ${{ secrets.N8N_MERGE_WEBHOOK != '' }}
+        if: ${{ env.N8N_WEBHOOK != '' }}
         env:
-          WEBHOOK_URL: ${{ secrets.N8N_MERGE_WEBHOOK }}
+          WEBHOOK_URL: ${{ env.N8N_WEBHOOK }}
           COMMIT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           COMMIT_MESSAGE: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_commit.message || github.event.head_commit.message }}
           COMMIT_TIMESTAMP: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_commit.timestamp || github.event.head_commit.timestamp }}
