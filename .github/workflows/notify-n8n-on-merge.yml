@@ -3,12 +3,16 @@ name: Notify n8n on Merge
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows: ["Guarded Auto Merge"]
+    types: [completed]
 
 permissions:
   contents: read
 
 jobs:
   notify:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Skip when webhook secret is missing
@@ -19,9 +23,9 @@ jobs:
         if: ${{ secrets.N8N_MERGE_WEBHOOK != '' }}
         env:
           WEBHOOK_URL: ${{ secrets.N8N_MERGE_WEBHOOK }}
-          COMMIT_SHA: ${{ github.sha }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-          COMMIT_TIMESTAMP: ${{ github.event.head_commit.timestamp }}
+          COMMIT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          COMMIT_MESSAGE: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_commit.message || github.event.head_commit.message }}
+          COMMIT_TIMESTAMP: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_commit.timestamp || github.event.head_commit.timestamp }}
         run: |
           TITLE=$(head -n1 <<< "$COMMIT_MESSAGE")
           SHORT_SHA="${COMMIT_SHA:0:7}"

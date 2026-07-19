@@ -3,6 +3,9 @@ name: Production Smoke Check
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows: ["Guarded Auto Merge"]
+    types: [completed]
   workflow_dispatch:
   schedule:
     - cron: '17 */6 * * *'
@@ -13,6 +16,7 @@ permissions:
 
 jobs:
   smoke:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
