@@ -1,17 +1,14 @@
 name: Notify n8n on Merge
 
 on:
-  pull_request:
-    types: [closed]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
   notify:
-    if: >-
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     steps:
       - name: Skip when webhook secret is missing
@@ -22,15 +19,17 @@ jobs:
         if: ${{ secrets.N8N_MERGE_WEBHOOK != '' }}
         env:
           WEBHOOK_URL: ${{ secrets.N8N_MERGE_WEBHOOK }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          TITLE: ${{ github.event.pull_request.title }}
-          MERGED_AT: ${{ github.event.pull_request.merged_at }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_TIMESTAMP: ${{ github.event.head_commit.timestamp }}
         run: |
+          TITLE=$(head -n1 <<< "$COMMIT_MESSAGE")
+          SHORT_SHA="${COMMIT_SHA:0:7}"
           payload=$(jq -n \
-            --arg pr_number "$PR_NUMBER" \
             --arg title "$TITLE" \
-            --arg merged_at "$MERGED_AT" \
-            '{title: $title, pr_number: ($pr_number | tonumber), merged_at: $merged_at}')
+            --arg pr_number "$SHORT_SHA" \
+            --arg merged_at "$COMMIT_TIMESTAMP" \
+            '{title: $title, pr_number: $pr_number, merged_at: $merged_at}')
           curl --fail-with-body --show-error --silent \
             --retry 3 --retry-delay 5 \
             -H "Content-Type: application/json" \
