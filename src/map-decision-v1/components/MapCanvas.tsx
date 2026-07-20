@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapNode, MapRelation, MapSession, NodeKind } from "../types";
 import {
   Badge,
@@ -399,28 +399,162 @@ const exampleMaps: Record<ExampleKind, ExampleMap> = {
   },
 };
 
-const layoutRings = {
-  desktop: [
-    { x: 50, y: 18 },
-    { x: 76, y: 30 },
-    { x: 80, y: 56 },
-    { x: 64, y: 78 },
-    { x: 36, y: 78 },
-    { x: 20, y: 56 },
-    { x: 24, y: 30 },
-    { x: 50, y: 86 },
-    { x: 88, y: 43 },
-    { x: 12, y: 43 },
-  ],
-  mobile: [
-    { x: 50, y: 16 },
-    { x: 78, y: 34 },
-    { x: 72, y: 66 },
-    { x: 50, y: 84 },
-    { x: 28, y: 66 },
-    { x: 22, y: 34 },
-  ],
+type Band = "xs" | "sm" | "md" | "lg";
+
+function bandForWidth(width: number): Band {
+  if (width < 420) return "xs";
+  if (width < 640) return "sm";
+  if (width < 960) return "md";
+  return "lg";
+}
+
+// Prefix-friendly ring order: taking the first N points of this sequence
+// (for outerLimit 5/6/8/10) still spreads nodes around the full ellipse
+// instead of clustering on one side.
+const RING_ORDER = [0, 5, 1, 6, 2, 7, 3, 8, 4, 9];
+
+function ellipseRing(rx: number, ry: number): Point[] {
+  const raw = Array.from({ length: 10 }, (_, i) => {
+    const angle = ((-90 + i * 36) * Math.PI) / 180;
+    return { x: 50 + rx * Math.cos(angle), y: 50 + ry * Math.sin(angle) };
+  });
+  return RING_ORDER.map((i) => raw[i]);
+}
+
+type CanvasMode = "result" | "compact" | "default";
+
+// Radius (% of container) per width band, tuned separately per mode because
+// each mode renders at a very different height (see heightByBand below) —
+// reusing one radius across modes pushed nodes outside the shorter compact
+// box and clipped them. Bands are measured from the canvas's actual
+// rendered width (ResizeObserver), not the viewport, so a narrow sidebar on
+// a wide screen gets the same safe spacing as a phone.
+const radiusByModeAndBand: Record<CanvasMode, Record<Band, { rx: number; ry: number; centerY: number }>> = {
+  result: {
+    xs: { rx: 37, ry: 42, centerY: 50 },
+    sm: { rx: 35, ry: 39, centerY: 50 },
+    md: { rx: 36, ry: 37, centerY: 50 },
+    lg: { rx: 38, ry: 37, centerY: 50 },
+  },
+  default: {
+    xs: { rx: 36, ry: 35, centerY: 50 },
+    sm: { rx: 35, ry: 34, centerY: 50 },
+    md: { rx: 36, ry: 34, centerY: 50 },
+    lg: { rx: 38, ry: 33, centerY: 50 },
+  },
+  compact: {
+    xs: { rx: 44, ry: 39, centerY: 50 },
+    sm: { rx: 41, ry: 38, centerY: 50 },
+    md: { rx: 40, ry: 36, centerY: 50 },
+    lg: { rx: 40, ry: 35, centerY: 50 },
+  },
 };
+
+const ringByModeAndBand: Record<CanvasMode, Record<Band, Point[]>> = {
+  result: {
+    xs: ellipseRing(radiusByModeAndBand.result.xs.rx, radiusByModeAndBand.result.xs.ry),
+    sm: ellipseRing(radiusByModeAndBand.result.sm.rx, radiusByModeAndBand.result.sm.ry),
+    md: ellipseRing(radiusByModeAndBand.result.md.rx, radiusByModeAndBand.result.md.ry),
+    lg: ellipseRing(radiusByModeAndBand.result.lg.rx, radiusByModeAndBand.result.lg.ry),
+  },
+  default: {
+    xs: ellipseRing(radiusByModeAndBand.default.xs.rx, radiusByModeAndBand.default.xs.ry),
+    sm: ellipseRing(radiusByModeAndBand.default.sm.rx, radiusByModeAndBand.default.sm.ry),
+    md: ellipseRing(radiusByModeAndBand.default.md.rx, radiusByModeAndBand.default.md.ry),
+    lg: ellipseRing(radiusByModeAndBand.default.lg.rx, radiusByModeAndBand.default.lg.ry),
+  },
+  compact: {
+    xs: ellipseRing(radiusByModeAndBand.compact.xs.rx, radiusByModeAndBand.compact.xs.ry),
+    sm: ellipseRing(radiusByModeAndBand.compact.sm.rx, radiusByModeAndBand.compact.sm.ry),
+    md: ellipseRing(radiusByModeAndBand.compact.md.rx, radiusByModeAndBand.compact.md.ry),
+    lg: ellipseRing(radiusByModeAndBand.compact.lg.rx, radiusByModeAndBand.compact.lg.ry),
+  },
+};
+
+// Card size/text tables are mode-aware, not just band-aware: "compact" is a
+// small glance preview (result/default get the full-size cards) so it needs
+// noticeably smaller cards to fit its short container without overlapping.
+const outerWidthByModeAndBand: Record<CanvasMode, Record<Band, string>> = {
+  result: { xs: "w-20", sm: "w-24", md: "w-32", lg: "w-48" },
+  default: { xs: "w-20", sm: "w-24", md: "w-32", lg: "w-48" },
+  compact: { xs: "w-20", sm: "w-24", md: "w-28", lg: "w-36" },
+};
+
+const centerWidthByModeAndBand: Record<CanvasMode, Record<Band, string>> = {
+  result: { xs: "w-28", sm: "w-32", md: "w-40", lg: "w-64" },
+  default: { xs: "w-28", sm: "w-32", md: "w-40", lg: "w-64" },
+  compact: { xs: "w-28", sm: "w-32", md: "w-36", lg: "w-44" },
+};
+
+const outerTextClampByModeAndBand: Record<CanvasMode, Record<Band, number>> = {
+  result: { xs: 16, sm: 20, md: 28, lg: 36 },
+  default: { xs: 16, sm: 20, md: 28, lg: 36 },
+  compact: { xs: 10, sm: 14, md: 18, lg: 22 },
+};
+
+const centerTextClampByModeAndBand: Record<CanvasMode, Record<Band, number>> = {
+  result: { xs: 30, sm: 36, md: 48, lg: 64 },
+  default: { xs: 30, sm: 36, md: 48, lg: 64 },
+  compact: { xs: 20, sm: 26, md: 32, lg: 40 },
+};
+
+const outerBodyTextByBand: Record<Band, string> = {
+  xs: "text-[9px]",
+  sm: "text-[10px]",
+  md: "text-[11px]",
+  lg: "text-sm",
+};
+
+const centerBodyTextByBand: Record<Band, string> = {
+  xs: "text-xs",
+  sm: "text-sm",
+  md: "text-base",
+  lg: "text-lg",
+};
+
+const labelTextByBand: Record<Band, string> = {
+  xs: "text-[9px]",
+  sm: "text-[10px]",
+  md: "text-[11px]",
+  lg: "text-[11px]",
+};
+
+const heightByBand: Record<CanvasMode, Record<Band, string>> = {
+  result: {
+    xs: "h-[36rem] max-h-[76dvh]",
+    sm: "h-[35rem] max-h-[74dvh]",
+    md: "h-[32rem] max-h-[72dvh]",
+    lg: "h-[38rem] max-h-[72dvh]",
+  },
+  compact: {
+    xs: "h-[29rem] max-h-[58dvh]",
+    sm: "h-[29rem] max-h-[58dvh]",
+    md: "h-[28rem] max-h-[56dvh]",
+    lg: "h-[28rem] max-h-[52dvh]",
+  },
+  default: {
+    xs: "h-[26rem] max-h-[68dvh]",
+    sm: "h-[27rem] max-h-[68dvh]",
+    md: "h-[28rem] max-h-[68dvh]",
+    lg: "h-[30rem] max-h-[68dvh]",
+  },
+};
+
+function useCanvasBand() {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [band, setBand] = useState<Band>("lg");
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) setBand(bandForWidth(width));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return { ref, band };
+}
 
 function relationClass(node: MapNode, relation?: MapRelation) {
   if (
@@ -475,6 +609,7 @@ export function MapCanvas({
   const [exampleKind, setExampleKind] = useState<ExampleKind>(
     session.preferredMapType === "decision" ? "decision" : "thinking",
   );
+  const { ref: canvasRef, band } = useCanvasBand();
   const hasRealNodes = session.nodes.length > 0;
   const showExample = !sample && !hasRealNodes;
   const activeExample = exampleMaps[exampleKind];
@@ -492,12 +627,9 @@ export function MapCanvas({
   const outer = nodes
     .filter((node) => node.id !== center?.id)
     .slice(0, outerLimit);
-  const h = result
-    ? "h-[30rem] max-h-[72dvh] sm:h-[38rem]"
-    : compact
-      ? "h-[15rem] max-h-[42dvh] sm:h-[20rem]"
-      : "h-[28rem] max-h-[68dvh] sm:h-[30rem]";
-  const centerPoint = { x: 50, y: compact ? 52 : 50 };
+  const mode: CanvasMode = result ? "result" : compact ? "compact" : "default";
+  const h = heightByBand[mode][band];
+  const centerPoint = { x: 50, y: radiusByModeAndBand[mode][band].centerY };
   const viewport = getViewport(zoom, compact, result);
   const visibleLabel = showExample
     ? "예시 MAP"
@@ -505,6 +637,7 @@ export function MapCanvas({
       ? `${outer.length + 1}개 조각`
       : "비어 있음";
 
+  const ring = ringByModeAndBand[mode][band];
   const placedNodes = useMemo<PlacedNode[]>(
     () =>
       showExample
@@ -516,12 +649,7 @@ export function MapCanvas({
           }))
         : outer.map((node, index) => ({
             node,
-            point: (compact ? layoutRings.mobile : layoutRings.desktop)[
-              index %
-                (compact
-                  ? layoutRings.mobile.length
-                  : layoutRings.desktop.length)
-            ],
+            point: ring[index % ring.length],
             relation: relations.find(
               (rel) =>
                 rel.to === node.id ||
@@ -534,9 +662,9 @@ export function MapCanvas({
       activeExample.nodes,
       center?.id,
       centerPoint,
-      compact,
       outer,
       relations,
+      ring,
       showExample,
     ],
   );
@@ -633,6 +761,7 @@ export function MapCanvas({
         </div>
       </div>
       <div
+        ref={canvasRef}
         className={cx(
           "relative touch-pan-y overflow-hidden rounded-large border border-border bg-surface shadow-subtle",
           h,
@@ -684,7 +813,8 @@ export function MapCanvas({
               x={point.x}
               y={point.y}
               center={node.kind === "topic" || node.kind === "direction"}
-              compact={compact}
+              band={band}
+              mode={mode}
               delay={delay}
             />
           ))
@@ -695,7 +825,8 @@ export function MapCanvas({
               x={centerPoint.x}
               y={centerPoint.y}
               center
-              compact={compact}
+              band={band}
+              mode={mode}
               delay="0ms"
             />
             {placedNodes.map(({ node, point, delay }) => (
@@ -704,7 +835,8 @@ export function MapCanvas({
                 node={node}
                 x={point.x}
                 y={point.y}
-                compact={compact}
+                band={band}
+              mode={mode}
                 delay={delay}
               />
             ))}
@@ -739,23 +871,21 @@ function MapNodeView({
   x,
   y,
   center = false,
-  compact = false,
+  band = "lg",
+  mode = "result",
   delay = "0ms",
 }: {
   node: MapNode;
   x: number;
   y: number;
   center?: boolean;
-  compact?: boolean;
+  band?: Band;
+  mode?: CanvasMode;
   delay?: string;
 }) {
-  const w = center
-    ? compact
-      ? "w-40 sm:w-52"
-      : "w-48 sm:w-64"
-    : compact
-      ? "w-28 sm:w-36"
-      : "w-32 sm:w-48";
+  const w = center ? centerWidthByModeAndBand[mode][band] : outerWidthByModeAndBand[mode][band];
+  const clamp = center ? centerTextClampByModeAndBand[mode][band] : outerTextClampByModeAndBand[mode][band];
+  const bodyText = center ? centerBodyTextByBand[band] : outerBodyTextByBand[band];
   return (
     <MapNodePrimitive
       type={nodeType[node.kind] || "fact"}
@@ -767,16 +897,11 @@ function MapNodeView({
       )}
       style={{ left: `${x}%`, top: `${y}%`, animationDelay: delay }}
     >
-      <p className="text-[11px] font-black uppercase tracking-[-0.01em] text-text-secondary">
+      <p className={cx(labelTextByBand[band], "font-black uppercase tracking-[-0.01em] text-text-secondary")}>
         {node.label}
       </p>
-      <p
-        className={cx(
-          "mt-1 whitespace-normal break-keep font-extrabold leading-snug",
-          center ? "text-sm sm:text-lg" : "text-[11px] sm:text-sm",
-        )}
-      >
-        {shorten(node.text, center ? 64 : compact ? 28 : 36)}
+      <p className={cx("mt-1 whitespace-normal break-keep font-extrabold leading-snug", bodyText)}>
+        {shorten(node.text, clamp)}
       </p>
     </MapNodePrimitive>
   );
