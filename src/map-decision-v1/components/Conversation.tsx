@@ -402,6 +402,10 @@ function Composer({
         </Button>
       ) : (
         <>
+          <p className="mb-2 text-xs font-semibold leading-[1.45] text-text-muted">
+            입력 내용은 AI 분석이 켜진 경우 Anthropic(미국) 서버로 전송될 수
+            있어요. 꺼져 있으면 기기 안에서만 처리됩니다.
+          </p>
           <Textarea
             className="max-h-48 min-h-20 resize-none sm:min-h-24"
             rows={3}

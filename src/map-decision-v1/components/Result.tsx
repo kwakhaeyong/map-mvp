@@ -205,6 +205,21 @@ export function Result({
             </Button>
           </ReflectionCard>
         </section>
+
+        <p className="mt-6 text-center text-xs font-semibold leading-[1.45] text-text-muted">
+          MAP Decision은 의사결정을 돕는 참고 도구이며, 제공되는 분석과
+          추천은 조언일 뿐 확정된 답이 아닙니다. 건강·법률·재무·진로 등
+          중요한 결정은 반드시 전문가와 상의하세요.
+          <span className="mx-1.5">·</span>
+          <a href="/privacy" className="underline underline-offset-2 hover:text-text-primary">
+            개인정보처리방침
+          </a>
+          <span className="mx-1.5">·</span>
+          <a href="/terms" className="underline underline-offset-2 hover:text-text-primary">
+            이용약관
+          </a>
+        </p>
+
         <ResultActionBar className="pb-safe-bottom print:hidden">
           <Button onClick={onContinue}>더 이야기하기</Button>
           <Button variant="secondary" onClick={onContinue}>
