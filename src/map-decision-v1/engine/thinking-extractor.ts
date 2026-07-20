@@ -30,19 +30,23 @@ export function relationFor(kind: NodeKind): RelationKind {
   return "원인";
 }
 
-export function extractThinking(text: string, session: MapSession, correction = false): { nodes: MapNode[]; relations: MapRelation[] } {
-  const pieces = text.split(/[\n.!?。]|그리고|하지만|반대로|,/).map((piece) => piece.trim()).filter((piece) => piece.length > 1).slice(0, 4);
-  const nodes = (pieces.length ? pieces : [text]).map((piece) => {
-    const kind = correction ? "correction" : inferNodeKind(piece, session.nodes);
-    return { id: createId("node"), kind, label: nodeLabels[kind], text: piece, confidence: correction ? "confirmed" : "user", createdAt: now() } satisfies MapNode;
-  });
+export function buildRelationsForNodes(nodes: MapNode[], session: MapSession): MapRelation[] {
   const center = session.nodes.find((node) => node.kind === "topic")?.id || nodes.find((node) => node.kind === "topic")?.id;
-  const relations = nodes.filter((node) => center && node.id !== center).map((node) => ({
+  return nodes.filter((node) => center && node.id !== center).map((node) => ({
     id: createId("rel"),
     from: center!,
     to: node.id,
     kind: relationFor(node.kind),
     strength: node.kind === "risk" || node.kind === "missing" ? "dotted" : node.kind === "value" || node.kind === "action" ? "accent" : "solid",
   } satisfies MapRelation));
+}
+
+export function extractThinking(text: string, session: MapSession, correction = false): { nodes: MapNode[]; relations: MapRelation[] } {
+  const pieces = text.split(/[\n.!?。]|그리고|하지만|반대로|,/).map((piece) => piece.trim()).filter((piece) => piece.length > 1).slice(0, 4);
+  const nodes = (pieces.length ? pieces : [text]).map((piece) => {
+    const kind = correction ? "correction" : inferNodeKind(piece, session.nodes);
+    return { id: createId("node"), kind, label: nodeLabels[kind], text: piece, confidence: correction ? "confirmed" : "user", createdAt: now() } satisfies MapNode;
+  });
+  const relations = buildRelationsForNodes(nodes, session);
   return { nodes, relations };
 }
