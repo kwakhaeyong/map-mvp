@@ -50,6 +50,16 @@ const thinkingTopics = [
   { title: "창업 & 부업", subtitle: "작게 실험하고 크게 키우는 길", imageSrc: "/showcases/startup-thinking-map.png", previewSrc: "/showcases/startup-thinking-map.webp", topic: "창업이나 부업 아이디어를 정리하고 싶어" },
 ];
 
+// 모든 예시 이미지는 AI로 생성한 목업이라 실제 제품 결과물과 다르다. 실제
+// 결과 화면 캡처로 교체할 때 이 컴포넌트 호출만 지우면 되도록 분리해뒀다.
+function ExampleBadge() {
+  return (
+    <span className="absolute left-3 top-3 rounded-pill border border-border bg-surface-elevated px-3 py-1 text-xs font-black text-text-muted shadow-subtle">
+      예시 이미지
+    </span>
+  );
+}
+
 type ShowcaseCardProps = {
   kicker: string;
   title: string;
@@ -75,7 +85,8 @@ function ShowcaseCard({ kicker, title, description, badge, badgeTone, imageSrc, 
         </div>
         <Badge tone={badgeTone}>{badge}</Badge>
       </div>
-      <a href={imageSrc} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-large border border-border bg-surface-elevated shadow-floating focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20" aria-label={imageLabel}>
+      <a href={imageSrc} target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-large border border-border bg-surface-elevated shadow-floating focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20" aria-label={imageLabel}>
+        <ExampleBadge />
         <img src={previewSrc} alt={imageAlt} width={1600} height={900} className="h-auto w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]" loading="lazy" />
       </a>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -97,7 +108,8 @@ function TopicGallery({ onStart }: { onStart: (topic?: string) => void }) {
       <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {thinkingTopics.map((item) => (
           <article key={item.title} className="group overflow-hidden rounded-large border border-border bg-surface shadow-subtle transition duration-300 hover:-translate-y-1 hover:shadow-floating">
-            <a href={item.imageSrc} target="_blank" rel="noreferrer" className="block aspect-[4/3] overflow-hidden border-b border-border bg-surface-elevated" aria-label={`${item.title} Thinking MAP 원본 크게 보기`}>
+            <a href={item.imageSrc} target="_blank" rel="noreferrer" className="relative block aspect-[4/3] overflow-hidden border-b border-border bg-surface-elevated" aria-label={`${item.title} Thinking MAP 원본 크게 보기`}>
+              <ExampleBadge />
               <img src={item.previewSrc} alt={`${item.title} Thinking MAP 완성 결과물 미리보기`} width={960} height={640} className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]" loading="lazy" />
             </a>
             <div className="p-5">
