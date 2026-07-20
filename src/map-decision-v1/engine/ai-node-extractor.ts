@@ -73,25 +73,42 @@ function isConfidence(value: string): value is Confidence {
   return (CONFIDENCE_LEVELS as string[]).includes(value);
 }
 
-export function parseAndValidate(raw: string): RawExtraction | null {
+export type ParseFailureReason =
+  | "invalid_json"
+  | "invalid_on_topic"
+  | "invalid_guidance_message"
+  | "invalid_nodes_array"
+  | "invalid_node_shape"
+  | "invalid_node_kind_or_confidence";
+
+export type ParseResult = { ok: true; data: RawExtraction } | { ok: false; reason: ParseFailureReason };
+
+// Returns a failure reason instead of the raw text so callers never need to
+// log the AI response body (which may echo back sensitive user input) just
+// to know why validation failed.
+export function parseAndValidate(raw: string): ParseResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return null;
+    return { ok: false, reason: "invalid_json" };
   }
-  if (typeof parsed !== "object" || parsed === null) return null;
+  if (typeof parsed !== "object" || parsed === null) return { ok: false, reason: "invalid_json" };
   const candidate = parsed as Partial<RawExtraction>;
-  if (typeof candidate.on_topic !== "boolean") return null;
-  if (candidate.guidance_message !== null && typeof candidate.guidance_message !== "string") return null;
-  if (!Array.isArray(candidate.nodes)) return null;
-  for (const node of candidate.nodes) {
-    if (typeof node !== "object" || node === null) return null;
-    const n = node as Record<string, unknown>;
-    if (typeof n.text !== "string" || typeof n.kind !== "string" || typeof n.confidence !== "string") return null;
-    if (!isNodeKind(n.kind) || !isConfidence(n.confidence)) return null;
+  if (typeof candidate.on_topic !== "boolean") return { ok: false, reason: "invalid_on_topic" };
+  if (candidate.guidance_message !== null && typeof candidate.guidance_message !== "string") {
+    return { ok: false, reason: "invalid_guidance_message" };
   }
-  return candidate as RawExtraction;
+  if (!Array.isArray(candidate.nodes)) return { ok: false, reason: "invalid_nodes_array" };
+  for (const node of candidate.nodes) {
+    if (typeof node !== "object" || node === null) return { ok: false, reason: "invalid_node_shape" };
+    const n = node as Record<string, unknown>;
+    if (typeof n.text !== "string" || typeof n.kind !== "string" || typeof n.confidence !== "string") {
+      return { ok: false, reason: "invalid_node_shape" };
+    }
+    if (!isNodeKind(n.kind) || !isConfidence(n.confidence)) return { ok: false, reason: "invalid_node_kind_or_confidence" };
+  }
+  return { ok: true, data: candidate as RawExtraction };
 }
 
 // Server-side only: reads ANTHROPIC_API_KEY from the environment and must
@@ -130,13 +147,13 @@ export async function extractNodesWithAI(text: string, session: MapSession): Pro
   }
 
   const parsed = parseAndValidate(responseText);
-  if (!parsed) {
-    console.error("[ai-node-extractor] response failed schema validation", responseText);
+  if (!parsed.ok) {
+    console.error("[ai-node-extractor] response failed schema validation", { reason: parsed.reason });
     return null;
   }
 
   const timestamp = now();
-  const nodes: MapNode[] = parsed.nodes.map((node) => ({
+  const nodes: MapNode[] = parsed.data.nodes.map((node) => ({
     id: createId("node"),
     kind: node.kind as NodeKind,
     label: nodeLabels[node.kind as NodeKind],
@@ -145,5 +162,5 @@ export async function extractNodesWithAI(text: string, session: MapSession): Pro
     createdAt: timestamp,
   }));
 
-  return { onTopic: parsed.on_topic, guidanceMessage: parsed.guidance_message, nodes };
+  return { onTopic: parsed.data.on_topic, guidanceMessage: parsed.data.guidance_message, nodes };
 }
