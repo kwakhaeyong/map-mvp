@@ -4,7 +4,7 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { localConversationProvider } from "../engine/local-conversation-provider";
 import { extractThinking } from "../engine/thinking-extractor";
 import { createId, now } from "../engine/session";
-import { MapSession, Message } from "../types";
+import { MapNode, MapRelation, MapSession, Message } from "../types";
 import { useWebSpeech } from "../voice/use-web-speech";
 import { Brand } from "./Landing";
 import { MapCanvas } from "./MapCanvas";
@@ -50,6 +50,8 @@ export function Conversation({
   const [draft, setDraftState] = useState(session.localDraft || "");
   const [correction, setCorrection] = useState("");
   const [mapOpen, setMapOpen] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const setDraft = (value: string | ((current: string) => string)) =>
     setDraftState((current) => {
@@ -83,37 +85,63 @@ export function Conversation({
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const submit = (text = draft, isCorrection = false) => {
+  const submit = async (text = draft, isCorrection = false) => {
     const clean = text.trim();
     if (!clean) return;
     setDraft("");
     setCorrection("");
+    setNotice(null);
+
+    const requestSession = session;
+    const userMessage: Message = {
+      id: createId("user"),
+      role: "user",
+      text: clean,
+      timestamp: now(),
+    };
+    setSession((previous) => ({
+      ...previous,
+      localDraft: "",
+      messages: [...previous.messages, userMessage],
+      updatedAt: now(),
+    }));
+
+    setIsExtracting(true);
+    let extracted: { nodes: MapNode[]; relations: MapRelation[] };
+    let guidanceMessage: string | null = null;
+    try {
+      const response = await fetch("/api/extract-nodes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: clean, session: requestSession, correction: isCorrection }),
+      });
+      const data = await response.json();
+      if (data.blocked) {
+        setIsExtracting(false);
+        setNotice(data.message as string);
+        return;
+      }
+      extracted = { nodes: data.nodes, relations: data.relations };
+      guidanceMessage = data.guidanceMessage ?? null;
+    } catch {
+      // Offline or the server route itself is unreachable — fall back to the
+      // fully local rule-based extractor so the conversation never breaks.
+      extracted = extractThinking(clean, requestSession, isCorrection);
+    }
+    setIsExtracting(false);
+
     setSession((previous) => {
-      const userMessage: Message = {
-        id: createId("user"),
-        role: "user",
-        text: clean,
-        timestamp: now(),
-      };
-      const extracted = extractThinking(clean, previous, isCorrection);
       const intermediate: MapSession = {
         ...previous,
-        localDraft: "",
-        checkpointStatus: isCorrection
-          ? "confirmed"
-          : previous.checkpointStatus,
-        messages: [...previous.messages, userMessage],
+        checkpointStatus: isCorrection ? "confirmed" : previous.checkpointStatus,
         nodes: [...previous.nodes, ...extracted.nodes],
         relations: [...previous.relations, ...extracted.relations],
         updatedAt: now(),
       };
-      return {
-        ...intermediate,
-        messages: [
-          ...intermediate.messages,
-          localConversationProvider.nextReply(intermediate, clean),
-        ],
-      };
+      const aiMessage: Message = guidanceMessage
+        ? { id: createId("ai"), role: "ai", provider: "local", timestamp: now(), text: guidanceMessage }
+        : localConversationProvider.nextReply(intermediate, clean);
+      return { ...intermediate, messages: [...intermediate.messages, aiMessage] };
     });
   };
 
@@ -217,6 +245,11 @@ export function Conversation({
                 : setDraft((current) => (current ? `${current} ${text}` : text))
             }
           />
+          {notice ? (
+            <p className="border-t border-border px-3 py-2 text-sm font-bold text-error sm:px-4">
+              {notice}
+            </p>
+          ) : null}
           <Composer
             draft={draft}
             setDraft={setDraft}
@@ -225,6 +258,7 @@ export function Conversation({
             onFinish={onFinish}
             disabled={Boolean(session.isDemo)}
             onRealStart={onRealStart}
+            isExtracting={isExtracting}
           />
         </section>
         <aside className="hidden lg:block">
@@ -305,6 +339,7 @@ function Composer({
   onFinish,
   disabled,
   onRealStart,
+  isExtracting,
 }: {
   draft: string;
   setDraft: (value: string | ((current: string) => string)) => void;
@@ -313,13 +348,18 @@ function Composer({
   onFinish: () => void;
   disabled: boolean;
   onRealStart: () => void;
+  isExtracting: boolean;
 }) {
   return (
     <div className="sticky bottom-0 rounded-b-large border-t border-border bg-surface-elevated p-3 pb-safe-bottom shadow-floating sm:p-4">
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-black">
-            {speech.listening ? "듣고 있어요" : "말하거나 입력해 주세요"}
+            {isExtracting
+              ? "생각을 정리하고 있어요…"
+              : speech.listening
+                ? "듣고 있어요"
+                : "말하거나 입력해 주세요"}
           </p>
           <p className="text-sm font-bold text-text-muted">
             {speech.listening
@@ -373,8 +413,8 @@ function Composer({
             <Button variant="secondary" onClick={onFinish}>
               MAP 미리보기
             </Button>
-            <Button disabled={!draft.trim()} onClick={onSubmit}>
-              보내기
+            <Button disabled={!draft.trim() || isExtracting} onClick={onSubmit}>
+              {isExtracting ? "정리 중…" : "보내기"}
             </Button>
           </div>
         </>
