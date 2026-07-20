@@ -198,6 +198,16 @@ export function Landing({ hasDraft, onStart, onResume, onDemo, saveState = "save
           </div>
         </div>
       </section>
+
+      <p className="map-container pb-10 text-center text-xs font-semibold text-text-muted">
+        <a href="/privacy" className="underline underline-offset-2 hover:text-text-primary">
+          개인정보처리방침
+        </a>
+        <span className="mx-1.5">·</span>
+        <a href="/terms" className="underline underline-offset-2 hover:text-text-primary">
+          이용약관
+        </a>
+      </p>
     </main>
   );
 }
