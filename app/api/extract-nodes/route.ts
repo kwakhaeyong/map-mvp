@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractThinking, buildRelationsForNodes } from "../../../src/map-decision-v1/engine/thinking-extractor";
 import { extractNodesWithAI } from "../../../src/map-decision-v1/engine/ai-node-extractor";
-import { registerSessionStart } from "../../../src/map-decision-v1/engine/rate-limit";
+import { MAX_INPUT_LENGTH, MAX_MESSAGES_PER_SESSION, getClientIp, registerSessionStart } from "../../../src/map-decision-v1/engine/rate-limit";
 import { MapNode, MapRelation, MapSession } from "../../../src/map-decision-v1/types";
 
-const MAX_INPUT_LENGTH = 5000;
-const MAX_MESSAGES_PER_SESSION = 40;
 const MAX_NODES_FOR_FOLLOW_UP = 10;
 
 type RequestBody = { text: string; session: MapSession; correction?: boolean };
@@ -17,12 +15,6 @@ type SuccessResponse = {
   followUpQuestions: string[];
 };
 type BlockedResponse = { blocked: true; reason: string; message: string };
-
-function getClientIp(request: NextRequest): string {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) return forwardedFor.split(",")[0].trim();
-  return request.headers.get("x-real-ip") || "unknown";
-}
 
 function isRequestBody(value: unknown): value is RequestBody {
   if (typeof value !== "object" || value === null) return false;

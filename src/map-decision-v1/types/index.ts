@@ -27,6 +27,34 @@ export type MapSession = {
   localDraft?: string;
 };
 
+export type FactorMatrixItem = { id: string; text: string; kind: NodeKind; x: number; y: number };
+export type FactorMatrixBlock = {
+  xAxisLabel: { low: string; high: string };
+  yAxisLabel: { low: string; high: string };
+  factors: FactorMatrixItem[];
+};
+
+export type ScenarioItem = { id: string; name: string; summary: string; pros: string[]; cons: string[] };
+export type ScenarioBlock = {
+  scenarios: ScenarioItem[];
+  closestFit: { scenarioId: string; reasoning: string } | null;
+};
+
+export type TimelinePhase = { id: string; label: string; actions: string[] };
+export type TimelineBlock = { phases: TimelinePhase[] };
+
+export type InsightBlock = { messages: string[] };
+
+export type FinalResult = {
+  version: number;
+  generatedAt: string;
+  model: "claude-sonnet-5" | "claude-haiku-4-5";
+  factorMatrix: FactorMatrixBlock;
+  scenarios: ScenarioBlock;
+  timeline: TimelineBlock;
+  insights: InsightBlock;
+};
+
 export type ConversationProvider = {
   id: "local" | "api";
   nextReply(session: MapSession, latestUserText: string, followUpQuestions?: string[]): Message;
