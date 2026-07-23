@@ -26,7 +26,7 @@ const followUps: Record<NodeKind, string> = {
 
 export const localConversationProvider: ConversationProvider = {
   id: "local",
-  nextReply(session: MapSession, latestUserText: string): Message {
+  nextReply(session: MapSession, latestUserText: string, followUpQuestions?: string[]): Message {
     const userTurns = session.messages.filter((message) => message.role === "user").length;
     if (userTurns >= 3 && session.checkpointStatus !== "confirmed") {
       const bullets = session.nodes.slice(0, 5).map((node) => `- ${node.label}: ${truncate(node.text, 44)}`).join("\n");
@@ -38,13 +38,14 @@ export const localConversationProvider: ConversationProvider = {
     const topic = session.nodes.find((node) => node.kind === "topic")?.text || session.selectedTopic || latestUserText;
     const theme = session.nodes.find((node) => node.kind === "value")?.text || session.nodes.find((node) => node.kind === "emotion")?.text;
     const reflection = theme ? `특히 “${truncate(theme, 32)}”가 중요한 단서처럼 보여요.` : "생각의 중심이 조금씩 보이기 시작했어요.";
+    const closingQuestion = followUpQuestions && followUpQuestions.length > 0 ? followUpQuestions.join("\n\n") : followUps[nextKind];
 
     return {
       id: createId("ai"),
       role: "ai",
       provider: "local",
       timestamp: now(),
-      text: `말해주신 내용을 보면 “${truncate(topic, 36)}” 안에서 ${reflection}\n\n지금까지 이야기만 보면 결론을 서두르기보다 기준과 확인할 정보를 분리해보면 좋겠어요.\n\n${followUps[nextKind]}`,
+      text: `말해주신 내용을 보면 “${truncate(topic, 36)}” 안에서 ${reflection}\n\n지금까지 이야기만 보면 결론을 서두르기보다 기준과 확인할 정보를 분리해보면 좋겠어요.\n\n${closingQuestion}`,
     };
   },
 };
