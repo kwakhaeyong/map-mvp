@@ -144,7 +144,7 @@ export function MapDecisionProduct() {
     return <Landing hasDraft={hasSavedDraft} onStart={start} onResume={goConversation} onDemo={startDemo} saveState={saveState} />;
   }
   if (session.stage === "result") {
-    return <Result session={session} onContinue={goConversation} onReset={reset} onSelectType={selectType} onRealStart={exitDemoToReal} saveState={saveState} />;
+    return <Result session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onSelectType={selectType} onRealStart={exitDemoToReal} saveState={saveState} />;
   }
   return <Conversation session={session} setSession={setSession} onFinish={goResult} onReset={reset} onRealStart={exitDemoToReal} onDemoChoice={advanceDemo} saveState={saveState} />;
 }

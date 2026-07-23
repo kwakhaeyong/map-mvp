@@ -37,6 +37,7 @@ const FINAL_RESULT_SCHEMA = {
         },
         factors: {
           type: "array",
+          maxItems: 8,
           items: {
             type: "object",
             properties: {
@@ -273,7 +274,7 @@ export async function generateFinalResult(session: MapSession): Promise<FinalRes
 
   const timestamp = now();
 
-  const factors = parsed.data.factor_matrix.factors.map((factor) => ({
+  const factors = parsed.data.factor_matrix.factors.slice(0, 8).map((factor) => ({
     id: createId("factor"),
     text: factor.text,
     kind: factor.kind as NodeKind,

@@ -35,5 +35,5 @@ function sampleResult(): MapSession {
 export default function ResultPage() {
   const [session, setSession] = useState<MapSession>(() => sampleResult());
   const selectType = (type: MapOutputType) => setSession((current) => ({ ...current, preferredMapType: type }));
-  return <Result session={session} onContinue={() => setSession((current) => ({ ...current, stage: "conversation" }))} onReset={() => setSession(sampleResult())} onSelectType={selectType} onRealStart={() => setSession(createSession())} />;
+  return <Result session={session} setSession={setSession} onContinue={() => setSession((current) => ({ ...current, stage: "conversation" }))} onReset={() => setSession(sampleResult())} onSelectType={selectType} onRealStart={() => setSession(createSession())} />;
 }
