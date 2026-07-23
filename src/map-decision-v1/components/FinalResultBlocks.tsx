@@ -48,37 +48,68 @@ const KIND_FILL_CLASS: Record<NodeKind, string> = {
 
 const clampPercent = (value: number) => Math.min(96, Math.max(4, value));
 
+type PlottedFactor = FactorMatrixBlock["factors"][number] & { plotX: number; plotY: number };
+
+// Full text labels floating next to each dot collide whenever two factors
+// sit close together. Instead, dots only carry a small number, the real text
+// lives in the legend list below, and this nudges near-coincident dots apart
+// so the numbers themselves stay legible — a few passes of simple pairwise
+// repulsion, not a general-purpose layout engine (at most 8 factors, so the
+// O(n^2) cost is negligible).
+function resolveOverlaps(factors: FactorMatrixBlock["factors"]): PlottedFactor[] {
+  const minDistance = 12;
+  const points: PlottedFactor[] = factors.map((factor) => ({ ...factor, plotX: factor.x, plotY: 100 - factor.y }));
+
+  for (let pass = 0; pass < 6; pass++) {
+    for (let i = 0; i < points.length; i++) {
+      for (let j = i + 1; j < points.length; j++) {
+        const dx = points[j].plotX - points[i].plotX;
+        const dy = points[j].plotY - points[i].plotY;
+        const distance = Math.hypot(dx, dy) || 0.001;
+        if (distance < minDistance) {
+          const push = (minDistance - distance) / 2;
+          const unitX = dx / distance;
+          const unitY = dy / distance;
+          points[i].plotX -= unitX * push;
+          points[i].plotY -= unitY * push;
+          points[j].plotX += unitX * push;
+          points[j].plotY += unitY * push;
+        }
+      }
+    }
+  }
+
+  return points.map((point) => ({ ...point, plotX: clampPercent(point.plotX), plotY: clampPercent(point.plotY) }));
+}
+
 function FactorMatrixChart({ block }: { block: FactorMatrixBlock }) {
+  const placed = resolveOverlaps(block.factors);
   return (
     <div className="mx-auto w-full max-w-sm">
       <p className="mb-1 text-center text-xs font-black text-text-muted">{block.yAxisLabel.high}</p>
       <div className="flex items-center gap-2">
         <p className="w-14 shrink-0 text-right text-xs font-black leading-tight text-text-muted">{block.xAxisLabel.low}</p>
         <div className="relative aspect-square flex-1">
-          <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" aria-hidden="true">
+          <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
             <rect x="1" y="1" width="98" height="98" rx="4" className="fill-none stroke-border" strokeWidth="1" />
             <line x1="50" y1="1" x2="50" y2="99" className="stroke-border" strokeWidth="0.6" strokeDasharray="2 2" />
             <line x1="1" y1="50" x2="99" y2="50" className="stroke-border" strokeWidth="0.6" strokeDasharray="2 2" />
-            {block.factors.map((factor) => (
-              <circle
-                key={factor.id}
-                cx={clampPercent(factor.x)}
-                cy={clampPercent(100 - factor.y)}
-                r="2.6"
-                className={`${KIND_FILL_CLASS[factor.kind]} stroke-surface`}
-                strokeWidth="0.8"
-              />
+            {placed.map((factor, index) => (
+              <g key={factor.id}>
+                <title>{factor.text}</title>
+                <circle
+                  cx={factor.plotX}
+                  cy={factor.plotY}
+                  r="3.6"
+                  className={`${KIND_FILL_CLASS[factor.kind]} stroke-surface`}
+                  strokeWidth="0.8"
+                />
+                <text x={factor.plotX} y={factor.plotY} textAnchor="middle" dominantBaseline="central" className="fill-text-primary font-black" style={{ fontSize: "3.8px" }}>
+                  {index + 1}
+                </text>
+              </g>
             ))}
           </svg>
-          {block.factors.map((factor) => (
-            <div
-              key={factor.id}
-              className="absolute max-w-[7rem] -translate-x-1/2 translate-y-2 text-center text-[11px] font-bold leading-tight text-text-secondary"
-              style={{ left: `${clampPercent(factor.x)}%`, top: `${clampPercent(100 - factor.y)}%` }}
-            >
-              {factor.text}
-            </div>
-          ))}
         </div>
         <p className="w-14 shrink-0 text-left text-xs font-black leading-tight text-text-muted">{block.xAxisLabel.high}</p>
       </div>
@@ -97,8 +128,11 @@ function FactorMatrixCard({ block }: { block: FactorMatrixBlock }) {
       </div>
       {block.factors.length > 0 ? (
         <ul className="mt-8 grid gap-2 sm:grid-cols-2">
-          {block.factors.map((factor) => (
+          {block.factors.map((factor, index) => (
             <li key={factor.id} className="flex items-start gap-2 text-sm font-semibold text-text-secondary">
+              <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-pill border border-border bg-surface-elevated text-[11px] font-black text-text-primary">
+                {index + 1}
+              </span>
               <Badge tone={KIND_TONE[factor.kind]} className="mt-0.5 shrink-0">
                 {nodeLabels[factor.kind]}
               </Badge>
