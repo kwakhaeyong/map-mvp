@@ -3,7 +3,7 @@ import { Confidence, MapNode, MapSession, NodeKind } from "../types";
 import { createId, now } from "./session";
 import { nodeLabels } from "./thinking-extractor";
 
-const NODE_KINDS: NodeKind[] = [
+export const NODE_KINDS: NodeKind[] = [
   "topic", "trigger", "fact", "emotion", "person", "value", "reason",
   "constraint", "option", "benefit", "risk", "missing", "direction",
   "action", "correction",
