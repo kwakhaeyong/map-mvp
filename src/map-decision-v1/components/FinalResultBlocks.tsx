@@ -1,8 +1,41 @@
 "use client";
 
 import { nodeLabels } from "../engine/thinking-extractor";
-import { FactorMatrixBlock, FinalResult, InsightBlock, NodeKind, ScenarioBlock, TimelineBlock } from "../types";
-import { Badge, Card, ReflectionCard } from "./ui/primitives";
+import { FactorMatrixBlock, FinalResult, InsightBlock, NodeKind, ResultBlockKey, ScenarioBlock, TimelineBlock } from "../types";
+import { Badge, Button, Card, ReflectionCard } from "./ui/primitives";
+
+export type BlockRegenControls = { onRegenerate: () => void; isRegenerating: boolean; error: string | null };
+
+function RegenerateButton({ onRegenerate, isRegenerating }: { onRegenerate: () => void; isRegenerating: boolean }) {
+  return (
+    <Button variant="secondary" size="sm" className="shrink-0" onClick={onRegenerate} disabled={isRegenerating}>
+      {isRegenerating ? "다시 만드는 중…" : "다시 생성"}
+    </Button>
+  );
+}
+
+function BlockHeader({
+  title,
+  description,
+  regen,
+}: {
+  title: string;
+  description: string;
+  regen: BlockRegenControls;
+}) {
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-black tracking-[-0.02em]">{title}</h2>
+          <p className="mt-1 text-sm font-semibold text-text-secondary">{description}</p>
+        </div>
+        <RegenerateButton onRegenerate={regen.onRegenerate} isRegenerating={regen.isRegenerating} />
+      </div>
+      {regen.error ? <p className="mt-3 text-sm font-bold text-error">{regen.error}</p> : null}
+    </div>
+  );
+}
 
 type BadgeTone = "default" | "fact" | "feeling" | "value" | "option" | "uncertainty" | "risk" | "action" | "success" | "error";
 
@@ -118,11 +151,10 @@ function FactorMatrixChart({ block }: { block: FactorMatrixBlock }) {
   );
 }
 
-function FactorMatrixCard({ block }: { block: FactorMatrixBlock }) {
+function FactorMatrixCard({ block, regen }: { block: FactorMatrixBlock; regen: BlockRegenControls }) {
   return (
     <Card id="factors" className="scroll-mt-6">
-      <h2 className="text-xl font-black tracking-[-0.02em]">요인과 2x2 매트릭스</h2>
-      <p className="mt-1 text-sm font-semibold text-text-secondary">대화에서 드러난 요인들을 두 기준으로 놓고 봤어요.</p>
+      <BlockHeader title="요인과 2x2 매트릭스" description="대화에서 드러난 요인들을 두 기준으로 놓고 봤어요." regen={regen} />
       <div className="mt-8">
         <FactorMatrixChart block={block} />
       </div>
@@ -145,11 +177,10 @@ function FactorMatrixCard({ block }: { block: FactorMatrixBlock }) {
   );
 }
 
-function ScenarioCards({ block }: { block: ScenarioBlock }) {
+function ScenarioCards({ block, regen }: { block: ScenarioBlock; regen: BlockRegenControls }) {
   return (
     <Card id="scenarios" className="scroll-mt-6">
-      <h2 className="text-xl font-black tracking-[-0.02em]">시나리오 비교</h2>
-      <p className="mt-1 text-sm font-semibold text-text-secondary">정답을 고르는 게 아니라, 방향별 장단점을 나란히 뒀어요.</p>
+      <BlockHeader title="시나리오 비교" description="정답을 고르는 게 아니라, 방향별 장단점을 나란히 뒀어요." regen={regen} />
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {block.scenarios.map((scenario) => {
           const isClosestFit = block.closestFit?.scenarioId === scenario.id;
@@ -195,10 +226,10 @@ function ScenarioCards({ block }: { block: ScenarioBlock }) {
   );
 }
 
-function TimelineSteps({ block }: { block: TimelineBlock }) {
+function TimelineSteps({ block, regen }: { block: TimelineBlock; regen: BlockRegenControls }) {
   return (
     <Card id="timeline" className="scroll-mt-6">
-      <h2 className="text-xl font-black tracking-[-0.02em]">타임라인과 액션 플랜</h2>
+      <BlockHeader title="타임라인과 액션 플랜" description="이야기한 내용을 바탕으로 단계별 행동을 정리했어요." regen={regen} />
       <ol className="mt-6 space-y-4">
         {block.phases.map((phase, index) => (
           <li key={phase.id} className="flex gap-4">
@@ -223,11 +254,10 @@ function TimelineSteps({ block }: { block: TimelineBlock }) {
   );
 }
 
-function InsightCallout({ block }: { block: InsightBlock }) {
+function InsightCallout({ block, regen }: { block: InsightBlock; regen: BlockRegenControls }) {
   return (
     <Card id="insights" className="scroll-mt-6 border-primary/40 bg-surface-elevated">
-      <h2 className="text-xl font-black tracking-[-0.02em]">핵심 메시지·통찰</h2>
-      <p className="mt-1 text-sm font-semibold text-text-secondary">혼자서는 잘 안 보였을 수 있는 관점이에요.</p>
+      <BlockHeader title="핵심 메시지·통찰" description="혼자서는 잘 안 보였을 수 있는 관점이에요." regen={regen} />
       <ul className="mt-6 space-y-3">
         {block.messages.map((message, index) => (
           <li key={index} className="rounded-medium border border-border bg-surface p-4 text-sm font-bold leading-7 text-text-primary">
@@ -246,7 +276,13 @@ const NAV_ITEMS: Array<{ id: string; label: string }> = [
   { id: "insights", label: "통찰" },
 ];
 
-export function FinalResultSection({ result }: { result: FinalResult }) {
+export function FinalResultSection({
+  result,
+  regenControls,
+}: {
+  result: FinalResult;
+  regenControls: Record<ResultBlockKey, BlockRegenControls>;
+}) {
   return (
     <section className="mt-8" aria-label="최종 결과">
       <div className="flex flex-wrap gap-2 print:hidden">
@@ -261,10 +297,10 @@ export function FinalResultSection({ result }: { result: FinalResult }) {
         ))}
       </div>
       <div className="mt-4 space-y-6">
-        <FactorMatrixCard block={result.factorMatrix} />
-        <ScenarioCards block={result.scenarios} />
-        <TimelineSteps block={result.timeline} />
-        <InsightCallout block={result.insights} />
+        <FactorMatrixCard block={result.factorMatrix} regen={regenControls.factorMatrix} />
+        <ScenarioCards block={result.scenarios} regen={regenControls.scenarios} />
+        <TimelineSteps block={result.timeline} regen={regenControls.timeline} />
+        <InsightCallout block={result.insights} regen={regenControls.insights} />
       </div>
     </section>
   );

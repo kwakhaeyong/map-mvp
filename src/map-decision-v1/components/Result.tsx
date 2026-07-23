@@ -2,13 +2,13 @@
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { now } from "../engine/session";
-import { MapOutputType, MapSession, NodeKind } from "../types";
+import { MapOutputType, MapSession, NodeKind, ResultBlockKey } from "../types";
 import {
   demoPaymentProvider,
   localAuthProvider,
   plannedPaymentProviders,
 } from "../engine/integration-providers";
-import { FinalResultSection } from "./FinalResultBlocks";
+import { BlockRegenControls, FinalResultSection } from "./FinalResultBlocks";
 import { MapCanvas } from "./MapCanvas";
 import {
   Badge,
@@ -106,6 +106,42 @@ export function Result({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [regeneratingBlock, setRegeneratingBlock] = useState<ResultBlockKey | null>(null);
+  const [blockErrors, setBlockErrors] = useState<Partial<Record<ResultBlockKey, string>>>({});
+
+  const regenerateBlock = (block: ResultBlockKey) => {
+    setRegeneratingBlock(block);
+    setBlockErrors((previous) => ({ ...previous, [block]: undefined }));
+    fetch("/api/generate-result", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session, block }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.blocked) {
+          setBlockErrors((previous) => ({ ...previous, [block]: data.message as string }));
+          return;
+        }
+        setSession((previous) =>
+          previous.result
+            ? { ...previous, result: { ...previous.result, [block]: data.value, generatedAt: now() }, updatedAt: now() }
+            : previous,
+        );
+      })
+      .catch(() => {
+        setBlockErrors((previous) => ({ ...previous, [block]: "네트워크 문제로 다시 만들지 못했어요." }));
+      })
+      .finally(() => setRegeneratingBlock(null));
+  };
+
+  const regenControls: Record<ResultBlockKey, BlockRegenControls> = {
+    factorMatrix: { onRegenerate: () => regenerateBlock("factorMatrix"), isRegenerating: regeneratingBlock === "factorMatrix", error: blockErrors.factorMatrix ?? null },
+    scenarios: { onRegenerate: () => regenerateBlock("scenarios"), isRegenerating: regeneratingBlock === "scenarios", error: blockErrors.scenarios ?? null },
+    timeline: { onRegenerate: () => regenerateBlock("timeline"), isRegenerating: regeneratingBlock === "timeline", error: blockErrors.timeline ?? null },
+    insights: { onRegenerate: () => regenerateBlock("insights"), isRegenerating: regeneratingBlock === "insights", error: blockErrors.insights ?? null },
+  };
+
   return (
     <main className="min-h-dvh px-4 py-5 pb-safe-bottom pt-safe-top text-text-primary sm:py-8 print:bg-surface-elevated">
       <section className="map-container">
@@ -188,7 +224,7 @@ export function Result({
 
         {!session.isDemo ? (
           session.result ? (
-            <FinalResultSection result={session.result} />
+            <FinalResultSection result={session.result} regenControls={regenControls} />
           ) : generationState === "loading" ? (
             <Card className="mt-8 text-center">
               <p className="font-black">정리하고 있어요…</p>
