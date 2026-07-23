@@ -56,6 +56,8 @@ export type FinalResult = {
   insights: InsightBlock;
 };
 
+export type ResultBlockKey = "factorMatrix" | "scenarios" | "timeline" | "insights";
+
 export type ConversationProvider = {
   id: "local" | "api";
   nextReply(session: MapSession, latestUserText: string, followUpQuestions?: string[]): Message;

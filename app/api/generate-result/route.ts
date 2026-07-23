@@ -1,23 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateFinalResult } from "../../../src/map-decision-v1/engine/final-result-generator";
+import { generateFinalResult, generateResultBlock } from "../../../src/map-decision-v1/engine/final-result-generator";
 import {
   MAX_INPUT_LENGTH,
   MAX_MESSAGES_PER_SESSION,
   getClientIp,
   registerGenerationAttempt,
 } from "../../../src/map-decision-v1/engine/rate-limit";
-import { FinalResult, MapSession } from "../../../src/map-decision-v1/types";
+import { FinalResult, MapSession, ResultBlockKey } from "../../../src/map-decision-v1/types";
 
 const MIN_USER_TURNS = 3;
+const RESULT_BLOCK_KEYS: ResultBlockKey[] = ["factorMatrix", "scenarios", "timeline", "insights"];
 
-type RequestBody = { session: MapSession };
+type RequestBody = { session: MapSession; block?: ResultBlockKey };
 type SuccessResponse = { result: FinalResult };
+type BlockSuccessResponse = { block: ResultBlockKey; value: unknown };
 type BlockedResponse = { blocked: true; reason: string; message: string };
+
+function isResultBlockKey(value: unknown): value is ResultBlockKey {
+  return typeof value === "string" && (RESULT_BLOCK_KEYS as string[]).includes(value);
+}
 
 function isRequestBody(value: unknown): value is RequestBody {
   if (typeof value !== "object" || value === null) return false;
   const candidate = value as Partial<RequestBody>;
-  return typeof candidate.session === "object" && candidate.session !== null;
+  if (typeof candidate.session !== "object" || candidate.session === null) return false;
+  return candidate.block === undefined || isResultBlockKey(candidate.block);
 }
 
 function isOversized(session: MapSession): boolean {
@@ -34,7 +41,7 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  const { session } = body;
+  const { session, block } = body;
 
   if (isOversized(session)) {
     return NextResponse.json(
@@ -62,6 +69,17 @@ export async function POST(request: NextRequest) {
       { blocked: true, reason: reason === "session_limit" ? "session_generation_limit" : "daily_generation_limit", message } satisfies BlockedResponse,
       { status: 429 },
     );
+  }
+
+  if (block) {
+    const value = await generateResultBlock(session, block);
+    if (!value) {
+      return NextResponse.json(
+        { blocked: true, reason: "generation_failed", message: "이 부분을 다시 만들지 못했어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
+        { status: 502 },
+      );
+    }
+    return NextResponse.json({ block, value } satisfies BlockSuccessResponse);
   }
 
   const result = await generateFinalResult(session);
