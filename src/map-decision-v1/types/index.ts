@@ -25,6 +25,7 @@ export type MapSession = {
   isDemo?: boolean;
   demoStep?: number;
   localDraft?: string;
+  result?: FinalResult;
 };
 
 export type FactorMatrixItem = { id: string; text: string; kind: NodeKind; x: number; y: number };

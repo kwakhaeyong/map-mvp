@@ -1,19 +1,25 @@
 "use client";
 
+import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { now } from "../engine/session";
 import { MapOutputType, MapSession, NodeKind } from "../types";
 import {
   demoPaymentProvider,
   localAuthProvider,
   plannedPaymentProviders,
 } from "../engine/integration-providers";
+import { FinalResultSection } from "./FinalResultBlocks";
 import { MapCanvas } from "./MapCanvas";
 import {
   Badge,
   Button,
+  Card,
   ReflectionCard,
   ResultActionBar,
   Toast,
 } from "./ui/primitives";
+
+const MIN_USER_TURNS_FOR_RESULT = 3;
 
 function shorten(text: string, length = 90) {
   return text.trim().length > length
@@ -23,6 +29,7 @@ function shorten(text: string, length = 90) {
 
 export function Result({
   session,
+  setSession,
   onContinue,
   onReset,
   onSelectType,
@@ -30,6 +37,7 @@ export function Result({
   saveState = "saved",
 }: {
   session: MapSession;
+  setSession: Dispatch<SetStateAction<MapSession>>;
   onContinue: () => void;
   onReset: () => void;
   onSelectType: (type: MapOutputType) => void;
@@ -52,6 +60,51 @@ export function Result({
     )
       onReset();
   };
+
+  const userTurns = session.messages.filter((message) => message.role === "user").length;
+  const [generationState, setGenerationState] = useState<"idle" | "loading" | "error" | "too_early">(() =>
+    session.isDemo || session.result ? "idle" : userTurns < MIN_USER_TURNS_FOR_RESULT ? "too_early" : "idle",
+  );
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const attemptedRef = useRef(false);
+
+  const generateResult = () => {
+    setGenerationState("loading");
+    setGenerationError(null);
+    fetch("/api/generate-result", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.blocked) {
+          setGenerationError(data.message as string);
+          setGenerationState("error");
+          return;
+        }
+        setSession((previous) => ({ ...previous, result: data.result, updatedAt: now() }));
+        setGenerationState("idle");
+      })
+      .catch(() => {
+        setGenerationError("네트워크 문제로 결과를 만들지 못했어요.");
+        setGenerationState("error");
+      });
+  };
+
+  useEffect(() => {
+    if (session.isDemo || session.result || attemptedRef.current) return;
+    if (userTurns < MIN_USER_TURNS_FOR_RESULT) {
+      setGenerationState("too_early");
+      return;
+    }
+    attemptedRef.current = true;
+    generateResult();
+    // Runs once per Result mount — session.result caches the outcome so a
+    // remount (e.g. leaving and reopening this screen) never re-triggers a
+    // paid Sonnet call for content that's already been generated.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <main className="min-h-dvh px-4 py-5 pb-safe-bottom pt-safe-top text-text-primary sm:py-8 print:bg-surface-elevated">
@@ -132,6 +185,33 @@ export function Result({
         <div className="mt-8">
           <MapCanvas session={session} result onStartExample={onRealStart} />
         </div>
+
+        {!session.isDemo ? (
+          session.result ? (
+            <FinalResultSection result={session.result} />
+          ) : generationState === "loading" ? (
+            <Card className="mt-8 text-center">
+              <p className="font-black">정리하고 있어요…</p>
+              <p className="mt-2 text-sm font-semibold text-text-secondary">
+                이야기한 내용을 바탕으로 한 장의 결과를 만드는 중이에요. 몇십 초 정도 걸릴 수 있어요.
+              </p>
+            </Card>
+          ) : generationState === "error" ? (
+            <Card className="mt-8">
+              <p className="font-black text-error">{generationError}</p>
+              <Button className="mt-3" variant="secondary" onClick={generateResult}>
+                다시 시도하기
+              </Button>
+            </Card>
+          ) : generationState === "too_early" ? (
+            <Card className="mt-8 text-center">
+              <p className="font-black">조금 더 이야기해주시면 결과가 더 정확해요.</p>
+              <p className="mt-2 text-sm font-semibold text-text-secondary">
+                지금은 대화가 짧아서, 몇 마디만 더 나누면 훨씬 선명한 결과를 만들 수 있어요.
+              </p>
+            </Card>
+          ) : null
+        ) : null}
 
         <section className="mt-8 grid gap-4 lg:grid-cols-3">
           <ResultCard
