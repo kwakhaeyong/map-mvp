@@ -109,6 +109,7 @@ export function Conversation({
     setIsExtracting(true);
     let extracted: { nodes: MapNode[]; relations: MapRelation[] };
     let guidanceMessage: string | null = null;
+    let followUpQuestions: string[] = [];
     try {
       const response = await fetch("/api/extract-nodes", {
         method: "POST",
@@ -123,6 +124,7 @@ export function Conversation({
       }
       extracted = { nodes: data.nodes, relations: data.relations };
       guidanceMessage = data.guidanceMessage ?? null;
+      followUpQuestions = data.followUpQuestions ?? [];
     } catch {
       // Offline or the server route itself is unreachable — fall back to the
       // fully local rule-based extractor so the conversation never breaks.
@@ -140,7 +142,7 @@ export function Conversation({
       };
       const aiMessage: Message = guidanceMessage
         ? { id: createId("ai"), role: "ai", provider: "local", timestamp: now(), text: guidanceMessage }
-        : localConversationProvider.nextReply(intermediate, clean);
+        : localConversationProvider.nextReply(intermediate, clean, followUpQuestions);
       return { ...intermediate, messages: [...intermediate.messages, aiMessage] };
     });
   };

@@ -6,6 +6,7 @@ import { MapNode, MapRelation, MapSession } from "../../../src/map-decision-v1/t
 
 const MAX_INPUT_LENGTH = 5000;
 const MAX_MESSAGES_PER_SESSION = 40;
+const MAX_NODES_FOR_FOLLOW_UP = 10;
 
 type RequestBody = { text: string; session: MapSession; correction?: boolean };
 type SuccessResponse = {
@@ -13,6 +14,7 @@ type SuccessResponse = {
   nodes: MapNode[];
   relations: MapRelation[];
   guidanceMessage: string | null;
+  followUpQuestions: string[];
 };
 type BlockedResponse = { blocked: true; reason: string; message: string };
 
@@ -72,11 +74,13 @@ export async function POST(request: NextRequest) {
       ? aiResult.nodes.map((node) => ({ ...node, kind: "correction" as const, label: "수정된 이해", confidence: "confirmed" as const }))
       : aiResult.nodes;
     const relations = buildRelationsForNodes(nodes, session);
+    const canAskFollowUp = aiResult.onTopic && session.nodes.length < MAX_NODES_FOR_FOLLOW_UP;
     return NextResponse.json({
       source: "ai",
       nodes,
       relations,
       guidanceMessage: aiResult.onTopic ? null : aiResult.guidanceMessage,
+      followUpQuestions: canAskFollowUp ? aiResult.followUpQuestions : [],
     } satisfies SuccessResponse);
   }
 
@@ -86,5 +90,6 @@ export async function POST(request: NextRequest) {
     nodes: fallback.nodes,
     relations: fallback.relations,
     guidanceMessage: null,
+    followUpQuestions: [],
   } satisfies SuccessResponse);
 }

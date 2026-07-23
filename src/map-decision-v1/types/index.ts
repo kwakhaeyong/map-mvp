@@ -29,7 +29,7 @@ export type MapSession = {
 
 export type ConversationProvider = {
   id: "local" | "api";
-  nextReply(session: MapSession, latestUserText: string): Message;
+  nextReply(session: MapSession, latestUserText: string, followUpQuestions?: string[]): Message;
 };
 
 export type VoiceProvider = { id: "webSpeech" | "openaiRealtime" | "whisper" | "geminiLive" | "custom"; label: string; configured: boolean; }
