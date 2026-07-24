@@ -1,7 +1,7 @@
 "use client";
 
 import { nodeLabels } from "../engine/thinking-extractor";
-import { FactorMatrixBlock, FinalResult, InsightBlock, NodeKind, ResultBlockKey, ScenarioBlock, TimelineBlock } from "../types";
+import { FactorMatrixBlock, FinalResult, InsightBlock, MapSession, NodeKind, ResultBlockKey, ScenarioBlock, TimelineBlock } from "../types";
 import { Badge, Button, Card, ReflectionCard } from "./ui/primitives";
 
 export type BlockRegenControls = { onRegenerate: () => void; isRegenerating: boolean; error: string | null };
@@ -303,5 +303,60 @@ export function FinalResultSection({
         <InsightCallout block={result.insights} regen={regenControls.insights} />
       </div>
     </section>
+  );
+}
+
+// Shown instead of FinalResultSection when the AI call for the full 4-block
+// result has no key or keeps failing. Deliberately a separate, much simpler
+// component rather than FinalResultSection with empty blocks — scenarios,
+// timeline, and insights genuinely can't be produced by rules, so we say so
+// instead of faking placeholders in cards that otherwise look AI-generated.
+export function FallbackSummaryCard({ session, onRetry }: { session: MapSession; onRetry: () => void }) {
+  const factors = session.nodes.filter((node) => node.kind !== "missing" && node.kind !== "topic").slice(0, 10);
+  const missing = session.nodes.filter((node) => node.kind === "missing");
+
+  return (
+    <Card className="mt-8">
+      <Badge tone="uncertainty">AI 연결 없음</Badge>
+      <h2 className="mt-3 text-xl font-black tracking-[-0.02em]">지금은 AI 연결이 없어 간단 정리만 보여드려요</h2>
+      <p className="mt-1 text-sm font-semibold text-text-secondary">
+        나눈 대화에서 요인과 확인할 정보만 간단히 정리했어요. 시나리오 비교·타임라인·통찰처럼 더 깊은 분석은 AI가 연결되면 제공돼요.
+      </p>
+
+      {factors.length > 0 ? (
+        <div className="mt-6">
+          <p className="text-xs font-black text-text-muted">요인</p>
+          <ul className="mt-2 space-y-2">
+            {factors.map((node) => (
+              <li key={node.id} className="flex items-start gap-2 text-sm font-semibold text-text-secondary">
+                <Badge tone={KIND_TONE[node.kind]} className="mt-0.5 shrink-0">
+                  {node.label}
+                </Badge>
+                <span>{node.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {missing.length > 0 ? (
+        <div className="mt-6">
+          <p className="text-xs font-black text-text-muted">확인할 정보</p>
+          <ul className="mt-2 space-y-1 text-sm font-semibold text-text-secondary">
+            {missing.map((node) => (
+              <li key={node.id}>· {node.text}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {factors.length === 0 && missing.length === 0 ? (
+        <p className="mt-6 text-sm font-semibold text-text-muted">아직 정리할 만한 내용이 적어요. 조금 더 이야기해보세요.</p>
+      ) : null}
+
+      <Button className="mt-6" variant="secondary" onClick={onRetry}>
+        다시 시도하기
+      </Button>
+    </Card>
   );
 }

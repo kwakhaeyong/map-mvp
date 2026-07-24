@@ -8,7 +8,7 @@ import {
   localAuthProvider,
   plannedPaymentProviders,
 } from "../engine/integration-providers";
-import { BlockRegenControls, FinalResultSection } from "./FinalResultBlocks";
+import { BlockRegenControls, FallbackSummaryCard, FinalResultSection } from "./FinalResultBlocks";
 import { MapCanvas } from "./MapCanvas";
 import {
   Badge,
@@ -62,7 +62,7 @@ export function Result({
   };
 
   const userTurns = session.messages.filter((message) => message.role === "user").length;
-  const [generationState, setGenerationState] = useState<"idle" | "loading" | "error" | "too_early">(() =>
+  const [generationState, setGenerationState] = useState<"idle" | "loading" | "error" | "fallback" | "too_early">(() =>
     session.isDemo || session.result ? "idle" : userTurns < MIN_USER_TURNS_FOR_RESULT ? "too_early" : "idle",
   );
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -79,6 +79,16 @@ export function Result({
       .then((response) => response.json())
       .then((data) => {
         if (data.blocked) {
+          // "generation_failed" means the AI itself is unavailable (no key,
+          // or the call kept failing after the server's own retry) — that's
+          // the one case honest enough to show a rule-based fallback for.
+          // Other blocked reasons (rate limit, payload too large) are
+          // deliberate blocks, not AI unavailability, so they keep the
+          // plain error message instead.
+          if (data.reason === "generation_failed") {
+            setGenerationState("fallback");
+            return;
+          }
           setGenerationError(data.message as string);
           setGenerationState("error");
           return;
@@ -87,8 +97,7 @@ export function Result({
         setGenerationState("idle");
       })
       .catch(() => {
-        setGenerationError("네트워크 문제로 결과를 만들지 못했어요.");
-        setGenerationState("error");
+        setGenerationState("fallback");
       });
   };
 
@@ -232,6 +241,8 @@ export function Result({
                 이야기한 내용을 바탕으로 한 장의 결과를 만드는 중이에요. 몇십 초 정도 걸릴 수 있어요.
               </p>
             </Card>
+          ) : generationState === "fallback" ? (
+            <FallbackSummaryCard session={session} onRetry={generateResult} />
           ) : generationState === "error" ? (
             <Card className="mt-8">
               <p className="font-black text-error">{generationError}</p>

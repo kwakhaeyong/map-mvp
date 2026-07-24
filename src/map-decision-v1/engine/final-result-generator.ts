@@ -282,14 +282,9 @@ function buildInsightBlock(raw: RawInsights): InsightBlock {
   return { messages: raw.messages };
 }
 
-// Server-side only: reads ANTHROPIC_API_KEY from the environment and must
-// never be imported from client components. The API route is the only caller.
-export async function generateFinalResult(session: MapSession): Promise<FinalResult | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-
-  const client = new Anthropic({ apiKey });
-
+// One attempt: call Sonnet, parse, validate. Returns null on any failure so
+// generateFinalResult can retry it without duplicating this logic.
+async function attemptFullGeneration(client: Anthropic, session: MapSession): Promise<FinalResult | null> {
   let responseText: string | undefined;
   try {
     const response = await client.messages.create({
@@ -332,6 +327,29 @@ export async function generateFinalResult(session: MapSession): Promise<FinalRes
     timeline: buildTimelineBlock(parsed.data.timeline),
     insights: buildInsightBlock(parsed.data.insights),
   };
+}
+
+const MAX_GENERATION_ATTEMPTS = 2;
+
+// Server-side only: reads ANTHROPIC_API_KEY from the environment and must
+// never be imported from client components. The API route is the only caller.
+//
+// Retries once on a transient failure (network error, malformed/invalid
+// response) before giving up — but only if a key is configured, since a
+// missing key fails the exact same way every time. The retry happens inside
+// this single call, so the API route's one rate-limit check per request
+// still only ever counts as one attempt against the user's budget, even
+// though up to two Claude calls may happen underneath it.
+export async function generateFinalResult(session: MapSession): Promise<FinalResult | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+
+  const client = new Anthropic({ apiKey });
+  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+    const result = await attemptFullGeneration(client, session);
+    if (result) return result;
+  }
+  return null;
 }
 
 // --- Single-block regeneration ---
@@ -395,12 +413,7 @@ function buildBlockValue<K extends ResultBlockKey>(block: K, value: unknown): Bl
   return buildInsightBlock(value as RawInsights) as BlockValueMap[K];
 }
 
-// Server-side only, same constraints as generateFinalResult above.
-export async function generateResultBlock<K extends ResultBlockKey>(session: MapSession, block: K): Promise<BlockValueMap[K] | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-
-  const client = new Anthropic({ apiKey });
+async function attemptBlockGeneration<K extends ResultBlockKey>(client: Anthropic, session: MapSession, block: K): Promise<BlockValueMap[K] | null> {
   const jsonKey = BLOCK_JSON_KEY[block];
 
   let responseText: string | undefined;
@@ -446,4 +459,18 @@ export async function generateResultBlock<K extends ResultBlockKey>(session: Map
   }
 
   return buildBlockValue(block, value);
+}
+
+// Server-side only, same retry and rate-limit-counting behavior as
+// generateFinalResult above.
+export async function generateResultBlock<K extends ResultBlockKey>(session: MapSession, block: K): Promise<BlockValueMap[K] | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+
+  const client = new Anthropic({ apiKey });
+  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+    const result = await attemptBlockGeneration(client, session, block);
+    if (result) return result;
+  }
+  return null;
 }
