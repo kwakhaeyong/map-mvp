@@ -25,10 +25,24 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// x-real-ip를 우선 신뢰한다 — Vercel의 공식 @vercel/functions 패키지가 제공하는
+// ipAddress() 헬퍼도 정확히 이 헤더(IP_HEADER_NAME = "x-real-ip")를 읽는다
+// (packages/functions/src/headers.ts, vercel/vercel 저장소). Vercel 엣지가
+// 프록시 단계에서 직접 채워 넣는 값이라 사용자가 보내는 요청 헤더로 덮어쓸 수
+// 없다. x-forwarded-for는 표준 프록시 체인 헤더라 여러 홉을 거치며 값이
+// 누적되는데, 첫 번째 값은 클라이언트가 그대로 써 보낼 수 있어(예:
+// `X-Forwarded-For: 1.2.3.4`) 신뢰할 수 없다. x-real-ip가 없는 환경(로컬
+// 개발, Vercel 외 배포)에서만 x-forwarded-for로 폴백하되, 이때도 첫 값이
+// 아니라 우리 서버에 가장 가까운(=가장 신뢰할 수 있는) 마지막 값을 쓴다.
 export function getClientIp(request: NextRequest): string {
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
   const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) return forwardedFor.split(",")[0].trim();
-  return request.headers.get("x-real-ip") || "unknown";
+  if (forwardedFor) {
+    const hops = forwardedFor.split(",").map((hop) => hop.trim()).filter(Boolean);
+    if (hops.length > 0) return hops[hops.length - 1];
+  }
+  return "unknown";
 }
 
 export function registerSessionStart(ip: string): { allowed: boolean; count: number } {
