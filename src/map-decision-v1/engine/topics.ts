@@ -1,11 +1,11 @@
-// MAP 종류(주제) 레지스트리 — "기반 공사" 1단계.
+// MAP 종류(주제) 레지스트리.
 //
 // 지금은 career(진로·커리어)만 실제로 연결돼 있다(오늘 이미 작동하는
-// 대화 추출/결과 생성 로직을 그대로 가리킨다). 나머지 9개는 자리만
-// 만들어둔 뼈대이며 implemented: false — 아직 어떤 코드 경로도 이 항목의
-// conversationFocus/resultFocus/entryQuestion/entryChips를 읽지 않는다.
-// 2단계(종류 선택 화면)에서 실제로 골라지기 시작하면 하나씩 implemented를
-// true로 바꾸고 내용을 다듬는다.
+// 대화 추출/결과 생성 로직을 그대로 가리킨다). 나머지 9개는 종류 선택
+// 화면(Landing.tsx)에 "준비 중"으로 노출되지만 implemented: false라
+// 눌러도 대화가 시작되지 않는다 — conversationFocus/resultFocus는 아직
+// 비어 있고 entryQuestion/entryChips도 실제 대화 톤에 맞게 다듬어지기
+// 전이다. 각 주제가 완성되면 implemented를 true로 바꾸고 내용을 채운다.
 
 export type TopicCategory = "viral" | "depth"; // 바이럴 / 깊이
 export type TopicGrade = "flagship" | "light"; // 완성형 / 경량
@@ -19,6 +19,7 @@ export type ResultLayoutId =
 export type TopicConfig = {
   id: string;
   name: string;
+  icon: string;
   oneLiner: string;
   category: TopicCategory;
   grade: TopicGrade;
@@ -45,6 +46,7 @@ export const TOPICS: Record<string, TopicConfig> = {
   career: {
     id: "career",
     name: "진로·커리어",
+    icon: "🧭",
     oneLiner: "다음 방향을 정할 때 필요한 정보를 함께 정리해요.",
     category: "depth",
     grade: "flagship",
@@ -60,6 +62,7 @@ export const TOPICS: Record<string, TopicConfig> = {
   idealType: {
     id: "idealType",
     name: "이상형",
+    icon: "💘",
     oneLiner: "끌리는 사람의 기준을 한 장으로 정리해요.",
     category: "viral",
     grade: "flagship",
@@ -74,6 +77,7 @@ export const TOPICS: Record<string, TopicConfig> = {
   selfIntro: {
     id: "selfIntro",
     name: "나 소개·성격",
+    icon: "🪞",
     oneLiner: "나라는 사람을 한 장으로 소개해요.",
     category: "viral",
     grade: "flagship",
@@ -88,6 +92,7 @@ export const TOPICS: Record<string, TopicConfig> = {
   loveStyle: {
     id: "loveStyle",
     name: "연애 스타일",
+    icon: "💌",
     oneLiner: "내가 연애에서 반복하는 패턴을 정리해요.",
     category: "viral",
     grade: "light",
@@ -102,6 +107,7 @@ export const TOPICS: Record<string, TopicConfig> = {
   compatibility: {
     id: "compatibility",
     name: "궁합",
+    icon: "🔮",
     oneLiner: "두 사람의 결이 어떻게 맞는지 정리해요.",
     category: "viral",
     grade: "light",
@@ -116,6 +122,7 @@ export const TOPICS: Record<string, TopicConfig> = {
   taste: {
     id: "taste",
     name: "취향",
+    icon: "🎨",
     oneLiner: "내 취향의 결을 한 장으로 정리해요.",
     category: "viral",
     grade: "light",
@@ -130,6 +137,7 @@ export const TOPICS: Record<string, TopicConfig> = {
   travelStyle: {
     id: "travelStyle",
     name: "여행 스타일",
+    icon: "✈️",
     oneLiner: "나에게 맞는 여행 방식을 정리해요.",
     category: "viral",
     grade: "light",
@@ -144,6 +152,7 @@ export const TOPICS: Record<string, TopicConfig> = {
   jobChange: {
     id: "jobChange",
     name: "이직",
+    icon: "🚪",
     oneLiner: "지금 이직이 맞는 선택인지 정리해요.",
     category: "depth",
     grade: "light",
@@ -158,6 +167,7 @@ export const TOPICS: Record<string, TopicConfig> = {
   bigDecision: {
     id: "bigDecision",
     name: "큰 결정·소비/재무",
+    icon: "💰",
     oneLiner: "돈이 걸린 큰 결정을 정리해요.",
     category: "depth",
     grade: "light",
@@ -172,6 +182,7 @@ export const TOPICS: Record<string, TopicConfig> = {
   freeform: {
     id: "freeform",
     name: "자유 고민",
+    icon: "💬",
     oneLiner: "어디에도 안 맞으면 편하게 이야기해도 괜찮아요.",
     category: "depth",
     grade: "light",

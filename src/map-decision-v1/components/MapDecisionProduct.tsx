@@ -9,7 +9,7 @@ import { Landing } from "./Landing";
 import { Result } from "./Result";
 
 function createDemoSession(): MapSession {
-  const session = createSession("이직할까?");
+  const session = createSession("career");
   return {
     ...session,
     isDemo: true,
@@ -113,11 +113,14 @@ export function MapDecisionProduct() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  const start = (topic?: string) => setSession(createSession(topic));
+  const start = (topicId?: string) => setSession(createSession(topicId));
   const startDemo = () => setSession(createDemoSession());
   const reset = () => { if (!session.isDemo) clearSession(); setHasSavedDraft(false); setSaveState("saved"); setSession(createLandingSession()); };
   const selectType = (type: MapOutputType) => setSession((current) => ({ ...current, preferredMapType: type }));
-  const exitDemoToReal = () => setSession(createSession());
+  // "직접 해보기"도 이제 종류 선택 화면을 거친다 — 데모를 벗어나는 것도
+  // 하나의 진입이므로, 주제 없이 곧장 대화로 들어가던 예전 동작 대신
+  // 랜딩(종류 선택 화면)으로 보낸다.
+  const exitDemoToReal = () => setSession(createLandingSession());
   const goConversation = useCallback(() => setSession((current) => ({ ...current, stage: "conversation" })), []);
   const goResult = useCallback(() => setSession((current) => ({ ...current, stage: "result" })), []);
 
