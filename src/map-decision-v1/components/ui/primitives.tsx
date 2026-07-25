@@ -49,8 +49,15 @@ export function Textarea({ error, className, ...props }: TextareaHTMLAttributes<
   return <textarea className={cx("min-h-28 w-full resize-y rounded-medium border bg-surface-elevated px-4 py-3 leading-7 text-text-primary shadow-subtle transition duration-normal ease-standard placeholder:text-text-muted hover:border-border-strong", error ? "border-error" : "border-border", focus, disabled, className)} {...props} />;
 }
 
-export function VoiceButton(props: ButtonHTMLAttributes<HTMLButtonElement> & { listening?: boolean; loading?: boolean }) {
-  return <Button variant={props.listening ? "danger" : "primary"} size="lg" {...props}>{props.children ?? (props.listening ? "듣는 중" : "말로 시작")}</Button>;
+export function VoiceButton({ listening, loading, className, children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { listening?: boolean; loading?: boolean }) {
+  return (
+    <span className="relative inline-flex">
+      {listening ? <span aria-hidden="true" className="absolute -inset-1.5 -z-10 animate-pulse rounded-pill bg-primary/20" /> : null}
+      <Button variant={listening ? "danger" : "primary"} size="lg" loading={loading} className={className} {...props}>
+        {children ?? (listening ? "듣는 중" : "말로 시작")}
+      </Button>
+    </span>
+  );
 }
 
 export const MessageBubble = ({ role = "assistant", className, ...props }: HTMLAttributes<HTMLDivElement> & { role?: "user" | "assistant" }) => <div className={cx("message-in max-w-[42rem] rounded-large px-5 py-4 text-sm font-medium leading-7 shadow-subtle", role === "user" ? "ml-auto bg-primary text-primary-foreground" : "bg-surface-elevated text-text-primary shadow-subtle", className)} {...props} />;

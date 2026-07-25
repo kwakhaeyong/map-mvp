@@ -68,7 +68,6 @@ export type VoiceProvider = { id: "webSpeech" | "openaiRealtime" | "whisper" | "
 export type VoiceProviderState = {
   supported: boolean;
   listening: boolean;
-  interimTranscript: string;
   seconds: number;
   error: string;
   start: () => void;
