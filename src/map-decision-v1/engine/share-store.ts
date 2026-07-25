@@ -66,27 +66,33 @@ export async function saveShare(record: SharedResultRecord): Promise<boolean> {
   }
 }
 
-export async function getShare(id: string): Promise<SharedResultRecord | null> {
+// 링크를 찾을 수 없는 것(만료/오타 — 사용자에게 "이 링크는 유효하지
+// 않다"고 말해도 되는 상태)과 저장소 장애로 지금 당장 확인할 수 없는
+// 것(사용자에게 "잠시 후 다시 시도해보라"고 말해야 하는, 링크 자체는
+// 멀쩡할 수 있는 상태)은 화면 문구가 달라야 해서 결과를 구분해 돌려준다.
+export type GetShareResult = { status: "ok"; record: SharedResultRecord } | { status: "not_found" } | { status: "unavailable" };
+
+export async function getShare(id: string): Promise<GetShareResult> {
   const redis = getClient();
-  if (!redis) return null;
+  if (!redis) return { status: "unavailable" };
   let raw: string | SharedResultRecord | null;
   try {
     raw = await redis.get<string | SharedResultRecord>(shareKey(id));
   } catch (error) {
     console.error("[share-store] getShare failed", error);
-    return null;
+    return { status: "unavailable" };
   }
-  if (!raw) return null;
+  if (!raw) return { status: "not_found" };
   // @upstash/redis는 저장된 값이 JSON으로 파싱 가능하면 자동으로 파싱해
   // 돌려주기도 해서, 문자열/객체 둘 다 들어올 수 있다.
   if (typeof raw === "string") {
     try {
-      return JSON.parse(raw) as SharedResultRecord;
+      return { status: "ok", record: JSON.parse(raw) as SharedResultRecord };
     } catch {
-      return null;
+      return { status: "not_found" };
     }
   }
-  return raw;
+  return { status: "ok", record: raw };
 }
 
 // 하루 공유 횟수 제한. 기존 rate-limit.ts의 세션 생성 제한과 별개로,

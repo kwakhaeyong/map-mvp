@@ -37,13 +37,13 @@ function isIdealTypeResult(value: unknown): value is IdealTypeResult {
   return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.criteria === "object";
 }
 
-const HOME_CTA_CLASS =
+const PRIMARY_CTA_CLASS =
   "inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-pill border border-primary bg-primary px-6 text-base font-extrabold tracking-[-0.01em] text-primary-foreground shadow-subtle transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-floating active:translate-y-0";
 
 export default async function SharedResultPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const record = await getShare(id);
-  const result = record && record.topicId === "idealType" && isIdealTypeResult(record.result) ? record.result : null;
+  const share = await getShare(id);
+  const result = share.status === "ok" && share.record.topicId === "idealType" && isIdealTypeResult(share.record.result) ? share.record.result : null;
 
   return (
     <main className="min-h-dvh px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary">
@@ -54,14 +54,24 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
         {result ? (
           <>
             <IdealTypeResultBlocks result={result} />
-            <Link href="/" className={HOME_CTA_CLASS}>
+            <Link href="/" className={PRIMARY_CTA_CLASS}>
               ✨ 너도 만들어봐
             </Link>
           </>
+        ) : share.status === "unavailable" ? (
+          // 저장소 장애로 지금 당장 확인이 안 되는 상태 — 링크 자체는
+          // 멀쩡할 수 있으니 "만료됐다"고 말하면 안 되고, 바이럴 CTA보다
+          // 새로고침 안내가 먼저 나와야 한다.
+          <Card className="flex flex-col items-center gap-4 py-10 text-center">
+            <p className="text-sm font-extrabold text-text-secondary">지금 일시적인 문제로 이 카드를 불러올 수 없어요. 잠시 후 새로고침해주세요.</p>
+            <a href={`/r/${id}`} className={PRIMARY_CTA_CLASS}>
+              🔄 새로고침
+            </a>
+          </Card>
         ) : (
           <Card className="flex flex-col items-center gap-4 py-10 text-center">
             <p className="text-sm font-extrabold text-text-secondary">링크가 만료됐거나 찾을 수 없어요.</p>
-            <Link href="/" className={HOME_CTA_CLASS}>
+            <Link href="/" className={PRIMARY_CTA_CLASS}>
               ✨ 너도 만들어봐
             </Link>
           </Card>
