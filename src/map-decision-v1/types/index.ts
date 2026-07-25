@@ -25,6 +25,7 @@ export type MapSession = {
   updatedAt: string;
   isDemo?: boolean;
   demoStep?: number;
+  quizStep?: number;
   localDraft?: string;
   result?: FinalResult;
 };
