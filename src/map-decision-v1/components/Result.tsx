@@ -2,6 +2,7 @@
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { now } from "../engine/session";
+import { isReadyForResult } from "../engine/readiness";
 import { MapOutputType, MapSession, NodeKind, ResultBlockKey } from "../types";
 import {
   demoPaymentProvider,
@@ -18,8 +19,6 @@ import {
   ResultActionBar,
   Toast,
 } from "./ui/primitives";
-
-const MIN_USER_TURNS_FOR_RESULT = 3;
 
 function shorten(text: string, length = 90) {
   return text.trim().length > length
@@ -61,9 +60,8 @@ export function Result({
       onReset();
   };
 
-  const userTurns = session.messages.filter((message) => message.role === "user").length;
   const [generationState, setGenerationState] = useState<"idle" | "loading" | "error" | "fallback" | "too_early">(() =>
-    session.isDemo || session.result ? "idle" : userTurns < MIN_USER_TURNS_FOR_RESULT ? "too_early" : "idle",
+    session.isDemo || session.result ? "idle" : isReadyForResult(session) ? "idle" : "too_early",
   );
   const [generationError, setGenerationError] = useState<string | null>(null);
   const attemptedRef = useRef(false);
@@ -103,7 +101,7 @@ export function Result({
 
   useEffect(() => {
     if (session.isDemo || session.result || attemptedRef.current) return;
-    if (userTurns < MIN_USER_TURNS_FOR_RESULT) {
+    if (!isReadyForResult(session)) {
       setGenerationState("too_early");
       return;
     }

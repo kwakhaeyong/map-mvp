@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateFinalResult, generateResultBlock } from "../../../src/map-decision-v1/engine/final-result-generator";
+import { isReadyForResult } from "../../../src/map-decision-v1/engine/readiness";
 import {
   MAX_INPUT_LENGTH,
   MAX_MESSAGES_PER_SESSION,
@@ -8,7 +9,6 @@ import {
 } from "../../../src/map-decision-v1/engine/rate-limit";
 import { FinalResult, MapSession, ResultBlockKey } from "../../../src/map-decision-v1/types";
 
-const MIN_USER_TURNS = 3;
 const RESULT_BLOCK_KEYS: ResultBlockKey[] = ["factorMatrix", "scenarios", "timeline", "insights"];
 
 type RequestBody = { session: MapSession; block?: ResultBlockKey };
@@ -50,8 +50,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const userTurns = session.messages.filter((message) => message.role === "user").length;
-  if (userTurns < MIN_USER_TURNS) {
+  if (!isReadyForResult(session)) {
     return NextResponse.json(
       { blocked: true, reason: "too_few_turns", message: "조금 더 이야기해주시면 결과가 더 정확해요." } satisfies BlockedResponse,
       { status: 400 },

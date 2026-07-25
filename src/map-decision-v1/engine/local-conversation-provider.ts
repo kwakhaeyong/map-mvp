@@ -28,9 +28,21 @@ export const localConversationProvider: ConversationProvider = {
   id: "local",
   nextReply(session: MapSession, latestUserText: string, followUpQuestions?: string[]): Message {
     const userTurns = session.messages.filter((message) => message.role === "user").length;
-    if (userTurns >= 3 && session.checkpointStatus !== "confirmed") {
+    // Only show the checkpoint once (checkpointStatus goes undefined -> "pending"
+    // right after this). Re-showing it on every later turn — which happened
+    // whenever the user never tapped 맞아요/조금 달라요 — silently swallowed
+    // every follow-up question the AI generated from turn 3 onward.
+    if (userTurns >= 3 && session.checkpointStatus === undefined) {
       const bullets = session.nodes.slice(0, 5).map((node) => `- ${node.label}: ${truncate(node.text, 44)}`).join("\n");
-      return { id: createId("ai"), role: "ai", provider: "local", checkpoint: true, timestamp: now(), text: `지금까지 이야기한 걸 보면\n\n${bullets}\n\n제가 이해한 게 맞나요?` };
+      return {
+        id: createId("ai"),
+        role: "ai",
+        provider: "local",
+        checkpoint: true,
+        timestamp: now(),
+        text: `지금까지 이야기한 걸 보면\n\n${bullets}\n\n제가 이해한 게 맞나요?`,
+        ...(followUpQuestions && followUpQuestions.length > 0 ? { followUpQuestions } : {}),
+      };
     }
 
     const kinds = new Set(session.nodes.map((node) => node.kind));
@@ -38,14 +50,19 @@ export const localConversationProvider: ConversationProvider = {
     const topic = session.nodes.find((node) => node.kind === "topic")?.text || session.selectedTopic || latestUserText;
     const theme = session.nodes.find((node) => node.kind === "value")?.text || session.nodes.find((node) => node.kind === "emotion")?.text;
     const reflection = theme ? `특히 “${truncate(theme, 32)}”가 중요한 단서처럼 보여요.` : "생각의 중심이 조금씩 보이기 시작했어요.";
-    const closingQuestion = followUpQuestions && followUpQuestions.length > 0 ? followUpQuestions.join("\n\n") : followUps[nextKind];
+    // Real AI follow-up questions win; otherwise fall back to the generic
+    // rule-based question for whichever node kind hasn't come up yet. Either
+    // way this is now a separate field the UI renders as its own callout,
+    // not text appended to the end of this paragraph where it used to get lost.
+    const resolvedFollowUps = followUpQuestions && followUpQuestions.length > 0 ? followUpQuestions : [followUps[nextKind]];
 
     return {
       id: createId("ai"),
       role: "ai",
       provider: "local",
       timestamp: now(),
-      text: `말해주신 내용을 보면 “${truncate(topic, 36)}” 안에서 ${reflection}\n\n지금까지 이야기만 보면 결론을 서두르기보다 기준과 확인할 정보를 분리해보면 좋겠어요.\n\n${closingQuestion}`,
+      text: `말해주신 내용을 보면 “${truncate(topic, 36)}” 안에서 ${reflection}\n\n지금까지 이야기만 보면 결론을 서두르기보다 기준과 확인할 정보를 분리해보면 좋겠어요.`,
+      followUpQuestions: resolvedFollowUps,
     };
   },
 };
