@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createLandingSession, createSession, now } from "../engine/session";
+import { resolveTopic } from "../engine/topics";
 import { clearSession, loadSession, saveSession } from "../storage/session-storage";
 import { MapOutputType, MapSession } from "../types";
 import { Conversation } from "./Conversation";
 import { Landing } from "./Landing";
 import { Result } from "./Result";
+import { TopicQuiz } from "./TopicQuiz";
 
 function createDemoSession(): MapSession {
   const session = createSession("career");
@@ -148,6 +150,10 @@ export function MapDecisionProduct() {
   }
   if (session.stage === "result") {
     return <Result session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onSelectType={selectType} onRealStart={exitDemoToReal} saveState={saveState} />;
+  }
+  const topic = resolveTopic(session.topicId);
+  if (topic.inputMode === "quiz") {
+    return <TopicQuiz session={session} setSession={setSession} onFinish={goResult} onReset={reset} saveState={saveState} />;
   }
   return <Conversation session={session} setSession={setSession} onFinish={goResult} onReset={reset} onRealStart={exitDemoToReal} onDemoChoice={advanceDemo} saveState={saveState} />;
 }

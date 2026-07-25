@@ -16,6 +16,11 @@ export type ResultLayoutId =
   | "viral-common" // 경량 공통 틀(바이럴 계열)
   | "depth-common"; // 경량 공통 틀(깊이 계열)
 
+// chat: 기존 대화형(질문→자유 답변) 입력. quiz: 이상형처럼 축별로 선택지
+// 칩 + 짧은 직접입력으로 진행하는 스텝형 입력(components/TopicQuiz.tsx).
+export type TopicInputMode = "chat" | "quiz";
+export type TopicAxis = { id: string; question: string; options: string[] };
+
 export type TopicConfig = {
   id: string;
   name: string;
@@ -27,6 +32,11 @@ export type TopicConfig = {
   // 단계에서는 저장만 하고 코드에서 사용하지 않는다.
   fixedRatio: number;
   resultLayoutId: ResultLayoutId;
+  inputMode: TopicInputMode;
+  // inputMode가 "quiz"일 때만 사용. 스텝별 질문 + 선택지 칩.
+  axes?: TopicAxis[];
+  // quiz 마지막에 넣는 선택형 자유 서술 질문.
+  closingPrompt?: string;
   // 대화 중 노드 추출/되묻기 시스템 프롬프트에 끼워넣는 주제별 지시문.
   // career는 기존 프롬프트에 이미 있던 문장을 그대로 옮긴 것 — 새로 지어낸
   // 내용이 아니다.
@@ -52,6 +62,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     grade: "flagship",
     fixedRatio: 45,
     resultLayoutId: "career",
+    inputMode: "chat",
     conversationFocus:
       "예를 들어 커리어 상담이면 지향하는 직무, 제약 조건, 실패 경험, 우선순위 갈등처럼 핵심적인 내용을 우선하고",
     resultFocus: "",
@@ -68,6 +79,15 @@ export const TOPICS: Record<string, TopicConfig> = {
     grade: "flagship",
     fixedRatio: 75,
     resultLayoutId: "idealType",
+    inputMode: "quiz",
+    axes: [
+      { id: "appearance", question: "끌리는 분위기는?", options: ["청량·상큼", "시크·도시적", "부드럽고 포근", "개성있는·유니크", "단정한·클래식"] },
+      { id: "personality", question: "어떤 성격에 끌려?", options: ["다정다감", "유쾌·활발", "차분·침착", "리더십 있는", "무뚝뚝해도 속 깊은", "4차원·엉뚱"] },
+      { id: "values", question: "상대에게 중요한 건?", options: ["성실·책임감", "유머·긍정", "야망·성장", "안정·가정적", "자유·독립"] },
+      { id: "relationship", question: "연애할 때 원하는 건?", options: ["표현 많이 해주기", "서로 존중하는 거리감", "함께 많은 시간", "티키타카 잘 통하기", "든든한 안정감"] },
+      { id: "lifestyle", question: "잘 맞는 생활은?", options: ["집순이·집돌이", "액티브·야외파", "취미 공유", "각자 시간 존중", "여행 좋아하는"] },
+    ],
+    closingPrompt: "이상형에 대해 더 하고 싶은 말이 있나요?",
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "어떤 사람에게 끌리세요?",
@@ -83,6 +103,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     grade: "flagship",
     fixedRatio: 75,
     resultLayoutId: "selfIntro",
+    inputMode: "chat",
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "요즘 나를 한마디로 표현하면 뭐예요?",
@@ -98,6 +119,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     grade: "light",
     fixedRatio: 70,
     resultLayoutId: "viral-common",
+    inputMode: "chat",
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "연애할 때 나는 어떤 편이에요?",
@@ -113,6 +135,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     grade: "light",
     fixedRatio: 75,
     resultLayoutId: "viral-common",
+    inputMode: "chat",
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "누구와의 궁합이 궁금해요?",
@@ -128,6 +151,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     grade: "light",
     fixedRatio: 70,
     resultLayoutId: "viral-common",
+    inputMode: "chat",
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "요즘 제일 끌리는 게 뭐예요?",
@@ -143,6 +167,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     grade: "light",
     fixedRatio: 70,
     resultLayoutId: "viral-common",
+    inputMode: "chat",
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "여행 갈 때 뭘 제일 중요하게 봐요?",
@@ -158,6 +183,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     grade: "light",
     fixedRatio: 45,
     resultLayoutId: "depth-common",
+    inputMode: "chat",
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "이직을 고민하는 가장 큰 이유가 뭐예요?",
@@ -173,6 +199,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     grade: "light",
     fixedRatio: 45,
     resultLayoutId: "depth-common",
+    inputMode: "chat",
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "지금 고민 중인 결정이 뭐예요?",
@@ -188,6 +215,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     grade: "light",
     fixedRatio: 40,
     resultLayoutId: "depth-common",
+    inputMode: "chat",
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "오늘은 어떤 생각을 같이 정리해볼까요?",
