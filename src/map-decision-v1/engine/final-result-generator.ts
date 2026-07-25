@@ -289,7 +289,14 @@ async function attemptFullGeneration(client: Anthropic, session: MapSession): Pr
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 4096,
+      // Was 4096 — confirmed in production that a long conversation makes
+      // the model's 4-block output (unbounded scenario/timeline/insight
+      // array sizes) hit this ceiling mid-JSON, producing a truncated,
+      // unparseable response that fell through to the fallback. Raising the
+      // ceiling doesn't cost anything for normal-length results — Anthropic
+      // bills actual completion tokens generated, not this max — it only
+      // lets the genuinely long cases finish instead of getting cut off.
+      max_tokens: 8192,
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -420,7 +427,11 @@ async function attemptBlockGeneration<K extends ResultBlockKey>(client: Anthropi
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 1536,
+      // Was 1536, scaled up proportionally to the full-generation bump
+      // above (same ~37.5% ratio) — a single block is much smaller than
+      // the full 4-block result, so it doesn't need the full 8192, but the
+      // same unbounded-array risk applies to whichever block is requested.
+      max_tokens: 3072,
       system: BLOCK_SYSTEM_PROMPTS[block],
       messages: [
         {
