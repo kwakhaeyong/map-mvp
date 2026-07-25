@@ -28,6 +28,7 @@ export type MapSession = {
   quizStep?: number;
   localDraft?: string;
   result?: FinalResult;
+  idealTypeResult?: IdealTypeResult;
 };
 
 export type FactorMatrixItem = { id: string; text: string; kind: NodeKind; x: number; y: number };
@@ -59,6 +60,23 @@ export type FinalResult = {
 };
 
 export type ResultBlockKey = "factorMatrix" | "scenarios" | "timeline" | "insights";
+
+// 이상형 카드는 항상 정확히 5축이라 배열이 아니라 고정 필드로 모델링한다
+// (진로 4블록의 factor_matrix.factors처럼 개수가 가변인 배열과 다르게,
+// Structured Outputs의 maxItems/minItems 미지원 문제를 애초에 피하는
+// 설계 선택 — engine/ideal-type-generator.ts 참고).
+export type IdealTypeAxisKey = "appearance" | "personality" | "values" | "relationship" | "lifestyle";
+export type IdealTypeResult = {
+  version: number;
+  generatedAt: string;
+  model: "claude-haiku-4-5";
+  title: string;
+  appearance: string;
+  personality: string;
+  values: string;
+  relationship: string;
+  lifestyle: string;
+};
 
 export type ConversationProvider = {
   id: "local" | "api";

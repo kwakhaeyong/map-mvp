@@ -1,11 +1,11 @@
 // MAP 종류(주제) 레지스트리.
 //
-// 지금은 career(진로·커리어)만 실제로 연결돼 있다(오늘 이미 작동하는
-// 대화 추출/결과 생성 로직을 그대로 가리킨다). 나머지 9개는 종류 선택
-// 화면(Landing.tsx)에 "준비 중"으로 노출되지만 implemented: false라
-// 눌러도 대화가 시작되지 않는다 — conversationFocus/resultFocus는 아직
-// 비어 있고 entryQuestion/entryChips도 실제 대화 톤에 맞게 다듬어지기
-// 전이다. 각 주제가 완성되면 implemented를 true로 바꾸고 내용을 채운다.
+// 지금은 career(진로·커리어, 대화형)와 idealType(이상형, 퀴즈형)만
+// 실제로 연결돼 있다. 나머지 8개는 종류 선택 화면(Landing.tsx)에
+// "준비 중"으로 노출되지만 implemented: false라 눌러도 대화가 시작되지
+// 않는다 — conversationFocus/resultFocus는 아직 비어 있고
+// entryQuestion/entryChips도 실제 대화 톤에 맞게 다듬어지기 전이다. 각
+// 주제가 완성되면 implemented를 true로 바꾸고 내용을 채운다.
 
 export type TopicCategory = "viral" | "depth"; // 바이럴 / 깊이
 export type TopicGrade = "flagship" | "light"; // 완성형 / 경량
@@ -92,7 +92,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     resultFocus: "",
     entryQuestion: "어떤 사람에게 끌리세요?",
     entryChips: ["성격이 잘 맞는 사람", "편안한 관계", "아직 잘 모르겠어요"],
-    implemented: false,
+    implemented: true,
   },
   selfIntro: {
     id: "selfIntro",
