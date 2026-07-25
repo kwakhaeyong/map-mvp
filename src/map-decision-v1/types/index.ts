@@ -61,21 +61,35 @@ export type FinalResult = {
 
 export type ResultBlockKey = "factorMatrix" | "scenarios" | "timeline" | "insights";
 
-// 이상형 카드는 항상 정확히 5축이라 배열이 아니라 고정 필드로 모델링한다
-// (진로 4블록의 factor_matrix.factors처럼 개수가 가변인 배열과 다르게,
-// Structured Outputs의 maxItems/minItems 미지원 문제를 애초에 피하는
-// 설계 선택 — engine/ideal-type-generator.ts 참고).
-export type IdealTypeAxisKey = "appearance" | "personality" | "values" | "relationship" | "lifestyle";
+// 이상형 결과는 "입력을 정리"하는 게 아니라 "입력을 재료로 발견을 주는"
+// 7요소 구조다. 배열은 전부 개수 제한 없이(Structured Outputs가
+// maxItems/minItems를 지원하지 않는 문제를 피하려고) 선언하고, 화면에
+// 너무 많이 나오지 않도록 자르는 건 항상 코드(.slice())에서 한다 —
+// engine/ideal-type-generator.ts 참고.
+export type IdealTypeCriteria = { mustHave: string[]; niceToHave: string[]; canCompromise: string[] };
+export type IdealTypeMatrixPoint = { label: string; description: string; x: number; y: number };
+export type IdealTypeMatrix = {
+  xAxisLabel: { low: string; high: string };
+  yAxisLabel: { low: string; high: string };
+  types: IdealTypeMatrixPoint[];
+};
+export type IdealTypeFlags = { green: string[]; red: string[] };
+export type IdealTypeSelfReflection = { whatYouOffer: string[]; whatToImprove: string[] };
+export type IdealTypeRoadmapPhase = { label: string; actions: string[] };
+export type IdealTypeRoadmap = { firstAction: string; phases: IdealTypeRoadmapPhase[] };
+
 export type IdealTypeResult = {
   version: number;
   generatedAt: string;
-  model: "claude-haiku-4-5";
+  model: "claude-sonnet-5";
   title: string;
-  appearance: string;
-  personality: string;
-  values: string;
-  relationship: string;
-  lifestyle: string;
+  oneLiner: string;
+  criteria: IdealTypeCriteria;
+  attractionPatterns: string[];
+  matrix: IdealTypeMatrix;
+  flags: IdealTypeFlags;
+  selfReflection: IdealTypeSelfReflection;
+  roadmap: IdealTypeRoadmap;
 };
 
 export type ConversationProvider = {
