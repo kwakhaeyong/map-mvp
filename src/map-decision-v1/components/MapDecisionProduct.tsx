@@ -6,6 +6,7 @@ import { resolveTopic } from "../engine/topics";
 import { clearSession, loadSession, saveSession } from "../storage/session-storage";
 import { MapOutputType, MapSession } from "../types";
 import { Conversation } from "./Conversation";
+import { IdealTypeCard } from "./IdealTypeCard";
 import { Landing } from "./Landing";
 import { Result } from "./Result";
 import { TopicQuiz } from "./TopicQuiz";
@@ -149,6 +150,10 @@ export function MapDecisionProduct() {
     return <Landing hasDraft={hasSavedDraft} onStart={start} onResume={goConversation} onDemo={startDemo} saveState={saveState} />;
   }
   if (session.stage === "result") {
+    const resultTopic = resolveTopic(session.topicId);
+    if (resultTopic.resultLayoutId === "idealType") {
+      return <IdealTypeCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
+    }
     return <Result session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onSelectType={selectType} onRealStart={exitDemoToReal} saveState={saveState} />;
   }
   const topic = resolveTopic(session.topicId);

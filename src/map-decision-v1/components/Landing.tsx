@@ -19,9 +19,9 @@ export function Brand() {
   );
 }
 
-// 진로만 실제로 연결돼 있다(engine/topics.ts의 implemented 참고). 나머지는
-// 완성되는 대로 이 목록 구성을 바꿀 필요 없이 topics.ts의 implemented만
-// true로 바꾸면 된다.
+// 진로·이상형만 실제로 연결돼 있다(engine/topics.ts의 implemented 참고).
+// 나머지는 완성되는 대로 이 목록 구성을 바꿀 필요 없이 topics.ts의
+// implemented만 true로 바꾸면 된다.
 const DEPTH_TOPIC_IDS = ["career", "jobChange", "bigDecision"];
 const VIRAL_TOPIC_IDS = ["idealType", "selfIntro", "loveStyle", "compatibility", "taste", "travelStyle"];
 const SAFETY_NET_TOPIC_ID = "freeform";
