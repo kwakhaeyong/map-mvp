@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRIVACY_CONTACT_EMAIL } from "../../src/map-decision-v1/constants";
 
 export const metadata: Metadata = {
   title: "이용약관 | MAP Decision",
@@ -76,10 +77,16 @@ export default function TermsPage() {
 
         <section className="mt-8 space-y-3">
           <h2 className="text-xl font-black tracking-[-0.02em]">7. 문의처</h2>
-          <p className="break-keep leading-7 text-text-secondary">[오너 확인 필요]</p>
+          <p className="break-keep leading-7 text-text-secondary">
+            서비스 이용 관련 문의는{" "}
+            <a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} className="underline underline-offset-2 hover:text-text-primary">
+              {PRIVACY_CONTACT_EMAIL}
+            </a>
+            로 보내주세요.
+          </p>
         </section>
 
-        <p className="mt-10 text-xs font-semibold text-text-muted">시행일: [오너 확인 필요]</p>
+        <p className="mt-10 text-xs font-semibold text-text-muted">시행일: 2026-07-25</p>
       </article>
     </main>
   );
