@@ -58,16 +58,15 @@ export default function PrivacyPage() {
           <p className="break-keep leading-7 text-text-secondary">
             입력하신 내용은 원칙적으로 사용자의 브라우저(로컬 저장소)에만
             저장되며, 회사가 운영하는 서버 데이터베이스에 별도로 저장하지
-            않습니다. AI 분석 기능이 켜져 있는 경우, 입력 내용은 분석을 위해
-            일시적으로 처리될 뿐 처리 후 서버에 보관하지 않는 것을 원칙으로
-            합니다.
+            않습니다. 다만 결과 화면에서 &ldquo;공유하기&rdquo;를 직접 누른
+            경우에는 위 1번 항목의 내용이 예외적으로 서버에 저장됩니다. AI
+            분석 기능이 켜져 있는 경우, 입력 내용은 분석을 위해 일시적으로
+            처리될 뿐 처리 후 서버에 보관하지 않는 것을 원칙으로 합니다.
           </p>
           <p className="break-keep leading-7 text-text-secondary">
-            다만 사용자가 결과 화면에서 &ldquo;공유하기&rdquo;를 직접 눌러
-            공유 링크를 만든 경우에는 예외적으로 서버(위 1번 항목)에
-            저장됩니다. 공유 링크는 주소(URL)를 아는 사람이라면 누구나 볼 수
-            있습니다 — 검색 엔진에는 노출되지 않지만, 그 링크를 다른 사람에게
-            전달하면 그 사람도 내용을 볼 수 있다는 점을 알아두세요.
+            공유 링크는 주소(URL)를 아는 사람이라면 누구나 볼 수 있습니다 —
+            검색 엔진에는 노출되지 않지만, 그 링크를 다른 사람에게 전달하면
+            그 사람도 내용을 볼 수 있다는 점을 알아두세요.
           </p>
         </section>
 
@@ -109,7 +108,9 @@ export default function PrivacyPage() {
             입력 내용은 사용자의 브라우저에 남아있는 동안 보유되며, 사용자가
             브라우저 데이터를 삭제하면 즉시 삭제됩니다. 서비스 측에서 별도로
             서버에 보관하지 않으므로, 회사가 임의로 정하는 보유 기간은
-            없습니다.
+            없습니다. 다만 결과 화면에서 &ldquo;공유하기&rdquo;를 눌러 만든
+            공유 링크는 아래와 같이 서버에 90일간 보관된 뒤 자동으로
+            삭제됩니다.
           </p>
           <p className="break-keep leading-7 text-text-secondary">
             공유 링크로 저장된 결과 카드는 <strong>90일이 지나면 자동으로
@@ -162,7 +163,11 @@ export default function PrivacyPage() {
           </p>
         </section>
 
-        <p className="mt-10 text-xs font-semibold text-text-muted">시행일: [오너 확인 필요]</p>
+        <p className="mt-10 text-xs font-semibold text-text-muted">
+          시행일: [오너 확인 필요]
+          <br />
+          최근 개정일: 2026-07-25 (공유 링크 관련 내용 추가)
+        </p>
       </article>
     </main>
   );
