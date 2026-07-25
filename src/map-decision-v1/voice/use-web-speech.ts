@@ -43,9 +43,14 @@ export function useWebSpeech(onFinalTranscript: (text: string) => void): VoicePr
   const recognition = useRef<SpeechRecognitionLike | null>(null);
   const shouldContinueRef = useRef(false);
   const silenceTimerRef = useRef<number | null>(null);
+  // Finalized speech accumulates here across the whole listening session
+  // (including any invisible browser-triggered restarts) and is only
+  // handed to the caller once, when listening genuinely ends — showing
+  // partial/misheard text live while the user is still mid-thought was more
+  // distracting than reassuring, so nothing is exposed to the UI until then.
+  const accumulatedTextRef = useRef("");
   const [supported, setSupported] = useState(true);
   const [listening, setListening] = useState(false);
-  const [interimTranscript, setInterimTranscript] = useState("");
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState("");
 
@@ -104,7 +109,9 @@ export function useWebSpeech(onFinalTranscript: (text: string) => void): VoicePr
       }
       clearSilenceTimer();
       setListening(false);
-      setInterimTranscript("");
+      const finalText = accumulatedTextRef.current.trim();
+      accumulatedTextRef.current = "";
+      if (finalText) onFinalTranscript(finalText);
     };
     instance.onerror = (event) => {
       if (event.error && FATAL_ERRORS.has(event.error)) {
@@ -122,19 +129,16 @@ export function useWebSpeech(onFinalTranscript: (text: string) => void): VoicePr
       setError("음성이 잠시 불안정해요. 말한 내용을 텍스트로 적어도 괜찮아요.");
     };
     instance.onresult = (event) => {
+      // Any result (interim or final) means the user is actively speaking —
+      // reset the silence clock regardless of which kind it is.
       armSilenceTimer();
       let finalText = "";
-      let interimText = "";
       for (let index = event.resultIndex; index < event.results.length; index += 1) {
-        const transcript = event.results[index][0].transcript;
-        if (event.results[index].isFinal) finalText += transcript;
-        else interimText += transcript;
+        if (event.results[index].isFinal) finalText += event.results[index][0].transcript;
       }
-      setInterimTranscript(interimText);
-      // Recognized text only ever lands in the composer draft (see the
-      // caller) — never auto-submitted, so a misheard word can be fixed
-      // before sending.
-      if (finalText.trim()) onFinalTranscript(finalText.trim());
+      if (finalText.trim()) {
+        accumulatedTextRef.current += (accumulatedTextRef.current ? " " : "") + finalText.trim();
+      }
     };
     try {
       instance.start();
@@ -146,6 +150,7 @@ export function useWebSpeech(onFinalTranscript: (text: string) => void): VoicePr
 
   const start = () => {
     shouldContinueRef.current = true;
+    accumulatedTextRef.current = "";
     setSeconds(0);
     startRecognitionInstance();
   };
@@ -159,8 +164,10 @@ export function useWebSpeech(onFinalTranscript: (text: string) => void): VoicePr
   const cancel = () => {
     shouldContinueRef.current = false;
     clearSilenceTimer();
+    // Discard whatever was heard so far — unlike stop(), cancel() means
+    // "never mind", so onend must not hand anything back to the caller.
+    accumulatedTextRef.current = "";
     recognition.current?.abort();
-    setInterimTranscript("");
     setListening(false);
   };
 
@@ -177,5 +184,5 @@ export function useWebSpeech(onFinalTranscript: (text: string) => void): VoicePr
     [],
   );
 
-  return { supported, listening, interimTranscript, seconds, error, start, stop, cancel };
+  return { supported, listening, seconds, error, start, stop, cancel };
 }

@@ -368,11 +368,6 @@ function Composer({
               ? `편하게 계속 말해 주세요 · ${speech.seconds}초`
               : "말한 내용은 확인하고 수정할 수 있어요"}
           </p>
-          {speech.interimTranscript ? (
-            <p className="mt-1 text-sm font-bold text-primary">
-              {speech.interimTranscript}
-            </p>
-          ) : null}
           {speech.error ? (
             <p className="mt-1 text-sm font-bold text-error">{speech.error}</p>
           ) : null}
