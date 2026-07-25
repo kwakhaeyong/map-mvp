@@ -7,7 +7,7 @@ const SYSTEM_PROMPT = `너는 MAP Decision의 최종 결과 생성 엔진이다.
 
 원칙: 정답을 대신 정하지 않는다. 시나리오 비교에서 closest_fit은 "가장 가까운 방향"을 근거와 함께 제시하는 것이지, 강제로 하나를 골라주는 게 아니다. 대화만으로 판단 근거가 부족하면 closest_fit을 null로 두어라.
 
-1) factor_matrix: 대화에서 드러난 요인들을 뽑아 2x2 매트릭스에 배치한다. x_axis_label/y_axis_label은 이 대화 상황에 맞는 축을 스스로 정한다(예: 통제 가능성 x 영향력, 단기 x 장기). 각 요인의 kind는 topic/trigger/fact/emotion/person/value/reason/constraint/option/benefit/risk/missing/direction/action/correction 중 정확히 하나이고, x/y는 0~100 사이 값이다.
+1) factor_matrix: 대화에서 드러난 요인들을 뽑아 2x2 매트릭스에 배치한다. 최대 8개까지만 뽑는다. x_axis_label/y_axis_label은 이 대화 상황에 맞는 축을 스스로 정한다(예: 통제 가능성 x 영향력, 단기 x 장기). 각 요인의 kind는 topic/trigger/fact/emotion/person/value/reason/constraint/option/benefit/risk/missing/direction/action/correction 중 정확히 하나이고, x/y는 0~100 사이 값이다.
 
 2) scenarios: 현실적인 시나리오 2~4개를 만들고 각각 장단점을 적는다. closest_fit은 그 중 대화 맥락과 가장 맞닿아 있는 방향과 이유(reasoning)를 담되, 근거가 약하면 null로 둔다.
 
@@ -34,7 +34,6 @@ const FACTOR_MATRIX_SCHEMA = {
     },
     factors: {
       type: "array",
-      maxItems: 8,
       items: {
         type: "object",
         properties: {
@@ -70,13 +69,18 @@ const SCENARIOS_SCHEMA = {
       },
     },
     closest_fit: {
-      type: ["object", "null"],
-      properties: {
-        scenario_name: { type: "string" },
-        reasoning: { type: "string" },
-      },
-      required: ["scenario_name", "reasoning"],
-      additionalProperties: false,
+      anyOf: [
+        { type: "null" },
+        {
+          type: "object",
+          properties: {
+            scenario_name: { type: "string" },
+            reasoning: { type: "string" },
+          },
+          required: ["scenario_name", "reasoning"],
+          additionalProperties: false,
+        },
+      ],
     },
   },
   required: ["items", "closest_fit"],
