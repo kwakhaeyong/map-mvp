@@ -1,0 +1,61 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Brand } from "../../../src/map-decision-v1/components/Landing";
+import { IdealTypeResultBlocks } from "../../../src/map-decision-v1/components/IdealTypeResultBlocks";
+import { Card } from "../../../src/map-decision-v1/components/ui/primitives";
+import { getShare } from "../../../src/map-decision-v1/engine/share-store";
+import { IdealTypeResult } from "../../../src/map-decision-v1/types";
+
+// 링크를 아는 사람만 볼 수 있는 읽기 전용 공개 화면 — 검색엔진에는
+// 노출되지 않게 한다. 편집·재생성·공유 버튼은 없고, 바이럴 고리인
+// "너도 만들어봐" CTA만 있다.
+export const metadata: Metadata = {
+  title: "공유된 이상형 카드 | MAP Decision",
+  description: "친구가 공유한 이상형 카드예요.",
+  robots: { index: false, follow: false },
+};
+
+// 매 방문마다 저장소를 조회해야 하므로 빌드 시점에 미리 만들어두지
+// 않는다(빌드 환경에 저장소 연결 정보가 없어도 빌드가 실패하지 않게).
+export const dynamic = "force-dynamic";
+
+function isIdealTypeResult(value: unknown): value is IdealTypeResult {
+  // 저장할 때 이미 한 번 검증을 거친 데이터라, 여기서는 화면이 깨지지
+  // 않을 정도의 최소한의 모양만 다시 확인한다.
+  const r = value as Partial<IdealTypeResult> | undefined;
+  return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.criteria === "object";
+}
+
+const HOME_CTA_CLASS =
+  "inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-pill border border-primary bg-primary px-6 text-base font-extrabold tracking-[-0.01em] text-primary-foreground shadow-subtle transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-floating active:translate-y-0";
+
+export default async function SharedResultPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const record = await getShare(id);
+  const result = record && record.topicId === "idealType" && isIdealTypeResult(record.result) ? record.result : null;
+
+  return (
+    <main className="min-h-dvh px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary">
+      <div className="mx-auto flex w-full max-w-sm flex-col gap-3">
+        <div className="flex items-center px-1">
+          <Brand />
+        </div>
+        {result ? (
+          <>
+            <IdealTypeResultBlocks result={result} />
+            <Link href="/" className={HOME_CTA_CLASS}>
+              ✨ 너도 만들어봐
+            </Link>
+          </>
+        ) : (
+          <Card className="flex flex-col items-center gap-4 py-10 text-center">
+            <p className="text-sm font-extrabold text-text-secondary">링크가 만료됐거나 찾을 수 없어요.</p>
+            <Link href="/" className={HOME_CTA_CLASS}>
+              ✨ 너도 만들어봐
+            </Link>
+          </Card>
+        )}
+      </div>
+    </main>
+  );
+}
