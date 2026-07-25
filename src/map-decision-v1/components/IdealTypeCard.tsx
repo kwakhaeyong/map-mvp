@@ -306,24 +306,48 @@ function RoadmapSection({ roadmap }: { roadmap: IdealTypeRoadmap }) {
 
 function IdealTypeCardBody({ session, onReset }: { session: MapSession; onReset: () => void }) {
   const result = session.idealTypeResult!;
-  const [shared, setShared] = useState(false);
+  const [shareState, setShareState] = useState<"idle" | "creating" | "copied" | "error">("idle");
+  const [shareError, setShareError] = useState<string | null>(null);
 
+  // 공유하기를 눌렀을 때만 서버에 저장 요청을 보낸다 — 카드를 만든다고
+  // 자동으로 저장되지 않는다. 서버는 이 결과(JSON)만 저장하고, 대화
+  // 원문은 절대 받지도 저장하지도 않는다.
   const share = async () => {
-    const shareText = `내 이상형은 "${result.title}"\n${result.oneLiner}\n\nMAP Decision에서 만들어봤어요 →`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "내 이상형 카드", text: shareText });
-        return;
-      } catch {
-        // 사용자가 공유를 취소한 경우 등 — 클립보드 복사로 조용히 대체.
-      }
-    }
+    setShareState("creating");
+    setShareError(null);
     try {
-      await navigator.clipboard.writeText(shareText);
-      setShared(true);
-      window.setTimeout(() => setShared(false), 2000);
+      const response = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topicId: session.topicId ?? "idealType", result }),
+      });
+      const data = await response.json();
+      if (data.blocked) {
+        setShareError(data.message as string);
+        setShareState("error");
+        return;
+      }
+      const shareUrl = `${window.location.origin}${data.url}`;
+      const shareText = `내 이상형은 "${result.title}"\n${result.oneLiner}\n\n${shareUrl}`;
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: "내 이상형 카드", text: shareText, url: shareUrl });
+          setShareState("idle");
+          return;
+        } catch {
+          // 사용자가 공유를 취소한 경우 등 — 클립보드 복사로 조용히 대체.
+        }
+      }
+      try {
+        await navigator.clipboard.writeText(shareText);
+        setShareState("copied");
+        window.setTimeout(() => setShareState("idle"), 2000);
+      } catch {
+        setShareState("idle");
+      }
     } catch {
-      // 클립보드 접근이 막힌 환경 — 조용히 무시(결과 화면 자체는 이미 보임).
+      setShareError("네트워크 문제로 링크를 만들지 못했어요.");
+      setShareState("error");
     }
   };
 
@@ -338,9 +362,10 @@ function IdealTypeCardBody({ session, onReset }: { session: MapSession; onReset:
       <SelfReflectionSection selfReflection={result.selfReflection} />
       <RoadmapSection roadmap={result.roadmap} />
 
+      {shareError ? <p className="text-center text-xs font-bold text-error">{shareError}</p> : null}
       <div className="flex gap-2">
-        <Button variant="secondary" size="lg" className="flex-1" onClick={share}>
-          {shared ? "복사됨!" : "공유하기"}
+        <Button variant="secondary" size="lg" className="flex-1" onClick={share} disabled={shareState === "creating"}>
+          {shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : "공유하기"}
         </Button>
         <Button variant="primary" size="lg" className="flex-1" onClick={onReset}>
           ✨ 너도 만들어봐
