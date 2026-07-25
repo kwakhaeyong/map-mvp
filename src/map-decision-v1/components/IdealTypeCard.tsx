@@ -2,32 +2,42 @@
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { now } from "../engine/session";
-import { IdealTypeAxisKey, MapSession } from "../types";
+import { MapSession } from "../types";
 import { Brand } from "./Landing";
 import { Button, Card } from "./ui/primitives";
 
-function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(" ");
+// ★임시 렌더★ — 이번 단계는 7요소 결과 "내용"이 실제로 잘 나오는지
+// 확인하는 게 목표라, 폰 한 화면에 맞추는 카드 디자인은 다음 단계로
+// 미룬다. 지금은 스크롤되는 화면에 각 요소를 순서대로 텍스트로만
+// 나열한다.
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Card className="flex flex-col gap-2">
+      <h2 className="text-sm font-black text-text-muted">{title}</h2>
+      {children}
+    </Card>
+  );
 }
 
-// 리터럴 클래스 문자열로만 참조한다 — `bg-${key}`처럼 동적으로 조합하면
-// Tailwind JIT 스캐너가 소스에서 문자열을 못 찾아 클래스가 생성되지 않는다.
-const AXIS_META: Record<IdealTypeAxisKey, { label: string; icon: string; chipClassName: string }> = {
-  appearance: { label: "분위기", icon: "✨", chipClassName: "bg-option" },
-  personality: { label: "성격", icon: "💫", chipClassName: "bg-feeling" },
-  values: { label: "가치관", icon: "🧭", chipClassName: "bg-value" },
-  relationship: { label: "연애 방식", icon: "💬", chipClassName: "bg-action" },
-  lifestyle: { label: "라이프스타일", icon: "🌤️", chipClassName: "bg-uncertainty" },
-};
-
-const AXIS_ORDER: IdealTypeAxisKey[] = ["appearance", "personality", "values", "relationship", "lifestyle"];
+function BulletList({ items }: { items: string[] }) {
+  return (
+    <ul className="flex flex-col gap-1.5">
+      {items.map((item, index) => (
+        <li key={index} className="text-sm font-bold leading-6 text-text-primary">
+          · {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function IdealTypeCardBody({ session, onReset }: { session: MapSession; onReset: () => void }) {
   const result = session.idealTypeResult!;
   const [shared, setShared] = useState(false);
 
   const share = async () => {
-    const shareText = `내 이상형은 "${result.title}"\n\nMAP Decision에서 만들어봤어요 →`;
+    const shareText = `내 이상형은 "${result.title}"\n${result.oneLiner}\n\nMAP Decision에서 만들어봤어요 →`;
     if (navigator.share) {
       try {
         await navigator.share({ title: "내 이상형 카드", text: shareText });
@@ -46,30 +56,67 @@ function IdealTypeCardBody({ session, onReset }: { session: MapSession; onReset:
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <Card className="bg-gradient-to-br from-value via-feeling to-action p-5">
         <span className="inline-flex items-center rounded-pill border border-border/60 bg-surface-elevated/80 px-3 py-1 text-xs font-extrabold text-text-primary">
-          💘 이상형 카드
+          💘 이상형 카드 (임시 화면)
         </span>
         <h1 className="mt-3 text-balance break-keep text-2xl font-black leading-8 tracking-[-0.03em] text-text-primary">{result.title}</h1>
-        <div className="mt-4 grid grid-cols-2 gap-2.5">
-          {AXIS_ORDER.map((key, index) => {
-            const meta = AXIS_META[key];
-            const isLast = index === AXIS_ORDER.length - 1;
-            return (
-              <div key={key} className={cx("rounded-medium border border-border/50 bg-surface-elevated/90 p-3", isLast && "col-span-2")}>
-                <div className="flex items-center gap-1.5">
-                  <span className={cx("grid size-6 place-items-center rounded-pill text-xs", meta.chipClassName)} aria-hidden="true">
-                    {meta.icon}
-                  </span>
-                  <span className="text-[11px] font-black text-text-muted">{meta.label}</span>
-                </div>
-                <p className="mt-1.5 text-sm font-bold leading-5 text-text-primary">{result[key]}</p>
-              </div>
-            );
-          })}
-        </div>
+        <p className="mt-1.5 text-sm font-bold leading-6 text-text-primary/90">{result.oneLiner}</p>
       </Card>
+
+      <Section title="이상형 기준">
+        <p className="text-xs font-black text-text-muted">필수</p>
+        <BulletList items={result.criteria.mustHave} />
+        <p className="mt-2 text-xs font-black text-text-muted">선호</p>
+        <BulletList items={result.criteria.niceToHave} />
+        <p className="mt-2 text-xs font-black text-text-muted">타협 가능</p>
+        <BulletList items={result.criteria.canCompromise} />
+      </Section>
+
+      <Section title="끌림 패턴">
+        <BulletList items={result.attractionPatterns} />
+      </Section>
+
+      <Section title={`끌림 × 관계 적합도 (${result.matrix.xAxisLabel.low} → ${result.matrix.xAxisLabel.high} / ${result.matrix.yAxisLabel.low} → ${result.matrix.yAxisLabel.high})`}>
+        <div className="flex flex-col gap-2">
+          {result.matrix.types.map((point, index) => (
+            <div key={index} className="rounded-medium border border-border/50 bg-surface-elevated/60 p-2.5">
+              <p className="text-sm font-black text-text-primary">
+                {point.label} <span className="font-semibold text-text-muted">(x:{point.x}, y:{point.y})</span>
+              </p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-text-secondary">{point.description}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="신호등">
+        <p className="text-xs font-black text-text-muted">🟢 좋은 신호</p>
+        <BulletList items={result.flags.green} />
+        <p className="mt-2 text-xs font-black text-text-muted">🔴 주의 신호</p>
+        <BulletList items={result.flags.red} />
+      </Section>
+
+      <Section title="✨ 자기 성찰">
+        <p className="text-xs font-black text-text-muted">내가 줄 수 있는 것</p>
+        <BulletList items={result.selfReflection.whatYouOffer} />
+        <p className="mt-2 text-xs font-black text-text-muted">내가 보완할 부분</p>
+        <BulletList items={result.selfReflection.whatToImprove} />
+      </Section>
+
+      <Section title="로드맵">
+        <p className="text-xs font-black text-text-muted">24시간 안에</p>
+        <p className="text-sm font-bold leading-6 text-text-primary">{result.roadmap.firstAction}</p>
+        <div className="mt-2 flex flex-col gap-2">
+          {result.roadmap.phases.map((phase, index) => (
+            <div key={index}>
+              <p className="text-xs font-black text-text-muted">{phase.label}</p>
+              <BulletList items={phase.actions} />
+            </div>
+          ))}
+        </div>
+      </Section>
 
       <div className="flex gap-2">
         <Button variant="secondary" size="lg" className="flex-1" onClick={share}>
@@ -133,14 +180,14 @@ export function IdealTypeCard({
   }, []);
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary">
-      <div className="flex w-full max-w-sm items-center justify-between px-1 pb-3">
-        <Brand />
-        <button type="button" onClick={onContinue} className="text-xs font-black text-text-muted hover:text-text-primary">
-          다시 만들기
-        </button>
-      </div>
-      <div className="w-full max-w-sm">
+    <main className="min-h-dvh px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary">
+      <div className="mx-auto flex w-full max-w-sm flex-col gap-3">
+        <div className="flex items-center justify-between px-1">
+          <Brand />
+          <button type="button" onClick={onContinue} className="text-xs font-black text-text-muted hover:text-text-primary">
+            다시 만들기
+          </button>
+        </div>
         {session.idealTypeResult ? (
           <IdealTypeCardBody session={session} onReset={onReset} />
         ) : generationState === "loading" ? (
