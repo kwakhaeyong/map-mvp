@@ -4,8 +4,6 @@ import { extractNodesWithAI } from "../../../src/map-decision-v1/engine/ai-node-
 import { MAX_INPUT_LENGTH, MAX_MESSAGES_PER_SESSION, getClientIp, registerSessionStart } from "../../../src/map-decision-v1/engine/rate-limit";
 import { MapNode, MapRelation, MapSession } from "../../../src/map-decision-v1/types";
 
-const MAX_NODES_FOR_FOLLOW_UP = 10;
-
 type RequestBody = { text: string; session: MapSession; correction?: boolean };
 type SuccessResponse = {
   source: "ai" | "rule-based";
@@ -66,13 +64,12 @@ export async function POST(request: NextRequest) {
       ? aiResult.nodes.map((node) => ({ ...node, kind: "correction" as const, label: "수정된 이해", confidence: "confirmed" as const }))
       : aiResult.nodes;
     const relations = buildRelationsForNodes(nodes, session);
-    const canAskFollowUp = aiResult.onTopic && session.nodes.length < MAX_NODES_FOR_FOLLOW_UP;
     return NextResponse.json({
       source: "ai",
       nodes,
       relations,
       guidanceMessage: aiResult.onTopic ? null : aiResult.guidanceMessage,
-      followUpQuestions: canAskFollowUp ? aiResult.followUpQuestions : [],
+      followUpQuestions: aiResult.onTopic ? aiResult.followUpQuestions : [],
     } satisfies SuccessResponse);
   }
 

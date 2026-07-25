@@ -2,6 +2,7 @@
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { localConversationProvider } from "../engine/local-conversation-provider";
+import { isReadyForResult } from "../engine/readiness";
 import { extractThinking } from "../engine/thinking-extractor";
 import { createId, now } from "../engine/session";
 import { MapNode, MapRelation, MapSession, Message } from "../types";
@@ -143,7 +144,15 @@ export function Conversation({
       const aiMessage: Message = guidanceMessage
         ? { id: createId("ai"), role: "ai", provider: "local", timestamp: now(), text: guidanceMessage }
         : localConversationProvider.nextReply(intermediate, clean, followUpQuestions);
-      return { ...intermediate, messages: [...intermediate.messages, aiMessage] };
+      // The checkpoint should only interrupt the conversation once — if the
+      // user never taps 맞아요/조금 달라요, checkpointStatus would otherwise
+      // stay undefined forever and re-trigger the checkpoint (swallowing
+      // every later follow-up question) on every subsequent turn.
+      const checkpointStatus =
+        aiMessage.checkpoint && intermediate.checkpointStatus === undefined
+          ? "pending"
+          : intermediate.checkpointStatus;
+      return { ...intermediate, checkpointStatus, messages: [...intermediate.messages, aiMessage] };
     });
   };
 
@@ -218,6 +227,20 @@ export function Conversation({
                 {message.checkpoint ? (
                   <CheckpointControls setSession={setSession} />
                 ) : null}
+                {message.followUpQuestions && message.followUpQuestions.length > 0 ? (
+                  <div className="mt-4 space-y-2 rounded-medium border border-uncertainty/50 bg-uncertainty/10 p-3">
+                    <p className="text-xs font-black uppercase tracking-[-0.01em] text-text-secondary">
+                      확인하면 더 선명해져요
+                    </p>
+                    <ul className="space-y-1.5">
+                      {message.followUpQuestions.map((question, index) => (
+                        <li key={index} className="text-sm font-bold leading-6 text-text-primary">
+                          {question}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </MessageBubble>
             ))}
             <div ref={endRef} />
@@ -251,6 +274,18 @@ export function Conversation({
             <p className="border-t border-border px-3 py-2 text-sm font-bold text-error sm:px-4">
               {notice}
             </p>
+          ) : null}
+          {!session.isDemo && isReadyForResult(session) ? (
+            <div className="border-t border-border bg-primary/5 px-3 py-3 sm:px-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-black text-text-primary">
+                  지금까지 내용으로 결과를 만들 수 있어요
+                </p>
+                <Button variant="primary" onClick={onFinish}>
+                  결과 정리 보기
+                </Button>
+              </div>
+            </div>
           ) : null}
           <Composer
             draft={draft}
