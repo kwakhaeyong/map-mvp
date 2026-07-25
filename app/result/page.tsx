@@ -6,7 +6,7 @@ import { MapSession, MapOutputType } from "../../src/map-decision-v1/types";
 import { Result } from "../../src/map-decision-v1/components/Result";
 
 function sampleResult(): MapSession {
-  const session = createSession("이직할까?");
+  const session = createSession("career");
   return {
     ...session,
     stage: "result",

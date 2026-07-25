@@ -1,24 +1,34 @@
 import { MapSession, Message, SCHEMA_VERSION } from "../types";
+import { resolveTopic } from "./topics";
 
 export function now() { return new Date().toISOString(); }
 export function createId(prefix = "id") { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
 
-export function createSession(topic?: string): MapSession {
+// topicId comes from a topic-picker card (e.g. "career"). Left undefined,
+// this stays the original topicless path — nothing defaults to career here
+// (that default only applies inside resolveTopic for the AI prompt, once a
+// session already exists). Passing an unknown/not-yet-implemented topicId
+// still resolves to career via resolveTopic, but the picker screen only
+// ever calls this with implemented topics, so that fallback shouldn't fire
+// in practice.
+export function createSession(topicId?: string): MapSession {
   const timestamp = now();
+  const topic = topicId ? resolveTopic(topicId) : undefined;
   const starter: Message = {
     id: createId("ai"),
     role: "ai",
     provider: "local",
     timestamp,
-    text: topic ? `“${topic}”부터 같이 한 장으로 정리해볼까요? 편하게 말해 주세요.` : "오늘은 어떤 생각을 같이 정리해볼까요? 말로 해도, 짧게 써도 괜찮아요.",
+    text: topic ? topic.entryQuestion : "오늘은 어떤 생각을 같이 정리해볼까요? 말로 해도, 짧게 써도 괜찮아요.",
   };
   return {
     version: SCHEMA_VERSION,
     stage: "conversation",
     preferredMapType: "thinking",
-    selectedTopic: topic,
+    selectedTopic: topic?.name,
+    topicId: topic?.id,
     messages: [starter],
-    nodes: topic ? [{ id: "topic", kind: "topic", label: "핵심 주제", text: topic, confidence: "user", createdAt: timestamp }] : [],
+    nodes: topic ? [{ id: "topic", kind: "topic", label: "핵심 주제", text: topic.name, confidence: "user", createdAt: timestamp }] : [],
     relations: [],
     startedAt: timestamp,
     updatedAt: timestamp,
