@@ -164,7 +164,7 @@ export default function PrivacyPage() {
         </section>
 
         <p className="mt-10 text-xs font-semibold text-text-muted">
-          시행일: [오너 확인 필요]
+          시행일: 2026-07-25
           <br />
           최근 개정일: 2026-07-25 (공유 링크 관련 내용 추가)
         </p>
