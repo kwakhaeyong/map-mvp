@@ -29,7 +29,10 @@ function getClient(): Redis | null {
   if (client !== undefined) return client;
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  client = url && token ? new Redis({ url, token }) : null;
+  // 자동 파이프라이닝(같은 틱 안의 여러 호출을 한 요청으로 묶는 기능)은
+  // 끈다 — 우리는 요청마다 많아야 호출 한두 번뿐이라 얻는 이득이 없고,
+  // 끄면 매 호출이 단순한 단일 명령 요청이 되어 동작을 예측하기 쉽다.
+  client = url && token ? new Redis({ url, token, enableAutoPipelining: false }) : null;
   return client;
 }
 
