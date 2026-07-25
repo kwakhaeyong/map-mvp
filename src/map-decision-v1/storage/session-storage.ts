@@ -8,6 +8,7 @@ function migrateSession(value: unknown): MapSession | null {
     version: SCHEMA_VERSION,
     stage: candidate.stage === "result" ? "result" : candidate.stage === "landing" ? "landing" : "conversation",
     selectedTopic: candidate.selectedTopic,
+    topicId: candidate.topicId,
     preferredMapType: candidate.preferredMapType === "decision" ? "decision" : "thinking",
     messages: candidate.messages,
     nodes: candidate.nodes,

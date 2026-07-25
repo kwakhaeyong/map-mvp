@@ -15,6 +15,7 @@ export type MapSession = {
   version: number;
   stage: SessionStage;
   selectedTopic?: string;
+  topicId?: string;
   preferredMapType: MapOutputType;
   messages: Message[];
   nodes: MapNode[];
