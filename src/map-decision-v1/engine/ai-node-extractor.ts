@@ -28,7 +28,7 @@ const RESPONSE_SCHEMA = {
   type: "object",
   properties: {
     on_topic: { type: "boolean" },
-    guidance_message: { type: ["string", "null"] },
+    guidance_message: { anyOf: [{ type: "string" }, { type: "null" }] },
     nodes: {
       type: "array",
       items: {
@@ -45,7 +45,6 @@ const RESPONSE_SCHEMA = {
     follow_up_questions: {
       type: "array",
       items: { type: "string" },
-      maxItems: 2,
     },
   },
   required: ["on_topic", "guidance_message", "nodes", "follow_up_questions"],
