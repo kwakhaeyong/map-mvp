@@ -41,8 +41,14 @@ export async function POST(request: NextRequest) {
   }
 
   const ip = getClientIp(request);
-  const { allowed } = await registerShareAttempt(ip);
-  if (!allowed) {
+  const attempt = await registerShareAttempt(ip);
+  if (!attempt.allowed) {
+    if (attempt.reason === "unavailable") {
+      return NextResponse.json(
+        { blocked: true, reason: "sharing_unavailable", message: "지금 공유 기능에 일시적인 문제가 있어요. 잠시 후 다시 시도해주세요." } satisfies BlockedResponse,
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       { blocked: true, reason: "daily_share_limit", message: "오늘 만들 수 있는 공유 링크 수를 모두 사용했어요. 내일 다시 시도해 주세요." } satisfies BlockedResponse,
       { status: 429 },

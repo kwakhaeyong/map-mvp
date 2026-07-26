@@ -49,28 +49,50 @@ export function createShareId(): string {
   return randomBytes(12).toString("base64url");
 }
 
+// 연결 정보는 있는데 Upstash가 일시적으로 응답하지 않거나 에러를 내는
+// 경우(연결 정보 자체가 없는 것과는 다른 상황) — 이때도 조용히 실패
+// 처리해서 호출부가 "지금은 안 돼요" 안내로 이어가게 한다. 저장/조회/
+// 횟수 확인 중 하나라도 이 상태면 나머지도 같은 Redis라 어차피 실패할
+// 가능성이 높으므로, 굳이 개별적으로 복구를 시도하지 않는다.
 export async function saveShare(record: SharedResultRecord): Promise<boolean> {
   const redis = getClient();
   if (!redis) return false;
-  await redis.set(shareKey(record.id), JSON.stringify(record), { ex: SHARE_TTL_SECONDS });
-  return true;
+  try {
+    await redis.set(shareKey(record.id), JSON.stringify(record), { ex: SHARE_TTL_SECONDS });
+    return true;
+  } catch (error) {
+    console.error("[share-store] saveShare failed", error);
+    return false;
+  }
 }
 
-export async function getShare(id: string): Promise<SharedResultRecord | null> {
+// 링크를 찾을 수 없는 것(만료/오타 — 사용자에게 "이 링크는 유효하지
+// 않다"고 말해도 되는 상태)과 저장소 장애로 지금 당장 확인할 수 없는
+// 것(사용자에게 "잠시 후 다시 시도해보라"고 말해야 하는, 링크 자체는
+// 멀쩡할 수 있는 상태)은 화면 문구가 달라야 해서 결과를 구분해 돌려준다.
+export type GetShareResult = { status: "ok"; record: SharedResultRecord } | { status: "not_found" } | { status: "unavailable" };
+
+export async function getShare(id: string): Promise<GetShareResult> {
   const redis = getClient();
-  if (!redis) return null;
-  const raw = await redis.get<string | SharedResultRecord>(shareKey(id));
-  if (!raw) return null;
+  if (!redis) return { status: "unavailable" };
+  let raw: string | SharedResultRecord | null;
+  try {
+    raw = await redis.get<string | SharedResultRecord>(shareKey(id));
+  } catch (error) {
+    console.error("[share-store] getShare failed", error);
+    return { status: "unavailable" };
+  }
+  if (!raw) return { status: "not_found" };
   // @upstash/redis는 저장된 값이 JSON으로 파싱 가능하면 자동으로 파싱해
   // 돌려주기도 해서, 문자열/객체 둘 다 들어올 수 있다.
   if (typeof raw === "string") {
     try {
-      return JSON.parse(raw) as SharedResultRecord;
+      return { status: "ok", record: JSON.parse(raw) as SharedResultRecord };
     } catch {
-      return null;
+      return { status: "not_found" };
     }
   }
-  return raw;
+  return { status: "ok", record: raw };
 }
 
 // 하루 공유 횟수 제한. 기존 rate-limit.ts의 세션 생성 제한과 별개로,
@@ -80,12 +102,20 @@ export async function getShare(id: string): Promise<SharedResultRecord | null> {
 // 만들 수 있다).
 const DAILY_SHARE_LIMIT = 5;
 
-export async function registerShareAttempt(ip: string): Promise<{ allowed: boolean }> {
+export type ShareAttemptReason = "daily_limit" | "unavailable";
+
+export async function registerShareAttempt(ip: string): Promise<{ allowed: boolean; reason?: ShareAttemptReason }> {
   const redis = getClient();
-  if (!redis) return { allowed: false };
+  if (!redis) return { allowed: false, reason: "unavailable" };
   const day = new Date().toISOString().slice(0, 10);
   const key = `share-limit:${ip}:${day}`;
-  const count = await redis.incr(key);
-  if (count === 1) await redis.expire(key, 60 * 60 * 24);
-  return { allowed: count <= DAILY_SHARE_LIMIT };
+  let count: number;
+  try {
+    count = await redis.incr(key);
+    if (count === 1) await redis.expire(key, 60 * 60 * 24);
+  } catch (error) {
+    console.error("[share-store] registerShareAttempt failed", error);
+    return { allowed: false, reason: "unavailable" };
+  }
+  return count <= DAILY_SHARE_LIMIT ? { allowed: true } : { allowed: false, reason: "daily_limit" };
 }
