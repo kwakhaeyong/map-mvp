@@ -98,6 +98,22 @@ export type IdealTypeSelfReflection = { whatYouOffer: string[]; whatToImprove: s
 export type IdealTypeRoadmapPhase = { label: string; actions: string[] };
 export type IdealTypeRoadmap = { firstAction: string; phases: IdealTypeRoadmapPhase[] };
 
+// "외모 취향 실루엣"의 부품 조합 — engine/ideal-type-silhouette.ts가
+// 퀴즈 답변에서 코드로 결정적으로 고른다(AI 없음). 얼굴 이목구비·체형은
+// 어떤 부품에도 없다 — 머리/상의/자세/소품/색으로만 구별한다.
+export type SilhouetteHair = "lightBob" | "sleekStraight" | "softWave" | "asymmetricCrop" | "neatPart" | "activeShort";
+export type SilhouetteTop = "roundKnit" | "looseCasual" | "minimalShirt" | "structuredBlazer" | "oversizedHoodie" | "layeredAsymmetric";
+export type SilhouettePose = "relaxedLean" | "striding" | "engaged" | "upright";
+export type SilhouetteAccessory = "mug" | "scarf" | "notebook" | "backpack" | "glasses";
+export type SilhouetteColor = "warm" | "deep" | "soft" | "bold" | "fresh" | "calm";
+export type IdealTypeSilhouetteParts = {
+  hair: SilhouetteHair;
+  top: SilhouetteTop;
+  pose: SilhouettePose;
+  accessory: SilhouetteAccessory;
+  color: SilhouetteColor;
+};
+
 export type IdealTypeResult = {
   version: number;
   generatedAt: string;
@@ -115,6 +131,11 @@ export type IdealTypeResult = {
   // 이 필드가 생기기 전에 만들어진 결과·공유 링크는 undefined로 읽히고,
   // 화면은 그 경우 태그 줄만 생략하고 나머지는 그대로 보여준다.
   tags?: string[];
+  // AI가 만들지 않는다 — engine/ideal-type-silhouette.ts가 퀴즈 답변만
+  // 보고 코드로 결정적으로 고른다. 이 필드가 생기기 전에 만들어진
+  // 결과·공유 링크는 undefined로 읽히고, 화면은 그림만 생략하고
+  // 나머지는 그대로 보여준다.
+  silhouette?: IdealTypeSilhouetteParts;
 };
 
 export type ConversationProvider = {

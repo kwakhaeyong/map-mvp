@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmapPhase, MapSession } from "../types";
+import { getIdealTypeSilhouette } from "./ideal-type-silhouette";
 import { getIdealTypeTags } from "./ideal-type-tags";
 import { now } from "./session";
 
@@ -324,6 +325,9 @@ async function attemptGeneration(client: Anthropic, session: MapSession): Promis
     // 코드로 결정적으로 고른 공유 태그. AI 응답 파싱과 무관하게 항상
     // 붙인다(session.quizAnswers가 없는 예전 세션이면 빈 배열).
     tags: getIdealTypeTags(session.quizAnswers),
+    // AI가 만든 필드가 아니다 — 태그와 마찬가지로 퀴즈 답변만 보고
+    // 코드로 결정적으로 고른 "외모 취향 실루엣" 부품 조합.
+    silhouette: getIdealTypeSilhouette(session.quizAnswers),
   };
 }
 

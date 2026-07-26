@@ -1,4 +1,6 @@
 import { IdealTypeFlags, IdealTypeMatrix, IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmap, IdealTypeSelfReflection } from "../types";
+import { describeSilhouette } from "../engine/ideal-type-silhouette";
+import { IdealTypeSilhouette } from "./IdealTypeSilhouette";
 import { Card } from "./ui/primitives";
 
 // 이상형 결과를 "보여주기만" 하는 순수 프레젠테이션 컴포넌트 모음.
@@ -24,6 +26,7 @@ function SectionHeader({ icon, title, description }: { icon: string; title: stri
 }
 
 const NAV_ITEMS: Array<{ id: string; label: string }> = [
+  { id: "silhouette", label: "실루엣" },
   { id: "criteria", label: "기준" },
   { id: "patterns", label: "패턴" },
   { id: "matrix", label: "매트릭스" },
@@ -32,10 +35,11 @@ const NAV_ITEMS: Array<{ id: string; label: string }> = [
   { id: "roadmap", label: "로드맵" },
 ];
 
-function SectionNav() {
+function SectionNav({ showSilhouette }: { showSilhouette: boolean }) {
+  const items = showSilhouette ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.id !== "silhouette");
   return (
     <div className="flex flex-wrap gap-1.5">
-      {NAV_ITEMS.map((item) => (
+      {items.map((item) => (
         <a
           key={item.id}
           href={`#${item.id}`}
@@ -326,7 +330,8 @@ export function IdealTypeResultBlocks({ result }: { result: IdealTypeResult }) {
   return (
     <>
       <HeroHeader result={result} />
-      <SectionNav />
+      <SectionNav showSilhouette={Boolean(result.silhouette)} />
+      {result.silhouette ? <IdealTypeSilhouette parts={result.silhouette} captions={describeSilhouette(result.silhouette)} /> : null}
       <CriteriaSection criteria={result.criteria} />
       <PatternsSection items={result.attractionPatterns} />
       <MatrixSection matrix={result.matrix} />
