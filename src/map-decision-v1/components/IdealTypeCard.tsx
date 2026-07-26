@@ -5,81 +5,32 @@ import { now } from "../engine/session";
 import { MapSession } from "../types";
 import { Brand } from "./Landing";
 import { IdealTypeResultBlocks } from "./IdealTypeResultBlocks";
+import { ShareStatusCard, useShareResult } from "./ShareResult";
 import { Button, Card } from "./ui/primitives";
-
-// 방침 페이지에만 있으면 아무도 안 읽는다 — 공유가 무엇을 의미하는지(링크를
-// 아는 사람은 누구나 볼 수 있음, 90일 후 자동 삭제)를 공유 버튼 바로 옆에도
-// 한 줄로 보여준다.
-const SHARE_NOTICE = "🔗 링크를 아는 사람은 누구나 볼 수 있어요 · 90일 후 자동 삭제돼요";
 
 // 시각 블록(헤더·매트릭스 그림·자기 성찰 등)은 IdealTypeResultBlocks.tsx로
 // 분리했다 — 공유 링크 읽기 전용 화면(app/r/[id]/page.tsx)과 여기서
-// 똑같이 재사용한다. 이 파일은 "내 결과를 생성·공유·다시 만들기" 같은
-// 상호작용(생성 상태 관리, 공유 API 호출)만 담당한다.
+// 똑같이 재사용한다. 공유 API 호출/상태 관리는 ShareResult.tsx로 뽑아
+// 진로 결과 화면(Result.tsx)과 같이 쓴다. 이 파일은 "내 결과를 생성·
+// 다시 만들기" 같은 이 화면만의 상호작용만 담당한다.
 
 function IdealTypeCardBody({ session, onReset }: { session: MapSession; onReset: () => void }) {
   const result = session.idealTypeResult!;
-  const [shareState, setShareState] = useState<"idle" | "creating" | "copied" | "shared" | "error">("idle");
-  const [shareError, setShareError] = useState<string | null>(null);
-  const [sharedUrl, setSharedUrl] = useState<string | null>(null);
-
   // 공유하기를 눌렀을 때만 서버에 저장 요청을 보낸다 — 카드를 만든다고
   // 자동으로 저장되지 않는다. 서버는 이 결과(JSON)만 저장하고, 대화
   // 원문은 절대 받지도 저장하지도 않는다.
-  const share = async () => {
-    setShareState("creating");
-    setShareError(null);
-    try {
-      const response = await fetch("/api/share", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topicId: session.topicId ?? "idealType", result }),
-      });
-      const data = await response.json();
-      if (data.blocked) {
-        setShareError(data.message as string);
-        setShareState("error");
-        return;
-      }
-      const shareUrl = `${window.location.origin}${data.url}`;
-      setSharedUrl(shareUrl);
-      const shareText = `내 이상형은 "${result.title}"\n${result.oneLiner}\n\n${shareUrl}`;
-      if (navigator.share) {
-        try {
-          await navigator.share({ title: "내 이상형 카드", text: shareText, url: shareUrl });
-          setShareState("shared");
-          return;
-        } catch {
-          // 사용자가 공유를 취소한 경우 등 — 클립보드 복사로 조용히 대체.
-        }
-      }
-      try {
-        await navigator.clipboard.writeText(shareText);
-        setShareState("copied");
-        window.setTimeout(() => setShareState("idle"), 2000);
-      } catch {
-        setShareState("idle");
-      }
-    } catch {
-      setShareError("네트워크 문제로 링크를 만들지 못했어요.");
-      setShareState("error");
-    }
-  };
+  const { shareState, shareError, sharedUrl, share } = useShareResult({
+    topicId: session.topicId ?? "idealType",
+    result,
+    shareTitle: "내 이상형 카드",
+    buildShareText: (shareUrl) => `내 이상형은 "${result.title}"\n${result.oneLiner}\n\n${shareUrl}`,
+  });
 
   return (
     <div className="flex flex-col gap-3">
       <IdealTypeResultBlocks result={result} />
 
-      {shareError ? <p className="text-center text-xs font-bold text-error">{shareError}</p> : null}
-      {sharedUrl ? (
-        <Card className="flex flex-col gap-1 py-3 text-center">
-          <p className="text-xs font-extrabold text-text-primary">
-            {shareState === "copied" ? "링크가 복사됐어요!" : "링크가 만들어졌어요!"}
-          </p>
-          <p className="break-all text-xs text-text-muted">{sharedUrl}</p>
-        </Card>
-      ) : null}
-      <p className="text-center text-xs font-semibold text-text-muted">{SHARE_NOTICE}</p>
+      <ShareStatusCard shareState={shareState} shareError={shareError} sharedUrl={sharedUrl} />
       <div className="flex gap-2">
         <Button variant="secondary" size="lg" className="flex-1" onClick={share} disabled={shareState === "creating"}>
           {shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : "공유하기"}

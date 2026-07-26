@@ -21,7 +21,10 @@ function BlockHeader({
 }: {
   title: string;
   description: string;
-  regen: BlockRegenControls;
+  // 공유 링크 읽기 전용 화면(app/r/[id]/page.tsx)에서는 편집·재생성
+  // 버튼이 있으면 안 되므로, regen을 아예 안 넘기면 버튼 자체가 안
+  // 그려지게 한다(FinalResultSectionReadOnly 참고).
+  regen?: BlockRegenControls;
 }) {
   return (
     <div>
@@ -30,9 +33,9 @@ function BlockHeader({
           <h2 className="text-xl font-black tracking-[-0.02em]">{title}</h2>
           <p className="mt-1 text-sm font-semibold text-text-secondary">{description}</p>
         </div>
-        <RegenerateButton onRegenerate={regen.onRegenerate} isRegenerating={regen.isRegenerating} />
+        {regen ? <RegenerateButton onRegenerate={regen.onRegenerate} isRegenerating={regen.isRegenerating} /> : null}
       </div>
-      {regen.error ? <p className="mt-3 text-sm font-bold text-error">{regen.error}</p> : null}
+      {regen?.error ? <p className="mt-3 text-sm font-bold text-error">{regen.error}</p> : null}
     </div>
   );
 }
@@ -151,7 +154,7 @@ function FactorMatrixChart({ block }: { block: FactorMatrixBlock }) {
   );
 }
 
-function FactorMatrixCard({ block, regen }: { block: FactorMatrixBlock; regen: BlockRegenControls }) {
+function FactorMatrixCard({ block, regen }: { block: FactorMatrixBlock; regen?: BlockRegenControls }) {
   return (
     <Card id="factors" className="scroll-mt-6">
       <BlockHeader title="요인과 2x2 매트릭스" description="대화에서 드러난 요인들을 두 기준으로 놓고 봤어요." regen={regen} />
@@ -177,7 +180,7 @@ function FactorMatrixCard({ block, regen }: { block: FactorMatrixBlock; regen: B
   );
 }
 
-function ScenarioCards({ block, regen }: { block: ScenarioBlock; regen: BlockRegenControls }) {
+function ScenarioCards({ block, regen }: { block: ScenarioBlock; regen?: BlockRegenControls }) {
   return (
     <Card id="scenarios" className="scroll-mt-6">
       <BlockHeader title="시나리오 비교" description="정답을 고르는 게 아니라, 방향별 장단점을 나란히 뒀어요." regen={regen} />
@@ -226,7 +229,7 @@ function ScenarioCards({ block, regen }: { block: ScenarioBlock; regen: BlockReg
   );
 }
 
-function TimelineSteps({ block, regen }: { block: TimelineBlock; regen: BlockRegenControls }) {
+function TimelineSteps({ block, regen }: { block: TimelineBlock; regen?: BlockRegenControls }) {
   return (
     <Card id="timeline" className="scroll-mt-6">
       <BlockHeader title="타임라인과 액션 플랜" description="이야기한 내용을 바탕으로 단계별 행동을 정리했어요." regen={regen} />
@@ -254,7 +257,7 @@ function TimelineSteps({ block, regen }: { block: TimelineBlock; regen: BlockReg
   );
 }
 
-function InsightCallout({ block, regen }: { block: InsightBlock; regen: BlockRegenControls }) {
+function InsightCallout({ block, regen }: { block: InsightBlock; regen?: BlockRegenControls }) {
   return (
     <Card id="insights" className="scroll-mt-6 border-primary/40 bg-surface-elevated">
       <BlockHeader title="핵심 메시지·통찰" description="혼자서는 잘 안 보였을 수 있는 관점이에요." regen={regen} />
@@ -301,6 +304,33 @@ export function FinalResultSection({
         <ScenarioCards block={result.scenarios} regen={regenControls.scenarios} />
         <TimelineSteps block={result.timeline} regen={regenControls.timeline} />
         <InsightCallout block={result.insights} regen={regenControls.insights} />
+      </div>
+    </section>
+  );
+}
+
+// 공유 링크 읽기 전용 화면(app/r/[id]/page.tsx)에서 진로 결과 4블록을
+// 보여줄 때 쓴다. FinalResultSection과 같은 블록 컴포넌트를 그대로
+// 재사용하되, regen을 넘기지 않아 편집·재생성 버튼이 나오지 않는다.
+export function FinalResultSectionReadOnly({ result }: { result: FinalResult }) {
+  return (
+    <section className="mt-4" aria-label="MAP 결과">
+      <div className="flex flex-wrap gap-2">
+        {NAV_ITEMS.map((item) => (
+          <a
+            key={item.id}
+            href={`#${item.id}`}
+            className="inline-flex min-h-9 items-center rounded-pill border border-border bg-surface-elevated px-4 text-sm font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
+          >
+            {item.label}
+          </a>
+        ))}
+      </div>
+      <div className="mt-4 space-y-6">
+        <FactorMatrixCard block={result.factorMatrix} />
+        <ScenarioCards block={result.scenarios} />
+        <TimelineSteps block={result.timeline} />
+        <InsightCallout block={result.insights} />
       </div>
     </section>
   );

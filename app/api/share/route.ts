@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClientIp } from "../../../src/map-decision-v1/engine/rate-limit";
 import { createShareId, isShareStoreConfigured, registerShareAttempt, saveShare } from "../../../src/map-decision-v1/engine/share-store";
 import { validateSharePayload } from "../../../src/map-decision-v1/engine/share-validation";
+import { resolveTopic } from "../../../src/map-decision-v1/engine/topics";
 
-// resultLayoutId는 지금 topicId와 1:1이라 그대로 topicId를 쓴다 — 진로 등
-// 다른 주제를 지원할 때 topics.ts의 resultLayoutId를 그대로 넘겨받는
-// 형태로 확장하면 된다. 지금은 이상형만 지원.
+// resultLayoutId는 클라이언트가 보낸 값을 믿지 않고 topics.ts에서 직접
+// 찾는다 — topicId는 브라우저가 보낸 값이라 조작될 수 있지만,
+// resolveTopic()은 등록된 주제가 아니면 항상 기본 주제로 떨어지므로
+// (topics.ts의 resolveTopic 참고) 여기서 추가 검증을 만들 필요가 없다.
 type RequestBody = { topicId: string; result: unknown };
 type SuccessResponse = { id: string; url: string };
 type BlockedResponse = { blocked: true; reason: string; message: string };
@@ -59,7 +61,7 @@ export async function POST(request: NextRequest) {
   const saved = await saveShare({
     id,
     topicId: body.topicId,
-    resultLayoutId: body.topicId,
+    resultLayoutId: resolveTopic(body.topicId).resultLayoutId,
     createdAt: new Date().toISOString(),
     result: body.result,
   });

@@ -1,20 +1,31 @@
 // 공유 API가 받는 데이터는 브라우저(클라이언트)가 보낸 것이라 그대로
-// 믿지 않는다 — 우리 이상형 결과와 같은 모양인지, 크기가 적당한지를
-// 저장 전에 확인한다. engine/ideal-type-generator.ts의 검증 로직과는
-// 별개로 새로 작성했다(그 파일은 AI 응답 검증용이고 건드리지 않는다).
-// 여기서는 "이상하거나 너무 큰 데이터를 저장하지 않는다"는 방어 목적만
-// 있으므로 문자열이 비어있는지 같은 세부 검증은 하지 않는다.
+// 믿지 않는다 — 지원하는 주제(이상형/진로)의 결과와 같은 모양인지, 크기가
+// 적당한지를 저장 전에 확인한다. engine/ideal-type-generator.ts,
+// engine/final-result-generator.ts의 검증 로직과는 별개로 새로 작성했다
+// (그 파일들은 AI 응답 검증용이고 건드리지 않는다). 여기서는 "이상하거나
+// 너무 큰 데이터를 저장하지 않는다"는 방어 목적만 있으므로 문자열이
+// 비어있는지 같은 세부 검증, 내용 검열은 하지 않는다.
 
 const MAX_PAYLOAD_BYTES = 20_000;
 const MAX_STRING_LENGTH = 400;
 const MAX_ARRAY_LENGTH = 6;
+// 진로 결과(FinalResult)는 이상형과 배열 길이 기준이 다르다 — 요인은
+// 최대 8개까지 그대로 저장되고(final-result-generator.ts의
+// raw.factors.slice(0, 8)), 시나리오·타임라인 단계·통찰 메시지·장단점은
+// 코드에서 별도로 자르지 않는다. 여기서는 "이상하거나 너무 큰 데이터를
+// 막는다"는 방어 목적만 있으므로 여유 있게 넉넉한 상한만 둔다.
+const MAX_CAREER_ARRAY_LENGTH = 10;
 
 function isShortString(value: unknown): value is string {
   return typeof value === "string" && value.length <= MAX_STRING_LENGTH;
 }
 
+function isStringArrayUpTo(value: unknown, max: number): value is string[] {
+  return Array.isArray(value) && value.length <= max && value.every(isShortString);
+}
+
 function isShortStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.length <= MAX_ARRAY_LENGTH && value.every(isShortString);
+  return isStringArrayUpTo(value, MAX_ARRAY_LENGTH);
 }
 
 function isValidAxisLabel(value: unknown): boolean {
@@ -69,13 +80,81 @@ function isValidIdealTypeResultShape(value: unknown): boolean {
   );
 }
 
+// 진로 결과(FinalResult) 형태 검증. 요인 매트릭스·시나리오·타임라인·
+// 통찰 4블록 — final-result-generator.ts가 실제로 만들어내는 구조를
+// 그대로 옮겼다(그 파일 자체는 AI 응답 검증용이라 건드리지 않는다).
+function isValidFactorMatrixShape(value: unknown): boolean {
+  const fm = value as Record<string, unknown> | undefined;
+  if (typeof fm !== "object" || fm === null) return false;
+  if (!isValidAxisLabel(fm.xAxisLabel) || !isValidAxisLabel(fm.yAxisLabel)) return false;
+  const factors = fm.factors;
+  if (!Array.isArray(factors) || factors.length > MAX_CAREER_ARRAY_LENGTH) return false;
+  return factors.every((factor) => {
+    const f = factor as Record<string, unknown> | undefined;
+    return (
+      typeof f === "object" && f !== null &&
+      isShortString(f.id) && isShortString(f.text) && isShortString(f.kind) &&
+      typeof f.x === "number" && typeof f.y === "number"
+    );
+  });
+}
+
+function isValidScenarioBlockShape(value: unknown): boolean {
+  const sc = value as Record<string, unknown> | undefined;
+  if (typeof sc !== "object" || sc === null) return false;
+  const scenarios = sc.scenarios;
+  if (!Array.isArray(scenarios) || scenarios.length > MAX_CAREER_ARRAY_LENGTH) return false;
+  const scenariosValid = scenarios.every((item) => {
+    const s = item as Record<string, unknown> | undefined;
+    return (
+      typeof s === "object" && s !== null &&
+      isShortString(s.id) && isShortString(s.name) && isShortString(s.summary) &&
+      isStringArrayUpTo(s.pros, MAX_CAREER_ARRAY_LENGTH) && isStringArrayUpTo(s.cons, MAX_CAREER_ARRAY_LENGTH)
+    );
+  });
+  if (!scenariosValid) return false;
+  const closestFit = sc.closestFit;
+  if (closestFit === null) return true;
+  const cf = closestFit as Record<string, unknown> | undefined;
+  return typeof cf === "object" && cf !== null && isShortString(cf.scenarioId) && isShortString(cf.reasoning);
+}
+
+function isValidTimelineBlockShape(value: unknown): boolean {
+  const tl = value as Record<string, unknown> | undefined;
+  if (typeof tl !== "object" || tl === null) return false;
+  const phases = tl.phases;
+  if (!Array.isArray(phases) || phases.length > MAX_CAREER_ARRAY_LENGTH) return false;
+  return phases.every((phase) => {
+    const p = phase as Record<string, unknown> | undefined;
+    return typeof p === "object" && p !== null && isShortString(p.id) && isShortString(p.label) && isStringArrayUpTo(p.actions, MAX_CAREER_ARRAY_LENGTH);
+  });
+}
+
+function isValidInsightBlockShape(value: unknown): boolean {
+  const ins = value as Record<string, unknown> | undefined;
+  if (typeof ins !== "object" || ins === null) return false;
+  return isStringArrayUpTo(ins.messages, MAX_CAREER_ARRAY_LENGTH);
+}
+
+function isValidFinalResultShape(value: unknown): boolean {
+  const r = value as Record<string, unknown> | undefined;
+  if (typeof r !== "object" || r === null) return false;
+  return (
+    isValidFactorMatrixShape(r.factorMatrix) &&
+    isValidScenarioBlockShape(r.scenarios) &&
+    isValidTimelineBlockShape(r.timeline) &&
+    isValidInsightBlockShape(r.insights)
+  );
+}
+
 export type ShareValidationFailure = "too_large" | "unsupported_topic" | "invalid_shape";
 export type ShareValidationResult = { ok: true } | { ok: false; reason: ShareValidationFailure };
 
-// 지금은 이상형만 공유를 지원한다 — 다른 주제는 결과 구조가 다르므로
-// 화이트리스트 밖 topicId는 전부 거부한다.
+// 화이트리스트 밖 topicId는 전부 거부한다 — 결과 구조가 주제마다 달라서,
+// 지원하는 형태만 골라 검증해야 한다.
 const SUPPORTED_SHARE_TOPICS: Record<string, (result: unknown) => boolean> = {
   idealType: isValidIdealTypeResultShape,
+  career: isValidFinalResultShape,
 };
 
 export function validateSharePayload(topicId: unknown, result: unknown): ShareValidationResult {
