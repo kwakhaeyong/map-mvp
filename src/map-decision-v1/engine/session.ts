@@ -42,7 +42,7 @@ export function createSession(topicId?: string): MapSession {
     relations: [],
     startedAt: timestamp,
     updatedAt: timestamp,
-    ...(isQuiz ? { quizStep: 0 } : {}),
+    ...(isQuiz ? { quizStep: 0, quizVersion: topic?.quizVersion } : {}),
   };
 }
 

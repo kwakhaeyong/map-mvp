@@ -51,6 +51,13 @@ export type TopicConfig = {
   inputMode: TopicInputMode;
   // inputMode가 "quiz"일 때만 사용. 스텝별 질문 + 선택지 칩.
   axes?: TopicAxis[];
+  // axes의 문항 수·순서·타입 구성이 quizStep 숫자의 의미를 바꿀 만큼
+  // 바뀔 때마다 올린다(예: 6문항 → 20문항 개편). session.quizStep은
+  // "몇 번째"라는 숫자일 뿐이라, 축 배열이 바뀌면 예전 세션의 quizStep이
+  // 완전히 다른 문항을 가리키게 된다 — TopicQuiz.tsx가 이 값과
+  // session.quizVersion을 비교해서 안 맞으면 퀴즈 진행을 안전하게
+  // 새로 시작시킨다. quiz가 아닌 주제는 신경 쓸 필요 없어 생략 가능.
+  quizVersion?: number;
   // quiz 마지막에 넣는 선택형 자유 서술 질문.
   closingPrompt?: string;
   // 대화 중 노드 추출/되묻기 시스템 프롬프트에 끼워넣는 주제별 지시문.
@@ -96,6 +103,9 @@ export const TOPICS: Record<string, TopicConfig> = {
     fixedRatio: 75,
     resultLayoutId: "idealType",
     inputMode: "quiz",
+    // 1: 원래 프로덕션의 6문항(5축+마무리) 구조. 2: 이번 PR의 필수
+    // 12+선택 8 구조로 축 순서·개수·타입이 전면 개편됐다.
+    quizVersion: 2,
     axes: [
       {
         id: "appearance",

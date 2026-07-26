@@ -1,6 +1,6 @@
 "use client";
 
-import { Dispatch, SetStateAction, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { createId, now } from "../engine/session";
 import { resolveTopic, TopicAxis, TopicChoice, TopicOption } from "../engine/topics";
 import { MapSession } from "../types";
@@ -309,7 +309,30 @@ export function TopicQuiz({
   const axes = topic.axes ?? [];
   const requiredAxes = axes.filter((axis) => axis.required);
   const optionalAxes = axes.filter((axis) => !axis.required);
-  const step = session.quizStep ?? 0;
+
+  // 축 구성이 개편되면(topics.ts의 quizVersion 참고) 예전에 저장된
+  // quizStep은 완전히 다른 문항을 가리키게 된다 — 진행 중이던 세션이
+  // 그 상태 그대로 화면에 뜨면 몇 번째인지도, 무슨 질문인지도 안 맞게
+  // 섞인다. 버전이 다르면 안전하게 처음부터 다시 시작시킨다(완료된
+  // 결과는 quizStep과 무관하게 idealTypeResult에 따로 저장돼 있어
+  // 영향받지 않는다).
+  const isStaleQuizProgress =
+    topic.quizVersion !== undefined && session.quizStep !== undefined && session.quizVersion !== topic.quizVersion;
+
+  useEffect(() => {
+    if (!isStaleQuizProgress) return;
+    setSession((current) => ({
+      ...current,
+      messages: [],
+      quizStep: 0,
+      quizVersion: topic.quizVersion,
+      idealTypeResuming: false,
+      updatedAt: now(),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStaleQuizProgress]);
+
+  const step = isStaleQuizProgress ? 0 : (session.quizStep ?? 0);
   const phase = resolvePhase(step, requiredAxes, optionalAxes);
 
   const commitAnswer = (questionText: string, answerText: string) => {
