@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmapPhase, MapSession } from "../types";
+import { getIdealTypeTags } from "./ideal-type-tags";
 import { now } from "./session";
 
 // 진로(final-result-generator.ts)와 완전히 분리된, 이상형 전용 생성기.
@@ -310,6 +311,10 @@ async function attemptGeneration(client: Anthropic, session: MapSession): Promis
       firstAction: data.roadmap.firstAction,
       phases: capRoadmapPhases(data.roadmap.phases),
     },
+    // AI가 만든 필드가 아니다 — 퀴즈 답변(session.quizAnswers)만 보고
+    // 코드로 결정적으로 고른 공유 태그. AI 응답 파싱과 무관하게 항상
+    // 붙인다(session.quizAnswers가 없는 예전 세션이면 빈 배열).
+    tags: getIdealTypeTags(session.quizAnswers),
   };
 }
 
