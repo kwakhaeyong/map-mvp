@@ -2,13 +2,48 @@
 
 import { Dispatch, SetStateAction, useState } from "react";
 import { createId, now } from "../engine/session";
-import { resolveTopic } from "../engine/topics";
+import { resolveTopic, TopicChoice, TopicOption } from "../engine/topics";
 import { MapSession } from "../types";
 import { Brand } from "./Landing";
 import { Badge, Button, Textarea } from "./ui/primitives";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+const MAX_SELECTIONS = 3;
+
+function OptionChip({
+  choice,
+  isSelected,
+  isDisabled,
+  compact,
+  onClick,
+}: {
+  choice: TopicChoice;
+  isSelected: boolean;
+  isDisabled: boolean;
+  compact?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isDisabled}
+      className={cx(
+        "flex flex-col items-start gap-0.5 rounded-large border px-4 text-left transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+        compact ? "py-2" : "py-3",
+        isSelected
+          ? "border-primary bg-primary text-primary-foreground shadow-subtle"
+          : "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-border-strong hover:shadow-floating",
+        isDisabled && !isSelected && "opacity-40",
+      )}
+    >
+      <span className={cx("font-extrabold tracking-[-0.01em]", compact ? "text-sm" : "text-base")}>{choice.label}</span>
+      <span className={cx("text-xs font-medium", isSelected ? "text-primary-foreground/80" : "text-text-muted")}>{choice.description}</span>
+    </button>
+  );
 }
 
 function AxisStep({
@@ -19,34 +54,76 @@ function AxisStep({
   showBack,
 }: {
   question: string;
-  options: string[];
+  options: TopicOption[];
   onSubmit: (answerText: string) => void;
   onBack: () => void;
   showBack: boolean;
 }) {
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<TopicChoice[]>([]);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [showCustom, setShowCustom] = useState(false);
   const [customText, setCustomText] = useState("");
 
-  const toggle = (option: string) => {
-    setSelected((current) => (current.includes(option) ? current.filter((item) => item !== option) : [...current, option]));
+  const atCap = selected.length >= MAX_SELECTIONS;
+
+  const isChoiceSelected = (choice: TopicChoice) => selected.some((item) => item.label === choice.label);
+
+  const toggle = (choice: TopicChoice) => {
+    setSelected((current) => {
+      if (current.some((item) => item.label === choice.label)) return current.filter((item) => item.label !== choice.label);
+      if (current.length >= MAX_SELECTIONS) return current;
+      return [...current, choice];
+    });
   };
 
   const submit = () => {
-    const answer = [selected.join(", "), customText.trim()].filter(Boolean).join(". ");
+    const rankedLines = selected.map((choice, index) => `${index + 1}순위: ${choice.label} — ${choice.description}`);
+    const extra = customText.trim();
+    const answer = [...rankedLines, extra ? `추가로 적은 말: ${extra}` : null].filter(Boolean).join("\n");
     onSubmit(answer);
   };
 
   return (
     <div className="flex w-full flex-col gap-5">
       <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
-      <div className="flex flex-wrap gap-2">
+      <p className="text-xs font-black text-text-muted">
+        최대 {MAX_SELECTIONS}개까지 고를 수 있어요 · 먼저 고른 게 더 중요해요 · {selected.length}/{MAX_SELECTIONS} 선택
+      </p>
+      <div className="flex flex-col gap-3">
         {options.map((option) => {
-          const isSelected = selected.includes(option);
+          const isSelected = isChoiceSelected(option);
+          const isExpanded = expanded[option.label] ?? false;
           return (
-            <Button key={option} type="button" variant={isSelected ? "primary" : "secondary"} size="md" onClick={() => toggle(option)}>
-              {option}
-            </Button>
+            <div key={option.label} className="flex flex-col gap-2">
+              <div className="flex items-stretch gap-2">
+                <div className="flex-1">
+                  <OptionChip choice={option} isSelected={isSelected} isDisabled={atCap && !isSelected} onClick={() => toggle(option)} />
+                </div>
+                {option.subOptions && option.subOptions.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setExpanded((current) => ({ ...current, [option.label]: !isExpanded }))}
+                    className="shrink-0 rounded-large border border-border bg-surface px-3 text-xs font-black text-text-muted hover:border-border-strong hover:text-text-primary"
+                  >
+                    {isExpanded ? "접기 ▲" : "더보기 ▾"}
+                  </button>
+                ) : null}
+              </div>
+              {isExpanded && option.subOptions ? (
+                <div className="ml-3 flex flex-col gap-2 border-l-2 border-border pl-3">
+                  {option.subOptions.map((sub) => (
+                    <OptionChip
+                      key={sub.label}
+                      choice={sub}
+                      isSelected={isChoiceSelected(sub)}
+                      isDisabled={atCap && !isChoiceSelected(sub)}
+                      compact
+                      onClick={() => toggle(sub)}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </div>
@@ -71,7 +148,7 @@ function AxisStep({
         ) : (
           <span />
         )}
-        <Button type="button" variant="primary" size="lg" onClick={submit}>
+        <Button type="button" variant="primary" size="lg" onClick={submit} disabled={selected.length === 0}>
           다음
         </Button>
       </div>
