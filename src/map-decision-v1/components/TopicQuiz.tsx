@@ -228,7 +228,53 @@ function BinaryStep({
   );
 }
 
-// 필수 12문항을 다 마친 직후 나오는 갈림길 화면 — 여기서 끝내도 결과를
+// 빠른 탭형은 문항 수가 많아진 만큼(필수 12→30) 속도가 핵심이다 — 단일
+// 선택 + 세부 선택지 없음 + 고르는 즉시 자동으로 다음 문항으로 넘어간다
+// ("다음" 버튼이 없다). description은 화면에 안 보여주지만(한눈에
+// 고르기가 목적) commitAnswer로 넘어가는 답변 텍스트에는 그대로
+// 포함시켜서 AI가 맥락을 알 수 있게 한다.
+function QuickTapStep({
+  question,
+  options,
+  onSubmit,
+  onBack,
+  showBack,
+}: {
+  question: string;
+  options: TopicOption[];
+  onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
+  onBack: () => void;
+  showBack: boolean;
+}) {
+  const pick = (choice: TopicChoice) => {
+    onSubmit(`${choice.label} — ${choice.description}`, [choice.label]);
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-5">
+      <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
+      <div className="grid grid-cols-2 gap-3">
+        {options.map((option) => (
+          <button
+            key={option.label}
+            type="button"
+            onClick={() => pick(option)}
+            className="rounded-large border border-border bg-surface px-4 py-5 text-center text-sm font-extrabold tracking-[-0.01em] text-text-primary transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating"
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {showBack ? (
+        <button type="button" onClick={onBack} className="self-start text-xs font-black text-text-muted hover:text-text-primary">
+          ← 이전
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+// 필수 30문항을 다 마친 직후 나오는 갈림길 화면 — 여기서 끝내도 결과를
 // 만들 수 있지만, 8개를 더 답하면 결과의 어디가 구체적으로 달라지는지를
 // 여기서 정확히 말해준다("더 정확해진다" 같은 막연한 말 대신).
 function DecisionStep({ onQuick, onDeep, onBack }: { onQuick: () => void; onDeep: () => void; onBack: () => void }) {
@@ -463,6 +509,19 @@ export function TopicQuiz({
                 setSession((current) => ({ ...current, idealTypeQuizDepth: depth }));
               }
               onFinish();
+            }}
+          />
+        ) : currentAxis?.type === "quickTap" ? (
+          <QuickTapStep
+            key={currentAxis.id}
+            question={currentAxis.question}
+            options={currentAxis.options}
+            showBack={step > 0}
+            onBack={goBack}
+            onSubmit={(answerText, selectedTopLevelLabels) => {
+              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
+              if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
           />
         ) : currentAxis?.type === "binary" ? (
