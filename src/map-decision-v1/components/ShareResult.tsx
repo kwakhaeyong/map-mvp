@@ -15,11 +15,16 @@ export type ShareState = "idle" | "creating" | "copied" | "shared" | "error";
 export function useShareResult({
   topicId,
   result,
+  quizDepth,
   shareTitle = "MAP Decision",
   buildShareText,
 }: {
   topicId: string;
   result: unknown;
+  // 이상형 퀴즈를 심화(선택 8문항)까지 답하고 만든 결과인지 — 공유
+  // 페이지에서 "🔍 심층 분석 포함" 배지를 보여줄지 판단하는 데 쓴다.
+  // 진로 결과 등 이 개념이 없는 화면에서는 그냥 생략하면 된다.
+  quizDepth?: "quick" | "deep";
   shareTitle?: string;
   buildShareText: (shareUrl: string) => string;
 }) {
@@ -34,7 +39,7 @@ export function useShareResult({
       const response = await fetch("/api/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topicId, result }),
+        body: JSON.stringify({ topicId, result, quizDepth }),
       });
       const data = await response.json();
       if (data.blocked) {

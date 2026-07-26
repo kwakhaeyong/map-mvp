@@ -21,6 +21,11 @@ export type SharedResultRecord = {
   resultLayoutId: string;
   createdAt: string;
   result: unknown;
+  // 이상형 퀴즈를 심화(선택 8문항)까지 답하고 만든 결과인지 — 공유
+  // 페이지(/r/[id])에서 "🔍 심층 분석 포함" 배지를 보여줄지 판단하는 데
+  // 쓴다. 이 필드가 생기기 전에 저장된 링크는 undefined로 읽히고,
+  // 그냥 배지 없이 보여주면 되므로 별도 이관이 필요 없다.
+  quizDepth?: "quick" | "deep";
 };
 
 let client: Redis | null | undefined;

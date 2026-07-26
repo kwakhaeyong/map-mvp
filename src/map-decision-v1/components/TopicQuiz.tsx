@@ -212,18 +212,22 @@ function BinaryStep({
 }
 
 // 필수 12문항을 다 마친 직후 나오는 갈림길 화면 — 여기서 끝내도 결과를
-// 만들 수 있지만, 8개를 더 답하면 실제 연애 경험(경험·행동형 문항)까지
-// 반영돼서 자기성찰 부분이 더 정확해진다는 걸 화면에서 알려준다.
+// 만들 수 있지만, 8개를 더 답하면 결과의 어디가 구체적으로 달라지는지를
+// 여기서 정확히 말해준다("더 정확해진다" 같은 막연한 말 대신).
 function DecisionStep({ onQuick, onDeep, onBack }: { onQuick: () => void; onDeep: () => void; onBack: () => void }) {
   return (
     <div className="flex w-full flex-col gap-5">
-      <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">필수 질문을 다 마쳤어요!</h2>
-      <p className="break-keep text-sm font-semibold leading-7 text-text-secondary">
-        여기서 바로 결과를 볼 수도 있고, 8개만 더 답하면 실제 연애 경험까지 반영해서 자기성찰 부분이 훨씬 더 정확해져요.
-      </p>
+      <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">여기까지만 해도 결과가 나와요</h2>
+      <div className="break-keep text-sm font-semibold leading-7 text-text-secondary">
+        <p>8개를 더 답하면, 지금 답변만으로는 알 수 없는 것들이 결과에 들어가요.</p>
+        <ul className="mt-2 space-y-1">
+          <li>· 끌림 패턴 분석에 실제 연애 경험에서 나온 통찰이 하나 더 추가돼요</li>
+          <li>· 자기성찰(내가 줄 수 있는 것 / 더 채워보면 좋을 것)에 진짜 경험을 근거로 한 조언이 들어가요</li>
+        </ul>
+      </div>
       <div className="flex flex-col gap-2">
         <Button type="button" variant="primary" size="lg" onClick={onDeep}>
-          8개 더 답하고 더 정확하게
+          8개 더 답하기 · 약 1분
         </Button>
         <Button type="button" variant="secondary" size="lg" onClick={onQuick}>
           지금 결과 보기
@@ -330,6 +334,20 @@ export function TopicQuiz({
     setSession((current) => ({ ...current, quizStep: nextStep, updatedAt: now() }));
   };
 
+  // 결과를 이미 본 뒤 "8개 더 답하기"로 돌아온 경우(session.idealTypeResuming)
+  // 마지막 심화 문항을 답하면 마무리 질문을 또 묻지 않고 곧장 결과를
+  // 다시 만든다 — 마무리 질문은 처음 퀴즈를 마칠 때 이미 한 번 답했다.
+  const finishResumedDeepDive = () => {
+    setSession((current) => ({
+      ...current,
+      idealTypeQuizDepth: "deep",
+      idealTypeResuming: false,
+      idealTypeResult: undefined,
+      updatedAt: now(),
+    }));
+    onFinish();
+  };
+
   const handleExit = () => {
     if (window.confirm("나가면 지금까지 답변이 사라져요. 나갈까요?")) onReset();
   };
@@ -340,10 +358,12 @@ export function TopicQuiz({
   if (phase.kind === "required") {
     progressLabel = `${phase.index + 1}/${requiredAxes.length}`;
     progressPercent = ((phase.index + 1) / requiredAxes.length) * 100;
+    if (phase.index === 0 && optionalAxes.length > 0) {
+      progressHint = `${requiredAxes.length}개 질문에 답하면 결과가 나와요. 더 깊이 알고 싶으면 ${optionalAxes.length}개를 추가로 답할 수 있어요.`;
+    }
   } else if (phase.kind === "optional") {
     progressLabel = `심화 ${phase.index + 1}/${optionalAxes.length}`;
     progressPercent = ((phase.index + 1) / optionalAxes.length) * 100;
-    progressHint = "답할수록 자기성찰 결과가 더 정확해져요";
   } else if (phase.kind === "decision") {
     progressLabel = "필수 질문 완료";
     progressPercent = 100;
@@ -371,7 +391,7 @@ export function TopicQuiz({
           <div className="h-full rounded-pill bg-primary transition-all duration-normal ease-emphasized" style={{ width: `${progressPercent}%` }} />
         </div>
         <p className="mt-2 text-xs font-black text-text-muted">
-          {progressLabel} · 자동 저장됨
+          {progressLabel} · {phase.kind === "optional" ? "여기서 나가도 지금까지 답한 건 저장돼요" : "자동 저장됨"}
         </p>
         {progressHint ? <p className="mt-0.5 text-xs font-semibold text-text-secondary">{progressHint}</p> : null}
       </section>
@@ -389,6 +409,10 @@ export function TopicQuiz({
             onBack={goBack}
             onSubmit={(answerText) => {
               commitAnswer(topic.closingPrompt ?? "더 하고 싶은 말이 있나요?", answerText);
+              if (optionalAxes.length > 0) {
+                const depth = step === requiredAxes.length + 1 ? "quick" : "deep";
+                setSession((current) => ({ ...current, idealTypeQuizDepth: depth }));
+              }
               onFinish();
             }}
           />
@@ -399,7 +423,11 @@ export function TopicQuiz({
             options={currentAxis.options}
             showBack={step > 0}
             onBack={goBack}
-            onSubmit={(answerText) => commitAnswer(currentAxis.question, answerText)}
+            onSubmit={(answerText) => {
+              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              commitAnswer(currentAxis.question, answerText);
+              if (isLastOptionalWhileResuming) finishResumedDeepDive();
+            }}
           />
         ) : currentAxis ? (
           <AxisStep
@@ -408,7 +436,11 @@ export function TopicQuiz({
             options={currentAxis.options}
             showBack={step > 0}
             onBack={goBack}
-            onSubmit={(answerText) => commitAnswer(currentAxis.question, answerText)}
+            onSubmit={(answerText) => {
+              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              commitAnswer(currentAxis.question, answerText);
+              if (isLastOptionalWhileResuming) finishResumedDeepDive();
+            }}
           />
         ) : null}
       </section>
