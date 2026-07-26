@@ -11,6 +11,7 @@ import {
 } from "../engine/integration-providers";
 import { BlockRegenControls, FallbackSummaryCard, FinalResultSection } from "./FinalResultBlocks";
 import { MapCanvas } from "./MapCanvas";
+import { ShareStatusCard, useShareResult } from "./ShareResult";
 import {
   Badge,
   Button,
@@ -149,6 +150,17 @@ export function Result({
     insights: { onRegenerate: () => regenerateBlock("insights"), isRegenerating: regeneratingBlock === "insights", error: blockErrors.insights ?? null },
   };
 
+  // 카드를 만든다고 자동으로 공유되지 않는다 — 공유하기를 눌렀을 때만
+  // 서버에 저장 요청을 보낸다. IdealTypeCard.tsx와 같은 훅(ShareResult.tsx)을
+  // 써서 공유 API 호출/상태 관리 로직을 두 벌로 만들지 않는다.
+  const { shareState, shareError, sharedUrl, share } = useShareResult({
+    topicId: session.topicId ?? "career",
+    result: session.result,
+    shareTitle: "내 MAP 결과",
+    buildShareText: (shareUrl) =>
+      `내 MAP 결과: ${session.preferredMapType === "decision" ? "Decision MAP" : "Thinking MAP"}\n현재 가까운 방향은 ${shorten(direction, 60)}입니다.\n\n${shareUrl}`,
+  });
+
   return (
     <main className="min-h-dvh px-4 py-5 pb-safe-bottom pt-safe-top text-text-primary sm:py-8 print:bg-surface-elevated">
       <section className="map-container">
@@ -231,7 +243,15 @@ export function Result({
 
         {!session.isDemo ? (
           session.result ? (
-            <FinalResultSection result={session.result} regenControls={regenControls} />
+            <>
+              <FinalResultSection result={session.result} regenControls={regenControls} />
+              <div className="mt-6 flex flex-col gap-3 print:hidden">
+                <ShareStatusCard shareState={shareState} shareError={shareError} sharedUrl={sharedUrl} />
+                <Button variant="secondary" size="lg" onClick={share} disabled={shareState === "creating"}>
+                  {shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : "공유하기"}
+                </Button>
+              </div>
+            </>
           ) : generationState === "loading" ? (
             <Card className="mt-8 text-center">
               <p className="font-black">정리하고 있어요…</p>
