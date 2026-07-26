@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateIdealTypeResult } from "../../../src/map-decision-v1/engine/ideal-type-generator";
 import {
   MAX_INPUT_LENGTH,
-  MAX_MESSAGES_PER_SESSION,
   checkGenerationAllowed,
   commitGenerationFailure,
   commitGenerationSuccess,
   getClientIp,
 } from "../../../src/map-decision-v1/engine/rate-limit";
+import { resolveTopic } from "../../../src/map-decision-v1/engine/topics";
 import { IdealTypeResult, MapSession } from "../../../src/map-decision-v1/types";
 
 type RequestBody = { session: MapSession };
@@ -20,9 +20,32 @@ function isRequestBody(value: unknown): value is RequestBody {
   return typeof candidate.session === "object" && candidate.session !== null;
 }
 
+// rate-limit.ts의 MAX_MESSAGES_PER_SESSION(40)은 진로(career) 같은 자유
+// 대화의 남용 방지용 상한이다 — 사용자가 얼마나 오래 채팅을 이어갈지
+// 예측할 수 없으니 안전핀으로 40을 걸어둔 것. 그런데 이상형 퀴즈는 자유
+// 대화가 아니라 우리가 만든 고정 문항 배열(topics.ts)을 그대로 밟는
+// 구조라 메시지 개수가 사용자 입력이 아니라 문항 수로 이미 정해져
+// 있다(문항마다 질문+답변 2개 + 마무리 질문 2개). 필수 문항이 12→30개로
+// 늘면서 정상적으로 다 답한 사용자의 메시지도 60개를 넘게 됐는데, 자유
+// 대화용 상한(40)을 그대로 재사용하고 있어서 정상 완주한 사용자가
+// "답변 내용이 처리할 수 있는 범위를 넘어섰어요"로 결과를 아예 못 받는
+// 사고가 났다. 숫자를 그냥 올리는 대신, 이 주제의 실제 axes 배열
+// 길이에서 상한을 계산한다 — 문항 수가 다시 바뀌어도 이 상한이 자동으로
+// 따라가서 같은 사고가 재발하지 않는다.
+function maxIdealTypeMessages(): number {
+  const axisCount = (resolveTopic("idealType").axes ?? []).length;
+  // 문항당 질문+답변 2개가 정상 경로의 최소치다. 그런데 "이전" 버튼으로
+  // 답을 바꿔도 이미 쌓인 메시지는 지워지지 않고 그대로 남는다
+  // (TopicQuiz.tsx의 goBack은 quizStep만 되돌리고 messages는 그대로
+  // 둔다) — 그래서 실제 메시지 수는 정상 경로보다 얼마든지 늘어날 수
+  // 있다. 문항마다 한 번씩 되돌아가 다시 답해도(2배) 넉넉히 통과하도록
+  // 여유를 두고, 마무리 질문 몫으로 10을 더한다.
+  return axisCount * 2 * 2 + 10;
+}
+
 function isOversized(session: MapSession): boolean {
   if (!Array.isArray(session.messages)) return true;
-  if (session.messages.length > MAX_MESSAGES_PER_SESSION) return true;
+  if (session.messages.length > maxIdealTypeMessages()) return true;
   return session.messages.some((message) => typeof message.text !== "string" || message.text.length > MAX_INPUT_LENGTH);
 }
 
