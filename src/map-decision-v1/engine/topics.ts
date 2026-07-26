@@ -31,8 +31,12 @@ export type TopicOption = TopicChoice & { subOptions?: TopicChoice[] };
 // TopicQuiz.tsx의 BinaryStep이 단일 선택만 허용한다. experience: 과거에
 // 실제로 어땠는지를 묻는 경험·행동형 — 선호가 아니라 패턴을 물어서
 // 자기성찰 블록의 재료가 된다. UI 형태는 preference와 같다(복수 선택
-// 허용).
-export type TopicQuestionType = "preference" | "binary" | "experience";
+// 허용). quickTap: 문항 수가 많아지면서(필수 12→30) 생긴 새 형식 —
+// 단일 선택 + 세부 선택지 없음 + 고르는 즉시 자동으로 다음 문항으로
+// 넘어간다(TopicQuiz.tsx의 QuickTapStep). 설명(description)은 데이터에는
+// 있어도 화면에는 안 보여준다("한눈에 고르기"가 목적) — AI에게 보내는
+// 답변 텍스트에는 여전히 포함된다.
+export type TopicQuestionType = "preference" | "binary" | "experience" | "quickTap";
 // required=false인 문항은 "심화" 구간으로, 필수 문항을 다 답한 뒤에만
 // 볼지 말지 선택할 수 있다(TopicQuiz.tsx의 결정 화면 참고).
 export type TopicAxis = { id: string; type: TopicQuestionType; question: string; options: TopicOption[]; required: boolean };
@@ -103,78 +107,184 @@ export const TOPICS: Record<string, TopicConfig> = {
     fixedRatio: 75,
     resultLayoutId: "idealType",
     inputMode: "quiz",
-    // 1: 원래 프로덕션의 6문항(5축+마무리) 구조. 2: 이번 PR의 필수
-    // 12+선택 8 구조로 축 순서·개수·타입이 전면 개편됐다.
-    quizVersion: 2,
+    // 1: 원래 프로덕션의 6문항(5축+마무리) 구조. 2: 필수 12+선택 8 구조로
+    // 축 순서·개수·타입이 전면 개편됐다. 3: 필수 30+선택 8(총 38문항)로
+    // 확장하면서 "빠른 탭"(quickTap) 형식이 새로 생겼다 — 문항 수가 늘어난
+    // 만큼, 단순한 축은 단일 선택+자동 다음 넘김으로 속도를 낸다.
+    quizVersion: 3,
     axes: [
+      // ── 빠른 탭 13문항(1~13) ──────────────────────────────────────
+      // 단일 선택 + 세부 선택지 없음 + 자동으로 다음 문항 이동. 앞쪽에
+      // 몰아둬서 초반 진도가 빠르게 나가는 걸 체감하게 한다(이탈 방지).
+      // 외모 5문항(appearance/hairStyle/clothingStyle/colorImpression/
+      // bodyFeel)이 먼저 오고, 그 외 이상형에 대한 단순 취향 6문항
+      // (giftStyle/talkStyle/decisionStyle/reconcileStyle/firstMoveStyle/
+      // energyLevel), 마지막으로 "지금의 나"를 묻는 2문항(currentMood/
+      // myRelationshipRole)이 이어진다.
       {
         id: "appearance",
-        type: "preference",
+        type: "quickTap",
         required: true,
         question: "끌리는 분위기는?",
         options: [
-          {
-            label: "청량·상큼",
-            description: "보기만 해도 기분 좋아지는 산뜻한 느낌",
-            subOptions: [
-              { label: "맑은 피부톤", description: "화장 안 해도 화사해 보이는" },
-              { label: "산뜻한 스타일링", description: "캐주얼해도 깔끔한 룩" },
-              { label: "눈웃음이 예쁜", description: "웃을 때 분위기가 확 밝아지는" },
-              { label: "자연스러운 헤어", description: "꾸안꾸 느낌 나는 머리" },
-            ],
-          },
-          {
-            label: "시크·도시적",
-            description: "어딘가 세련되고 도도한 느낌",
-            subOptions: [
-              { label: "무채색 스타일", description: "블랙·그레이 톤이 잘 어울리는" },
-              { label: "표정이 담백한", description: "리액션이 크지 않아 멋있어 보이는" },
-              { label: "정제된 말투", description: "군더더기 없이 깔끔하게 말하는" },
-              { label: "도시 야경 느낌", description: "밤에 더 매력적인 분위기" },
-            ],
-          },
-          {
-            label: "부드럽고 포근",
-            description: "옆에 있으면 마음이 편안해지는",
-            subOptions: [
-              { label: "둥근 인상", description: "선이 부드러워 편안해 보이는" },
-              { label: "따뜻한 목소리", description: "톤 자체가 안정감 주는" },
-              { label: "자연스러운 미소", description: "늘 온화한 표정을 짓는" },
-              { label: "포근한 스타일", description: "니트처럼 부드러운 옷차림" },
-            ],
-          },
-          {
-            label: "개성있는·유니크",
-            description: "어디서도 본 적 없는 나만의 느낌",
-            subOptions: [
-              { label: "과감한 스타일링", description: "남들과 다른 옷을 소화하는" },
-              { label: "독특한 취향이 드러나는", description: "소품·액세서리로 티가 나는" },
-              { label: "예측 안 되는 매력", description: "뻔하지 않은 분위기" },
-              { label: "자기만의 색이 뚜렷한", description: "유행 안 따라가도 멋있는" },
-            ],
-          },
-          {
-            label: "단정한·클래식",
-            description: "볼수록 믿음이 가는 반듯한 느낌",
-            subOptions: [
-              { label: "깔끔한 옷매무새", description: "늘 정돈된 느낌을 주는" },
-              { label: "바른 자세", description: "서 있는 것만으로도 단정한" },
-              { label: "차분한 색감", description: "튀지 않는 색을 즐겨 입는" },
-              { label: "신뢰가 가는 인상", description: "첫인상부터 성실해 보이는" },
-            ],
-          },
-          {
-            label: "건강하고 탄탄한",
-            description: "자기관리가 느껴지는 활기찬 느낌",
-            subOptions: [
-              { label: "꾸준히 운동하는", description: "체형 관리가 습관인" },
-              { label: "밝은 혈색", description: "생기있어 보이는 얼굴" },
-              { label: "야외 활동이 잘 어울리는", description: "햇살 아래서도 멋진" },
-              { label: "활기찬 걸음걸이", description: "걷는 것만 봐도 에너지 있는" },
-            ],
-          },
+          { label: "청량·상큼", description: "보기만 해도 기분 좋아지는 산뜻한 느낌" },
+          { label: "시크·도시적", description: "어딘가 세련되고 도도한 느낌" },
+          { label: "부드럽고 포근", description: "옆에 있으면 마음이 편안해지는" },
+          { label: "개성있는·유니크", description: "어디서도 본 적 없는 나만의 느낌" },
+          { label: "단정한·클래식", description: "볼수록 믿음이 가는 반듯한 느낌" },
         ],
       },
+      {
+        id: "hairStyle",
+        type: "quickTap",
+        required: true,
+        question: "머리는 어떤 스타일이 좋아?",
+        options: [
+          { label: "짧은 머리", description: "깔끔하고 시원한 느낌" },
+          { label: "어깨 정도 길이", description: "적당히 세련된 길이" },
+          { label: "긴 머리", description: "풍성하고 화사한 느낌" },
+          { label: "스타일보다 분위기가 중요", description: "머리 길이는 크게 안 따지는 편" },
+        ],
+      },
+      {
+        id: "clothingStyle",
+        type: "quickTap",
+        required: true,
+        question: "옷 스타일은 어떤 게 끌려?",
+        options: [
+          { label: "깔끔한 정장·셋업", description: "격식있고 단정한 옷차림" },
+          { label: "편안한 캐주얼", description: "힘 안 준 듯 편안한 옷차림" },
+          { label: "스트릿·개성있는", description: "자기만의 스타일이 뚜렷한 옷차림" },
+          { label: "심플한 기본템", description: "꾸미지 않아도 잘 어울리는 기본 아이템" },
+        ],
+      },
+      {
+        id: "colorImpression",
+        type: "quickTap",
+        required: true,
+        question: "전체적인 느낌은?",
+        options: [
+          { label: "밝고 화사한 느낌", description: "보는 순간 화사하고 밝은 인상" },
+          { label: "차분하고 톤다운된 느낌", description: "무채색·저채도의 차분한 인상" },
+          { label: "대비가 선명한 느낌", description: "또렷하고 선명한 인상" },
+          { label: "자연스러운 느낌", description: "꾸미지 않은 듯 자연스러운 인상" },
+        ],
+      },
+      {
+        id: "bodyFeel",
+        type: "quickTap",
+        required: true,
+        question: "편하게 끌리는 체형 느낌은?",
+        options: [
+          { label: "슬림한 느낌", description: "가늘고 날렵한 느낌" },
+          { label: "탄탄한 느낌", description: "관리된 듯 다부진 느낌" },
+          { label: "포근한 느낌", description: "안기면 편안할 것 같은 느낌" },
+          { label: "체형보다 분위기가 중요", description: "체형은 크게 안 따지는 편" },
+        ],
+      },
+      {
+        id: "giftStyle",
+        type: "quickTap",
+        required: true,
+        question: "마음을 표현받을 때 더 끌리는 방식은?",
+        options: [
+          { label: "손편지·메시지", description: "글로 마음을 전하는 걸 더 좋아함" },
+          { label: "깜짝 이벤트", description: "예상 못한 서프라이즈를 좋아함" },
+          { label: "필요한 걸 알아서 챙겨주기", description: "말 안 해도 알아서 챙겨주는 걸 좋아함" },
+          { label: "함께하는 시간 자체", description: "물건보다 같이 보내는 시간이 더 중요함" },
+        ],
+      },
+      {
+        id: "talkStyle",
+        type: "quickTap",
+        required: true,
+        question: "듣고 싶은 말투는?",
+        options: [
+          { label: "다정한 존댓말", description: "예의 있으면서도 다정한 말투" },
+          { label: "편안한 반말", description: "친근하고 편안한 말투" },
+          { label: "애교 섞인 말투", description: "귀엽고 사랑스러운 말투" },
+          { label: "담백하고 진지한 말투", description: "꾸밈없이 진지한 말투" },
+        ],
+      },
+      {
+        id: "decisionStyle",
+        type: "quickTap",
+        required: true,
+        question: "결정할 때 이상형은 어떤 쪽이 좋아?",
+        options: [
+          { label: "빠르게 결정하는", description: "고민을 오래 안 하고 바로 정하는" },
+          { label: "신중하게 고민하는", description: "여러 번 따져보고 정하는" },
+          { label: "같이 의논하는", description: "혼자 정하지 않고 같이 얘기해서 정하는" },
+          { label: "직관을 믿는", description: "느낌 가는 대로 정하는" },
+        ],
+      },
+      {
+        id: "reconcileStyle",
+        type: "quickTap",
+        required: true,
+        question: "다툰 뒤 화해는 어떤 방식이 좋아?",
+        options: [
+          { label: "바로 안아주며 사과하는", description: "스킨십으로 먼저 마음을 푸는" },
+          { label: "시간 두고 차분히 대화하는", description: "감정이 가라앉은 뒤 얘기하는" },
+          { label: "장난스럽게 풀어주는", description: "가볍게 농담으로 분위기를 푸는" },
+          { label: "메시지로 마음을 전하는", description: "글로 먼저 마음을 표현하는" },
+        ],
+      },
+      {
+        id: "firstMoveStyle",
+        type: "quickTap",
+        required: true,
+        question: "썸 초반, 이상형은 어떤 쪽이 좋아?",
+        options: [
+          { label: "적극적으로 먼저 다가오는", description: "마음을 숨기지 않고 먼저 다가오는" },
+          { label: "은근하게 티 내는", description: "직접 말은 안 해도 티가 나는" },
+          { label: "내가 다가가면 잘 받아주는", description: "먼저 다가가면 편하게 받아주는" },
+          { label: "자연스럽게 친구처럼 시작하는", description: "부담 없이 친구처럼 다가오는" },
+        ],
+      },
+      {
+        id: "energyLevel",
+        type: "quickTap",
+        required: true,
+        question: "사람 만날 때 에너지는 어떤 쪽이 좋아?",
+        options: [
+          { label: "사람 많은 자리를 즐기는", description: "여럿이 모이는 자리에서 에너지를 얻는" },
+          { label: "소수와 깊게 만나는 걸 좋아하는", description: "한두 명과 깊은 대화를 좋아하는" },
+          { label: "혼자만의 시간이 꼭 필요한", description: "충전을 위해 혼자 있는 시간이 필요한" },
+          { label: "상황에 따라 유연한", description: "때에 따라 다르게 맞추는" },
+        ],
+      },
+      // complimentStyle(칭찬 방식)은 giftStyle(마음 표현받는 방식)과 사실상
+      // 같은 질문이라 뺐다 — giftStyle이 메시지·이벤트·행동·시간이라는 더
+      // 넓은 표현 방식을 다루므로 giftStyle만 남기고, 빈 자리는 아래
+      // "지금의 나"를 묻는 문항으로 채웠다. 이상형(상대)에 대한 취향과
+      // 과거 경험만 묻던 문항 구성에, 지금 이 순간의 나를 가볍게 묻는
+      // 질문이 없었다 — selfReflection(자기성찰)의 재료가 된다.
+      {
+        id: "currentMood",
+        type: "quickTap",
+        required: true,
+        question: "요즘 마음 상태에 가장 가까운 건?",
+        options: [
+          { label: "새로운 인연에 열려있어", description: "누군가를 만나고 싶은 마음이 있는 상태" },
+          { label: "그냥 무난하게 지내", description: "특별한 마음의 동요 없이 평범한 상태" },
+          { label: "요즘 좀 지쳐있어", description: "마음의 여유가 크지 않은 상태" },
+          { label: "혼자만의 시간이 편해", description: "지금은 나 자신에게 집중하고 싶은 상태" },
+        ],
+      },
+      {
+        id: "myRelationshipRole",
+        type: "quickTap",
+        required: true,
+        question: "친구든 썸이든, 관계에서 나는 보통 어떤 역할이야?",
+        options: [
+          { label: "먼저 다가가고 챙기는 편", description: "적극적으로 먼저 움직이는 역할" },
+          { label: "편하게 맞춰주는 편", description: "상대에게 맞춰가는 역할" },
+          { label: "분위기를 띄우는 편", description: "즐거운 분위기를 만드는 역할" },
+          { label: "조용히 지켜보는 편", description: "나서기보다 지켜보는 역할" },
+        ],
+      },
+      // ── 나머지 필수 17문항(14~30) — 복수 선택+2단 세부 유지 ─────────
       {
         id: "personality",
         type: "preference",
@@ -468,74 +578,6 @@ export const TOPICS: Record<string, TopicConfig> = {
         ],
       },
       {
-        id: "communication",
-        type: "preference",
-        required: false,
-        question: "연락할 때 어떤 모습이 좋아?",
-        options: [
-          {
-            label: "자주 연락하는",
-            description: "하루 중 틈틈이 연락을 주고받는 걸 좋아하는",
-            subOptions: [
-              { label: "답장이 빠른", description: "연락을 오래 기다리게 안 하는" },
-              { label: "먼저 연락하는", description: "안부를 먼저 물어봐주는" },
-              { label: "통화를 좋아하는", description: "목소리로 얘기하는 걸 즐기는" },
-              { label: "일상을 공유하는", description: "소소한 순간도 나누고 싶어하는" },
-            ],
-          },
-          {
-            label: "필요할 때 연락하는",
-            description: "연락 빈도보다 내용을 더 중요하게 여기는",
-            subOptions: [
-              { label: "용건 위주로 연락하는", description: "짧고 명확하게 소통하는" },
-              { label: "급할 때만 연락하는", description: "평소엔 각자 리듬대로 지내는" },
-              { label: "만나서 얘기하길 좋아하는", description: "연락보다 직접 보는 걸 선호하는" },
-              { label: "답장을 서두르지 않는", description: "늦어도 이해해주는" },
-            ],
-          },
-          {
-            label: "텍스트로 표현 잘하는",
-            description: "메시지로 마음을 잘 전달하는",
-            subOptions: [
-              { label: "장문 메시지를 보내는", description: "생각을 길게 적어 보내는" },
-              { label: "이모티콘을 잘 쓰는", description: "메시지에 감정을 담아 보내는" },
-              { label: "사진을 자주 공유하는", description: "일상 사진을 보내주는" },
-              { label: "문자로 다정한 표현을 하는", description: "글로 애정을 잘 표현하는" },
-            ],
-          },
-          {
-            label: "통화를 편하게 여기는",
-            description: "목소리로 대화하는 걸 자연스러워하는",
-            subOptions: [
-              { label: "자기 전 통화를 좋아하는", description: "하루를 마무리하며 통화하는" },
-              { label: "오래 통화해도 편한", description: "통화가 길어져도 어색하지 않은" },
-              { label: "영상통화를 좋아하는", description: "얼굴 보며 얘기하는 걸 즐기는" },
-              { label: "목소리 톤이 편안한", description: "통화할 때 안정감을 주는" },
-            ],
-          },
-          {
-            label: "만나서 얘기하는 걸 선호하는",
-            description: "연락보다 직접 만나는 걸 우선하는",
-            subOptions: [
-              { label: "자주 만나고 싶어하는", description: "얼굴 보는 걸 더 중요하게 여기는" },
-              { label: "계획을 미리 잡는", description: "만날 약속을 여유 있게 정하는" },
-              { label: "즉흥 만남도 좋아하는", description: "갑자기 보자고 해도 반가운" },
-              { label: "함께 있는 시간에 집중하는", description: "만났을 때 연락보다 대화에 집중하는" },
-            ],
-          },
-          {
-            label: "연락에 유연한",
-            description: "상황에 따라 자연스럽게 맞춰주는",
-            subOptions: [
-              { label: "바쁠 땐 이해해주는", description: "답장이 늦어도 서운해하지 않는" },
-              { label: "각자 리듬을 존중하는", description: "연락 패턴을 강요하지 않는" },
-              { label: "필요하면 바로 맞춰주는", description: "중요한 순간엔 빠르게 응답하는" },
-              { label: "연락보다 진심을 중요하게 여기는", description: "빈도보다 마음을 우선하는" },
-            ],
-          },
-        ],
-      },
-      {
         id: "binary3",
         type: "binary",
         required: true,
@@ -614,94 +656,6 @@ export const TOPICS: Record<string, TopicConfig> = {
         ],
       },
       {
-        id: "pacing",
-        type: "preference",
-        required: false,
-        question: "썸 탈 때, 어떤 속도가 좋아?",
-        options: [
-          {
-            label: "천천히 알아가는",
-            description: "서두르지 않고 서로를 알아가는 속도",
-            subOptions: [
-              { label: "단계를 밟아가는", description: "순서대로 가까워지는 걸 좋아하는" },
-              { label: "신중하게 확인하는", description: "확신이 들 때까지 지켜보는" },
-              { label: "친구처럼 시작하는", description: "편한 사이부터 만들어가는" },
-              { label: "시간을 두고 확신을 쌓는", description: "서두르지 않아도 괜찮은" },
-            ],
-          },
-          {
-            label: "빠르게 가까워지는",
-            description: "마음이 확인되면 빠르게 진전되는 속도",
-            subOptions: [
-              { label: "직진하는", description: "마음을 숨기지 않고 바로 표현하는" },
-              { label: "빠른 스킨십에 편한", description: "가까워지면 스킨십도 자연스러운" },
-              { label: "확신이 서면 바로 고백하는", description: "재지 않고 마음을 전하는" },
-              { label: "초반부터 자주 만나는", description: "만남 빈도를 빠르게 늘리는" },
-            ],
-          },
-          {
-            label: "자연스럽게 흘러가는",
-            description: "억지로 정의하지 않고 흘러가는 대로 두는",
-            subOptions: [
-              { label: "관계에 이름 붙이는 걸 서두르지 않는", description: "자연스레 정해지길 기다리는" },
-              { label: "상황에 맡기는", description: "흐름을 억지로 만들지 않는" },
-              { label: "편한 대로 만나는", description: "형식에 얽매이지 않는" },
-              { label: "마음 가는 대로 하는", description: "계산하지 않고 편하게 다가가는" },
-            ],
-          },
-          {
-            label: "확실한 신호부터 확인하는",
-            description: "마음을 확인하고 나서 움직이는",
-            subOptions: [
-              { label: "티키타카부터 확인하는", description: "대화 궁합을 먼저 보는" },
-              { label: "상대 마음을 먼저 확인하는", description: "짝사랑으로 끝나지 않게 신중한" },
-              { label: "표현을 명확히 하는", description: "애매한 신호를 안 좋아하는" },
-              { label: "관계를 분명히 하고 싶어하는", description: "썸 기간이 길어지는 걸 안 좋아하는" },
-            ],
-          },
-          {
-            label: "밀당을 즐기는",
-            description: "적당한 긴장감이 있는 초반을 좋아하는",
-            subOptions: [
-              { label: "적당한 거리를 두는", description: "너무 티 안 내는 것도 매력이라 생각하는" },
-              { label: "은근한 표현을 좋아하는", description: "직접적이지 않은 신호를 즐기는" },
-              { label: "궁금증을 유발하는", description: "다 보여주지 않는 매력을 아는" },
-              { label: "페이스 조절을 잘하는", description: "밀고 당기는 타이밍을 아는" },
-            ],
-          },
-          {
-            label: "편한 페이스를 맞춰가는",
-            description: "서로 속도를 맞추는 걸 중요하게 여기는",
-            subOptions: [
-              { label: "대화로 속도를 맞추는", description: "서로 원하는 속도를 확인하는" },
-              { label: "상대 페이스를 존중하는", description: "밀어붙이지 않는" },
-              { label: "부담 주지 않는", description: "상대가 편한 만큼만 다가가는" },
-              { label: "같이 맞춰나가는 재미를 아는", description: "속도 맞추는 과정 자체를 즐기는" },
-            ],
-          },
-        ],
-      },
-      {
-        id: "binary4",
-        type: "binary",
-        required: false,
-        question: "표현이 많은 사람 vs 무게감 있는 사람, 더 끌리는 쪽은?",
-        options: [
-          { label: "표현이 많은 사람", description: "마음을 자주, 확실하게 드러내는 사람" },
-          { label: "무게감 있는 사람", description: "말수는 적어도 진중함이 느껴지는 사람" },
-        ],
-      },
-      {
-        id: "binaryWarmth",
-        type: "binary",
-        required: false,
-        question: "내 사람에게만 잘하는 사람 vs 누구에게나 두루 잘하는 사람, 더 끌리는 쪽은?",
-        options: [
-          { label: "내 사람에게만 잘하는 사람", description: "가까운 사람에게 유독 다정한, 낯가림 있는 다정함" },
-          { label: "누구에게나 두루 잘하는 사람", description: "누구에게나 배려가 몸에 밴 사람" },
-        ],
-      },
-      {
         id: "experienceEnding",
         type: "experience",
         required: true,
@@ -747,65 +701,6 @@ export const TOPICS: Record<string, TopicConfig> = {
               { label: "관계가 완전히 끊기진 않았다", description: "연락 정도는 유지했다" },
             ],
           },
-        ],
-      },
-      {
-        id: "experienceEarlyStyle",
-        type: "experience",
-        required: false,
-        question: "연애 초반, 나는 보통 어떤 모습이었어?",
-        options: [
-          {
-            label: "마음을 빨리 표현하는 편",
-            description: "좋아하면 티가 금방 나는 편이었다",
-            subOptions: [
-              { label: "고백을 먼저 하는 편", description: "마음을 확인하면 바로 표현했다" },
-              { label: "적극적으로 다가간 편", description: "연락도 만남도 먼저 시도한 편이다" },
-              { label: "스킨십도 빨리 편해진 편", description: "가까워지는 속도가 빠른 편이다" },
-              { label: "티가 잘 나는 편", description: "숨기지 못하고 표현이 드러난 편이다" },
-            ],
-          },
-          {
-            label: "마음을 천천히 확인하는 편",
-            description: "신중하게 감정을 확인해온 편이었다",
-            subOptions: [
-              { label: "관찰을 먼저 하는 편", description: "상대를 충분히 지켜본 뒤 다가갔다" },
-              { label: "확신이 서야 움직이는 편", description: "애매하면 먼저 나서지 않았다" },
-              { label: "친구 기간이 긴 편", description: "편해지고 나서야 마음을 열었다" },
-              { label: "표현을 아끼는 편", description: "마음을 바로 드러내지 않는 편이다" },
-            ],
-          },
-          {
-            label: "상대의 리드를 따라간 편",
-            description: "상대가 이끄는 대로 자연스럽게 따라간 편이었다",
-            subOptions: [
-              { label: "고백을 받는 쪽이었던 편", description: "먼저 다가오길 기다린 편이다" },
-              { label: "흐름에 맡긴 편", description: "굳이 정의하려 하지 않았다" },
-              { label: "편하게 받아들인 편", description: "부담 없이 관계를 시작한 편이다" },
-              { label: "서두르지 않아도 괜찮았던 편", description: "상대 속도에 맞춰갔다" },
-            ],
-          },
-          {
-            label: "매번 다른 모습이었다",
-            description: "상대나 상황에 따라 태도가 달라졌다",
-            subOptions: [
-              { label: "끌림의 정도에 따라 달랐다", description: "마음의 크기가 태도를 바꿨다" },
-              { label: "상대 스타일에 맞춰갔다", description: "상대가 어떤 사람이냐에 따라 달랐다" },
-              { label: "그때그때 달랐다", description: "정해진 패턴이 없는 편이다" },
-              { label: "상황에 영향을 많이 받았다", description: "타이밍이나 환경에 따라 달라졌다" },
-            ],
-          },
-          { label: "아직 연애 경험이 없다", description: "이 질문은 아직 해당 사항이 없다" },
-        ],
-      },
-      {
-        id: "binary6",
-        type: "binary",
-        required: false,
-        question: "이성적으로 대화하는 사람 vs 감정에 공감해주는 사람, 힘들 때 더 필요한 쪽은?",
-        options: [
-          { label: "이성적으로 대화하는 사람", description: "문제를 침착하게 같이 풀어가는 사람" },
-          { label: "감정에 공감해주는 사람", description: "내 감정을 먼저 알아주고 다독여주는 사람" },
         ],
       },
       {
@@ -905,9 +800,112 @@ export const TOPICS: Record<string, TopicConfig> = {
         ],
       },
       {
+        id: "communication",
+        type: "preference",
+        required: true,
+        question: "연락할 때 어떤 모습이 좋아?",
+        options: [
+          {
+            label: "자주 연락하는",
+            description: "하루 중 틈틈이 연락을 주고받는 걸 좋아하는",
+            subOptions: [
+              { label: "답장이 빠른", description: "연락을 오래 기다리게 안 하는" },
+              { label: "먼저 연락하는", description: "안부를 먼저 물어봐주는" },
+              { label: "통화를 좋아하는", description: "목소리로 얘기하는 걸 즐기는" },
+              { label: "일상을 공유하는", description: "소소한 순간도 나누고 싶어하는" },
+            ],
+          },
+          {
+            label: "필요할 때 연락하는",
+            description: "연락 빈도보다 내용을 더 중요하게 여기는",
+            subOptions: [
+              { label: "용건 위주로 연락하는", description: "짧고 명확하게 소통하는" },
+              { label: "급할 때만 연락하는", description: "평소엔 각자 리듬대로 지내는" },
+              { label: "만나서 얘기하길 좋아하는", description: "연락보다 직접 보는 걸 선호하는" },
+              { label: "답장을 서두르지 않는", description: "늦어도 이해해주는" },
+            ],
+          },
+          {
+            label: "텍스트로 표현 잘하는",
+            description: "메시지로 마음을 잘 전달하는",
+            subOptions: [
+              { label: "장문 메시지를 보내는", description: "생각을 길게 적어 보내는" },
+              { label: "이모티콘을 잘 쓰는", description: "메시지에 감정을 담아 보내는" },
+              { label: "사진을 자주 공유하는", description: "일상 사진을 보내주는" },
+              { label: "문자로 다정한 표현을 하는", description: "글로 애정을 잘 표현하는" },
+            ],
+          },
+          {
+            label: "통화를 편하게 여기는",
+            description: "목소리로 대화하는 걸 자연스러워하는",
+            subOptions: [
+              { label: "자기 전 통화를 좋아하는", description: "하루를 마무리하며 통화하는" },
+              { label: "오래 통화해도 편한", description: "통화가 길어져도 어색하지 않은" },
+              { label: "영상통화를 좋아하는", description: "얼굴 보며 얘기하는 걸 즐기는" },
+              { label: "목소리 톤이 편안한", description: "통화할 때 안정감을 주는" },
+            ],
+          },
+          {
+            label: "만나서 얘기하는 걸 선호하는",
+            description: "연락보다 직접 만나는 걸 우선하는",
+            subOptions: [
+              { label: "자주 만나고 싶어하는", description: "얼굴 보는 걸 더 중요하게 여기는" },
+              { label: "계획을 미리 잡는", description: "만날 약속을 여유 있게 정하는" },
+              { label: "즉흥 만남도 좋아하는", description: "갑자기 보자고 해도 반가운" },
+              { label: "함께 있는 시간에 집중하는", description: "만났을 때 연락보다 대화에 집중하는" },
+            ],
+          },
+          {
+            label: "연락에 유연한",
+            description: "상황에 따라 자연스럽게 맞춰주는",
+            subOptions: [
+              { label: "바쁠 땐 이해해주는", description: "답장이 늦어도 서운해하지 않는" },
+              { label: "각자 리듬을 존중하는", description: "연락 패턴을 강요하지 않는" },
+              { label: "필요하면 바로 맞춰주는", description: "중요한 순간엔 빠르게 응답하는" },
+              { label: "연락보다 진심을 중요하게 여기는", description: "빈도보다 마음을 우선하는" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "binary4",
+        type: "binary",
+        required: true,
+        question: "표현이 많은 사람 vs 무게감 있는 사람, 더 끌리는 쪽은?",
+        options: [
+          { label: "표현이 많은 사람", description: "마음을 자주, 확실하게 드러내는 사람" },
+          { label: "무게감 있는 사람", description: "말수는 적어도 진중함이 느껴지는 사람" },
+        ],
+      },
+      // pacing(썸 타는 속도)은 firstMoveStyle(썸 초반 이상형)과 같은
+      // "썸 초반" 축을 겹쳐서 물었다 — 게다가 옵션 6개+2단 세부라 다른
+      // preference 축보다 시간이 더 걸렸다. 두 축 중 firstMoveStyle이 더
+      // 구체적으로 "누가 먼저 움직이는가"를 묻고, 형식도 빠른 탭이라 더
+      // 짧아서 pacing을 뺐다.
+      {
+        id: "binaryWarmth",
+        type: "binary",
+        required: true,
+        question: "내 사람에게만 잘하는 사람 vs 누구에게나 두루 잘하는 사람, 더 끌리는 쪽은?",
+        options: [
+          { label: "내 사람에게만 잘하는 사람", description: "가까운 사람에게 유독 다정한, 낯가림 있는 다정함" },
+          { label: "누구에게나 두루 잘하는 사람", description: "누구에게나 배려가 몸에 밴 사람" },
+        ],
+      },
+      {
+        id: "binary6",
+        type: "binary",
+        required: true,
+        question: "이성적으로 대화하는 사람 vs 감정에 공감해주는 사람, 힘들 때 더 필요한 쪽은?",
+        options: [
+          { label: "이성적으로 대화하는 사람", description: "문제를 침착하게 같이 풀어가는 사람" },
+          { label: "감정에 공감해주는 사람", description: "내 감정을 먼저 알아주고 다독여주는 사람" },
+        ],
+      },
+      {
         id: "experienceEmotion",
         type: "experience",
-        required: false,
+        required: true,
         question: "가까운 관계에서, 나는 어떤 감정에 좀 더 예민한 편이야?",
         options: [
           {
@@ -955,7 +953,7 @@ export const TOPICS: Record<string, TopicConfig> = {
       {
         id: "experienceChange",
         type: "experience",
-        required: false,
+        required: true,
         question: "예전과 비교하면, 나는 관계 맺는 방식이 어떻게 달라졌어?",
         options: [
           {
@@ -1000,7 +998,139 @@ export const TOPICS: Record<string, TopicConfig> = {
           },
         ],
       },
+      // ── 심화(선택) 8문항(31~38) ─────────────────────────────────────
+      {
+        id: "experienceEarlyStyle",
+        type: "experience",
+        required: false,
+        question: "연애 초반, 나는 보통 어떤 모습이었어?",
+        options: [
+          {
+            label: "마음을 빨리 표현하는 편",
+            description: "좋아하면 티가 금방 나는 편이었다",
+            subOptions: [
+              { label: "고백을 먼저 하는 편", description: "마음을 확인하면 바로 표현했다" },
+              { label: "적극적으로 다가간 편", description: "연락도 만남도 먼저 시도한 편이다" },
+              { label: "스킨십도 빨리 편해진 편", description: "가까워지는 속도가 빠른 편이다" },
+              { label: "티가 잘 나는 편", description: "숨기지 못하고 표현이 드러난 편이다" },
+            ],
+          },
+          {
+            label: "마음을 천천히 확인하는 편",
+            description: "신중하게 감정을 확인해온 편이었다",
+            subOptions: [
+              { label: "관찰을 먼저 하는 편", description: "상대를 충분히 지켜본 뒤 다가갔다" },
+              { label: "확신이 서야 움직이는 편", description: "애매하면 먼저 나서지 않았다" },
+              { label: "친구 기간이 긴 편", description: "편해지고 나서야 마음을 열었다" },
+              { label: "표현을 아끼는 편", description: "마음을 바로 드러내지 않는 편이다" },
+            ],
+          },
+          {
+            label: "상대의 리드를 따라간 편",
+            description: "상대가 이끄는 대로 자연스럽게 따라간 편이었다",
+            subOptions: [
+              { label: "고백을 받는 쪽이었던 편", description: "먼저 다가오길 기다린 편이다" },
+              { label: "흐름에 맡긴 편", description: "굳이 정의하려 하지 않았다" },
+              { label: "편하게 받아들인 편", description: "부담 없이 관계를 시작한 편이다" },
+              { label: "서두르지 않아도 괜찮았던 편", description: "상대 속도에 맞춰갔다" },
+            ],
+          },
+          {
+            label: "매번 다른 모습이었다",
+            description: "상대나 상황에 따라 태도가 달라졌다",
+            subOptions: [
+              { label: "끌림의 정도에 따라 달랐다", description: "마음의 크기가 태도를 바꿨다" },
+              { label: "상대 스타일에 맞춰갔다", description: "상대가 어떤 사람이냐에 따라 달랐다" },
+              { label: "그때그때 달랐다", description: "정해진 패턴이 없는 편이다" },
+              { label: "상황에 영향을 많이 받았다", description: "타이밍이나 환경에 따라 달라졌다" },
+            ],
+          },
+          { label: "아직 연애 경험이 없다", description: "이 질문은 아직 해당 사항이 없다" },
+        ],
+      },
+      {
+        id: "experienceCommitment",
+        type: "experience",
+        required: false,
+        question: "관계가 진지해지는 순간(사귀자고 말할 때 등), 나는 보통 어느 쪽이었어?",
+        options: [
+          { label: "내가 먼저 말하는 편", description: "마음을 확인하면 먼저 표현하는 편이다" },
+          { label: "상대가 먼저 말해주길 기다리는 편", description: "고백받는 쪽을 편하게 여기는 편이다" },
+          { label: "자연스럽게 흘러가는 편", description: "누가 먼저랄 것 없이 정해지는 편이다" },
+          { label: "확신이 들 때까지 계속 미루는 편", description: "확실해지기 전까지는 정의하지 않는 편이다" },
+        ],
+      },
+      {
+        id: "experienceApology",
+        type: "experience",
+        required: false,
+        question: "내가 잘못했을 때, 사과는 보통 어떻게 하는 편이야?",
+        options: [
+          { label: "바로 인정하고 사과하는 편", description: "잘못을 깨달으면 바로 말하는 편이다" },
+          { label: "시간이 좀 지나야 사과하는 편", description: "마음을 정리한 뒤에 사과하는 편이다" },
+          { label: "행동으로 갚는 편", description: "말보다 행동으로 미안함을 표현하는 편이다" },
+          { label: "자존심 때문에 잘 못하는 편", description: "알면서도 먼저 말을 못 꺼내는 편이다" },
+        ],
+      },
+      {
+        id: "experienceSupport",
+        type: "experience",
+        required: false,
+        question: "가까운 사람이 잘될 때(성취·좋은 일), 나는 보통 어떤 반응이야?",
+        options: [
+          { label: "내 일처럼 기뻐하는 편", description: "진심으로 같이 신나하는 편이다" },
+          { label: "티는 안 내도 진심으로 응원하는 편", description: "겉으로 크게 표현은 안 하는 편이다" },
+          { label: "약간의 부러움도 함께 느끼는 편", description: "축하하면서도 나를 돌아보게 되는 편이다" },
+          { label: "축하부터 챙기는 행동파", description: "말보다 먼저 뭔가 해주는 편이다" },
+        ],
+      },
+      {
+        id: "binaryPlanning",
+        type: "binary",
+        required: false,
+        question: "계획적으로 움직이는 사람 vs 즉흥적으로 움직이는 사람, 더 끌리는 쪽은?",
+        options: [
+          { label: "계획적으로 움직이는 사람", description: "미리 정하고 움직이는 걸 편안해하는 사람" },
+          { label: "즉흥적으로 움직이는 사람", description: "그때그때 흐름을 즐기는 사람" },
+        ],
+      },
+      {
+        id: "binarySimilarity",
+        type: "binary",
+        required: false,
+        question: "나와 비슷한 사람 vs 나와 다른 사람, 더 끌리는 쪽은?",
+        options: [
+          { label: "나와 비슷한 사람", description: "취향과 성향이 잘 통하는 사람" },
+          { label: "나와 다른 사람", description: "나한테 없는 걸 채워주는 사람" },
+        ],
+      },
+      {
+        id: "idealDate",
+        type: "preference",
+        required: false,
+        question: "이상적인 데이트는 어떤 모습이야?",
+        options: [
+          { label: "카페에서 대화", description: "편하게 앉아서 얘기 나누는 시간" },
+          { label: "야외 활동·산책", description: "함께 걷거나 몸을 움직이는 시간" },
+          { label: "문화생활(전시·공연·영화)", description: "같이 보고 느끼는 시간" },
+          { label: "맛집 탐방", description: "맛있는 걸 같이 찾아다니는 시간" },
+          { label: "집에서 편안하게", description: "나가지 않고 편하게 보내는 시간" },
+        ],
+      },
+      {
+        id: "socialCircle",
+        type: "preference",
+        required: false,
+        question: "친구·지인들과의 관계는 어떤 게 좋아?",
+        options: [
+          { label: "내 친구들과도 잘 어울리는 사람", description: "내 사람들과 자연스럽게 섞이는 사람" },
+          { label: "우리 둘만의 시간을 더 중요하게 여기는 사람", description: "다른 관계보다 둘을 우선하는 사람" },
+          { label: "자연스럽게 어울리되 무리하지 않는 사람", description: "부담 없이 적당히 어울리는 사람" },
+          { label: "각자 친구 관계는 존중해주는 사람", description: "서로의 인간관계를 간섭하지 않는 사람" },
+        ],
+      },
     ],
+
     closingPrompt: "이상형에 대해 더 하고 싶은 말이 있나요?",
     conversationFocus: "",
     resultFocus: "",
