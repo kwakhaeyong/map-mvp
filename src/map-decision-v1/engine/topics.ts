@@ -35,8 +35,28 @@ export type TopicOption = TopicChoice & { subOptions?: TopicChoice[] };
 // 단일 선택 + 세부 선택지 없음 + 고르는 즉시 자동으로 다음 문항으로
 // 넘어간다(TopicQuiz.tsx의 QuickTapStep). 설명(description)은 데이터에는
 // 있어도 화면에는 안 보여준다("한눈에 고르기"가 목적) — AI에게 보내는
-// 답변 텍스트에는 여전히 포함된다.
-export type TopicQuestionType = "preference" | "binary" | "experience" | "quickTap";
+// 답변 텍스트에는 여전히 포함된다. visualPick: quickTap과 동작은
+// 같지만(단일 선택+자동 다음 넘김) 라벨 대신 그림(썸네일)을 보고
+// 고른다(TopicQuiz.tsx의 VisualGridStep) — 외모처럼 말보다 그림이
+// 더 정확한 문항에 쓴다. ranking: 옵션 전부를 원하는 순서대로 매긴다
+// (RankingStep) — "제일 좋은 것"만 아니라 전체 우선순위를 알아낼 때
+// 쓴다. slider: 양 끝 사이의 정도를 고른다(SliderStep) — 데이터 구조는
+// preference형처럼 options 배열이지만, 양자택일로 자르기 애매한 축을
+// 5단계 정도로 표현할 때 쓴다. scenario: 특성을 직접 묻지 않고 구체적
+// 상황을 던져서 반응을 고르게 한다(ScenarioStep) — 동작은 quickTap과
+// 같고 화면 톤만 다르다. reflection: 문항 하나에 짧게 한 줄 적는
+// 자유 서술형(ReflectionStep) — options는 항상 빈 배열이고, 건너뛰기가
+// 가능하다.
+export type TopicQuestionType =
+  | "preference"
+  | "binary"
+  | "experience"
+  | "quickTap"
+  | "visualPick"
+  | "ranking"
+  | "slider"
+  | "scenario"
+  | "reflection";
 // required=false인 문항은 "심화" 구간으로, 필수 문항을 다 답한 뒤에만
 // 볼지 말지 선택할 수 있다(TopicQuiz.tsx의 결정 화면 참고).
 export type TopicAxis = { id: string; type: TopicQuestionType; question: string; options: TopicOption[]; required: boolean };
@@ -109,18 +129,31 @@ export const TOPICS: Record<string, TopicConfig> = {
     inputMode: "quiz",
     // 1: 원래 프로덕션의 6문항(5축+마무리) 구조. 2: 필수 12+선택 8 구조로
     // 축 순서·개수·타입이 전면 개편됐다. 3: 필수 30+선택 8(총 38문항)로
-    // 확장하면서 "빠른 탭"(quickTap) 형식이 새로 생겼다 — 문항 수가 늘어난
-    // 만큼, 단순한 축은 단일 선택+자동 다음 넘김으로 속도를 낸다.
-    quizVersion: 3,
+    // 확장하면서 "빠른 탭"(quickTap) 형식이 새로 생겼다. 4: 빠른 탭을
+    // 앞에 몰아둔 구성이 단조롭다는 피드백을 받아, 시간 단축에서 퀄리티
+    // 방향으로 다시 짰다 — 외모 3문항을 텍스트에서 시각적 선택(썸네일
+    // 그리드)으로 바꾸고, 순위 매기기·슬라이더·상황 제시형을 새로 넣어
+    // 형식을 다양화했고, 경험형 문항 뒤에 짧은 자유 서술 3개를 끼워
+    // 넣었다. 5: 외모 실루엣을 전신에서 어깨 위 구도(증명사진 스타일)로
+    // 바꿨다 — 체형을 아예 그리지 않아서 bodyFeel(체형 느낌) 문항을
+    // 없앴고, 대신 머리 색(hairColor)·소품(accessory) 시각 선택을
+    // 새로 추가했다. clothingStyle은 "옷 실루엣"에서 "옷깃·넥라인"으로
+    // 의미가 바뀌었다(질문·옵션 내용 변경). 필수 36→37개로 늘었다
+    // (외모 클러스터가 bodyFeel 제거 1개 + hairColor/accessory 추가
+    // 2개로 순증가 1개).
+    quizVersion: 5,
     axes: [
-      // ── 빠른 탭 13문항(1~13) ──────────────────────────────────────
-      // 단일 선택 + 세부 선택지 없음 + 자동으로 다음 문항 이동. 앞쪽에
-      // 몰아둬서 초반 진도가 빠르게 나가는 걸 체감하게 한다(이탈 방지).
-      // 외모 5문항(appearance/hairStyle/clothingStyle/colorImpression/
-      // bodyFeel)이 먼저 오고, 그 외 이상형에 대한 단순 취향 6문항
-      // (giftStyle/talkStyle/decisionStyle/reconcileStyle/firstMoveStyle/
-      // energyLevel), 마지막으로 "지금의 나"를 묻는 2문항(currentMood/
-      // myRelationshipRole)이 이어진다.
+      // ── 1~8: 외모 클러스터 ────────────────────────────────────────
+      // hairStyle/hairColor/clothingStyle/accessory/colorImpression은
+      // 텍스트 라벨이 아니라 어깨 위 구도(증명사진 스타일) 실루엣 부품
+      // 썸네일을 직접 보고 고르는 시각적 선택이다
+      // (components/IdealTypeVisualParts.tsx). 전신이 아니라 어깨
+      // 위까지만 그려서 체형을 아예 그리지 않는다 — 타겟 연령(10대
+      // 중반 포함)에 부적절할 수 있는 요소를 원천적으로 없앴다(이전
+      // 버전의 bodyFeel 문항은 그래서 제거했다). "같은 형식 3개 연속
+      // 금지" 규칙 때문에 시각 선택 5개를 한 번에 붙이지 않고 사이에
+      // giftStyle(순위 매기기)·personality(선호형)를 끼워 2개씩
+      // 끊었다 — 그래도 외모라는 주제 흐름은 그대로 유지된다.
       {
         id: "appearance",
         type: "quickTap",
@@ -136,57 +169,42 @@ export const TOPICS: Record<string, TopicConfig> = {
       },
       {
         id: "hairStyle",
-        type: "quickTap",
+        type: "visualPick",
         required: true,
-        question: "머리는 어떤 스타일이 좋아?",
+        question: "어떤 머리 스타일에 더 끌려? 그림을 보고 골라줘",
         options: [
-          { label: "짧은 머리", description: "깔끔하고 시원한 느낌" },
-          { label: "어깨 정도 길이", description: "적당히 세련된 길이" },
-          { label: "긴 머리", description: "풍성하고 화사한 느낌" },
-          { label: "스타일보다 분위기가 중요", description: "머리 길이는 크게 안 따지는 편" },
+          { label: "가벼운 단발", description: "턱선 정도 길이의 산뜻한 단발" },
+          { label: "슬릭한 생머리", description: "매끈하게 떨어지는 긴 생머리" },
+          { label: "부드러운 웨이브", description: "자연스러운 웨이브가 있는 머리" },
+          { label: "비대칭 크롭", description: "개성 있는 비대칭 크롭 스타일" },
+          { label: "단정한 가르마", description: "깔끔하게 정돈된 가르마 스타일" },
+          { label: "짧은 액티브컷", description: "활동적인 느낌의 짧은 스타일" },
         ],
       },
       {
-        id: "clothingStyle",
-        type: "quickTap",
+        id: "hairColor",
+        type: "visualPick",
         required: true,
-        question: "옷 스타일은 어떤 게 끌려?",
+        question: "어떤 머리 색에 더 끌려? 그림을 보고 골라줘",
         options: [
-          { label: "깔끔한 정장·셋업", description: "격식있고 단정한 옷차림" },
-          { label: "편안한 캐주얼", description: "힘 안 준 듯 편안한 옷차림" },
-          { label: "스트릿·개성있는", description: "자기만의 스타일이 뚜렷한 옷차림" },
-          { label: "심플한 기본템", description: "꾸미지 않아도 잘 어울리는 기본 아이템" },
+          { label: "흑발", description: "차분하고 깨끗한 인상의 검은 머리" },
+          { label: "짙은 갈색", description: "자연스러운 무게감이 있는 진한 갈색" },
+          { label: "밝은 갈색", description: "부드럽고 화사한 밝은 갈색" },
+          { label: "밝은 톤", description: "화사하고 눈에 띄는 밝은 색(금발 등)" },
+          { label: "염색 톤", description: "과감하고 개성 있는 컬러 염색" },
         ],
       },
-      {
-        id: "colorImpression",
-        type: "quickTap",
-        required: true,
-        question: "전체적인 느낌은?",
-        options: [
-          { label: "밝고 화사한 느낌", description: "보는 순간 화사하고 밝은 인상" },
-          { label: "차분하고 톤다운된 느낌", description: "무채색·저채도의 차분한 인상" },
-          { label: "대비가 선명한 느낌", description: "또렷하고 선명한 인상" },
-          { label: "자연스러운 느낌", description: "꾸미지 않은 듯 자연스러운 인상" },
-        ],
-      },
-      {
-        id: "bodyFeel",
-        type: "quickTap",
-        required: true,
-        question: "편하게 끌리는 체형 느낌은?",
-        options: [
-          { label: "슬림한 느낌", description: "가늘고 날렵한 느낌" },
-          { label: "탄탄한 느낌", description: "관리된 듯 다부진 느낌" },
-          { label: "포근한 느낌", description: "안기면 편안할 것 같은 느낌" },
-          { label: "체형보다 분위기가 중요", description: "체형은 크게 안 따지는 편" },
-        ],
-      },
+      // ── 순위 매기기 ───────────────────────────────────────────────
+      // giftStyle을 단일 선택(quickTap)에서 순위 매기기로 바꿨다 —
+      // "어떤 표현이 제일 좋아?"보다 "표현 방식 4개를 순서대로 매겨줘"가
+      // 더 진한 정보를 준다(1순위만 알면 안 되는 나머지 우선순위도
+      // 드러난다). 시각 선택 2개(hairStyle/hairColor) 뒤에 배치해
+      // "같은 형식 3개 연속 금지" 규칙을 지킨다.
       {
         id: "giftStyle",
-        type: "quickTap",
+        type: "ranking",
         required: true,
-        question: "마음을 표현받을 때 더 끌리는 방식은?",
+        question: "마음을 표현받는 방식, 좋아하는 순서대로 골라줘",
         options: [
           { label: "손편지·메시지", description: "글로 마음을 전하는 걸 더 좋아함" },
           { label: "깜짝 이벤트", description: "예상 못한 서프라이즈를 좋아함" },
@@ -195,96 +213,32 @@ export const TOPICS: Record<string, TopicConfig> = {
         ],
       },
       {
-        id: "talkStyle",
-        type: "quickTap",
+        id: "clothingStyle",
+        type: "visualPick",
         required: true,
-        question: "듣고 싶은 말투는?",
+        question: "어떤 옷깃·넥라인에 더 끌려? 그림을 보고 골라줘",
         options: [
-          { label: "다정한 존댓말", description: "예의 있으면서도 다정한 말투" },
-          { label: "편안한 반말", description: "친근하고 편안한 말투" },
-          { label: "애교 섞인 말투", description: "귀엽고 사랑스러운 말투" },
-          { label: "담백하고 진지한 말투", description: "꾸밈없이 진지한 말투" },
+          { label: "셔츠 칼라", description: "단정하게 각진 셔츠 옷깃" },
+          { label: "니트 넥라인", description: "둥글고 부드러운 니트 넥라인" },
+          { label: "후드 넥라인", description: "편안하고 캐주얼한 후드 넥라인" },
+          { label: "터틀넥", description: "목까지 올라오는 터틀넥" },
+          { label: "재킷 칼라", description: "정갈하고 각진 재킷 옷깃" },
+          { label: "기본 티 넥라인", description: "심플한 기본 티셔츠 넥라인" },
         ],
       },
       {
-        id: "decisionStyle",
-        type: "quickTap",
+        id: "accessory",
+        type: "visualPick",
         required: true,
-        question: "결정할 때 이상형은 어떤 쪽이 좋아?",
+        question: "어떤 소품이 어울리는 사람에게 더 끌려? 그림을 보고 골라줘",
         options: [
-          { label: "빠르게 결정하는", description: "고민을 오래 안 하고 바로 정하는" },
-          { label: "신중하게 고민하는", description: "여러 번 따져보고 정하는" },
-          { label: "같이 의논하는", description: "혼자 정하지 않고 같이 얘기해서 정하는" },
-          { label: "직관을 믿는", description: "느낌 가는 대로 정하는" },
+          { label: "없음", description: "소품 없이 깔끔한 인상" },
+          { label: "안경", description: "지적이고 단정한 안경 인상" },
+          { label: "귀걸이", description: "포인트가 되는 귀걸이 인상" },
+          { label: "모자", description: "캐주얼하고 활동적인 모자 인상" },
+          { label: "목도리", description: "포근하고 따뜻한 목도리 인상" },
         ],
       },
-      {
-        id: "reconcileStyle",
-        type: "quickTap",
-        required: true,
-        question: "다툰 뒤 화해는 어떤 방식이 좋아?",
-        options: [
-          { label: "바로 안아주며 사과하는", description: "스킨십으로 먼저 마음을 푸는" },
-          { label: "시간 두고 차분히 대화하는", description: "감정이 가라앉은 뒤 얘기하는" },
-          { label: "장난스럽게 풀어주는", description: "가볍게 농담으로 분위기를 푸는" },
-          { label: "메시지로 마음을 전하는", description: "글로 먼저 마음을 표현하는" },
-        ],
-      },
-      {
-        id: "firstMoveStyle",
-        type: "quickTap",
-        required: true,
-        question: "썸 초반, 이상형은 어떤 쪽이 좋아?",
-        options: [
-          { label: "적극적으로 먼저 다가오는", description: "마음을 숨기지 않고 먼저 다가오는" },
-          { label: "은근하게 티 내는", description: "직접 말은 안 해도 티가 나는" },
-          { label: "내가 다가가면 잘 받아주는", description: "먼저 다가가면 편하게 받아주는" },
-          { label: "자연스럽게 친구처럼 시작하는", description: "부담 없이 친구처럼 다가오는" },
-        ],
-      },
-      {
-        id: "energyLevel",
-        type: "quickTap",
-        required: true,
-        question: "사람 만날 때 에너지는 어떤 쪽이 좋아?",
-        options: [
-          { label: "사람 많은 자리를 즐기는", description: "여럿이 모이는 자리에서 에너지를 얻는" },
-          { label: "소수와 깊게 만나는 걸 좋아하는", description: "한두 명과 깊은 대화를 좋아하는" },
-          { label: "혼자만의 시간이 꼭 필요한", description: "충전을 위해 혼자 있는 시간이 필요한" },
-          { label: "상황에 따라 유연한", description: "때에 따라 다르게 맞추는" },
-        ],
-      },
-      // complimentStyle(칭찬 방식)은 giftStyle(마음 표현받는 방식)과 사실상
-      // 같은 질문이라 뺐다 — giftStyle이 메시지·이벤트·행동·시간이라는 더
-      // 넓은 표현 방식을 다루므로 giftStyle만 남기고, 빈 자리는 아래
-      // "지금의 나"를 묻는 문항으로 채웠다. 이상형(상대)에 대한 취향과
-      // 과거 경험만 묻던 문항 구성에, 지금 이 순간의 나를 가볍게 묻는
-      // 질문이 없었다 — selfReflection(자기성찰)의 재료가 된다.
-      {
-        id: "currentMood",
-        type: "quickTap",
-        required: true,
-        question: "요즘 마음 상태에 가장 가까운 건?",
-        options: [
-          { label: "새로운 인연에 열려있어", description: "누군가를 만나고 싶은 마음이 있는 상태" },
-          { label: "그냥 무난하게 지내", description: "특별한 마음의 동요 없이 평범한 상태" },
-          { label: "요즘 좀 지쳐있어", description: "마음의 여유가 크지 않은 상태" },
-          { label: "혼자만의 시간이 편해", description: "지금은 나 자신에게 집중하고 싶은 상태" },
-        ],
-      },
-      {
-        id: "myRelationshipRole",
-        type: "quickTap",
-        required: true,
-        question: "친구든 썸이든, 관계에서 나는 보통 어떤 역할이야?",
-        options: [
-          { label: "먼저 다가가고 챙기는 편", description: "적극적으로 먼저 움직이는 역할" },
-          { label: "편하게 맞춰주는 편", description: "상대에게 맞춰가는 역할" },
-          { label: "분위기를 띄우는 편", description: "즐거운 분위기를 만드는 역할" },
-          { label: "조용히 지켜보는 편", description: "나서기보다 지켜보는 역할" },
-        ],
-      },
-      // ── 나머지 필수 17문항(14~30) — 복수 선택+2단 세부 유지 ─────────
       {
         id: "personality",
         type: "preference",
@@ -354,6 +308,20 @@ export const TOPICS: Record<string, TopicConfig> = {
         ],
       },
       {
+        id: "colorImpression",
+        type: "visualPick",
+        required: true,
+        question: "어떤 배경 색감에 더 끌려? 색을 보고 골라줘",
+        options: [
+          { label: "밝고 따뜻한 색", description: "보는 순간 화사하고 밝은 인상" },
+          { label: "차분하고 깊은 색", description: "무게감 있고 차분한 인상" },
+          { label: "부드러운 색", description: "은은하고 부드러운 인상" },
+          { label: "선명하고 강한 색", description: "또렷하고 강렬한 인상" },
+          { label: "산뜻한 색", description: "싱그럽고 산뜻한 인상" },
+          { label: "은은한 뉴트럴 색", description: "꾸미지 않은 듯 차분한 인상" },
+        ],
+      },
+      {
         id: "binary1",
         type: "binary",
         required: true,
@@ -361,6 +329,21 @@ export const TOPICS: Record<string, TopicConfig> = {
         options: [
           { label: "오래 편안한 사람", description: "시간이 지나도 무너지지 않는 편안함이 있는 사람" },
           { label: "매일 설레는 사람", description: "만날 때마다 두근거림을 주는 사람" },
+        ],
+      },
+      // ── 상황 제시형 1 ─────────────────────────────────────────────
+      // 특성을 직접 묻지 않고 구체적인 상황을 던져서 반응을 고르게
+      // 한다 — "배려심이 많나요?"보다 훨씬 진한 신호가 나온다.
+      {
+        id: "scenarioCancel",
+        type: "scenario",
+        required: true,
+        question: "약속 30분 전에 상대가 갑자기 취소했어. 어떤 반응이 더 편해?",
+        options: [
+          { label: "괜찮다고 쿨하게 넘기는 반응", description: "이유를 캐묻지 않고 다음을 기약하는" },
+          { label: "무슨 일 있었는지 걱정하며 물어보는 반응", description: "괜찮은지부터 확인하는" },
+          { label: "살짝 서운하지만 티 안 내는 반응", description: "속으로 아쉬워도 내색 않는" },
+          { label: "바로 다른 약속을 다시 잡자고 하는 반응", description: "미루지 않고 바로 재조정하는" },
         ],
       },
       {
@@ -432,6 +415,28 @@ export const TOPICS: Record<string, TopicConfig> = {
         ],
       },
       {
+        id: "talkStyle",
+        type: "quickTap",
+        required: true,
+        question: "듣고 싶은 말투는?",
+        options: [
+          { label: "다정한 존댓말", description: "예의 있으면서도 다정한 말투" },
+          { label: "편안한 반말", description: "친근하고 편안한 말투" },
+          { label: "애교 섞인 말투", description: "귀엽고 사랑스러운 말투" },
+          { label: "담백하고 진지한 말투", description: "꾸밈없이 진지한 말투" },
+        ],
+      },
+      {
+        id: "binaryHonesty",
+        type: "binary",
+        required: true,
+        question: "듣기 아파도 솔직하게 말해주는 사람 vs 듣기 편하게 배려해서 말해주는 사람, 더 원하는 쪽은?",
+        options: [
+          { label: "솔직하게 말해주는 사람", description: "불편해도 진짜 생각을 알려주는 사람" },
+          { label: "배려해서 말해주는 사람", description: "마음 다치지 않게 표현을 골라주는 사람" },
+        ],
+      },
+      {
         id: "relationship",
         type: "preference",
         required: true,
@@ -500,13 +505,28 @@ export const TOPICS: Record<string, TopicConfig> = {
         ],
       },
       {
-        id: "binaryHonesty",
-        type: "binary",
+        id: "decisionStyle",
+        type: "quickTap",
         required: true,
-        question: "듣기 아파도 솔직하게 말해주는 사람 vs 듣기 편하게 배려해서 말해주는 사람, 더 원하는 쪽은?",
+        question: "결정할 때 이상형은 어떤 쪽이 좋아?",
         options: [
-          { label: "솔직하게 말해주는 사람", description: "불편해도 진짜 생각을 알려주는 사람" },
-          { label: "배려해서 말해주는 사람", description: "마음 다치지 않게 표현을 골라주는 사람" },
+          { label: "빠르게 결정하는", description: "고민을 오래 안 하고 바로 정하는" },
+          { label: "신중하게 고민하는", description: "여러 번 따져보고 정하는" },
+          { label: "같이 의논하는", description: "혼자 정하지 않고 같이 얘기해서 정하는" },
+          { label: "직관을 믿는", description: "느낌 가는 대로 정하는" },
+        ],
+      },
+      // ── 상황 제시형 2 ─────────────────────────────────────────────
+      {
+        id: "scenarioMood",
+        type: "scenario",
+        required: true,
+        question: "내가 무심코 한 말에 상대 표정이 안 좋아졌어. 이상형이라면 어떻게 반응할까?",
+        options: [
+          { label: "바로 왜 그런지 물어봐주는 반응", description: "감정을 숨기지 않고 확인하는" },
+          { label: "시간을 두고 스스로 풀리길 기다리는 반응", description: "몰아붙이지 않고 여유를 주는" },
+          { label: "장난스럽게 분위기를 바꾸려는 반응", description: "가볍게 넘기며 풀어주는" },
+          { label: "먼저 미안하다고 말하는 반응", description: "이유를 몰라도 일단 사과하는" },
         ],
       },
       {
@@ -585,6 +605,18 @@ export const TOPICS: Record<string, TopicConfig> = {
         options: [
           { label: "내가 리드하는 관계", description: "내가 방향을 정하고 이끄는 게 편한 관계" },
           { label: "상대가 리드하는 관계", description: "상대가 먼저 이끌어줄 때 편안한 관계" },
+        ],
+      },
+      {
+        id: "reconcileStyle",
+        type: "quickTap",
+        required: true,
+        question: "다툰 뒤 화해는 어떤 방식이 좋아?",
+        options: [
+          { label: "바로 안아주며 사과하는", description: "스킨십으로 먼저 마음을 푸는" },
+          { label: "시간 두고 차분히 대화하는", description: "감정이 가라앉은 뒤 얘기하는" },
+          { label: "장난스럽게 풀어주는", description: "가볍게 농담으로 분위기를 푸는" },
+          { label: "메시지로 마음을 전하는", description: "글로 먼저 마음을 표현하는" },
         ],
       },
       {
@@ -703,6 +735,31 @@ export const TOPICS: Record<string, TopicConfig> = {
           },
         ],
       },
+      // ── 짧은 자유 서술 1: 경험형 바로 뒤 ────────────────────────────
+      // 지금까지 결과에서 가장 날카로운 통찰은 늘 자유 서술에서
+      // 나왔다 — 그런데 맨 끝에 하나뿐이고 선택 사항이라 대부분
+      // 건너뛴다. 경험형 문항 바로 뒤에 짧게(2~3줄) 물어서 "왜
+      // 그랬는지"까지 재료로 확보한다. 건너뛰기는 허용하되 부담을
+      // 낮추려고 "한 줄이면 충분해요"를 문항 자체에 못박는다.
+      {
+        id: "reflectionEnding",
+        type: "reflection",
+        required: true,
+        question: "왜 그랬던 것 같아요? (한 줄이면 충분해요)",
+        options: [],
+      },
+      {
+        id: "firstMoveStyle",
+        type: "quickTap",
+        required: true,
+        question: "썸 초반, 이상형은 어떤 쪽이 좋아?",
+        options: [
+          { label: "적극적으로 먼저 다가오는", description: "마음을 숨기지 않고 먼저 다가오는" },
+          { label: "은근하게 티 내는", description: "직접 말은 안 해도 티가 나는" },
+          { label: "내가 다가가면 잘 받아주는", description: "먼저 다가가면 편하게 받아주는" },
+          { label: "자연스럽게 친구처럼 시작하는", description: "부담 없이 친구처럼 다가오는" },
+        ],
+      },
       {
         id: "experienceStressResponse",
         type: "experience",
@@ -751,6 +808,39 @@ export const TOPICS: Record<string, TopicConfig> = {
           },
         ],
       },
+      // ── 짧은 자유 서술 2: 경험형 바로 뒤 ────────────────────────────
+      {
+        id: "reflectionStress",
+        type: "reflection",
+        required: true,
+        question: "그렇게 풀고 나면, 보통 기분이 어때요? (한 줄이면 충분해요)",
+        options: [],
+      },
+      {
+        id: "energyLevel",
+        type: "quickTap",
+        required: true,
+        question: "사람 만날 때 에너지는 어떤 쪽이 좋아?",
+        options: [
+          { label: "사람 많은 자리를 즐기는", description: "여럿이 모이는 자리에서 에너지를 얻는" },
+          { label: "소수와 깊게 만나는 걸 좋아하는", description: "한두 명과 깊은 대화를 좋아하는" },
+          { label: "혼자만의 시간이 꼭 필요한", description: "충전을 위해 혼자 있는 시간이 필요한" },
+          { label: "상황에 따라 유연한", description: "때에 따라 다르게 맞추는" },
+        ],
+      },
+      // ── 상황 제시형 3 ─────────────────────────────────────────────
+      {
+        id: "scenarioSilence",
+        type: "scenario",
+        required: true,
+        question: "오랜만에 만난 자리에서 내가 계속 말이 없어. 이상형이라면 어떻게 할까?",
+        options: [
+          { label: "무슨 일 있냐고 조심스럽게 물어보는 반응", description: "먼저 상태를 확인해주는" },
+          { label: "그냥 편하게 같이 있어주는 반응", description: "캐묻지 않고 곁을 지켜주는" },
+          { label: "재밌는 얘기로 분위기를 풀어주는 반응", description: "분위기를 자연스레 바꿔주는" },
+          { label: "혼자만의 시간이 필요한가보다 하고 두는 반응", description: "굳이 개입하지 않고 존중하는" },
+        ],
+      },
       {
         id: "experienceRegret",
         type: "experience",
@@ -797,6 +887,26 @@ export const TOPICS: Record<string, TopicConfig> = {
               { label: "내 생각을 더 말할걸", description: "상대 의견만 따르지 말걸 싶다" },
             ],
           },
+        ],
+      },
+      // ── 짧은 자유 서술 3: 경험형 바로 뒤 ────────────────────────────
+      {
+        id: "reflectionRegret",
+        type: "reflection",
+        required: true,
+        question: "지금이라면 어떻게 다르게 해볼 것 같아요? (한 줄이면 충분해요)",
+        options: [],
+      },
+      {
+        id: "currentMood",
+        type: "quickTap",
+        required: true,
+        question: "요즘 마음 상태에 가장 가까운 건?",
+        options: [
+          { label: "새로운 인연에 열려있어", description: "누군가를 만나고 싶은 마음이 있는 상태" },
+          { label: "그냥 무난하게 지내", description: "특별한 마음의 동요 없이 평범한 상태" },
+          { label: "요즘 좀 지쳐있어", description: "마음의 여유가 크지 않은 상태" },
+          { label: "혼자만의 시간이 편해", description: "지금은 나 자신에게 집중하고 싶은 상태" },
         ],
       },
       {
@@ -877,18 +987,34 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "무게감 있는 사람", description: "말수는 적어도 진중함이 느껴지는 사람" },
         ],
       },
-      // pacing(썸 타는 속도)은 firstMoveStyle(썸 초반 이상형)과 같은
-      // "썸 초반" 축을 겹쳐서 물었다 — 게다가 옵션 6개+2단 세부라 다른
-      // preference 축보다 시간이 더 걸렸다. 두 축 중 firstMoveStyle이 더
-      // 구체적으로 "누가 먼저 움직이는가"를 묻고, 형식도 빠른 탭이라 더
-      // 짧아서 pacing을 뺐다.
+      {
+        id: "myRelationshipRole",
+        type: "quickTap",
+        required: true,
+        question: "친구든 썸이든, 관계에서 나는 보통 어떤 역할이야?",
+        options: [
+          { label: "먼저 다가가고 챙기는 편", description: "적극적으로 먼저 움직이는 역할" },
+          { label: "편하게 맞춰주는 편", description: "상대에게 맞춰가는 역할" },
+          { label: "분위기를 띄우는 편", description: "즐거운 분위기를 만드는 역할" },
+          { label: "조용히 지켜보는 편", description: "나서기보다 지켜보는 역할" },
+        ],
+      },
+      // ── 슬라이더 ──────────────────────────────────────────────────
+      // binaryWarmth를 강제 양자택일에서 5단계 슬라이더로 바꿨다 —
+      // MBTI가 쓰는 방식처럼 "완전히 A"부터 "완전히 B"까지 정도를
+      // 표현할 수 있게 해서, 둘 중 하나로 자르기 애매한 사람도 자기
+      // 위치를 더 정확하게 고를 수 있다. 태그·자세 매핑과 무관한
+      // 축이라 안전하게 바꿀 수 있었다.
       {
         id: "binaryWarmth",
-        type: "binary",
+        type: "slider",
         required: true,
-        question: "내 사람에게만 잘하는 사람 vs 누구에게나 두루 잘하는 사람, 더 끌리는 쪽은?",
+        question: "내 사람에게만 잘하는 사람 ↔ 누구에게나 두루 잘하는 사람, 어느 쪽에 더 가까워?",
         options: [
           { label: "내 사람에게만 잘하는 사람", description: "가까운 사람에게 유독 다정한, 낯가림 있는 다정함" },
+          { label: "그래도 내 사람 위주인 사람", description: "두루 잘해도 내 사람에게 더 마음이 가는 사람" },
+          { label: "반반인 사람", description: "가까운 사람과 아닌 사람을 크게 구분 안 하는 사람" },
+          { label: "그래도 두루두루인 사람", description: "내 사람도 챙기지만 남에게도 잘하는 사람" },
           { label: "누구에게나 두루 잘하는 사람", description: "누구에게나 배려가 몸에 밴 사람" },
         ],
       },
@@ -998,7 +1124,7 @@ export const TOPICS: Record<string, TopicConfig> = {
           },
         ],
       },
-      // ── 심화(선택) 8문항(31~38) ─────────────────────────────────────
+      // ── 심화(선택) 8문항 — 구조·내용 변경 없음 ──────────────────────
       {
         id: "experienceEarlyStyle",
         type: "experience",

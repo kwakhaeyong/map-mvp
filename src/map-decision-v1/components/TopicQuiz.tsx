@@ -5,6 +5,7 @@ import { createId, now } from "../engine/session";
 import { resolveTopic, TopicAxis, TopicChoice, TopicOption } from "../engine/topics";
 import { MapSession } from "../types";
 import { Brand } from "./Landing";
+import { AccessoryThumb, CollarThumb, ColorThumb, HairColorThumb, HairThumb } from "./IdealTypeVisualParts";
 import { Badge, Button, Textarea } from "./ui/primitives";
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -274,7 +275,296 @@ function QuickTapStep({
   );
 }
 
-// 필수 30문항을 다 마친 직후 나오는 갈림길 화면 — 여기서 끝내도 결과를
+// 외모 문항(hairStyle/hairColor/clothingStyle/accessory/colorImpression)
+// 전용 — 라벨이 아니라 그림(썸네일)을 보고 고른다. axisId로 어떤 부품
+// 그림을 그릴지 정하고, 옵션 배열의 인덱스로 부품을 고른다(topics.ts와
+// IdealTypeVisualParts.tsx가 같은 순서를 쓰기로 약속돼 있다). 동작은
+// quickTap과 같다 — 단일 선택 + 자동으로 다음 문항 넘김. 저장되는 값은
+// 항상 라벨 텍스트다(부품 ID가 아니다) — 나중에 이 시각적 선택을 통째로
+// 빼도 topics.ts의 type만 "quickTap"으로 바꾸면 되는 이유가 이것이다.
+function VisualGridStep({
+  axisId,
+  question,
+  options,
+  onSubmit,
+  onBack,
+  showBack,
+}: {
+  axisId: string;
+  question: string;
+  options: TopicOption[];
+  onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
+  onBack: () => void;
+  showBack: boolean;
+}) {
+  const pick = (choice: TopicChoice) => {
+    onSubmit(`${choice.label} — ${choice.description}`, [choice.label]);
+  };
+
+  const renderThumb = (index: number) => {
+    if (axisId === "hairStyle") return <HairThumb index={index} />;
+    if (axisId === "hairColor") return <HairColorThumb index={index} />;
+    if (axisId === "clothingStyle") return <CollarThumb index={index} />;
+    if (axisId === "accessory") return <AccessoryThumb index={index} />;
+    return <ColorThumb index={index} />;
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-5">
+      <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
+      <div className="grid grid-cols-3 gap-2">
+        {options.map((option, index) => (
+          <button
+            key={option.label}
+            type="button"
+            onClick={() => pick(option)}
+            className="flex flex-col items-center gap-1.5 rounded-large border border-border bg-surface px-2 py-3 text-center transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:border-border-strong hover:shadow-floating"
+          >
+            {renderThumb(index)}
+            <span className="text-xs font-extrabold leading-4 tracking-[-0.01em] text-text-primary">{option.label}</span>
+          </button>
+        ))}
+      </div>
+      {showBack ? (
+        <button type="button" onClick={onBack} className="self-start text-xs font-black text-text-muted hover:text-text-primary">
+          ← 이전
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+// 상황 제시형 — 동작은 quickTap과 같다(단일 선택 + 자동 다음 넘김).
+// 다만 특성을 직접 묻지 않고 구체적 상황에서의 반응을 고르는 문항이라,
+// quickTap과 달리 설명(description)까지 화면에 보여준다 — 반응들이
+// 서로 미묘하게 갈려서 라벨만으로는 고르기 어렵기 때문이다.
+function ScenarioStep({
+  question,
+  options,
+  onSubmit,
+  onBack,
+  showBack,
+}: {
+  question: string;
+  options: TopicOption[];
+  onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
+  onBack: () => void;
+  showBack: boolean;
+}) {
+  const pick = (choice: TopicChoice) => {
+    onSubmit(`${choice.label} — ${choice.description}`, [choice.label]);
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-5">
+      <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
+      <div className="flex flex-col gap-3">
+        {options.map((option) => (
+          <OptionChip key={option.label} choice={option} isSelected={false} isDisabled={false} onClick={() => pick(option)} />
+        ))}
+      </div>
+      {showBack ? (
+        <button type="button" onClick={onBack} className="self-start text-xs font-black text-text-muted hover:text-text-primary">
+          ← 이전
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+// 슬라이더형 — 양 끝 사이의 정도를 고른다(binaryWarmth처럼 강제
+// 양자택일로 자르기 애매한 축). options가 이미 "한쪽 끝 → 반반 →
+// 반대쪽 끝" 순서로 정렬돼 있다고 가정하고 가로 트랙 위에 점으로
+// 늘어놓는다. 동작은 quickTap과 같다(단일 선택 + 자동 다음 넘김).
+function SliderStep({
+  question,
+  options,
+  onSubmit,
+  onBack,
+  showBack,
+}: {
+  question: string;
+  options: TopicOption[];
+  onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
+  onBack: () => void;
+  showBack: boolean;
+}) {
+  const pick = (choice: TopicChoice) => {
+    onSubmit(`${choice.label} — ${choice.description}`, [choice.label]);
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-5">
+      <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-1">
+          {options.map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              onClick={() => pick(option)}
+              aria-label={option.label}
+              title={option.label}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-normal ease-emphasized hover:scale-110"
+            >
+              <span className="h-6 w-6 rounded-full border-2 border-primary bg-surface transition-colors duration-normal ease-emphasized hover:bg-primary" />
+            </button>
+          ))}
+        </div>
+        <div className="h-1 w-full rounded-pill bg-background-subtle" />
+        <div className="flex items-start justify-between gap-2 text-center">
+          <span className="max-w-[40%] break-keep text-xs font-bold leading-5 text-text-secondary">{options[0]?.label}</span>
+          <span className="max-w-[40%] break-keep text-xs font-bold leading-5 text-text-secondary">{options[options.length - 1]?.label}</span>
+        </div>
+        <p className="text-center text-xs font-semibold text-text-muted">가운데로 갈수록 둘 다에 가까워요 · 원을 탭해서 골라주세요</p>
+      </div>
+      {showBack ? (
+        <button type="button" onClick={onBack} className="self-start text-xs font-black text-text-muted hover:text-text-primary">
+          ← 이전
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+// 순위 매기기 — 옵션 전체를 원하는 순서대로 탭해서 고른다("제일 좋은
+// 것"만이 아니라 전체 우선순위를 알아낼 목적). 탭한 순서대로 번호가
+// 매겨지고, 이미 고른 항목을 다시 탭하면 순위에서 뺄 수 있다. 전부
+// 고른 뒤에만 "다음"이 눌린다.
+function RankingStep({
+  question,
+  options,
+  onSubmit,
+  onBack,
+  showBack,
+}: {
+  question: string;
+  options: TopicOption[];
+  onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
+  onBack: () => void;
+  showBack: boolean;
+}) {
+  const [order, setOrder] = useState<TopicChoice[]>([]);
+
+  const rankOf = (choice: TopicChoice) => {
+    const index = order.findIndex((item) => item.label === choice.label);
+    return index === -1 ? null : index + 1;
+  };
+
+  const toggle = (choice: TopicChoice) => {
+    setOrder((current) => {
+      if (current.some((item) => item.label === choice.label)) return current.filter((item) => item.label !== choice.label);
+      return [...current, choice];
+    });
+  };
+
+  const submit = () => {
+    const rankedLines = order.map((choice, index) => `${index + 1}순위: ${choice.label} — ${choice.description}`);
+    const topLevelLabels = uniqueInOrder(order.map((choice) => resolveTopLevelLabel(choice.label, options)));
+    onSubmit(rankedLines.join("\n"), topLevelLabels);
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-5">
+      <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
+      <p className="text-xs font-black text-text-muted">순서대로 탭해서 골라주세요 · {order.length}/{options.length} 선택 · 다시 탭하면 빼져요</p>
+      <div className="flex flex-col gap-3">
+        {options.map((option) => {
+          const rank = rankOf(option);
+          return (
+            <button
+              key={option.label}
+              type="button"
+              onClick={() => toggle(option)}
+              className={cx(
+                "flex items-center gap-3 rounded-large border px-4 py-3 text-left transition-all duration-normal ease-emphasized",
+                rank
+                  ? "border-primary bg-primary text-primary-foreground shadow-subtle"
+                  : "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-border-strong hover:shadow-floating",
+              )}
+            >
+              <span
+                className={cx(
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black",
+                  rank ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background-subtle text-text-muted",
+                )}
+              >
+                {rank ?? ""}
+              </span>
+              <span className="flex flex-col gap-0.5">
+                <span className="font-extrabold tracking-[-0.01em]">{option.label}</span>
+                <span className={cx("text-xs font-medium", rank ? "text-primary-foreground/80" : "text-text-muted")}>{option.description}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-3">
+        {showBack ? (
+          <button type="button" onClick={onBack} className="text-xs font-black text-text-muted hover:text-text-primary">
+            ← 이전
+          </button>
+        ) : (
+          <span />
+        )}
+        <Button type="button" variant="primary" size="lg" onClick={submit} disabled={order.length < options.length}>
+          다음
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// 짧은 자유 서술 — 경험형 문항 바로 뒤에 배치돼 "왜 그랬는지"까지
+// 재료로 확보한다. 부담을 낮추려고 입력창을 짧게(2~3줄) 보여주고,
+// 건너뛰기를 항상 허용한다. reflection 문항은 태그 매핑(ideal-type
+// -tags.ts)과 무관해서 selectedTopLevelLabels 없이 답변 텍스트만
+// commitAnswer로 넘긴다.
+function ReflectionStep({
+  question,
+  onSubmit,
+  onBack,
+  showBack,
+}: {
+  question: string;
+  onSubmit: (answerText: string) => void;
+  onBack: () => void;
+  showBack: boolean;
+}) {
+  const [text, setText] = useState("");
+  return (
+    <div className="flex w-full flex-col gap-5">
+      <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
+      <Textarea
+        autoFocus
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        placeholder="한 줄이면 충분해요 (선택)"
+        className="min-h-16"
+        rows={3}
+      />
+      <div className="mt-1 flex items-center justify-between gap-3">
+        {showBack ? (
+          <button type="button" onClick={onBack} className="text-xs font-black text-text-muted hover:text-text-primary">
+            ← 이전
+          </button>
+        ) : (
+          <span />
+        )}
+        <div className="flex gap-2">
+          <Button type="button" variant="secondary" size="lg" onClick={() => onSubmit("")}>
+            건너뛰기
+          </Button>
+          <Button type="button" variant="primary" size="lg" onClick={() => onSubmit(text.trim())}>
+            다음
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 필수 37문항을 다 마친 직후 나오는 갈림길 화면 — 여기서 끝내도 결과를
 // 만들 수 있지만, 8개를 더 답하면 결과의 어디가 구체적으로 달라지는지를
 // 여기서 정확히 말해준다("더 정확해진다" 같은 막연한 말 대신).
 function DecisionStep({ onQuick, onDeep, onBack }: { onQuick: () => void; onDeep: () => void; onBack: () => void }) {
@@ -534,6 +824,71 @@ export function TopicQuiz({
             onSubmit={(answerText, selectedTopLevelLabels) => {
               const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
+              if (isLastOptionalWhileResuming) finishResumedDeepDive();
+            }}
+          />
+        ) : currentAxis?.type === "visualPick" ? (
+          <VisualGridStep
+            key={currentAxis.id}
+            axisId={currentAxis.id}
+            question={currentAxis.question}
+            options={currentAxis.options}
+            showBack={step > 0}
+            onBack={goBack}
+            onSubmit={(answerText, selectedTopLevelLabels) => {
+              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
+              if (isLastOptionalWhileResuming) finishResumedDeepDive();
+            }}
+          />
+        ) : currentAxis?.type === "scenario" ? (
+          <ScenarioStep
+            key={currentAxis.id}
+            question={currentAxis.question}
+            options={currentAxis.options}
+            showBack={step > 0}
+            onBack={goBack}
+            onSubmit={(answerText, selectedTopLevelLabels) => {
+              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
+              if (isLastOptionalWhileResuming) finishResumedDeepDive();
+            }}
+          />
+        ) : currentAxis?.type === "slider" ? (
+          <SliderStep
+            key={currentAxis.id}
+            question={currentAxis.question}
+            options={currentAxis.options}
+            showBack={step > 0}
+            onBack={goBack}
+            onSubmit={(answerText, selectedTopLevelLabels) => {
+              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
+              if (isLastOptionalWhileResuming) finishResumedDeepDive();
+            }}
+          />
+        ) : currentAxis?.type === "ranking" ? (
+          <RankingStep
+            key={currentAxis.id}
+            question={currentAxis.question}
+            options={currentAxis.options}
+            showBack={step > 0}
+            onBack={goBack}
+            onSubmit={(answerText, selectedTopLevelLabels) => {
+              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
+              if (isLastOptionalWhileResuming) finishResumedDeepDive();
+            }}
+          />
+        ) : currentAxis?.type === "reflection" ? (
+          <ReflectionStep
+            key={currentAxis.id}
+            question={currentAxis.question}
+            showBack={step > 0}
+            onBack={goBack}
+            onSubmit={(answerText) => {
+              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              commitAnswer(currentAxis.question, answerText, currentAxis.id);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
           />
