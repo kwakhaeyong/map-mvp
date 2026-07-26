@@ -375,8 +375,13 @@ export function Result({
 
         {/* ResultActionBar는 sticky bottom-4라 스크롤 중 화면 하단에
             떠 있는 상태로 계속 보인다 — 바로 위 콘텐츠(공유 영역·디스클레이머)가
-            그 밑에 깔려 가려지지 않도록 여백을 넉넉히 둔다. */}
-        <div className="h-24 print:hidden" aria-hidden="true" />
+            그 밑에 깔려 가려지지 않도록 여백을 넉넉히 둔다. 버튼이 두 줄로
+            접히는 좁은 화면 기준 실측 높이(약 126px)에 여유를 두고, 노치·
+            홈 인디케이터가 있는 기기의 실제 안전 영역(env(safe-area-inset-bottom))
+            만큼 더 얹는다 — 데스크톱 브라우저 에뮬레이션은 이 값을 0으로
+            돌려주기 때문에 로컬 스크린샷만으로는 실기기 여유분까지
+            확인할 수 없어서, 계산으로 미리 여유를 확보해둔다. */}
+        <div className="h-[calc(9rem+env(safe-area-inset-bottom))] print:hidden" aria-hidden="true" />
 
         <ResultActionBar className="pb-safe-bottom print:hidden">
           <Button onClick={onContinue}>더 이야기하기</Button>
