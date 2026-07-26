@@ -19,14 +19,13 @@ import { Card } from "./ui/primitives";
 // (fill) 색으로만 표현한다 — 면적이 있는 채움은 옅은 파스텔이어도
 // 뚜렷이 보인다.
 // feeling과 value, fact와 action은 색상표에서 거의 같은 톤이라(둘 다
-// 옅은 보라 / 옅은 하늘색) 나란히 놓으면 구분이 잘 안 된다 — 6개가
-// 서로 뚜렷이 구별되도록 색조가 겹치지 않는 토큰만 골랐다. "calm"은
-// 색이 있는 토큰 대신 뉴트럴 톤(background-subtle)을 써서 "은은한
-// 뉴트럴 색"이라는 설명과도 실제로 맞게 했다.
+// 옅은 보라 / 옅은 하늘색) 나란히 놓으면 구분이 잘 안 된다 — 4개가
+// 서로 뚜렷이 구별되도록 색조가 겹치지 않는 토큰만 골랐다(value/option은
+// 아예 빼서 애초에 헷갈릴 일이 없게 했다). "calm"은 색이 있는 토큰
+// 대신 뉴트럴 톤(background-subtle)을 써서 "차분하고 톤다운된 색"이라는
+// 설명과도 실제로 맞게 했다.
 const ACCENT_FILL_CLASS: Record<SilhouetteColor, string> = {
   warm: "fill-uncertainty",
-  deep: "fill-value",
-  soft: "fill-option",
   bold: "fill-risk",
   fresh: "fill-action",
   calm: "fill-background-subtle",
@@ -38,48 +37,7 @@ const lineProps = { fill: "none", strokeWidth: LINE_WIDTH, strokeLinecap: "round
 
 function HairShape({ hair }: { hair: IdealTypeSilhouetteParts["hair"] }) {
   switch (hair) {
-    case "lightBob":
-      return (
-        <g {...lineProps}>
-          <path d="M58,46 Q80,26 102,46" />
-          <path d="M58,46 Q54,64 60,80" />
-          <path d="M102,46 Q106,64 100,80" />
-        </g>
-      );
-    case "sleekStraight":
-      return (
-        <g {...lineProps}>
-          <path d="M58,44 Q80,24 102,44" />
-          <path d="M58,44 L54,112" />
-          <path d="M102,44 L106,112" />
-        </g>
-      );
-    case "softWave":
-      return (
-        <g {...lineProps}>
-          <path d="M58,45 Q80,25 102,45" />
-          <path d="M58,45 Q50,65 60,80 Q68,95 56,108" />
-          <path d="M102,45 Q110,65 100,80 Q92,95 104,108" />
-        </g>
-      );
-    case "asymmetricCrop":
-      return (
-        <g {...lineProps}>
-          <path d="M60,44 Q80,26 100,44" />
-          <path d="M100,44 Q104,54 100,62" />
-          <path d="M60,44 L52,70 L58,95" />
-        </g>
-      );
-    case "neatPart":
-      return (
-        <g {...lineProps}>
-          <path d="M58,46 Q80,25 102,46" />
-          <path d="M72,26 L70,44" />
-          <path d="M58,46 Q55,58 60,68" />
-          <path d="M102,46 Q106,58 101,68" />
-        </g>
-      );
-    case "activeShort":
+    case "shortHair":
       return (
         <g {...lineProps}>
           <path d="M64,34 L61,24" />
@@ -89,6 +47,31 @@ function HairShape({ hair }: { hair: IdealTypeSilhouetteParts["hair"] }) {
           <path d="M96,34 L99,24" />
         </g>
       );
+    case "shoulderHair":
+      return (
+        <g {...lineProps}>
+          <path d="M58,46 Q80,26 102,46" />
+          <path d="M58,46 Q54,64 60,80" />
+          <path d="M102,46 Q106,64 100,80" />
+        </g>
+      );
+    case "longHair":
+      return (
+        <g {...lineProps}>
+          <path d="M58,44 Q80,24 102,44" />
+          <path d="M58,44 L54,112" />
+          <path d="M102,44 L106,112" />
+        </g>
+      );
+    case "neutralHair":
+      return (
+        <g {...lineProps}>
+          <path d="M58,46 Q80,25 102,46" />
+          <path d="M72,26 L70,44" />
+          <path d="M58,46 Q55,58 60,68" />
+          <path d="M102,46 Q106,58 101,68" />
+        </g>
+      );
     default:
       return null;
   }
@@ -96,17 +79,6 @@ function HairShape({ hair }: { hair: IdealTypeSilhouetteParts["hair"] }) {
 
 function TopShape({ top }: { top: IdealTypeSilhouetteParts["top"] }) {
   switch (top) {
-    case "roundKnit":
-      return <path {...lineProps} d="M56,92 Q80,80 104,92 L100,170 Q80,180 60,170 Z" />;
-    case "looseCasual":
-      return <path {...lineProps} d="M48,90 L112,90 L118,172 L42,172 Z" />;
-    case "minimalShirt":
-      return (
-        <>
-          <path {...lineProps} d="M62,88 L98,88 L96,172 L64,172 Z" />
-          <path {...lineProps} d="M74,88 L80,97 L86,88" />
-        </>
-      );
     case "structuredBlazer":
       return (
         <>
@@ -114,18 +86,20 @@ function TopShape({ top }: { top: IdealTypeSilhouetteParts["top"] }) {
           <path {...lineProps} d="M72,88 L80,101 L88,88" />
         </>
       );
-    case "oversizedHoodie":
-      return (
-        <>
-          <path {...lineProps} d="M60,84 Q80,68 100,84" />
-          <path {...lineProps} d="M40,94 Q80,84 120,94 L124,175 Q80,186 36,175 Z" />
-        </>
-      );
+    case "looseCasual":
+      return <path {...lineProps} d="M48,90 L112,90 L118,172 L42,172 Z" />;
     case "layeredAsymmetric":
       return (
         <>
           <path {...lineProps} d="M56,92 L82,90 L78,158 L50,162 Z" />
           <path {...lineProps} d="M70,88 L104,90 L112,182 L74,178 Z" />
+        </>
+      );
+    case "minimalShirt":
+      return (
+        <>
+          <path {...lineProps} d="M62,88 L98,88 L96,172 L64,172 Z" />
+          <path {...lineProps} d="M74,88 L80,97 L86,88" />
         </>
       );
     default:
@@ -247,13 +221,11 @@ export function IdealTypeSilhouette({ parts, captions }: { parts: IdealTypeSilho
         {/* 색 팔레트를 표현하는 배경 블롭 — 항상 같은 크기·위치라 머리
             모양과 상관없이 뚜렷이 보인다. 가장 먼저(맨 뒤에) 그린다. */}
         <ellipse cx="80" cy="60" rx="40" ry="46" className={accentFill} />
-        {/* 후드(오버사이즈 후드일 때만 몸통보다 먼저 그려서 뒤에 깔린다) */}
-        {parts.top === "oversizedHoodie" ? <TopShape top={parts.top} /> : null}
         <circle cx="80" cy="54" r="22" fill="none" strokeWidth={LINE_WIDTH} className={LINE} />
         <line x1="80" y1="76" x2="80" y2="88" strokeWidth={LINE_WIDTH} className={LINE} />
         <HairShape hair={parts.hair} />
         {parts.accessory === "glasses" ? <AccessoryShape accessory={parts.accessory} accentFill={accentFill} /> : null}
-        {parts.top !== "oversizedHoodie" ? <TopShape top={parts.top} /> : null}
+        <TopShape top={parts.top} />
         <PoseLimbs pose={parts.pose} />
         {parts.accessory !== "glasses" ? <AccessoryShape accessory={parts.accessory} accentFill={accentFill} /> : null}
       </svg>

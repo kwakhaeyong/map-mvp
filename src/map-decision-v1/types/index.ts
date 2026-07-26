@@ -101,11 +101,14 @@ export type IdealTypeRoadmap = { firstAction: string; phases: IdealTypeRoadmapPh
 // "외모 취향 실루엣"의 부품 조합 — engine/ideal-type-silhouette.ts가
 // 퀴즈 답변에서 코드로 결정적으로 고른다(AI 없음). 얼굴 이목구비·체형은
 // 어떤 부품에도 없다 — 머리/상의/자세/소품/색으로만 구별한다.
-export type SilhouetteHair = "lightBob" | "sleekStraight" | "softWave" | "asymmetricCrop" | "neatPart" | "activeShort";
-export type SilhouetteTop = "roundKnit" | "looseCasual" | "minimalShirt" | "structuredBlazer" | "oversizedHoodie" | "layeredAsymmetric";
+// hair/top/color가 4가지뿐인 건 각각의 소스 문항(hairStyle/clothingStyle/
+// colorImpression)이 "빠른 탭" 형식이라 선택지가 4개뿐이기 때문이다 —
+// 선택지보다 많은 부품 값을 만들어봤자 절대 나오지 않는 죽은 값이 된다.
+export type SilhouetteHair = "shortHair" | "shoulderHair" | "longHair" | "neutralHair";
+export type SilhouetteTop = "structuredBlazer" | "looseCasual" | "layeredAsymmetric" | "minimalShirt";
 export type SilhouettePose = "relaxedLean" | "striding" | "engaged" | "upright";
 export type SilhouetteAccessory = "mug" | "scarf" | "notebook" | "backpack" | "glasses";
-export type SilhouetteColor = "warm" | "deep" | "soft" | "bold" | "fresh" | "calm";
+export type SilhouetteColor = "warm" | "calm" | "bold" | "fresh";
 export type IdealTypeSilhouetteParts = {
   hair: SilhouetteHair;
   top: SilhouetteTop;
