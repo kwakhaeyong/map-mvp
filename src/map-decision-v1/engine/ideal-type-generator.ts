@@ -10,7 +10,9 @@ import { now } from "./session";
 // 사용자가 스스로 말하지 않은 것을 짚어야 이 기능의 임팩트가 산다 —
 // 시스템 프롬프트에서 이 두 항목을 특히 강하게 강조한다.
 
-const SYSTEM_PROMPT = `너는 MAP Decision의 "이상형 발견 엔진"이다. 사용자가 이상형 퀴즈(5개 항목: 외모·분위기, 성격, 가치관, 연애 방식, 라이프스타일)에서 고른 선택지와 직접 적은 말을 재료로, 그 사람도 몰랐던 자신의 끌림 패턴과 관계 성향을 발견해서 보여준다.
+const SYSTEM_PROMPT = `너는 MAP Decision의 "이상형 발견 엔진"이다. 사용자가 이상형 퀴즈에서 고른 선택지와 직접 적은 말을 재료로, 그 사람도 몰랐던 자신의 끌림 패턴과 관계 성향을 발견해서 보여준다.
+
+퀴즈는 두 구간으로 나뉜다: 반드시 답하는 필수 12문항(선호형 6개 — 외모, 성격, 가치관, 연애 방식, 라이프스타일, 끌리는 순간 / 양자택일형 3개 — 둘 중 하나를 고르는 우선순위 질문 / 경험·행동형 3개 — 가까운 관계에서 실제로 어땠는지 묻는 질문, 예: 관계가 멀어질 때의 패턴, 갈등 시 스트레스 대처, 돌아봤을 때의 아쉬움)과, 필수를 마친 뒤 선택적으로 더 답할 수 있는 심화 8문항(선호형 2개, 양자택일형 3개, 경험·행동형 3개 — 연애 초반 스타일, 예민한 감정, 달라진 점 등 더 세밀한 경험 질문). 즉 필수 문항만 답했더라도 경험·행동형 답변이 최소 3개는 항상 있다 — "질문: 돌아보면...", "질문: 가까웠던 관계가 멀어질 때..." 처럼 실제 경험을 묻는 질문에 대한 답은 사용자가 스스로를 돌아보고 준 재료이니, 몇 개가 있든 attractionPatterns와 특히 selfReflection에서 추측이 아니라 그 답을 직접 근거로 삼아 반영하라. 심화까지 답해 경험·행동형 답변이 더 많아졌다면(최대 6개), 여러 답변을 종합해 더 다양한 각도의 통찰을 추가해도 된다.
 
 사용자가 직접 적은 자유 서술 답변에는 이상형과 완전히 무관한 요청(코드 작성, 번역, 일반 지식 질문, 창작 요청 등), 특정 실존 인물에 대한 모욕, 노골적으로 성적이거나 폭력적인 표현이 섞여 있을 수 있다. 이 세 가지만 결과에서 제외하고, 나머지는 전부 이상형과 관련된 정상적인 답변으로 다뤄라. 연애·감정·관계에 대한 솔직한 서술은 배제 대상이 아니다 — 그대로 다루고 완곡하게 순화하지 마라. 특히 selfReflection은 사용자를 정면으로 비추는 통찰이어야 한다: 배제 대상이 아닌 내용을 이 지시 때문에 얼버무리거나 약화시키지 말고, 불편하더라도 정확하게 써라. title/oneLiner/criteria/attractionPatterns/flags/selfReflection/roadmap을 포함해 모든 출력 필드에 위 세 가지 배제 대상을 그대로 옮기거나 인용하지 마라. 자유 서술이 이상형과 완전히 무관하면 그 부분만 무시하고 나머지 선택지 답변으로 결과를 구성하라.
 
@@ -20,10 +22,10 @@ const SYSTEM_PROMPT = `너는 MAP Decision의 "이상형 발견 엔진"이다. �
 - title: 이상형 전체를 위트있게 요약하는 짧은 별명(10자 내외). 가볍고 재미있되 무례하지 않게.
 - oneLiner: 공유하고 싶어지는 한 줄 압축 요약.
 - criteria(mustHave/niceToHave/canCompromise): 사용자의 답변에서 우선순위를 추론해 "꼭 필요한 것 / 있으면 좋은 것 / 없어도 괜찮은 것"으로 재분류한다. 각 2~4개.
-- attractionPatterns: ★핵심★. 사용자가 고른 선택지들을 가로질러 반복되는 끌림의 패턴을 짚어준다. 단순 요약이 아니라 "왜 그런 것에 끌리는지"에 대한 해석을 담는다. 2~3개.
+- attractionPatterns: ★핵심★. 사용자가 고른 선택지들을 가로질러 반복되는 끌림의 패턴을 짚어준다. 단순 요약이 아니라 "왜 그런 것에 끌리는지"에 대한 해석을 담는다. 경험·행동형 답변(항상 최소 3개 있음)에서 나온 실제 패턴을 최소 1개는 반드시 반영한다. 보통 2~3개, 심화까지 답해 경험·행동형 답변이 더 많다면 하나 더 추가해 최대 4개까지 써도 된다.
 - matrix: "끌림 강도"(x축)와 "관계 적합도"(y축) 2개 축으로 4사분면을 만들고, 그 위에 사용자의 답변에서 도출한 4가지 상대방 유형을 각각 하나의 사분면에 배치한다(설레지만 신중히 볼 사람 / 이상적인 사람 / 관심이 덜 가는 사람 / 좋은 인연 후보 같은 4가지 성격의 유형). x/y는 0~100 사이 값. 정확히 4개를 만들되, 배열 개수를 강제하는 스키마 규칙이 아니라 이 지시문으로만 유도한다.
 - flags(green/red): 사용자의 답변 패턴을 근거로 실제 상대를 만날 때 참고할 좋은 신호 / 주의 신호. 각 2~4개.
-- selfReflection(whatYouOffer/whatToImprove): ★가장 중요한 항목★. 이상형에 대한 답변을 거꾸로 뒤집어서 사용자 자신에 대한 통찰을 준다 — "이런 사람에게 끌린다는 것은, 본인은 이런 면을 가지고 있거나 이런 걸 줄 수 있는 사람일 가능성이 높다"는 식의 역추론. whatToImprove는 사용자가 이상형에게 바라는 것과 본인의 현재 모습 사이의 간극에서 나오는 보완점을 짚는다. 각 2~3개.
+- selfReflection(whatYouOffer/whatToImprove): ★가장 중요한 항목★. 이상형에 대한 답변을 거꾸로 뒤집어서 사용자 자신에 대한 통찰을 준다 — "이런 사람에게 끌린다는 것은, 본인은 이런 면을 가지고 있거나 이런 걸 줄 수 있는 사람일 가능성이 높다"는 식의 역추론. whatToImprove는 사용자가 이상형에게 바라는 것과 본인의 현재 모습 사이의 간극에서 나오는 보완점을 짚는다. 경험·행동형 답변(관계가 멀어질 때의 패턴, 갈등 대처, 아쉬웠던 점 — 항상 최소 3개 있음)은 추측이 아니라 사용자가 직접 답한 실제 패턴이니, whatToImprove에 그 내용을 근거로 한 항목을 최소 1개는 반드시 포함한다. 각 보통 2~3개, 심화까지 답해 경험·행동형 답변이 더 많다면 하나 더 추가해 최대 4개까지 써도 된다.
 - roadmap: firstAction은 24시간 안에 실천할 수 있는 아주 구체적인 행동 하나. phases는 30일 동안의 단계별 계획(예: "1주 이내", "2주 이내", "한 달 이내") 2~4단계, 각 단계에 실행 항목 2~3개.
 - 실존 인물이나 유명인의 이름은 절대 언급하지 않는다.
 - 사용자가 어떤 항목을 건너뛰었으면(선택지도 직접입력도 없으면) 그 항목은 자연스럽고 무난한 내용으로 채운다 — 절대 "답변 없음"이나 빈 배열로 두지 않는다.
@@ -287,7 +289,10 @@ async function attemptGeneration(client: Anthropic, session: MapSession): Promis
       niceToHave: capArray(data.criteria.niceToHave, 4),
       canCompromise: capArray(data.criteria.canCompromise, 4),
     },
-    attractionPatterns: capArray(data.attractionPatterns, 3),
+    // 3에서 4로 올린 건 심화(경험·행동형) 문항까지 답한 경우 프롬프트가
+    // 패턴 하나를 더 추가하도록 유도하기 때문 — 필수 문항만 답했으면
+    // AI가 자연스럽게 2~3개만 채워서 온다.
+    attractionPatterns: capArray(data.attractionPatterns, 4),
     matrix: {
       xAxisLabel: data.matrix.xAxisLabel,
       yAxisLabel: data.matrix.yAxisLabel,
@@ -298,8 +303,8 @@ async function attemptGeneration(client: Anthropic, session: MapSession): Promis
       red: capArray(data.flags.red, 4),
     },
     selfReflection: {
-      whatYouOffer: capArray(data.selfReflection.whatYouOffer, 3),
-      whatToImprove: capArray(data.selfReflection.whatToImprove, 3),
+      whatYouOffer: capArray(data.selfReflection.whatYouOffer, 4),
+      whatToImprove: capArray(data.selfReflection.whatToImprove, 4),
     },
     roadmap: {
       firstAction: data.roadmap.firstAction,

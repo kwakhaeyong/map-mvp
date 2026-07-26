@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Brand } from "../../../src/map-decision-v1/components/Landing";
 import { IdealTypeResultBlocks } from "../../../src/map-decision-v1/components/IdealTypeResultBlocks";
 import { FinalResultSectionReadOnly } from "../../../src/map-decision-v1/components/FinalResultBlocks";
-import { Card } from "../../../src/map-decision-v1/components/ui/primitives";
+import { Badge, Card } from "../../../src/map-decision-v1/components/ui/primitives";
 import { GetShareResult, getShare } from "../../../src/map-decision-v1/engine/share-store";
 import { FinalResult, IdealTypeResult } from "../../../src/map-decision-v1/types";
 
@@ -92,6 +92,11 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
         </div>
         {renderable?.kind === "idealType" ? (
           <>
+            {share.status === "ok" && share.record.quizDepth === "deep" ? (
+              <Badge tone="success" className="self-start">
+                🔍 심층 분석 포함
+              </Badge>
+            ) : null}
             <IdealTypeResultBlocks result={renderable.result} />
             <TryItCta />
           </>

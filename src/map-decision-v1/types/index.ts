@@ -26,9 +26,23 @@ export type MapSession = {
   isDemo?: boolean;
   demoStep?: number;
   quizStep?: number;
+  // quizStep이 어느 axes 구성 기준으로 저장됐는지 — topics.ts의
+  // TopicConfig.quizVersion과 비교해서 안 맞으면(예: 예전 6문항 구조로
+  // 진행 중이던 세션이 새 20문항 구조를 만난 경우) TopicQuiz.tsx가
+  // 퀴즈 진행 상태를 안전하게 초기화하고 새로 시작한다.
+  quizVersion?: number;
   localDraft?: string;
   result?: FinalResult;
   idealTypeResult?: IdealTypeResult;
+  // 이상형 퀴즈를 필수 12문항에서 끝냈는지("quick"), 선택 8문항까지
+  // 마쳤는지("deep") — 결과 화면의 "🔍 심층 분석 포함" 배지와, 결과를
+  // 이미 본 뒤 "8개 더 답하기"를 안내할지 판단하는 데 쓴다.
+  idealTypeQuizDepth?: "quick" | "deep";
+  // 결과를 이미 본 뒤 "8개 더 답하기"로 되돌아간 상태 — true인 동안
+  // TopicQuiz는 마지막 심화 문항을 답하면 마무리 질문을 다시 묻지 않고
+  // 곧장 결과를 다시 만든다(이미 한 번 답한 마무리 질문을 또 물으면
+  // 어색하다).
+  idealTypeResuming?: boolean;
 };
 
 export type FactorMatrixItem = { id: string; text: string; kind: NodeKind; x: number; y: number };
