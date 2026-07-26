@@ -113,11 +113,14 @@ export const TOPICS: Record<string, TopicConfig> = {
     // 만큼, 단순한 축은 단일 선택+자동 다음 넘김으로 속도를 낸다.
     quizVersion: 3,
     axes: [
-      // ── 빠른 탭 12문항(1~12) ──────────────────────────────────────
+      // ── 빠른 탭 13문항(1~13) ──────────────────────────────────────
       // 단일 선택 + 세부 선택지 없음 + 자동으로 다음 문항 이동. 앞쪽에
       // 몰아둬서 초반 진도가 빠르게 나가는 걸 체감하게 한다(이탈 방지).
       // 외모 5문항(appearance/hairStyle/clothingStyle/colorImpression/
-      // bodyFeel)이 먼저 오고, 그 외 단순 취향 7문항이 이어진다.
+      // bodyFeel)이 먼저 오고, 그 외 이상형에 대한 단순 취향 6문항
+      // (giftStyle/talkStyle/decisionStyle/reconcileStyle/firstMoveStyle/
+      // energyLevel), 마지막으로 "지금의 나"를 묻는 2문항(currentMood/
+      // myRelationshipRole)이 이어진다.
       {
         id: "appearance",
         type: "quickTap",
@@ -251,19 +254,37 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "상황에 따라 유연한", description: "때에 따라 다르게 맞추는" },
         ],
       },
+      // complimentStyle(칭찬 방식)은 giftStyle(마음 표현받는 방식)과 사실상
+      // 같은 질문이라 뺐다 — giftStyle이 메시지·이벤트·행동·시간이라는 더
+      // 넓은 표현 방식을 다루므로 giftStyle만 남기고, 빈 자리는 아래
+      // "지금의 나"를 묻는 문항으로 채웠다. 이상형(상대)에 대한 취향과
+      // 과거 경험만 묻던 문항 구성에, 지금 이 순간의 나를 가볍게 묻는
+      // 질문이 없었다 — selfReflection(자기성찰)의 재료가 된다.
       {
-        id: "complimentStyle",
+        id: "currentMood",
         type: "quickTap",
         required: true,
-        question: "칭찬은 어떤 식으로 해주면 좋아?",
+        question: "요즘 마음 상태에 가장 가까운 건?",
         options: [
-          { label: "자주 직접적으로", description: "자주, 확실하게 말로 표현하는" },
-          { label: "가끔 진심을 담아", description: "빈도는 적어도 진심이 느껴지는" },
-          { label: "행동으로 은근히", description: "말보다 행동으로 표현하는" },
-          { label: "남들 앞에서 티 나게", description: "다른 사람 앞에서도 자랑스러워하는" },
+          { label: "새로운 인연에 열려있어", description: "누군가를 만나고 싶은 마음이 있는 상태" },
+          { label: "그냥 무난하게 지내", description: "특별한 마음의 동요 없이 평범한 상태" },
+          { label: "요즘 좀 지쳐있어", description: "마음의 여유가 크지 않은 상태" },
+          { label: "혼자만의 시간이 편해", description: "지금은 나 자신에게 집중하고 싶은 상태" },
         ],
       },
-      // ── 나머지 필수 18문항(13~30) — 복수 선택+2단 세부 유지 ─────────
+      {
+        id: "myRelationshipRole",
+        type: "quickTap",
+        required: true,
+        question: "친구든 썸이든, 관계에서 나는 보통 어떤 역할이야?",
+        options: [
+          { label: "먼저 다가가고 챙기는 편", description: "적극적으로 먼저 움직이는 역할" },
+          { label: "편하게 맞춰주는 편", description: "상대에게 맞춰가는 역할" },
+          { label: "분위기를 띄우는 편", description: "즐거운 분위기를 만드는 역할" },
+          { label: "조용히 지켜보는 편", description: "나서기보다 지켜보는 역할" },
+        ],
+      },
+      // ── 나머지 필수 17문항(14~30) — 복수 선택+2단 세부 유지 ─────────
       {
         id: "personality",
         type: "preference",
@@ -856,74 +877,11 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "무게감 있는 사람", description: "말수는 적어도 진중함이 느껴지는 사람" },
         ],
       },
-      {
-        id: "pacing",
-        type: "preference",
-        required: true,
-        question: "썸 탈 때, 어떤 속도가 좋아?",
-        options: [
-          {
-            label: "천천히 알아가는",
-            description: "서두르지 않고 서로를 알아가는 속도",
-            subOptions: [
-              { label: "단계를 밟아가는", description: "순서대로 가까워지는 걸 좋아하는" },
-              { label: "신중하게 확인하는", description: "확신이 들 때까지 지켜보는" },
-              { label: "친구처럼 시작하는", description: "편한 사이부터 만들어가는" },
-              { label: "시간을 두고 확신을 쌓는", description: "서두르지 않아도 괜찮은" },
-            ],
-          },
-          {
-            label: "빠르게 가까워지는",
-            description: "마음이 확인되면 빠르게 진전되는 속도",
-            subOptions: [
-              { label: "직진하는", description: "마음을 숨기지 않고 바로 표현하는" },
-              { label: "빠른 스킨십에 편한", description: "가까워지면 스킨십도 자연스러운" },
-              { label: "확신이 서면 바로 고백하는", description: "재지 않고 마음을 전하는" },
-              { label: "초반부터 자주 만나는", description: "만남 빈도를 빠르게 늘리는" },
-            ],
-          },
-          {
-            label: "자연스럽게 흘러가는",
-            description: "억지로 정의하지 않고 흘러가는 대로 두는",
-            subOptions: [
-              { label: "관계에 이름 붙이는 걸 서두르지 않는", description: "자연스레 정해지길 기다리는" },
-              { label: "상황에 맡기는", description: "흐름을 억지로 만들지 않는" },
-              { label: "편한 대로 만나는", description: "형식에 얽매이지 않는" },
-              { label: "마음 가는 대로 하는", description: "계산하지 않고 편하게 다가가는" },
-            ],
-          },
-          {
-            label: "확실한 신호부터 확인하는",
-            description: "마음을 확인하고 나서 움직이는",
-            subOptions: [
-              { label: "티키타카부터 확인하는", description: "대화 궁합을 먼저 보는" },
-              { label: "상대 마음을 먼저 확인하는", description: "짝사랑으로 끝나지 않게 신중한" },
-              { label: "표현을 명확히 하는", description: "애매한 신호를 안 좋아하는" },
-              { label: "관계를 분명히 하고 싶어하는", description: "썸 기간이 길어지는 걸 안 좋아하는" },
-            ],
-          },
-          {
-            label: "밀당을 즐기는",
-            description: "적당한 긴장감이 있는 초반을 좋아하는",
-            subOptions: [
-              { label: "적당한 거리를 두는", description: "너무 티 안 내는 것도 매력이라 생각하는" },
-              { label: "은근한 표현을 좋아하는", description: "직접적이지 않은 신호를 즐기는" },
-              { label: "궁금증을 유발하는", description: "다 보여주지 않는 매력을 아는" },
-              { label: "페이스 조절을 잘하는", description: "밀고 당기는 타이밍을 아는" },
-            ],
-          },
-          {
-            label: "편한 페이스를 맞춰가는",
-            description: "서로 속도를 맞추는 걸 중요하게 여기는",
-            subOptions: [
-              { label: "대화로 속도를 맞추는", description: "서로 원하는 속도를 확인하는" },
-              { label: "상대 페이스를 존중하는", description: "밀어붙이지 않는" },
-              { label: "부담 주지 않는", description: "상대가 편한 만큼만 다가가는" },
-              { label: "같이 맞춰나가는 재미를 아는", description: "속도 맞추는 과정 자체를 즐기는" },
-            ],
-          },
-        ],
-      },
+      // pacing(썸 타는 속도)은 firstMoveStyle(썸 초반 이상형)과 같은
+      // "썸 초반" 축을 겹쳐서 물었다 — 게다가 옵션 6개+2단 세부라 다른
+      // preference 축보다 시간이 더 걸렸다. 두 축 중 firstMoveStyle이 더
+      // 구체적으로 "누가 먼저 움직이는가"를 묻고, 형식도 빠른 탭이라 더
+      // 짧아서 pacing을 뺐다.
       {
         id: "binaryWarmth",
         type: "binary",
