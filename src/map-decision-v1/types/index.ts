@@ -26,6 +26,12 @@ export type MapSession = {
   isDemo?: boolean;
   demoStep?: number;
   quizStep?: number;
+  // 축 id -> 그 축에서 고른 선택지의 "최상위" 라벨(세부 선택지를 골랐어도
+  // 그 부모 칩의 라벨로 기록됨) 배열. engine/ideal-type-tags.ts가 이
+  // 값만 보고 코드로 결정적으로 공유 태그를 뽑는다(AI 호출 없음, 같은
+  // 답변이면 항상 같은 태그). 자유 서술(추가로 적은 말)은 포함하지
+  // 않는다 — 태그 매핑은 고정 선택지 라벨에만 의존해야 결정적이다.
+  quizAnswers?: Record<string, string[]>;
   // quizStep이 어느 axes 구성 기준으로 저장됐는지 — topics.ts의
   // TopicConfig.quizVersion과 비교해서 안 맞으면(예: 예전 6문항 구조로
   // 진행 중이던 세션이 새 20문항 구조를 만난 경우) TopicQuiz.tsx가
@@ -104,6 +110,11 @@ export type IdealTypeResult = {
   flags: IdealTypeFlags;
   selfReflection: IdealTypeSelfReflection;
   roadmap: IdealTypeRoadmap;
+  // AI가 만들지 않는다 — engine/ideal-type-tags.ts가 퀴즈 답변(session.
+  // quizAnswers)만 보고 고정 사전에서 코드로 결정적으로 골라 여기 얹는다.
+  // 이 필드가 생기기 전에 만들어진 결과·공유 링크는 undefined로 읽히고,
+  // 화면은 그 경우 태그 줄만 생략하고 나머지는 그대로 보여준다.
+  tags?: string[];
 };
 
 export type ConversationProvider = {

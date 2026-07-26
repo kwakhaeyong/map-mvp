@@ -48,6 +48,26 @@ function SectionNav() {
   );
 }
 
+// MBTI의 "ENFP"처럼 친구끼리 바로 비교할 수 있는 공용 태그 — 고유한
+// title/oneLiner 바로 아래, 폰 화면 스크롤 없이 첫 화면에서 보이는
+// 위치에 둔다. result.tags가 없는(이 기능 이전에 만들어진) 결과·공유
+// 링크는 그냥 이 줄만 생략되고 나머지는 그대로 보인다.
+function TagRow({ tags }: { tags: string[] }) {
+  if (tags.length === 0) return null;
+  return (
+    <div className="mt-3 flex flex-wrap gap-1.5">
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          className="inline-flex items-center rounded-pill border border-border/60 bg-surface/70 px-2.5 py-1 text-xs font-extrabold text-text-primary"
+        >
+          {tag}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function HeroHeader({ result }: { result: IdealTypeResult }) {
   return (
     <Card id="summary" className="scroll-mt-6 bg-gradient-to-br from-value via-feeling to-action p-5">
@@ -56,6 +76,7 @@ function HeroHeader({ result }: { result: IdealTypeResult }) {
       </span>
       <h1 className="mt-3 text-balance break-keep text-3xl font-black leading-9 tracking-[-0.03em] text-text-primary">{result.title}</h1>
       <p className="mt-2 text-sm font-bold leading-6 text-text-primary/90">{result.oneLiner}</p>
+      <TagRow tags={result.tags ?? []} />
     </Card>
   );
 }

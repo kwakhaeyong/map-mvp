@@ -13,6 +13,22 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 const MAX_SELECTIONS = 3;
 
+// 세부 선택지(subOptions)를 골랐어도 태그 매핑(ideal-type-tags.ts)은
+// 그 부모 칩의 라벨만 안다 — 세부까지 사전에 다 넣으면 어휘가 너무
+// 커져서 "공용 언어" 역할을 못 한다. 그래서 여기서 항상 최상위 라벨로
+// 되돌려 session.quizAnswers에 기록한다.
+function resolveTopLevelLabel(label: string, options: TopicOption[]): string {
+  for (const option of options) {
+    if (option.label === label) return option.label;
+    if (option.subOptions?.some((sub) => sub.label === label)) return option.label;
+  }
+  return label;
+}
+
+function uniqueInOrder(values: string[]): string[] {
+  return values.filter((value, index) => values.indexOf(value) === index);
+}
+
 function OptionChip({
   choice,
   isSelected,
@@ -55,7 +71,7 @@ function AxisStep({
 }: {
   question: string;
   options: TopicOption[];
-  onSubmit: (answerText: string) => void;
+  onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
   onBack: () => void;
   showBack: boolean;
 }) {
@@ -80,7 +96,8 @@ function AxisStep({
     const rankedLines = selected.map((choice, index) => `${index + 1}순위: ${choice.label} — ${choice.description}`);
     const extra = customText.trim();
     const answer = [...rankedLines, extra ? `추가로 적은 말: ${extra}` : null].filter(Boolean).join("\n");
-    onSubmit(answer);
+    const topLevelLabels = uniqueInOrder(selected.map((choice) => resolveTopLevelLabel(choice.label, options)));
+    onSubmit(answer, topLevelLabels);
   };
 
   return (
@@ -169,7 +186,7 @@ function BinaryStep({
 }: {
   question: string;
   options: TopicOption[];
-  onSubmit: (answerText: string) => void;
+  onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
   onBack: () => void;
   showBack: boolean;
 }) {
@@ -177,7 +194,7 @@ function BinaryStep({
 
   const submit = () => {
     if (!selected) return;
-    onSubmit(`${selected.label} — ${selected.description}`);
+    onSubmit(`${selected.label} — ${selected.description}`, [selected.label]);
   };
 
   return (
@@ -326,6 +343,7 @@ export function TopicQuiz({
       messages: [],
       quizStep: 0,
       quizVersion: topic.quizVersion,
+      quizAnswers: {},
       idealTypeResuming: false,
       updatedAt: now(),
     }));
@@ -335,7 +353,11 @@ export function TopicQuiz({
   const step = isStaleQuizProgress ? 0 : (session.quizStep ?? 0);
   const phase = resolvePhase(step, requiredAxes, optionalAxes);
 
-  const commitAnswer = (questionText: string, answerText: string) => {
+  // axisId/selectedTopLevelLabels는 이 답변이 실제 TopicAxis(topics.ts)에
+  // 묶여 있을 때만 넘어온다(마무리 질문 같은 자유 서술에는 없음) — 있을
+  // 때만 session.quizAnswers에 기록해서 공유 태그(ideal-type-tags.ts)가
+  // 나중에 코드로 결정적으로 매핑할 수 있게 한다.
+  const commitAnswer = (questionText: string, answerText: string, axisId?: string, selectedTopLevelLabels?: string[]) => {
     setSession((current) => {
       const timestamp = now();
       const nextMessages = answerText
@@ -345,7 +367,11 @@ export function TopicQuiz({
             { id: createId("user"), role: "user" as const, timestamp, text: answerText },
           ]
         : current.messages;
-      return { ...current, messages: nextMessages, quizStep: (current.quizStep ?? 0) + 1, updatedAt: timestamp };
+      const nextQuizAnswers =
+        axisId && selectedTopLevelLabels && selectedTopLevelLabels.length > 0
+          ? { ...current.quizAnswers, [axisId]: selectedTopLevelLabels }
+          : current.quizAnswers;
+      return { ...current, messages: nextMessages, quizAnswers: nextQuizAnswers, quizStep: (current.quizStep ?? 0) + 1, updatedAt: timestamp };
     });
   };
 
@@ -446,9 +472,9 @@ export function TopicQuiz({
             options={currentAxis.options}
             showBack={step > 0}
             onBack={goBack}
-            onSubmit={(answerText) => {
+            onSubmit={(answerText, selectedTopLevelLabels) => {
               const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
-              commitAnswer(currentAxis.question, answerText);
+              commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
           />
@@ -459,9 +485,9 @@ export function TopicQuiz({
             options={currentAxis.options}
             showBack={step > 0}
             onBack={goBack}
-            onSubmit={(answerText) => {
+            onSubmit={(answerText, selectedTopLevelLabels) => {
               const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
-              commitAnswer(currentAxis.question, answerText);
+              commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
           />

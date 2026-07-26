@@ -72,12 +72,20 @@ function isValidIdealTypeResultShape(value: unknown): boolean {
   if (!isShortString(roadmap.firstAction)) return false;
   const phases = roadmap.phases;
   if (!Array.isArray(phases) || phases.length > MAX_ARRAY_LENGTH) return false;
-  return phases.every(
+  const phasesValid = phases.every(
     (phase) =>
       typeof phase === "object" && phase !== null &&
       isShortString((phase as Record<string, unknown>).label) &&
       isShortStringArray((phase as Record<string, unknown>).actions),
   );
+  if (!phasesValid) return false;
+
+  // 태그(공유 태그 시스템)는 이 기능 이전에 저장된 결과에는 아예 없다 —
+  // 없어도(undefined) 통과시키고, 있으면 고정 사전에서 나온 짧은 문자열
+  // 배열이라는 것만 확인한다(어떤 문자열이 실제 사전에 있는지까지는
+  // 여기서 재검증하지 않는다 — 이 파일의 목적은 "이상하거나 너무 큰
+  // 데이터 방지"이지 내용 검열이 아니다).
+  return r.tags === undefined || isShortStringArray(r.tags);
 }
 
 // 진로 결과(FinalResult) 형태 검증. 요인 매트릭스·시나리오·타임라인·
