@@ -26,4 +26,5 @@ jobs:
       - run: npm run typecheck
       - run: npm run harness:check
       - run: npm run design:check
+      - run: npm run silhouette:check
       - run: npm run build

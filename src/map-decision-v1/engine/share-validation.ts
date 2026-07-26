@@ -85,7 +85,27 @@ function isValidIdealTypeResultShape(value: unknown): boolean {
   // 배열이라는 것만 확인한다(어떤 문자열이 실제 사전에 있는지까지는
   // 여기서 재검증하지 않는다 — 이 파일의 목적은 "이상하거나 너무 큰
   // 데이터 방지"이지 내용 검열이 아니다).
-  return r.tags === undefined || isShortStringArray(r.tags);
+  if (r.tags !== undefined && !isShortStringArray(r.tags)) return false;
+
+  // 외모 취향 실루엣(silhouette)도 이 기능 이전에 저장된 결과에는 없다 —
+  // 없어도 통과시키고, 있으면 5개 라벨 필드가 전부 짧은 문자열인지만
+  // 확인한다(어떤 라벨이 실제 topics.ts 옵션에 있는지까지는 여기서
+  // 재검증하지 않는다 — 라벨 → 부품 매핑 완전성은 빌드 시점에
+  // scripts/silhouette-check.mjs가 따로 검사한다).
+  if (r.silhouette !== undefined) {
+    const silhouette = r.silhouette as Record<string, unknown>;
+    if (typeof silhouette !== "object" || silhouette === null) return false;
+    if (
+      !isShortString(silhouette.hairStyle) ||
+      !isShortString(silhouette.hairColor) ||
+      !isShortString(silhouette.clothingStyle) ||
+      !isShortString(silhouette.accessory) ||
+      !isShortString(silhouette.colorImpression)
+    )
+      return false;
+  }
+
+  return true;
 }
 
 // 진로 결과(FinalResult) 형태 검증. 요인 매트릭스·시나리오·타임라인·
