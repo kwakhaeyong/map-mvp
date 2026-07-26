@@ -35,7 +35,7 @@ function DeepenResultBanner({ onDeepen }: { onDeepen: () => void }) {
   return (
     <Card className="flex flex-col gap-3 text-sm">
       <p className="font-extrabold text-text-primary">
-        이 결과는 12개 답변으로 만들었어요. 8개만 더 답하면 끌림 패턴과 자기성찰 부분이 실제 경험을 반영해서 더 구체적으로 채워져요.
+        이 결과는 12개 답변으로 만들었어요. 8개를 더 답하면 앞으로 어떤 사람에게 끌릴지 전망하거나, 예전과 달라진 점을 짚어주는 통찰이 추가돼요.
       </p>
       <Button type="button" variant="secondary" onClick={onDeepen}>
         8개 더 답하기
