@@ -380,13 +380,13 @@ export const TOPICS: Record<string, TopicConfig> = {
         ],
       },
       {
-        id: "binary2",
+        id: "binaryHonesty",
         type: "binary",
         required: true,
-        question: "안정적인 사람 vs 도전적인 사람, 더 끌리는 쪽은?",
+        question: "듣기 아파도 솔직하게 말해주는 사람 vs 듣기 편하게 배려해서 말해주는 사람, 더 원하는 쪽은?",
         options: [
-          { label: "안정적인 사람", description: "흔들림 없이 잔잔하게 곁을 지키는 사람" },
-          { label: "도전적인 사람", description: "새로운 자극과 변화를 함께 만들어가는 사람" },
+          { label: "솔직하게 말해주는 사람", description: "불편해도 진짜 생각을 알려주는 사람" },
+          { label: "배려해서 말해주는 사람", description: "마음 다치지 않게 표현을 골라주는 사람" },
         ],
       },
       {
@@ -460,7 +460,7 @@ export const TOPICS: Record<string, TopicConfig> = {
       {
         id: "communication",
         type: "preference",
-        required: true,
+        required: false,
         question: "연락할 때 어떤 모습이 좋아?",
         options: [
           {
@@ -606,7 +606,7 @@ export const TOPICS: Record<string, TopicConfig> = {
       {
         id: "pacing",
         type: "preference",
-        required: true,
+        required: false,
         question: "썸 탈 때, 어떤 속도가 좋아?",
         options: [
           {
@@ -674,7 +674,7 @@ export const TOPICS: Record<string, TopicConfig> = {
       {
         id: "binary4",
         type: "binary",
-        required: true,
+        required: false,
         question: "표현이 많은 사람 vs 무게감 있는 사람, 더 끌리는 쪽은?",
         options: [
           { label: "표현이 많은 사람", description: "마음을 자주, 확실하게 드러내는 사람" },
@@ -682,20 +682,20 @@ export const TOPICS: Record<string, TopicConfig> = {
         ],
       },
       {
-        id: "binary5",
+        id: "binaryWarmth",
         type: "binary",
         required: false,
-        question: "함께 성장하는 관계 vs 지금 이대로 편안한 관계, 더 원하는 쪽은?",
+        question: "내 사람에게만 잘하는 사람 vs 누구에게나 두루 잘하는 사람, 더 끌리는 쪽은?",
         options: [
-          { label: "함께 성장하는 관계", description: "서로 자극을 주며 발전해가는 관계" },
-          { label: "지금 이대로 편안한 관계", description: "지금의 편안함을 오래 유지하는 관계" },
+          { label: "내 사람에게만 잘하는 사람", description: "가까운 사람에게 유독 다정한, 낯가림 있는 다정함" },
+          { label: "누구에게나 두루 잘하는 사람", description: "누구에게나 배려가 몸에 밴 사람" },
         ],
       },
       {
         id: "experienceEnding",
         type: "experience",
-        required: false,
-        question: "연애가 끝날 때, 보통 어느 쪽이었어?",
+        required: true,
+        question: "가까웠던 관계가 멀어질 때, 보통 어느 쪽이었어?",
         options: [
           {
             label: "내가 먼저 지쳤다",
@@ -703,7 +703,7 @@ export const TOPICS: Record<string, TopicConfig> = {
             subOptions: [
               { label: "반복되는 갈등에 지쳤다", description: "같은 문제가 계속 반복돼서" },
               { label: "소중함을 못 느꼈다", description: "노력이 안 느껴져서" },
-              { label: "다른 사람에게 눈이 갔다", description: "마음이 자연스레 옮겨가서" },
+              { label: "다른 관계에 더 마음이 쏠렸다", description: "마음이 자연스레 옮겨가서" },
               { label: "그냥 마음이 식었다", description: "특별한 이유 없이 감정이 사라져서" },
             ],
           },
@@ -713,7 +713,7 @@ export const TOPICS: Record<string, TopicConfig> = {
             subOptions: [
               { label: "연락이 줄어들었다", description: "점점 무심해지는 게 느껴졌다" },
               { label: "이유를 잘 몰랐다", description: "갑자기 멀어져서 당황스러웠다" },
-              { label: "다른 사람이 생긴 것 같았다", description: "마음이 다른 데로 간 것 같았다" },
+              { label: "다른 관계가 우선이 된 것 같았다", description: "마음이 다른 데로 간 것 같았다" },
               { label: "표현이 줄어들었다", description: "다정함이 점점 사라졌다" },
             ],
           },
@@ -724,7 +724,7 @@ export const TOPICS: Record<string, TopicConfig> = {
               { label: "연락 빈도가 줄면서", description: "자연스럽게 뜸해지다가" },
               { label: "서로 바빠지면서", description: "각자 생활에 집중하다가" },
               { label: "특별한 계기 없이", description: "정확한 이유는 잘 모르겠다" },
-              { label: "권태기를 못 넘겼다", description: "설렘이 사라진 뒤 회복이 안 됐다" },
+              { label: "다시 가까워지지 못했다", description: "한번 멀어진 뒤 회복이 안 됐다" },
             ],
           },
           {
@@ -732,12 +732,11 @@ export const TOPICS: Record<string, TopicConfig> = {
             description: "서로 이야기하고 납득하며 끝난 경우가 많았다",
             subOptions: [
               { label: "서로 다름을 인정했다", description: "안 맞는 부분을 확인하고 정리했다" },
-              { label: "미래 방향이 달랐다", description: "각자 원하는 삶의 방향이 달라서" },
-              { label: "감정적으로 잘 마무리했다", description: "좋게 헤어진 편이다" },
-              { label: "친구로 남기도 했다", description: "관계가 완전히 끊기진 않았다" },
+              { label: "가는 방향이 달랐다", description: "각자 원하는 방향이 달라서" },
+              { label: "감정적으로 잘 마무리했다", description: "좋게 정리한 편이다" },
+              { label: "관계가 완전히 끊기진 않았다", description: "연락 정도는 유지했다" },
             ],
           },
-          { label: "아직 연애 경험이 없다", description: "이 질문은 아직 해당 사항이 없다" },
         ],
       },
       {
@@ -802,8 +801,8 @@ export const TOPICS: Record<string, TopicConfig> = {
       {
         id: "experienceStressResponse",
         type: "experience",
-        required: false,
-        question: "연애할 때 스트레스를 어떻게 푸는 편이었어?",
+        required: true,
+        question: "가까운 사람과 갈등이 있을 때, 스트레스를 어떻게 푸는 편이야?",
         options: [
           {
             label: "바로 이야기하는 편",
@@ -837,22 +836,21 @@ export const TOPICS: Record<string, TopicConfig> = {
           },
           {
             label: "주변에 털어놓는 편",
-            description: "친구에게 얘기하며 정리하는 편이다",
+            description: "다른 사람에게 얘기하며 정리하는 편이다",
             subOptions: [
-              { label: "친구 조언을 구하는 편", description: "다른 사람 시각을 참고하는 편이다" },
+              { label: "조언을 구하는 편", description: "다른 사람 시각을 참고하는 편이다" },
               { label: "얘기하면서 감정을 정리하는 편", description: "말하다 보면 풀리는 편이다" },
               { label: "공감받고 나서 움직이는 편", description: "위로받은 뒤에 다시 생각하는 편이다" },
               { label: "털어놓고 나면 괜찮아지는 편", description: "말하는 것만으로 해소되는 편이다" },
             ],
           },
-          { label: "아직 연애 경험이 없다", description: "이 질문은 아직 해당 사항이 없다" },
         ],
       },
       {
         id: "experienceRegret",
         type: "experience",
-        required: false,
-        question: "돌아보면, 나는 연애에서 어떤 부분을 더 채워주고 싶었어?",
+        required: true,
+        question: "돌아보면, 가까운 관계에서 어떤 부분을 더 채워주고 싶었어?",
         options: [
           {
             label: "표현을 더 자주 할걸",
@@ -879,7 +877,7 @@ export const TOPICS: Record<string, TopicConfig> = {
             description: "바쁘다는 핑계로 소홀했던 게 아쉽다",
             subOptions: [
               { label: "연락을 더 자주 할걸", description: "바쁠 때도 신경 쓸걸 싶다" },
-              { label: "데이트에 더 신경 쓸걸", description: "준비를 더 정성껏 할걸 싶다" },
+              { label: "만날 때 더 신경 쓸걸", description: "준비를 더 정성껏 할걸 싶다" },
               { label: "기념일을 더 챙길걸", description: "특별한 날을 그냥 넘기지 말걸 싶다" },
               { label: "우선순위를 더 둘걸", description: "다른 일보다 먼저 챙길걸 싶다" },
             ],
@@ -894,14 +892,13 @@ export const TOPICS: Record<string, TopicConfig> = {
               { label: "내 생각을 더 말할걸", description: "상대 의견만 따르지 말걸 싶다" },
             ],
           },
-          { label: "아직 연애 경험이 없다", description: "이 질문은 아직 해당 사항이 없다" },
         ],
       },
       {
         id: "experienceEmotion",
         type: "experience",
         required: false,
-        question: "연애할 때, 나는 어떤 감정에 좀 더 예민한 편이었어?",
+        question: "가까운 관계에서, 나는 어떤 감정에 좀 더 예민한 편이야?",
         options: [
           {
             label: "불안함",
@@ -943,14 +940,13 @@ export const TOPICS: Record<string, TopicConfig> = {
               { label: "크게 내색 안 하는 편", description: "힘들어도 티가 잘 안 나는" },
             ],
           },
-          { label: "아직 연애 경험이 없다", description: "이 질문은 아직 해당 사항이 없다" },
         ],
       },
       {
         id: "experienceChange",
         type: "experience",
         required: false,
-        question: "예전과 비교하면, 나는 연애할 때 어떻게 달라졌어?",
+        question: "예전과 비교하면, 나는 관계 맺는 방식이 어떻게 달라졌어?",
         options: [
           {
             label: "더 신중해졌다",
@@ -992,7 +988,6 @@ export const TOPICS: Record<string, TopicConfig> = {
               { label: "예전보다 선택이 빨라진", description: "판단 기준이 생겨서 빨라진" },
             ],
           },
-          { label: "아직 연애 경험이 없다", description: "이 질문은 아직 해당 사항이 없다" },
         ],
       },
     ],

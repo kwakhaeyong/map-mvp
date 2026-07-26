@@ -221,7 +221,7 @@ function DecisionStep({ onQuick, onDeep, onBack }: { onQuick: () => void; onDeep
       <div className="break-keep text-sm font-semibold leading-7 text-text-secondary">
         <p>8개를 더 답하면, 지금 답변만으로는 알 수 없는 것들이 결과에 들어가요.</p>
         <ul className="mt-2 space-y-1">
-          <li>· 끌림 패턴 분석에 실제 연애 경험에서 나온 통찰이 하나 더 추가돼요</li>
+          <li>· 끌림 패턴 분석에 실제 경험에서 나온 통찰이 하나 더 추가돼요</li>
           <li>· 자기성찰(내가 줄 수 있는 것 / 더 채워보면 좋을 것)에 진짜 경험을 근거로 한 조언이 들어가요</li>
         </ul>
       </div>
