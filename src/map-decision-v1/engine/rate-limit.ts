@@ -16,10 +16,17 @@ export const MAX_GENERATIONS_PER_SESSION = 5;
 // rather than the naive DAILY_SESSION_LIMIT * MAX_GENERATIONS_PER_SESSION
 // worst case, which would let one IP trigger up to 25 Sonnet calls/day.
 export const DAILY_GENERATION_LIMIT = 10;
+// AI 호출이 실패해도(네트워크 오류, 스키마 검증 실패 등) 위 두 한도는
+// 소모되지 않는다(아래 checkGenerationAllowed/commitGenerationSuccess 참고)
+// — 실패는 사용자 잘못이 아니기 때문이다. 하지만 그러면 "항상 실패하는
+// 입력"으로 반복 호출해도 한도에 걸리지 않아 AI 호출 비용이 무제한
+// 발생할 수 있으므로, 실패 시도 자체에는 세션당 이 낮은 별도 상한을 둔다.
+export const MAX_FAILED_GENERATIONS_PER_SESSION = 2;
 
 const dailySessionCounts = new Map<string, { day: string; count: number }>();
 const dailyGenerationCounts = new Map<string, { day: string; count: number }>();
 const sessionGenerationCounts = new Map<string, number>();
+const sessionFailureCounts = new Map<string, number>();
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -53,25 +60,53 @@ export function registerSessionStart(ip: string): { allowed: boolean; count: num
   return { allowed: count <= DAILY_SESSION_LIMIT, count };
 }
 
-export type GenerationLimitReason = "session_limit" | "daily_limit";
+export type GenerationLimitReason = "session_limit" | "daily_limit" | "failure_limit";
 
 // sessionKey should be a value stable for the lifetime of one MapSession
 // (e.g. session.startedAt) so repeated "정리해줘"/재생성 calls within the
 // same session share one small budget, independent of the per-IP daily cap.
-export function registerGenerationAttempt(ip: string, sessionKey: string): { allowed: boolean; reason?: GenerationLimitReason } {
-  const sessionCount = (sessionGenerationCounts.get(sessionKey) || 0) + 1;
-  if (sessionCount > MAX_GENERATIONS_PER_SESSION) {
+//
+// This only reads counters, it never increments them — callers must check
+// this BEFORE calling the AI, then call commitGenerationSuccess/Failure
+// AFTER the call resolves, so a failed generation never silently charges
+// the user's session/daily budget (see MAX_FAILED_GENERATIONS_PER_SESSION
+// above for why failures still need their own, separate cap).
+export function checkGenerationAllowed(ip: string, sessionKey: string): { allowed: boolean; reason?: GenerationLimitReason } {
+  const sessionCount = sessionGenerationCounts.get(sessionKey) || 0;
+  if (sessionCount >= MAX_GENERATIONS_PER_SESSION) {
     return { allowed: false, reason: "session_limit" };
   }
 
   const day = today();
   const existing = dailyGenerationCounts.get(ip);
-  const dailyCount = existing && existing.day === day ? existing.count + 1 : 1;
-  if (dailyCount > DAILY_GENERATION_LIMIT) {
+  const dailyCount = existing && existing.day === day ? existing.count : 0;
+  if (dailyCount >= DAILY_GENERATION_LIMIT) {
     return { allowed: false, reason: "daily_limit" };
   }
 
-  sessionGenerationCounts.set(sessionKey, sessionCount);
-  dailyGenerationCounts.set(ip, { day, count: dailyCount });
+  const failureCount = sessionFailureCounts.get(sessionKey) || 0;
+  if (failureCount >= MAX_FAILED_GENERATIONS_PER_SESSION) {
+    return { allowed: false, reason: "failure_limit" };
+  }
+
   return { allowed: true };
+}
+
+// Call only after a generation call actually succeeded — this is the one
+// place the user's real budget (session/day) gets spent.
+export function commitGenerationSuccess(ip: string, sessionKey: string): void {
+  const sessionCount = (sessionGenerationCounts.get(sessionKey) || 0) + 1;
+  sessionGenerationCounts.set(sessionKey, sessionCount);
+
+  const day = today();
+  const existing = dailyGenerationCounts.get(ip);
+  const dailyCount = existing && existing.day === day ? existing.count + 1 : 1;
+  dailyGenerationCounts.set(ip, { day, count: dailyCount });
+}
+
+// Call only after a generation call actually failed — does not touch the
+// session/day budget, only the separate failure cap.
+export function commitGenerationFailure(sessionKey: string): void {
+  const failureCount = (sessionFailureCounts.get(sessionKey) || 0) + 1;
+  sessionFailureCounts.set(sessionKey, failureCount);
 }

@@ -4,8 +4,10 @@ import { isReadyForResult } from "../../../src/map-decision-v1/engine/readiness"
 import {
   MAX_INPUT_LENGTH,
   MAX_MESSAGES_PER_SESSION,
+  checkGenerationAllowed,
+  commitGenerationFailure,
+  commitGenerationSuccess,
   getClientIp,
-  registerGenerationAttempt,
 } from "../../../src/map-decision-v1/engine/rate-limit";
 import { FinalResult, MapSession, ResultBlockKey } from "../../../src/map-decision-v1/types";
 
@@ -58,14 +60,21 @@ export async function POST(request: NextRequest) {
   }
 
   const ip = getClientIp(request);
-  const { allowed, reason } = registerGenerationAttempt(ip, session.startedAt);
+  // 한도는 호출 "전"에 확인만 하고, 실제 차감(commitGenerationSuccess)은
+  // 생성이 성공한 뒤에만 한다 — 생성이 실패했는데 사용자 몫이 깎이면
+  // 안 되기 때문이다. 대신 실패에는 별도의 낮은 상한(failure_limit)이
+  // 있어서, 항상 실패하는 입력으로 무제한 재시도하는 걸 막는다.
+  const { allowed, reason } = checkGenerationAllowed(ip, session.startedAt);
   if (!allowed) {
     const message =
       reason === "session_limit"
         ? "이 대화에서 결과를 만들 수 있는 횟수를 모두 사용했어요. 새 MAP을 시작해 주세요."
-        : "오늘 만들 수 있는 결과 수를 모두 사용했어요. 내일 다시 시도해 주세요.";
+        : reason === "daily_limit"
+          ? "오늘 만들 수 있는 결과 수를 모두 사용했어요. 내일 다시 시도해 주세요."
+          : "이 결과는 반복해서 만들지 못했어요. 잠시 후 다시 시도하거나 새 MAP을 시작해 주세요.";
+    const blockedReason = reason === "session_limit" ? "session_generation_limit" : reason === "daily_limit" ? "daily_generation_limit" : "generation_failure_limit";
     return NextResponse.json(
-      { blocked: true, reason: reason === "session_limit" ? "session_generation_limit" : "daily_generation_limit", message } satisfies BlockedResponse,
+      { blocked: true, reason: blockedReason, message } satisfies BlockedResponse,
       { status: 429 },
     );
   }
@@ -73,21 +82,25 @@ export async function POST(request: NextRequest) {
   if (block) {
     const value = await generateResultBlock(session, block);
     if (!value) {
+      commitGenerationFailure(session.startedAt);
       return NextResponse.json(
         { blocked: true, reason: "generation_failed", message: "이 부분을 다시 만들지 못했어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
         { status: 502 },
       );
     }
+    commitGenerationSuccess(ip, session.startedAt);
     return NextResponse.json({ block, value } satisfies BlockSuccessResponse);
   }
 
   const result = await generateFinalResult(session);
   if (!result) {
+    commitGenerationFailure(session.startedAt);
     return NextResponse.json(
       { blocked: true, reason: "generation_failed", message: "지금은 결과를 생성할 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
       { status: 502 },
     );
   }
 
+  commitGenerationSuccess(ip, session.startedAt);
   return NextResponse.json({ result } satisfies SuccessResponse);
 }
