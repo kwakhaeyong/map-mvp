@@ -10,6 +10,7 @@ import {
   plannedPaymentProviders,
 } from "../engine/integration-providers";
 import { BlockRegenControls, FallbackSummaryCard, FinalResultSection } from "./FinalResultBlocks";
+import { GenerationWaitCard } from "./GenerationProgress";
 import { MapCanvas } from "./MapCanvas";
 import { ShareStatusCard, useShareResult } from "./ShareResult";
 import {
@@ -26,6 +27,18 @@ function shorten(text: string, length = 90) {
     ? `${text.trim().slice(0, length)}…`
     : text.trim();
 }
+
+// 진로 결과의 실제 4블록 생성 순서(final-result-generator.ts의
+// factor_matrix → scenarios → timeline → insights)와 대응하는 대기 문구.
+// 아무 문구나 넣지 않는다 — 결과에 실제로 나오는 블록만 순서대로 쓴다.
+const CAREER_GENERATION_STAGES = [
+  "이야기한 내용을 읽고 있어요",
+  "핵심 요인을 정리하는 중이에요",
+  "가능한 시나리오를 만들고 있어요",
+  "실행 계획을 짜는 중이에요",
+  "새로운 관점을 찾고 있어요",
+  "마무리하고 있어요",
+];
 
 export function Result({
   session,
@@ -65,15 +78,26 @@ export function Result({
     session.isDemo || session.result ? "idle" : isReadyForResult(session) ? "idle" : "too_early",
   );
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const attemptedRef = useRef(false);
+  // 대기 화면에 "다시 시도" 버튼이 뜬 채로 원래 요청이 아직 응답을
+  // 기다리는 중일 수 있다(오래 걸려서 재시도한 경우) — 재시도 시 이전
+  // 요청을 취소해서, 나중에 도착한 응답이 방금 시작한 새 요청 결과를
+  // 덮어쓰는 경쟁 상태를 막는다.
+  const controllerRef = useRef<AbortController | null>(null);
 
   const generateResult = () => {
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
     setGenerationState("loading");
     setGenerationError(null);
+    setAttempt((count) => count + 1);
     fetch("/api/generate-result", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session }),
+      signal: controller.signal,
     })
       .then((response) => response.json())
       .then((data) => {
@@ -95,7 +119,8 @@ export function Result({
         setSession((previous) => ({ ...previous, result: data.result, updatedAt: now() }));
         setGenerationState("idle");
       })
-      .catch(() => {
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
         setGenerationState("fallback");
       });
   };
@@ -245,12 +270,9 @@ export function Result({
           session.result ? (
             <FinalResultSection result={session.result} regenControls={regenControls} />
           ) : generationState === "loading" ? (
-            <Card className="mt-8 text-center">
-              <p className="font-black">정리하고 있어요…</p>
-              <p className="mt-2 text-sm font-semibold text-text-secondary">
-                이야기한 내용을 바탕으로 한 장의 결과를 만드는 중이에요. 몇십 초 정도 걸릴 수 있어요.
-              </p>
-            </Card>
+            <div className="mt-8">
+              <GenerationWaitCard key={attempt} stages={CAREER_GENERATION_STAGES} onRetry={generateResult} />
+            </div>
           ) : generationState === "fallback" ? (
             <FallbackSummaryCard session={session} onRetry={generateResult} />
           ) : generationState === "error" ? (

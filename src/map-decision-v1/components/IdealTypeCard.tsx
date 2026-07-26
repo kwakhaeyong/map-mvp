@@ -5,9 +5,21 @@ import { now } from "../engine/session";
 import { resolveTopic } from "../engine/topics";
 import { MapSession } from "../types";
 import { Brand } from "./Landing";
+import { GenerationWaitCard } from "./GenerationProgress";
 import { IdealTypeResultBlocks } from "./IdealTypeResultBlocks";
 import { ShareStatusCard, useShareResult } from "./ShareResult";
 import { Badge, Button, Card } from "./ui/primitives";
+
+// 이상형 결과의 실제 구성 순서(발견 엔진 프롬프트 기준: 끌림 패턴 →
+// 매트릭스 배치 → 자기성찰 → 나머지 필드 정리)와 대응하는 대기 문구.
+// 아무 문구나 넣지 않는다 — 결과에 실제로 나오는 항목만 순서대로 쓴다.
+const IDEAL_TYPE_GENERATION_STAGES = [
+  "답변을 읽고 있어요",
+  "끌림 패턴을 찾는 중이에요",
+  "상대 유형을 배치하고 있어요",
+  "당신 자신에 대한 통찰을 정리하고 있어요",
+  "마무리하고 있어요",
+];
 
 // 시각 블록(헤더·매트릭스 그림·자기 성찰 등)은 IdealTypeResultBlocks.tsx로
 // 분리했다 — 공유 링크 읽기 전용 화면(app/r/[id]/page.tsx)과 여기서
@@ -109,15 +121,26 @@ export function IdealTypeCard({
 }) {
   const [generationState, setGenerationState] = useState<"idle" | "loading" | "error" | "fallback">("idle");
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const attemptedRef = useRef(false);
+  // 대기 화면에 "다시 시도" 버튼이 뜬 채로 원래 요청이 아직 응답을
+  // 기다리는 중일 수 있다(오래 걸려서 재시도한 경우) — 재시도 시 이전
+  // 요청을 취소해서, 나중에 도착한 응답이 방금 시작한 새 요청 결과를
+  // 덮어쓰는 경쟁 상태를 막는다.
+  const controllerRef = useRef<AbortController | null>(null);
 
   const generate = () => {
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
     setGenerationState("loading");
     setGenerationError(null);
+    setAttempt((count) => count + 1);
     fetch("/api/generate-idealtype-result", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session }),
+      signal: controller.signal,
     })
       .then((response) => response.json())
       .then((data) => {
@@ -133,7 +156,8 @@ export function IdealTypeCard({
         setSession((previous) => ({ ...previous, idealTypeResult: data.result, updatedAt: now() }));
         setGenerationState("idle");
       })
-      .catch(() => {
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
         setGenerationState("fallback");
       });
   };
@@ -157,9 +181,7 @@ export function IdealTypeCard({
         {session.idealTypeResult ? (
           <IdealTypeCardBody session={session} setSession={setSession} onReset={onReset} />
         ) : generationState === "loading" ? (
-          <Card className="flex flex-col items-center gap-3 py-10 text-center">
-            <p className="text-sm font-extrabold text-text-secondary">이상형 카드를 만들고 있어요…</p>
-          </Card>
+          <GenerationWaitCard key={attempt} stages={IDEAL_TYPE_GENERATION_STAGES} onRetry={generate} />
         ) : generationState === "fallback" ? (
           <Card className="flex flex-col items-center gap-3 py-10 text-center">
             <p className="text-sm font-extrabold text-text-secondary">지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요.</p>
