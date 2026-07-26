@@ -243,15 +243,7 @@ export function Result({
 
         {!session.isDemo ? (
           session.result ? (
-            <>
-              <FinalResultSection result={session.result} regenControls={regenControls} />
-              <div className="mt-6 flex flex-col gap-3 print:hidden">
-                <ShareStatusCard shareState={shareState} shareError={shareError} sharedUrl={sharedUrl} />
-                <Button variant="secondary" size="lg" onClick={share} disabled={shareState === "creating"}>
-                  {shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : "공유하기"}
-                </Button>
-              </div>
-            </>
+            <FinalResultSection result={session.result} regenControls={regenControls} />
           ) : generationState === "loading" ? (
             <Card className="mt-8 text-center">
               <p className="font-black">정리하고 있어요…</p>
@@ -351,6 +343,22 @@ export function Result({
           </ReflectionCard>
         </section>
 
+        {/* 공유 버튼은 이상형 카드(IdealTypeCard.tsx)와 같은 위치 규칙을
+            따른다 — 결과 블록 바로 아래가 아니라, 화면 맨 아래 액션
+            영역 근처. 4블록 밑에 있으면 페이지 중간에 묻혀서 못 찾는다는
+            피드백 때문에 옮겼다. */}
+        {!session.isDemo && session.result ? (
+          <div className="mt-8 flex flex-col gap-3 print:hidden">
+            <ShareStatusCard shareState={shareState} shareError={shareError} sharedUrl={sharedUrl} />
+            <Button variant="secondary" size="lg" className="w-full" onClick={share} disabled={shareState === "creating"}>
+              {shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : "공유하기"}
+            </Button>
+            <a href="/privacy" className="text-center text-xs font-semibold text-text-muted underline underline-offset-2 hover:text-text-primary">
+              개인정보처리방침
+            </a>
+          </div>
+        ) : null}
+
         <p className="mt-6 text-center text-xs font-semibold leading-[1.45] text-text-muted">
           MAP Decision은 의사결정을 돕는 참고 도구이며, 제공되는 분석과
           추천은 조언일 뿐 확정된 답이 아닙니다. 건강·법률·재무·진로 등
@@ -364,6 +372,11 @@ export function Result({
             이용약관
           </a>
         </p>
+
+        {/* ResultActionBar는 sticky bottom-4라 스크롤 중 화면 하단에
+            떠 있는 상태로 계속 보인다 — 바로 위 콘텐츠(공유 영역·디스클레이머)가
+            그 밑에 깔려 가려지지 않도록 여백을 넉넉히 둔다. */}
+        <div className="h-24 print:hidden" aria-hidden="true" />
 
         <ResultActionBar className="pb-safe-bottom print:hidden">
           <Button onClick={onContinue}>더 이야기하기</Button>
