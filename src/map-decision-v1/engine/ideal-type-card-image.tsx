@@ -174,7 +174,7 @@ function BrandMark({ color, borderColor }: { color: string; borderColor: string 
 function TitleText({ title, color }: { title: string; color: string }) {
   return (
     <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: 300, overflow: "hidden", marginBottom: 36 }}>
-      <span style={{ fontSize: titleFontSize(title), fontWeight: 900, lineHeight: 1.15, color, letterSpacing: "-1.5px" }}>{title}</span>
+      <span style={{ fontSize: titleFontSize(title), fontWeight: 900, lineHeight: 1.15, color, letterSpacing: "-1.5px", wordBreak: "keep-all" }}>{title}</span>
     </div>
   );
 }
@@ -494,6 +494,7 @@ function NavyTitle({ title }: { title: string }) {
             lineHeight: 1.2,
             color: CARD_COLORS.primaryForeground,
             letterSpacing: "-2px",
+            wordBreak: "keep-all",
           }}
         >
           {title}

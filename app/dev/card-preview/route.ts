@@ -25,6 +25,24 @@ const SHORT_MOCK: IdealTypeResult = {
   tags: ["#표현중시형", "#집순이집돌이형", "#직진소통형", "#편안함추구형"],
 };
 
+const ONELINE_MOCK: IdealTypeResult = {
+  version: 2,
+  generatedAt: new Date().toISOString(),
+  model: "claude-sonnet-5",
+  title: "고요한 신뢰파",
+  oneLiner: "말수는 적어도 곁에 있으면 마음이 놓이는 사람을 찾고 있어요.",
+  criteria: { mustHave: [], niceToHave: [], canCompromise: [] },
+  attractionPatterns: [],
+  matrix: { xAxisLabel: { low: "", high: "" }, yAxisLabel: { low: "", high: "" }, types: [] },
+  flags: { green: [], red: [] },
+  selfReflection: {
+    whatYouOffer: ["한번 믿으면 끝까지 곁을 지켜줄 수 있어요."],
+    whatToImprove: ["속마음을 표현하는 데 시간이 좀 걸리는 편이에요."],
+  },
+  roadmap: { firstAction: "", phases: [] },
+  tags: ["#거리존중형", "#루틴형", "#혼자정리형", "#편안함추구형"],
+};
+
 const MEDIUM_MOCK: IdealTypeResult = {
   version: 2,
   generatedAt: new Date().toISOString(),
@@ -77,7 +95,14 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const variantParam = url.searchParams.get("variant");
-  const variant = variantParam === "long" ? LONG_MOCK : variantParam === "medium" ? MEDIUM_MOCK : SHORT_MOCK;
+  const variant =
+    variantParam === "long"
+      ? LONG_MOCK
+      : variantParam === "medium"
+        ? MEDIUM_MOCK
+        : variantParam === "oneline"
+          ? ONELINE_MOCK
+          : SHORT_MOCK;
   const themeParam = url.searchParams.get("theme");
   const theme: CardTheme = isCardTheme(themeParam) ? themeParam : "purple";
 
