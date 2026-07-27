@@ -47,7 +47,7 @@ const LONG_MOCK: IdealTypeResult = {
   version: 2,
   generatedAt: new Date().toISOString(),
   model: "claude-sonnet-5",
-  title: "말은 없어도 마음은 늘 곁에 있는, 은근히 다정한 노력파",
+  title: "겉으론 무심해도 속마음은 누구보다 여린 사람",
   oneLiner:
     "표현은 서툴지만 상대를 향한 마음은 누구보다 진심이고, 시간이 걸려도 결국 자기 방식대로 곁을 지켜주는 사람을 찾고 있어요.",
   criteria: { mustHave: [], niceToHave: [], canCompromise: [] },
