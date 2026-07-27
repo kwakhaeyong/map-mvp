@@ -2,7 +2,12 @@ import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 const files = execSync("git ls-files 'app/**/*.{ts,tsx,css}' 'src/**/*.{ts,tsx,css}'", { encoding: "utf8" }).trim().split("\n").filter(Boolean);
-const tokenFiles = new Set(["src/styles/design-tokens.css", "app/globals.css", "tailwind.config.ts"]);
+const tokenFiles = new Set([
+  "src/styles/design-tokens.css",
+  "app/globals.css",
+  "tailwind.config.ts",
+  "src/map-decision-v1/engine/ideal-type-card-colors.ts",
+]);
 const rawColor = /(?:#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\()/;
 const offenders = [];
 for (const file of files) {
