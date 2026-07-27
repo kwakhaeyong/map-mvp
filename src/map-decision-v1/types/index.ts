@@ -40,7 +40,7 @@ export type MapSession = {
   localDraft?: string;
   result?: FinalResult;
   idealTypeResult?: IdealTypeResult;
-  // 이상형 퀴즈를 필수 37문항에서 끝냈는지("quick"), 선택 8문항까지
+  // 이상형 퀴즈를 필수 32문항에서 끝냈는지("quick"), 선택 8문항까지
   // 마쳤는지("deep") — 결과 화면의 "🔍 심층 분석 포함" 배지와, 결과를
   // 이미 본 뒤 "8개 더 답하기"를 안내할지 판단하는 데 쓴다.
   idealTypeQuizDepth?: "quick" | "deep";
@@ -98,18 +98,6 @@ export type IdealTypeSelfReflection = { whatYouOffer: string[]; whatToImprove: s
 export type IdealTypeRoadmapPhase = { label: string; actions: string[] };
 export type IdealTypeRoadmap = { firstAction: string; phases: IdealTypeRoadmapPhase[] };
 
-// "외모 취향" 5개 축의 답변 라벨 그대로(부품 ID가 아니다). 예전에는
-// 이 라벨로 실루엣 그림을 그렸지만(PR #83/#84), 그림 품질이 기준에
-// 못 미쳐 그림 렌더링만 걷어냈다 — 답변 자체는 계속 텍스트 칩으로
-// 보여주므로 이 타입과 데이터는 남겨둔다.
-export type IdealTypeSilhouetteLabels = {
-  hairStyle: string;
-  hairColor: string;
-  clothingStyle: string;
-  accessory: string;
-  colorImpression: string;
-};
-
 export type IdealTypeResult = {
   version: number;
   generatedAt: string;
@@ -127,12 +115,6 @@ export type IdealTypeResult = {
   // 이 필드가 생기기 전에 만들어진 결과·공유 링크는 undefined로 읽히고,
   // 화면은 그 경우 태그 줄만 생략하고 나머지는 그대로 보여준다.
   tags?: string[];
-  // AI가 만들지 않는다 — engine/ideal-type-silhouette.ts가 퀴즈 답변만
-  // 보고 코드로 결정적으로 고른다. 그림(CombinedSilhouette)은 걷어냈지만
-  // 답변 자체는 텍스트 칩으로 계속 보여준다. 이 필드가 생기기 전에
-  // 만들어진 결과·공유 링크는 undefined로 읽히고, 화면은 칩 줄만
-  // 생략하고 나머지는 그대로 보여준다.
-  silhouette?: IdealTypeSilhouetteLabels;
 };
 
 export type ConversationProvider = {

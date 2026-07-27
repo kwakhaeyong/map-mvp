@@ -5,7 +5,6 @@ import { createId, now } from "../engine/session";
 import { resolveTopic, TopicAxis, TopicChoice, TopicOption } from "../engine/topics";
 import { MapSession } from "../types";
 import { Brand } from "./Landing";
-import { AccessoryThumb, CollarThumb, ColorThumb, HairColorThumb, HairThumb } from "./IdealTypeVisualParts";
 import { Badge, Button, Textarea } from "./ui/primitives";
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -275,65 +274,6 @@ function QuickTapStep({
   );
 }
 
-// 외모 문항(hairStyle/hairColor/clothingStyle/accessory/colorImpression)
-// 전용 — 라벨이 아니라 그림(썸네일)을 보고 고른다. axisId로 어떤 부품
-// 그림을 그릴지 정하고, 옵션 배열의 인덱스로 부품을 고른다(topics.ts와
-// IdealTypeVisualParts.tsx가 같은 순서를 쓰기로 약속돼 있다). 동작은
-// quickTap과 같다 — 단일 선택 + 자동으로 다음 문항 넘김. 저장되는 값은
-// 항상 라벨 텍스트다(부품 ID가 아니다) — 나중에 이 시각적 선택을 통째로
-// 빼도 topics.ts의 type만 "quickTap"으로 바꾸면 되는 이유가 이것이다.
-function VisualGridStep({
-  axisId,
-  question,
-  options,
-  onSubmit,
-  onBack,
-  showBack,
-}: {
-  axisId: string;
-  question: string;
-  options: TopicOption[];
-  onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
-  onBack: () => void;
-  showBack: boolean;
-}) {
-  const pick = (choice: TopicChoice) => {
-    onSubmit(`${choice.label} — ${choice.description}`, [choice.label]);
-  };
-
-  const renderThumb = (index: number) => {
-    if (axisId === "hairStyle") return <HairThumb index={index} />;
-    if (axisId === "hairColor") return <HairColorThumb index={index} />;
-    if (axisId === "clothingStyle") return <CollarThumb index={index} />;
-    if (axisId === "accessory") return <AccessoryThumb index={index} />;
-    return <ColorThumb index={index} />;
-  };
-
-  return (
-    <div className="flex w-full flex-col gap-5">
-      <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
-      <div className="grid grid-cols-3 gap-2">
-        {options.map((option, index) => (
-          <button
-            key={option.label}
-            type="button"
-            onClick={() => pick(option)}
-            className="flex flex-col items-center gap-1.5 rounded-large border border-border bg-surface px-2 py-3 text-center transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:border-border-strong hover:shadow-floating"
-          >
-            {renderThumb(index)}
-            <span className="text-xs font-extrabold leading-4 tracking-[-0.01em] text-text-primary">{option.label}</span>
-          </button>
-        ))}
-      </div>
-      {showBack ? (
-        <button type="button" onClick={onBack} className="self-start text-xs font-black text-text-muted hover:text-text-primary">
-          ← 이전
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
 // 상황 제시형 — 동작은 quickTap과 같다(단일 선택 + 자동 다음 넘김).
 // 다만 특성을 직접 묻지 않고 구체적 상황에서의 반응을 고르는 문항이라,
 // quickTap과 달리 설명(description)까지 화면에 보여준다 — 반응들이
@@ -574,7 +514,7 @@ function ReflectionStep({
   );
 }
 
-// 필수 37문항을 다 마친 직후 나오는 갈림길 화면 — 여기서 끝내도 결과를
+// 필수 32문항을 다 마친 직후 나오는 갈림길 화면 — 여기서 끝내도 결과를
 // 만들 수 있지만, 8개를 더 답하면 결과의 어디가 구체적으로 달라지는지를
 // 여기서 정확히 말해준다("더 정확해진다" 같은 막연한 말 대신).
 function DecisionStep({ onQuick, onDeep, onBack }: { onQuick: () => void; onDeep: () => void; onBack: () => void }) {
@@ -830,20 +770,6 @@ export function TopicQuiz({
         ) : currentAxis?.type === "binary" ? (
           <BinaryStep
             key={currentAxis.id}
-            question={currentAxis.question}
-            options={currentAxis.options}
-            showBack={step > 0}
-            onBack={goBack}
-            onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
-              commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
-              if (isLastOptionalWhileResuming) finishResumedDeepDive();
-            }}
-          />
-        ) : currentAxis?.type === "visualPick" ? (
-          <VisualGridStep
-            key={currentAxis.id}
-            axisId={currentAxis.id}
             question={currentAxis.question}
             options={currentAxis.options}
             showBack={step > 0}
