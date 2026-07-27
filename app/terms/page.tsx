@@ -38,7 +38,15 @@ export default function TermsPage() {
         </section>
 
         <section className="mt-8 space-y-3">
-          <h2 className="text-xl font-black tracking-[-0.02em]">3. 이용자의 의무</h2>
+          <h2 className="text-xl font-black tracking-[-0.02em]">3. 이용 자격</h2>
+          <p className="break-keep leading-7 text-text-secondary">
+            본 서비스는 만 14세 이상만 이용할 수 있습니다. 만 14세 미만은
+            서비스 이용이 제한됩니다.
+          </p>
+        </section>
+
+        <section className="mt-8 space-y-3">
+          <h2 className="text-xl font-black tracking-[-0.02em]">4. 이용자의 의무</h2>
           <ul className="ml-5 list-disc space-y-1 break-keep leading-7 text-text-secondary">
             <li>서비스를 통해 타인의 권리를 침해하거나 불법적인 목적으로 이용하지 않습니다.</li>
             <li>서비스의 정상적인 운영을 방해하는 행위(과도한 반복 요청 등)를 하지 않습니다.</li>
@@ -47,7 +55,7 @@ export default function TermsPage() {
         </section>
 
         <section className="mt-8 space-y-3">
-          <h2 className="text-xl font-black tracking-[-0.02em]">4. 면책 조항</h2>
+          <h2 className="text-xl font-black tracking-[-0.02em]">5. 면책 조항</h2>
           <p className="break-keep leading-7 text-text-secondary">
             서비스는 의사결정을 돕는 참고 도구이며, 제공되는 분석과 추천은
             조언일 뿐 확정된 답이 아닙니다. 건강·법률·재무·진로 등 중요한
@@ -58,7 +66,7 @@ export default function TermsPage() {
         </section>
 
         <section className="mt-8 space-y-3">
-          <h2 className="text-xl font-black tracking-[-0.02em]">5. 지적재산권</h2>
+          <h2 className="text-xl font-black tracking-[-0.02em]">6. 지적재산권</h2>
           <p className="break-keep leading-7 text-text-secondary">
             이용자가 입력한 내용과 그 내용을 바탕으로 생성된 MAP에 대한
             권리는 이용자에게 있습니다. 서비스 랜딩 페이지에 있는 예시
@@ -68,7 +76,7 @@ export default function TermsPage() {
         </section>
 
         <section className="mt-8 space-y-3">
-          <h2 className="text-xl font-black tracking-[-0.02em]">6. 약관의 변경</h2>
+          <h2 className="text-xl font-black tracking-[-0.02em]">7. 약관의 변경</h2>
           <p className="break-keep leading-7 text-text-secondary">
             서비스 제공자는 필요한 경우 이 약관을 변경할 수 있으며, 변경된
             약관은 서비스 화면에 게시함으로써 효력이 발생합니다.
@@ -76,7 +84,7 @@ export default function TermsPage() {
         </section>
 
         <section className="mt-8 space-y-3">
-          <h2 className="text-xl font-black tracking-[-0.02em]">7. 문의처</h2>
+          <h2 className="text-xl font-black tracking-[-0.02em]">8. 문의처</h2>
           <p className="break-keep leading-7 text-text-secondary">
             서비스 이용 관련 문의는{" "}
             <a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} className="underline underline-offset-2 hover:text-text-primary">
@@ -86,7 +94,7 @@ export default function TermsPage() {
           </p>
         </section>
 
-        <p className="mt-10 text-xs font-semibold text-text-muted">시행일: 2026-07-25</p>
+        <p className="mt-10 text-xs font-semibold text-text-muted">시행일: 2026-07-27</p>
       </article>
     </main>
   );
