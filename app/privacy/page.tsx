@@ -73,22 +73,27 @@ export default function PrivacyPage() {
         <section className="mt-8 space-y-3">
           <h2 className="text-xl font-black tracking-[-0.02em]">4. 제3자 제공 및 국외 이전</h2>
           <p className="break-keep leading-7 text-text-secondary">
-            AI 분석 기능이 활성화된 경우, 입력하신 텍스트는 의사결정 구조화
-            분석을 위해 미국에 소재한 Anthropic, PBC(&ldquo;Anthropic&rdquo;)의
-            서버로 전송됩니다.
+            입력하신 텍스트는 이상형 카드나 진로 결과를 만들 때, 그리고 진로
+            대화 중 AI 분석 기능이 켜져 있을 때 의사결정 구조화 분석과 결과
+            생성을 위해 미국에 소재한 Anthropic, PBC(&ldquo;Anthropic&rdquo;)의
+            서버로 전송됩니다. 이상형 카드는 규칙 기반 대체 결과가 없어, 이
+            전송 없이는 만들어지지 않습니다.
           </p>
           <ul className="ml-5 list-disc space-y-1 break-keep leading-7 text-text-secondary">
             <li>이전받는 자: Anthropic, PBC (미국)</li>
-            <li>이전 목적: 의사결정 구조화 분석(노드 추출)</li>
-            <li>이전 항목: 사용자가 입력한 텍스트</li>
+            <li>이전 목적: 이상형 카드·진로 결과 생성, 대화 중 의사결정 구조화 분석(노드 추출·되묻기)</li>
+            <li>이전 항목: 사용자가 입력한 텍스트(퀴즈의 자유 서술형 답변 포함)</li>
             <li>
               이전받는 자의 보유·이용 기간: Anthropic의 자체 정책에 따르며,
               자세한 내용은 Anthropic의 개인정보처리방침을 참고해주세요.
             </li>
           </ul>
           <p className="break-keep leading-7 text-text-secondary">
-            AI 분석 기능이 꺼져 있는 동안에는 이런 전송이 발생하지 않고,
-            입력 내용은 사용자 기기 안에서만 처리됩니다.
+            진로 대화 중 AI 분석 기능이 꺼져 있는 동안에는 노드 추출 관련
+            전송이 발생하지 않고, 그 입력 내용은 사용자 기기 안에서만
+            처리됩니다(이 경우 진로 결과도 저장된 대화 내용만으로 만든 간단한
+            요약으로 대신 제공됩니다). 이상형 카드 생성에는 이 조건이
+            적용되지 않습니다.
           </p>
           <p className="break-keep leading-7 text-text-secondary">
             공유 링크 기능은 미국 법인인 Upstash, Inc.(&ldquo;Upstash&rdquo;)에
@@ -179,7 +184,7 @@ export default function PrivacyPage() {
         <p className="mt-10 text-xs font-semibold text-text-muted">
           시행일: 2026-07-27
           <br />
-          최근 개정일: 2026-07-27 (만 14세 미만 아동의 개인정보 관련 조항 추가)
+          최근 개정일: 2026-07-27 (AI 서버 전송 관련 기재를 실제 전송 범위에 맞게 수정)
         </p>
       </article>
     </main>
