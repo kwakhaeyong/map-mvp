@@ -98,6 +98,18 @@ export type IdealTypeSelfReflection = { whatYouOffer: string[]; whatToImprove: s
 export type IdealTypeRoadmapPhase = { label: string; actions: string[] };
 export type IdealTypeRoadmap = { firstAction: string; phases: IdealTypeRoadmapPhase[] };
 
+// "외모 취향 실루엣"에 쓰인 5개 축의 답변 라벨 그대로 — 부품 ID가
+// 아니다. 라벨 → 부품 키 매핑은 engine/ideal-type-silhouette.ts가
+// 렌더링 시점에 담당한다(저장 시점이 아니다) — 그래야 나중에 라벨이
+// 바뀌어도 이미 저장된 결과·공유 링크가 안 깨진다.
+export type IdealTypeSilhouetteLabels = {
+  hairStyle: string;
+  hairColor: string;
+  clothingStyle: string;
+  accessory: string;
+  colorImpression: string;
+};
+
 export type IdealTypeResult = {
   version: number;
   generatedAt: string;
@@ -115,6 +127,11 @@ export type IdealTypeResult = {
   // 이 필드가 생기기 전에 만들어진 결과·공유 링크는 undefined로 읽히고,
   // 화면은 그 경우 태그 줄만 생략하고 나머지는 그대로 보여준다.
   tags?: string[];
+  // AI가 만들지 않는다 — engine/ideal-type-silhouette.ts가 퀴즈 답변만
+  // 보고 코드로 결정적으로 고른다. 이 필드가 생기기 전에 만들어진
+  // 결과·공유 링크는 undefined로 읽히고, 화면은 그림만 생략하고
+  // 나머지는 그대로 보여준다.
+  silhouette?: IdealTypeSilhouetteLabels;
 };
 
 export type ConversationProvider = {

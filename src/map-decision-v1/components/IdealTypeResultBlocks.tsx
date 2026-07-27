@@ -1,4 +1,6 @@
-import { IdealTypeFlags, IdealTypeMatrix, IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmap, IdealTypeSelfReflection } from "../types";
+import { resolveSilhouetteParts } from "../engine/ideal-type-silhouette";
+import { IdealTypeFlags, IdealTypeMatrix, IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmap, IdealTypeSelfReflection, IdealTypeSilhouetteLabels } from "../types";
+import { CombinedSilhouette } from "./IdealTypeVisualParts";
 import { Card } from "./ui/primitives";
 
 // 이상형 결과를 "보여주기만" 하는 순수 프레젠테이션 컴포넌트 모음.
@@ -24,6 +26,7 @@ function SectionHeader({ icon, title, description }: { icon: string; title: stri
 }
 
 const NAV_ITEMS: Array<{ id: string; label: string }> = [
+  { id: "silhouette", label: "실루엣" },
   { id: "criteria", label: "기준" },
   { id: "patterns", label: "패턴" },
   { id: "matrix", label: "매트릭스" },
@@ -32,10 +35,11 @@ const NAV_ITEMS: Array<{ id: string; label: string }> = [
   { id: "roadmap", label: "로드맵" },
 ];
 
-function SectionNav() {
+function SectionNav({ showSilhouette }: { showSilhouette: boolean }) {
+  const items = showSilhouette ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.id !== "silhouette");
   return (
     <div className="flex flex-wrap gap-1.5">
-      {NAV_ITEMS.map((item) => (
+      {items.map((item) => (
         <a
           key={item.id}
           href={`#${item.id}`}
@@ -45,6 +49,30 @@ function SectionNav() {
         </a>
       ))}
     </div>
+  );
+}
+
+// result.silhouette가 있어도(라벨 5개는 존재해도) 아주 오래된 공유
+// 링크가 지금은 없는 옛날 라벨을 들고 있으면 resolveSilhouetteParts가
+// null을 돌려준다 — 이때는 깨진 그림 대신 이 섹션 자체를 생략하고
+// 나머지 텍스트 결과는 그대로 보여준다(런타임 안전장치).
+function SilhouetteSection({ labels }: { labels: IdealTypeSilhouetteLabels }) {
+  const parts = resolveSilhouetteParts(labels);
+  if (!parts) return null;
+  return (
+    <Card id="silhouette" className="scroll-mt-6 flex flex-col items-center gap-3">
+      <div className="flex w-full items-start gap-2">
+        <span className="text-lg" aria-hidden="true">🎨</span>
+        <div>
+          <h2 className="text-base font-black tracking-[-0.02em] text-text-primary">외모 취향 실루엣</h2>
+          <p className="mt-0.5 text-xs font-semibold leading-5 text-text-secondary">퀴즈에서 직접 고른 그림 그대로예요.</p>
+        </div>
+      </div>
+      <CombinedSilhouette parts={parts} />
+      <p className="break-keep text-center text-xs font-bold leading-5 text-text-secondary">
+        {labels.hairStyle} · {labels.hairColor} · {labels.clothingStyle} · {labels.accessory} · {labels.colorImpression}
+      </p>
+    </Card>
   );
 }
 
@@ -326,7 +354,8 @@ export function IdealTypeResultBlocks({ result }: { result: IdealTypeResult }) {
   return (
     <>
       <HeroHeader result={result} />
-      <SectionNav />
+      <SectionNav showSilhouette={Boolean(result.silhouette)} />
+      {result.silhouette ? <SilhouetteSection labels={result.silhouette} /> : null}
       <CriteriaSection criteria={result.criteria} />
       <PatternsSection items={result.attractionPatterns} />
       <MatrixSection matrix={result.matrix} />

@@ -1,6 +1,7 @@
 // 이상형 퀴즈의 "외모 취향" 문항(hairStyle/hairColor/clothingStyle/
 // accessory/colorImpression)을 텍스트 라벨이 아니라 그림으로 보고
-// 고르게 하는 썸네일 렌더러.
+// 고르게 하는 썸네일 렌더러 — 그리고 결과 카드·공유 링크에서 고른
+// 5개 부품을 하나로 조합해 보여주는 CombinedSilhouette.
 //
 // ★어깨 위 구도(증명사진 스타일)다 — 전신이 아니다. 체형을 그리지
 // 않아서 타겟 연령(10대 중반 포함)에 부적절할 수 있는 요소가 아예
@@ -8,19 +9,44 @@
 // 잘 보인다. 얼굴 이목구비는 계속 그리지 않는다(원 안이 항상 비어
 // 있다) — 특정 인상이 박히면 절반은 "내 취향 아닌데"가 되기 때문이다.
 //
+// ★썸네일과 결과 조합 그림이 같은 부품 함수(HairShape/CollarShape/
+// AccessoryShape/HairColorMass)를 그대로 재사용한다 — 두 화면의 그림이
+// 다르면 "내가 고른 게 이게 맞나" 싶어져서 실루엣의 의미가 사라진다.
+// 크기 차이는 svg viewBox로만 다르게 잡는다(부품 좌표 자체는 안 바꿈).
+//
 // ★이 파일은 순수 표현 계층이다 — topics.ts의 답변 데이터는 이 파일이
-// 있든 없든 라벨 텍스트로만 저장된다(session.quizAnswers에 부품 ID가
-// 아니라 라벨 문자열이 들어간다). 실루엣 품질이 기준에 못 미쳐 통째로
-// 뺄 경우:
-//   1) 이 파일(IdealTypeVisualParts.tsx)을 삭제
-//   2) TopicQuiz.tsx의 VisualGridStep 함수와 그 사용처(phase 분기)를 삭제
+// 있든 없든 라벨 텍스트로만 저장된다(session.quizAnswers와
+// IdealTypeResult.silhouette 둘 다 부품 ID가 아니라 라벨 문자열만
+// 가진다 — 라벨→부품 매핑은 engine/ideal-type-silhouette.ts가
+// 렌더링 시점에 담당한다). 실루엣 품질이 기준에 못 미쳐 통째로 뺄 경우:
+//   1) 이 파일(IdealTypeVisualParts.tsx) 삭제
+//   2) TopicQuiz.tsx의 VisualGridStep 함수와 그 사용처(phase 분기) 삭제
 //   3) topics.ts에서 hairStyle/hairColor/clothingStyle/accessory/
 //      colorImpression 5개 축의 type을 "visualPick"에서 "quickTap"으로
-//      바꾸기만 하면 된다(라벨·설명은 그대로 재사용 가능)
-//   4) design-tokens.css의 --color-hair-* 5줄, tailwind.config.ts의
+//      변경(라벨·설명은 그대로 재사용 가능)
+//   4) engine/ideal-type-silhouette.ts 삭제, ideal-type-generator.ts의
+//      silhouette 필드 부착 코드 삭제, IdealTypeResultBlocks.tsx의
+//      실루엣 섹션 삭제, share-validation.ts의 silhouette 검증 삭제,
+//      scripts/silhouette-check.mjs와 package.json/quality-gate.yml의
+//      해당 스텝 삭제
+//   5) design-tokens.css의 --color-hair-* 5줄, tailwind.config.ts의
 //      hair-* 5개 항목 삭제
 // 이 문항들의 질문 문구·옵션 데이터는 그대로 두고 표현만 텍스트 칩으로
 // 되돌아간다 — 데이터 계층을 다시 설계할 필요가 없다.
+import {
+  ACCESSORY_KEYS,
+  AccessoryKey,
+  COLLAR_KEYS,
+  COLOR_KEYS,
+  CollarKey,
+  ColorKey,
+  HAIR_COLOR_KEYS,
+  HAIR_KEYS,
+  HairColorKey,
+  HairKey,
+  IdealTypeSilhouetteParts,
+} from "../engine/ideal-type-silhouette";
+
 const LINE = "stroke-text-primary";
 const LINE_WIDTH = 2.4;
 const lineProps = { fill: "none", strokeWidth: LINE_WIDTH, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, className: LINE };
@@ -29,18 +55,6 @@ const lineProps = { fill: "none", strokeWidth: LINE_WIDTH, strokeLinecap: "round
 const HEAD_CX = 80;
 const HEAD_CY = 62;
 const HEAD_R = 32;
-
-export const HAIR_KEYS = ["lightBob", "sleekStraight", "softWave", "asymmetricCrop", "neatPart", "activeShort"] as const;
-export const HAIR_COLOR_KEYS = ["black", "darkBrown", "lightBrown", "blonde", "dyed"] as const;
-export const COLLAR_KEYS = ["shirtCollar", "knitNeckline", "hoodieNeckline", "turtleneck", "blazerCollar", "basicTee"] as const;
-export const ACCESSORY_KEYS = ["none", "glasses", "earring", "hat", "scarf"] as const;
-export const COLOR_KEYS = ["warm", "deep", "soft", "bold", "fresh", "calm"] as const;
-
-type HairKey = (typeof HAIR_KEYS)[number];
-type HairColorKey = (typeof HAIR_COLOR_KEYS)[number];
-type CollarKey = (typeof COLLAR_KEYS)[number];
-type AccessoryKey = (typeof ACCESSORY_KEYS)[number];
-type ColorKey = (typeof COLOR_KEYS)[number];
 
 // 배경 색감 6종 — 흰 카드 위에서 서로 뚜렷이 구별되도록 색조가 겹치지
 // 않는 디자인 토큰만 골랐다. calm은 색이 있는 토큰 대신 뉴트럴 톤을
@@ -281,6 +295,26 @@ export function ColorThumb({ index }: { index: number }) {
   return (
     <svg viewBox="0 0 100 100" className="h-16 w-16" role="img" aria-hidden="true">
       <circle cx="50" cy="50" r="42" className={ACCENT_FILL_CLASS[color]} />
+    </svg>
+  );
+}
+
+// 결과 카드·공유 링크에서 고른 5개 부품을 하나로 조합해 보여주는 그림.
+// 위 5개 Thumb과 완전히 같은 부품 함수·좌표를 쓴다 — viewBox만 5개
+// 부품이 전부 들어가도록 넓게 잡는다. 쌓는 순서(뒤→앞): 배경 색 →
+// 옷깃·어깨(목 뒤에 있는 후드 등을 위해 머리보다 먼저) → 머리 색 채움
+// → 머리 윤곽 → 머리 모양 선 → 소품(안경·모자처럼 맨 위에 있어야
+// 하는 부품이 많아 항상 마지막).
+export function CombinedSilhouette({ parts }: { parts: IdealTypeSilhouetteParts }) {
+  const accentFill = ACCENT_FILL_CLASS[parts.color];
+  return (
+    <svg viewBox="8 2 144 176" className="h-64 w-auto" role="img" aria-label="선택한 외모 취향을 조합한 그림">
+      <ellipse cx="80" cy="90" rx="62" ry="84" className={accentFill} />
+      <CollarShape collar={parts.collar} />
+      <HairColorMass color={parts.hairColor} />
+      <HeadOutline />
+      <HairShape hair={parts.hair} />
+      <AccessoryShape accessory={parts.accessory} />
     </svg>
   );
 }
