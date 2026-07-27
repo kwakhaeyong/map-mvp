@@ -525,16 +525,26 @@ function ReflectionStep({
   onSubmit,
   onBack,
   showBack,
+  isFirst,
 }: {
   question: string;
   onSubmit: (answerText: string) => void;
   onBack: () => void;
   showBack: boolean;
+  // 자유 서술 문항이 처음 나오는 지점에서만 전송 안내를 보여준다 — 이
+  // 컴포넌트는 문항마다(경험형 뒤에 최대 8번) 반복해서 쓰이는데, 매번
+  // 보여주면 방해가 되니 한 번만 짚어준다.
+  isFirst: boolean;
 }) {
   const [text, setText] = useState("");
   return (
     <div className="flex w-full flex-col gap-5">
       <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
+      {isFirst ? (
+        <p className="-mt-2 text-xs font-semibold text-text-muted">
+          여기 적어주신 내용은 카드를 만들 때 분석을 위해 Anthropic(미국) 서버로 전송돼요.
+        </p>
+      ) : null}
       <Textarea
         autoFocus
         value={text}
@@ -758,6 +768,9 @@ export function TopicQuiz({
   }
 
   const currentAxis = phase.kind === "required" || phase.kind === "optional" ? phase.axis : null;
+  // 자유 서술형(reflection) 문항 중 실제로 맨 처음 나오는 것 하나의 id만
+  // 기억해서, TopicQuiz.tsx 전체에서 전송 안내를 딱 한 번만 보여준다.
+  const firstReflectionAxisId = axes.find((axis) => axis.type === "reflection")?.id;
 
   return (
     <main className="min-h-screen px-4 py-4 text-text-primary sm:px-6 lg:px-8">
@@ -885,6 +898,7 @@ export function TopicQuiz({
             key={currentAxis.id}
             question={currentAxis.question}
             showBack={step > 0}
+            isFirst={currentAxis.id === firstReflectionAxisId}
             onBack={goBack}
             onSubmit={(answerText) => {
               const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
