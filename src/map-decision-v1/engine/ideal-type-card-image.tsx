@@ -338,7 +338,7 @@ function BottomGroup({ children, backgroundColor }: { children: ReactNode; backg
   );
 }
 
-export function buildIdealTypeCardElement(result: IdealTypeResult, theme: CardTheme) {
+function buildContent(result: IdealTypeResult, theme: Exclude<CardTheme, "navy">) {
   const title = clampForSafety(result.title.trim(), 60);
   const oneLiner = clampForSafety(result.oneLiner.trim(), 120);
   const tags = (result.tags ?? []).slice(0, 4);
@@ -346,21 +346,16 @@ export function buildIdealTypeCardElement(result: IdealTypeResult, theme: CardTh
   const improveSentence = pickReflectionSentence(result.selfReflection.whatToImprove);
 
   const rootStyle =
-    theme === "navy"
-      ? { backgroundColor: CARD_COLORS.primary }
-      : theme === "colorBlock"
-        ? {}
-        : { backgroundImage: `linear-gradient(135deg, ${CARD_COLORS.value}, ${CARD_COLORS.feeling}, ${CARD_COLORS.action})` };
+    theme === "colorBlock" ? {} : { backgroundImage: `linear-gradient(135deg, ${CARD_COLORS.value}, ${CARD_COLORS.feeling}, ${CARD_COLORS.action})` };
 
   const topBackground = theme === "colorBlock" ? CARD_COLORS.value : "transparent";
   const bottomBackground = theme === "colorBlock" ? CARD_COLORS.primary : "transparent";
 
-  const titleColor = theme === "navy" ? CARD_COLORS.primaryForeground : CARD_COLORS.primary;
-  const tagFill = theme === "navy" ? CARD_COLORS.onDarkSoftFill : CARD_COLORS.primarySoftFill;
-  const tagBorder = theme === "navy" ? CARD_COLORS.onDarkSoftBorder : CARD_COLORS.primarySoftBorder;
-  const oneLinerColor = theme === "navy" ? CARD_COLORS.foregroundSoft : CARD_COLORS.textSecondary;
-  const reflectionBoxBackground = theme === "navy" ? CARD_COLORS.onDarkSoftFill : theme === "colorBlock" ? null : CARD_COLORS.primary;
-  const reflectionBoxBorder = theme === "navy" ? CARD_COLORS.onDarkSoftBorder : undefined;
+  const titleColor = CARD_COLORS.primary;
+  const tagFill = CARD_COLORS.primarySoftFill;
+  const tagBorder = CARD_COLORS.primarySoftBorder;
+  const oneLinerColor = CARD_COLORS.textSecondary;
+  const reflectionBoxBackground = theme === "colorBlock" ? null : CARD_COLORS.primary;
   const reflectionDividerColor = theme === "purple" ? CARD_COLORS.foregroundFaint : CARD_COLORS.onDarkSoftBorder;
   const footerColor = theme === "purple" ? CARD_COLORS.textSecondary : CARD_COLORS.foregroundFaint;
 
@@ -377,7 +372,6 @@ export function buildIdealTypeCardElement(result: IdealTypeResult, theme: CardTh
           offerSentence={offerSentence}
           improveSentence={improveSentence}
           boxBackground={reflectionBoxBackground}
-          boxBorder={reflectionBoxBorder}
           textColor={CARD_COLORS.primaryForeground}
           labelColor={CARD_COLORS.foregroundFaint}
           dividerColor={reflectionDividerColor}
@@ -386,4 +380,257 @@ export function buildIdealTypeCardElement(result: IdealTypeResult, theme: CardTh
       </BottomGroup>
     </div>
   );
+}
+
+// ── B안(navy) 확정 이후 전용 레이아웃 ──────────────────────────────────
+// 위 buildContent()의 내용 기반(auto-height) 레이아웃은 짧은 결과에서
+// 아래 40%가 텅 비어 보이는 문제가 있었다. B안은 오너가 준 정확한
+// 픽셀 예산(0~250 여백 / 250~330 브랜드 / 330~780 타이틀 / 780~1060
+// 태그 / 1060~1160 한줄설명 / 1160~1670 자기성찰 / 1670~1920 footer+
+// 하단 여백)을 그대로 6개의 고정 높이 구역으로 만든다 — 내용이 짧아도
+// 각 구역이 항상 자기 자리를 지킨다.
+const NAVY_ZONE = {
+  brand: 80,
+  title: 450,
+  tags: 280,
+  oneLiner: 100,
+  reflection: 510,
+  footer: 250,
+} as const;
+
+// 타이틀은 이 작업의 핵심이라 숫자를 그대로 박아넣는다. 실제 프로덕션
+// 타이틀은 대부분 10자 안팎이라 짧은 쪽(100px, 2줄 이내)에 최적화하고,
+// 길어질수록만 단계적으로 줄인다.
+function navyTitleFontSize(title: string): number {
+  return pickBySteps(
+    title.length,
+    [
+      { max: 18, size: 100 },
+      { max: 26, size: 88 },
+      { max: 38, size: 76 },
+      { max: 52, size: 64 },
+    ],
+    54,
+  );
+}
+
+// 자기성찰 블록은 밝은 면으로 뒤집혀서 본문이 36px 이상이어야 축소해도
+// 읽힌다는 요구를 만족한다 — 짧은 문장(실제 데이터 대다수)은 38px,
+// 아주 긴 예외 케이스에서만 그 아래로 내려간다.
+function navyReflectionFontSize(sentence: string): number {
+  return pickBySteps(
+    sentence.length,
+    [
+      { max: 45, size: 38 },
+      { max: 65, size: 36 },
+      { max: 85, size: 32 },
+    ],
+    28,
+  );
+}
+
+function NavyZone({ height, children, style }: { height: number; children: ReactNode; style?: Record<string, unknown> }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: CARD_WIDTH,
+        height,
+        flexShrink: 0,
+        boxSizing: "border-box",
+        paddingLeft: SIDE_PADDING,
+        paddingRight: SIDE_PADDING,
+        justifyContent: "center",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function NavyBrand() {
+  return (
+    <NavyZone height={NAVY_ZONE.brand}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, alignItems: "center" }}>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            border: `2px solid ${CARD_COLORS.primaryForeground}`,
+            color: CARD_COLORS.primaryForeground,
+            fontSize: 22,
+            fontWeight: 900,
+            marginRight: 14,
+          }}
+        >
+          M
+        </span>
+        <span style={{ fontSize: 32, fontWeight: 800, color: CARD_COLORS.primaryForeground, letterSpacing: "-0.5px" }}>MAP Decision</span>
+      </div>
+    </NavyZone>
+  );
+}
+
+function NavyTitle({ title }: { title: string }) {
+  return (
+    <NavyZone height={NAVY_ZONE.title}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: NAVY_ZONE.title, overflow: "hidden" }}>
+        <span
+          style={{
+            fontSize: navyTitleFontSize(title),
+            fontWeight: 900,
+            lineHeight: 1.2,
+            color: CARD_COLORS.primaryForeground,
+            letterSpacing: "-2px",
+          }}
+        >
+          {title}
+        </span>
+      </div>
+    </NavyZone>
+  );
+}
+
+// 태그를 데이터 표처럼 보이게 하던 테두리·칸 구분선을 없애고, 배경만
+// 있는 알약(pill)으로 바꿨다 — 2개씩 정확히 두 줄로 쌓는다(줄바꿈에
+// 기대면 글자 길이에 따라 1개나 3개로 흐트러질 수 있어 행을 직접
+// 나눈다).
+function NavyTags({ tags }: { tags: string[] }) {
+  if (tags.length === 0) return null;
+  const rows: string[][] = [];
+  for (let i = 0; i < tags.length; i += 2) rows.push(tags.slice(i, i + 2));
+  return (
+    <NavyZone height={NAVY_ZONE.tags}>
+      <div style={{ display: "flex", flexDirection: "column", width: CONTENT_WIDTH }}>
+        {rows.map((row, rowIndex) => (
+          <div key={row.join("-")} style={{ display: "flex", justifyContent: "center", marginTop: rowIndex === 0 ? 0 : 24 }}>
+            {row.map((tag, tagIndex) => (
+              <span
+                key={tag}
+                style={{
+                  display: "flex",
+                  backgroundColor: CARD_COLORS.value,
+                  color: CARD_COLORS.primary,
+                  borderRadius: 999,
+                  padding: "26px 40px",
+                  fontSize: 48,
+                  fontWeight: 900,
+                  letterSpacing: "-1px",
+                  marginLeft: tagIndex === 0 ? 0 : 24,
+                }}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </NavyZone>
+  );
+}
+
+function NavyOneLiner({ oneLiner }: { oneLiner: string }) {
+  return (
+    <NavyZone height={NAVY_ZONE.oneLiner}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: NAVY_ZONE.oneLiner, overflow: "hidden" }}>
+        <span style={{ fontSize: 34, fontWeight: 700, lineHeight: 1.4, color: CARD_COLORS.foregroundSoft }}>{oneLiner}</span>
+      </div>
+    </NavyZone>
+  );
+}
+
+// B안의 유일한 약점이었던 부분 — 자기성찰이 배경과 같은 네이비라 안
+// 보였다. 이 구역만 크림색(글로벌 배경색과 동일한 #fbf7ef)으로 뒤집어
+// 어두운 카드 한가운데 밝은 띠가 지나가게 만든다. 캔버스 양 끝까지
+// 닿는 색면이라 "이 블록만 다르다"는 게 분명히 보인다.
+function NavyReflection({ offerSentence, improveSentence }: { offerSentence: string; improveSentence: string }) {
+  const rows: { label: string; sentence: string }[] = [];
+  if (offerSentence) rows.push({ label: "내가 줄 수 있는 것", sentence: offerSentence });
+  if (improveSentence) rows.push({ label: "내가 보완할 부분", sentence: improveSentence });
+  if (rows.length === 0) return <div style={{ display: "flex", width: CARD_WIDTH, height: NAVY_ZONE.reflection, flexShrink: 0 }} />;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: CARD_WIDTH,
+        height: NAVY_ZONE.reflection,
+        flexShrink: 0,
+        boxSizing: "border-box",
+        paddingLeft: SIDE_PADDING,
+        paddingRight: SIDE_PADDING,
+        justifyContent: "center",
+        backgroundColor: CARD_COLORS.background,
+        overflow: "hidden",
+      }}
+    >
+      {rows.map((row, index) => (
+        <div
+          key={row.label}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            width: CONTENT_WIDTH,
+            paddingTop: index === 0 ? 0 : 32,
+            marginTop: index === 0 ? 0 : 32,
+            borderTop: index === 0 ? "none" : `2px solid ${CARD_COLORS.primarySoftBorder}`,
+          }}
+        >
+          <span style={{ fontSize: 26, fontWeight: 700, color: CARD_COLORS.textSecondary, letterSpacing: "-0.3px", marginBottom: 14 }}>{row.label}</span>
+          <span style={{ fontSize: navyReflectionFontSize(row.sentence), fontWeight: 700, lineHeight: 1.5, color: CARD_COLORS.primary }}>{row.sentence}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NavyFooter() {
+  return (
+    <NavyZone height={NAVY_ZONE.footer} style={{ justifyContent: "flex-start", paddingTop: 40 }}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, justifyContent: "center" }}>
+        <span style={{ fontSize: 26, fontWeight: 700, color: CARD_COLORS.foregroundFaint, letterSpacing: "-0.3px" }}>mapdecision.com</span>
+      </div>
+    </NavyZone>
+  );
+}
+
+function buildNavyStoryCard(result: IdealTypeResult) {
+  const title = clampForSafety(result.title.trim(), 60);
+  const oneLiner = clampForSafety(result.oneLiner.trim(), 120);
+  const tags = (result.tags ?? []).slice(0, 4);
+  const offerSentence = pickReflectionSentence(result.selfReflection.whatYouOffer);
+  const improveSentence = pickReflectionSentence(result.selfReflection.whatToImprove);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: CARD_WIDTH,
+        height: CARD_HEIGHT,
+        backgroundColor: CARD_COLORS.primary,
+        fontFamily: "Pretendard",
+      }}
+    >
+      <div style={{ display: "flex", width: CARD_WIDTH, height: SAFE_ZONE, flexShrink: 0 }} />
+      <NavyBrand />
+      <NavyTitle title={title} />
+      <NavyTags tags={tags} />
+      <NavyOneLiner oneLiner={oneLiner} />
+      <NavyReflection offerSentence={offerSentence} improveSentence={improveSentence} />
+      <NavyFooter />
+    </div>
+  );
+}
+
+export function buildIdealTypeCardElement(result: IdealTypeResult, theme: CardTheme) {
+  if (theme === "navy") return buildNavyStoryCard(result);
+  return buildContent(result, theme);
 }
