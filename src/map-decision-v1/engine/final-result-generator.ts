@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { FactorMatrixBlock, FinalResult, InsightBlock, MapSession, NodeKind, ResultBlockKey, ScenarioBlock, TimelineBlock } from "../types";
 import { createId, now } from "./session";
 import { NODE_KINDS } from "./ai-node-extractor";
+import { getGenerationEffort } from "./generation-config";
 
 const SYSTEM_PROMPT = `너는 MAP Decision의 최종 결과 생성 엔진이다. 지금까지 나눈 대화 전체를 바탕으로, 사용자가 스스로 정리하지 못했던 의사결정 구조를 4개 블록으로 만든다.
 
@@ -288,10 +289,20 @@ function buildInsightBlock(raw: RawInsights): InsightBlock {
   return { messages: raw.messages };
 }
 
+// Sonnet 5는 명시하지 않아도 내부 사고(thinking)가 기본 켜져 있고("effort"
+// 기본값 high), 그 사고 토큰이 max_tokens 예산과 과금 출력 토큰에 그대로
+// 포함된다(Anthropic 공식 마이그레이션 문서 확인). 8192였던 이전 상한은
+// 구형 모델 기준으로 잡은 값이라 새 토크나이저(같은 텍스트에 약 30% 더
+// 많은 토큰)와 사고 토큰까지 더해지면 부족할 수 있다 — 1차 시도가
+// 잘리면(stop_reason === "max_tokens") 2차는 더 큰 상한으로 재시도한다.
+const FULL_GENERATION_MAX_TOKENS = 16384;
+const FULL_GENERATION_MAX_TOKENS_RETRY = 24576;
+
 // One attempt: call Sonnet, parse, validate. Returns null on any failure so
 // generateFinalResult can retry it without duplicating this logic.
-async function attemptFullGeneration(client: Anthropic, session: MapSession): Promise<FinalResult | null> {
+async function attemptFullGeneration(client: Anthropic, session: MapSession, maxTokens: number): Promise<{ result: FinalResult | null; truncated: boolean }> {
   let responseText: string | undefined;
+  let truncated = false;
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-5",
@@ -302,8 +313,11 @@ async function attemptFullGeneration(client: Anthropic, session: MapSession): Pr
       // ceiling doesn't cost anything for normal-length results — Anthropic
       // bills actual completion tokens generated, not this max — it only
       // lets the genuinely long cases finish instead of getting cut off.
-      max_tokens: 8192,
-      system: SYSTEM_PROMPT,
+      max_tokens: maxTokens,
+      // 시스템 프롬프트는 매 호출마다 완전히 동일한 문자열이다 — 캐시
+      // breakpoint를 걸어두면 같은 5분 안의 다음 호출부터 이 부분의
+      // 입력 요금이 크게 줄어든다. 결과 품질에는 영향이 없다.
+      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
       messages: [
         {
           role: "user",
@@ -311,34 +325,47 @@ async function attemptFullGeneration(client: Anthropic, session: MapSession): Pr
         },
       ],
       output_config: {
+        effort: getGenerationEffort(),
         format: { type: "json_schema", schema: FINAL_RESULT_SCHEMA },
       },
     });
+    truncated = response.stop_reason === "max_tokens";
+    if (truncated) {
+      // 사용자 입력·응답 내용은 절대 로그에 넣지 않는다 — 토큰 수치만.
+      console.warn("[final-result-generator] full generation truncated by max_tokens", {
+        maxTokens,
+        outputTokens: response.usage?.output_tokens ?? null,
+        thinkingTokens: response.usage?.output_tokens_details?.thinking_tokens ?? null,
+      });
+    }
     responseText = response.content.find((block) => block.type === "text")?.text;
   } catch (error) {
     console.error("[final-result-generator] Claude API call failed", error);
-    return null;
+    return { result: null, truncated };
   }
 
   if (!responseText) {
     console.error("[final-result-generator] empty response from Claude");
-    return null;
+    return { result: null, truncated };
   }
 
   const parsed = parseAndValidate(responseText);
   if (!parsed.ok) {
-    console.error("[final-result-generator] response failed schema validation", { reason: parsed.reason });
-    return null;
+    console.error("[final-result-generator] response failed schema validation", { reason: parsed.reason, truncated });
+    return { result: null, truncated };
   }
 
   return {
-    version: 1,
-    generatedAt: now(),
-    model: "claude-sonnet-5",
-    factorMatrix: buildFactorMatrixBlock(parsed.data.factor_matrix),
-    scenarios: buildScenarioBlock(parsed.data.scenarios),
-    timeline: buildTimelineBlock(parsed.data.timeline),
-    insights: buildInsightBlock(parsed.data.insights),
+    result: {
+      version: 1,
+      generatedAt: now(),
+      model: "claude-sonnet-5",
+      factorMatrix: buildFactorMatrixBlock(parsed.data.factor_matrix),
+      scenarios: buildScenarioBlock(parsed.data.scenarios),
+      timeline: buildTimelineBlock(parsed.data.timeline),
+      insights: buildInsightBlock(parsed.data.insights),
+    },
+    truncated,
   };
 }
 
@@ -358,9 +385,11 @@ export async function generateFinalResult(session: MapSession): Promise<FinalRes
   if (!apiKey) return null;
 
   const client = new Anthropic({ apiKey });
+  let maxTokens = FULL_GENERATION_MAX_TOKENS;
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const result = await attemptFullGeneration(client, session);
+    const { result, truncated } = await attemptFullGeneration(client, session, maxTokens);
     if (result) return result;
+    if (truncated) maxTokens = FULL_GENERATION_MAX_TOKENS_RETRY;
   }
   return null;
 }
@@ -427,10 +456,18 @@ function buildBlockValue<K extends ResultBlockKey>(block: K, value: unknown): Bl
   return buildInsightBlock(value as RawInsights) as BlockValueMap[K];
 }
 
-async function attemptBlockGeneration<K extends ResultBlockKey>(client: Anthropic, session: MapSession, block: K): Promise<BlockValueMap[K] | null> {
+// 전체 생성과 같은 이유(사고 토큰이 max_tokens에 포함, 새 토크나이저)로
+// 잘릴 수 있어 같은 방식으로 상향 + 잘림 시 재시도 상향한다. 블록 하나는
+// 전체 4블록보다 훨씬 작아서 비율은 그대로 유지한다(기존 3072/8192 ≈
+// 0.375와 같은 비율로 16384의 0.375 ≈ 6144).
+const BLOCK_GENERATION_MAX_TOKENS = 6144;
+const BLOCK_GENERATION_MAX_TOKENS_RETRY = 9216;
+
+async function attemptBlockGeneration<K extends ResultBlockKey>(client: Anthropic, session: MapSession, block: K, maxTokens: number): Promise<{ value: BlockValueMap[K] | null; truncated: boolean }> {
   const jsonKey = BLOCK_JSON_KEY[block];
 
   let responseText: string | undefined;
+  let truncated = false;
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-5",
@@ -438,8 +475,10 @@ async function attemptBlockGeneration<K extends ResultBlockKey>(client: Anthropi
       // above (same ~37.5% ratio) — a single block is much smaller than
       // the full 4-block result, so it doesn't need the full 8192, but the
       // same unbounded-array risk applies to whichever block is requested.
-      max_tokens: 3072,
-      system: BLOCK_SYSTEM_PROMPTS[block],
+      max_tokens: maxTokens,
+      // 블록별 시스템 프롬프트도 같은 block 값에 대해서는 매 호출마다
+      // 동일한 문자열이라 캐싱 대상이다.
+      system: [{ type: "text", text: BLOCK_SYSTEM_PROMPTS[block], cache_control: { type: "ephemeral" } }],
       messages: [
         {
           role: "user",
@@ -447,36 +486,47 @@ async function attemptBlockGeneration<K extends ResultBlockKey>(client: Anthropi
         },
       ],
       output_config: {
+        effort: getGenerationEffort(),
         format: { type: "json_schema", schema: buildBlockRequestSchema(block) },
       },
     });
+    truncated = response.stop_reason === "max_tokens";
+    if (truncated) {
+      // 사용자 입력·응답 내용은 절대 로그에 넣지 않는다 — 토큰 수치만.
+      console.warn("[final-result-generator] block regeneration truncated by max_tokens", {
+        block,
+        maxTokens,
+        outputTokens: response.usage?.output_tokens ?? null,
+        thinkingTokens: response.usage?.output_tokens_details?.thinking_tokens ?? null,
+      });
+    }
     responseText = response.content.find((part) => part.type === "text")?.text;
   } catch (error) {
     console.error("[final-result-generator] block regeneration call failed", { block, error });
-    return null;
+    return { value: null, truncated };
   }
 
   if (!responseText) {
     console.error("[final-result-generator] empty block response from Claude", { block });
-    return null;
+    return { value: null, truncated };
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(responseText);
   } catch {
-    console.error("[final-result-generator] block response was not valid JSON", { block });
-    return null;
+    console.error("[final-result-generator] block response was not valid JSON", { block, truncated });
+    return { value: null, truncated };
   }
-  if (typeof parsed !== "object" || parsed === null) return null;
+  if (typeof parsed !== "object" || parsed === null) return { value: null, truncated };
 
   const value = (parsed as Record<string, unknown>)[jsonKey];
   if (!isValidBlockValue(block, value)) {
-    console.error("[final-result-generator] block response failed schema validation", { block });
-    return null;
+    console.error("[final-result-generator] block response failed schema validation", { block, truncated });
+    return { value: null, truncated };
   }
 
-  return buildBlockValue(block, value);
+  return { value: buildBlockValue(block, value), truncated };
 }
 
 // Server-side only, same retry and rate-limit-counting behavior as
@@ -486,9 +536,11 @@ export async function generateResultBlock<K extends ResultBlockKey>(session: Map
   if (!apiKey) return null;
 
   const client = new Anthropic({ apiKey });
+  let maxTokens = BLOCK_GENERATION_MAX_TOKENS;
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const result = await attemptBlockGeneration(client, session, block);
-    if (result) return result;
+    const { value, truncated } = await attemptBlockGeneration(client, session, block, maxTokens);
+    if (value) return value;
+    if (truncated) maxTokens = BLOCK_GENERATION_MAX_TOKENS_RETRY;
   }
   return null;
 }

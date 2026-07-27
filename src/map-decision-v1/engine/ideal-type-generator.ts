@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmapPhase, MapSession } from "../types";
+import { getGenerationEffort } from "./generation-config";
 import { getIdealTypeSilhouetteLabels } from "./ideal-type-silhouette";
 import { getIdealTypeTags } from "./ideal-type-tags";
 import { now } from "./session";
@@ -251,16 +252,33 @@ function capRoadmapPhases(phases: RawRoadmap["phases"]): IdealTypeRoadmapPhase[]
   return capArray(phases, 4).map((phase) => ({ label: phase.label, actions: capArray(phase.actions, 4) }));
 }
 
-async function attemptGeneration(client: Anthropic, session: MapSession): Promise<IdealTypeResult | null> {
+// Sonnet 5는 명시하지 않아도 내부 사고(thinking)가 기본 켜져 있고("effort"
+// 기본값 high), 그 사고 토큰이 max_tokens 예산과 과금 출력 토큰에 그대로
+// 포함된다(Anthropic 공식 마이그레이션 문서 확인). 실측 결과 완주 1회당
+// 출력이 최종 JSON 추정치(1,000~1,500토큰)보다 훨씬 큰 이유가 이것이다 —
+// 예산이 빠듯하면 사고만 채우고 답변이 잘린 채 stop_reason이 "max_tokens"로
+// 끝나는데, 지금까지는 이걸 확인하지 않아서 잘림이 곧바로 "스키마 검증
+// 실패"로만 보이고 원인을 알 수 없었다.
+//
+// 1차 시도가 잘림으로 실패하면, 2차 시도는 같은 조건으로 또 잘릴 확률이
+// 높으므로 더 큰 max_tokens로 재시도한다.
+const IDEAL_TYPE_MAX_TOKENS = 16384;
+const IDEAL_TYPE_MAX_TOKENS_RETRY = 24576;
+
+async function attemptGeneration(client: Anthropic, session: MapSession, maxTokens: number): Promise<{ result: IdealTypeResult | null; truncated: boolean }> {
   let responseText: string | undefined;
+  let truncated = false;
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-5",
-      // Sonnet 5는 기본적으로 내부 사고(thinking)가 켜져 있어서 그 토큰도
-      // 이 한도 안에 포함된다 — 진로 결과 생성에서 4096으로는 중간에
-      // 잘리던 것을 8192로 올려 해결했던 것과 같은 이유로 넉넉히 잡는다.
-      max_tokens: 8192,
-      system: SYSTEM_PROMPT,
+      max_tokens: maxTokens,
+      // 시스템 프롬프트는 문항 수·스키마가 바뀌지 않는 한 매 호출마다
+      // 완전히 동일한 문자열이다 — 캐시 breakpoint를 걸어두면 같은 5분
+      // 안의 다음 호출부터 이 부분의 입력 요금이 크게 줄어든다(요청마다
+      // 달라지는 사용자 답변 부분은 캐시되지 않는다). 결과 품질에는
+      // 영향이 없다 — 캐싱은 순전히 과금 방식일 뿐 모델이 보는 내용은
+      // 그대로다.
+      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
       messages: [
         {
           role: "user",
@@ -268,28 +286,38 @@ async function attemptGeneration(client: Anthropic, session: MapSession): Promis
         },
       ],
       output_config: {
+        effort: getGenerationEffort(),
         format: { type: "json_schema", schema: IDEAL_TYPE_SCHEMA },
       },
     });
+    truncated = response.stop_reason === "max_tokens";
+    if (truncated) {
+      // 사용자 입력·응답 내용은 절대 로그에 넣지 않는다 — 토큰 수치만.
+      console.warn("[ideal-type-generator] response truncated by max_tokens", {
+        maxTokens,
+        outputTokens: response.usage?.output_tokens ?? null,
+        thinkingTokens: response.usage?.output_tokens_details?.thinking_tokens ?? null,
+      });
+    }
     responseText = response.content.find((block) => block.type === "text")?.text;
   } catch (error) {
     console.error("[ideal-type-generator] Claude API call failed", error);
-    return null;
+    return { result: null, truncated };
   }
 
   if (!responseText) {
     console.error("[ideal-type-generator] empty response from Claude");
-    return null;
+    return { result: null, truncated };
   }
 
   const parsed = parseAndValidate(responseText);
   if (!parsed.ok) {
-    console.error("[ideal-type-generator] response failed schema validation", { reason: parsed.reason });
-    return null;
+    console.error("[ideal-type-generator] response failed schema validation", { reason: parsed.reason, truncated });
+    return { result: null, truncated };
   }
 
   const data = parsed.data;
-  return {
+  const result: IdealTypeResult = {
     version: 2,
     generatedAt: now(),
     model: "claude-sonnet-5",
@@ -331,6 +359,7 @@ async function attemptGeneration(client: Anthropic, session: MapSession): Promis
     // 자체는 텍스트 칩으로 계속 보여준다.
     silhouette: getIdealTypeSilhouetteLabels(session.quizAnswers),
   };
+  return { result, truncated };
 }
 
 const MAX_GENERATION_ATTEMPTS = 2;
@@ -342,9 +371,11 @@ export async function generateIdealTypeResult(session: MapSession): Promise<Idea
   if (!apiKey) return null;
 
   const client = new Anthropic({ apiKey });
+  let maxTokens = IDEAL_TYPE_MAX_TOKENS;
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const result = await attemptGeneration(client, session);
+    const { result, truncated } = await attemptGeneration(client, session, maxTokens);
     if (result) return result;
+    if (truncated) maxTokens = IDEAL_TYPE_MAX_TOKENS_RETRY;
   }
   return null;
 }
