@@ -25,13 +25,16 @@ function SectionHeader({ icon, title, description }: { icon: string; title: stri
   );
 }
 
+// 실루엣은 아직 품질이 가장 약한 블록이라 첫인상을 정하지 않도록
+// 기준·패턴·매트릭스·신호등·성찰 다음, 로드맵 바로 앞에 둔다(탭
+// 순서도 콘텐츠 순서와 맞춘다).
 const NAV_ITEMS: Array<{ id: string; label: string }> = [
-  { id: "silhouette", label: "실루엣" },
   { id: "criteria", label: "기준" },
   { id: "patterns", label: "패턴" },
   { id: "matrix", label: "매트릭스" },
   { id: "flags", label: "신호등" },
   { id: "reflection", label: "성찰" },
+  { id: "silhouette", label: "실루엣" },
   { id: "roadmap", label: "로드맵" },
 ];
 
@@ -355,12 +358,12 @@ export function IdealTypeResultBlocks({ result }: { result: IdealTypeResult }) {
     <>
       <HeroHeader result={result} />
       <SectionNav showSilhouette={Boolean(result.silhouette)} />
-      {result.silhouette ? <SilhouetteSection labels={result.silhouette} /> : null}
       <CriteriaSection criteria={result.criteria} />
       <PatternsSection items={result.attractionPatterns} />
       <MatrixSection matrix={result.matrix} />
       <FlagsSection flags={result.flags} />
       <SelfReflectionSection selfReflection={result.selfReflection} />
+      {result.silhouette ? <SilhouetteSection labels={result.silhouette} /> : null}
       <RoadmapSection roadmap={result.roadmap} />
     </>
   );

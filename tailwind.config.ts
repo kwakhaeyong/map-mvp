@@ -35,6 +35,8 @@ const config: Config = {
         "hair-lightbrown": "var(--color-hair-lightbrown)",
         "hair-blonde": "var(--color-hair-blonde)",
         "hair-dyed": "var(--color-hair-dyed)",
+        "figure-skin": "var(--color-figure-skin)",
+        "figure-garment": "var(--color-figure-garment)",
       },
       borderRadius: {
         small: "var(--radius-small)",
