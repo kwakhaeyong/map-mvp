@@ -178,7 +178,7 @@ export function Result({
   // 카드를 만든다고 자동으로 공유되지 않는다 — 공유하기를 눌렀을 때만
   // 서버에 저장 요청을 보낸다. IdealTypeCard.tsx와 같은 훅(ShareResult.tsx)을
   // 써서 공유 API 호출/상태 관리 로직을 두 벌로 만들지 않는다.
-  const { shareState, shareError, sharedUrl, share } = useShareResult({
+  const { shareState, shareError, sharedUrl, canNativeShare, share, copyLink } = useShareResult({
     topicId: session.topicId ?? "career",
     result: session.result,
     shareTitle: "내 MAP 결과",
@@ -372,9 +372,16 @@ export function Result({
         {!session.isDemo && session.result ? (
           <div className="mt-8 flex flex-col gap-3 print:hidden">
             <ShareStatusCard shareState={shareState} shareError={shareError} sharedUrl={sharedUrl} />
-            <Button variant="secondary" size="lg" className="w-full" onClick={share} disabled={shareState === "creating"}>
-              {shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : "공유하기"}
-            </Button>
+            <div className="flex gap-2">
+              {canNativeShare ? (
+                <Button variant="secondary" size="lg" className="flex-1" onClick={share} disabled={shareState === "creating"}>
+                  {shareState === "creating" ? "링크 만드는 중…" : "카톡·인스타로 공유"}
+                </Button>
+              ) : null}
+              <Button variant={canNativeShare ? "ghost" : "secondary"} size="lg" className="flex-1" onClick={copyLink} disabled={shareState === "creating"}>
+                {shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : "링크 복사"}
+              </Button>
+            </div>
             <a href="/privacy" className="text-center text-xs font-semibold text-text-muted underline underline-offset-2 hover:text-text-primary">
               개인정보처리방침
             </a>
