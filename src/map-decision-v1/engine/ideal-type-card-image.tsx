@@ -127,25 +127,65 @@ const REFLECTION_LABEL: Record<ReflectionSide, string> = {
   improve: "내가 보완할 부분",
 };
 
-function TagChip({ label }: { label: string }) {
+// 태그 4개는 MBTI 결과의 "ENFP" 네 글자와 같은 역할 — 이 카드에서
+// 제목 다음으로 눈에 띄어야 한다. 그래서 작은 회색 알약이 아니라
+// 2열 그리드에 큼직하고 굵은 글자로 배치하고, 칸 사이에는 선(자체
+// 제작 도형)만 긋는다. 배경색 하나로 "이 블록은 정체성 블록"이라는
+// 면 분할을 주되, 일러스트·아이콘 없이 타이포그래피 대비만으로
+// 존재감을 낸다.
+function tagFontSize(tags: string[]): number {
+  const maxLen = tags.reduce((max, tag) => Math.max(max, tag.length), 0);
+  return pickBySteps(
+    maxLen,
+    [
+      { max: 5, size: 48 },
+      { max: 6, size: 46 },
+      { max: 7, size: 42 },
+      { max: 8, size: 38 },
+    ],
+    34,
+  );
+}
+
+function TagGrid({ tags }: { tags: string[] }) {
+  if (tags.length === 0) return null;
+  const columns = 2;
+  const rows = Math.ceil(tags.length / columns);
+  const fontSize = tagFontSize(tags);
   return (
-    <span
+    <div
       style={{
         display: "flex",
-        alignItems: "center",
-        borderRadius: 999,
-        border: `2px solid ${CARD_COLORS.primarySoftBorder}`,
+        flexWrap: "wrap",
+        borderRadius: 32,
         backgroundColor: CARD_COLORS.primarySoftFill,
-        padding: "16px 28px",
-        fontSize: 30,
-        fontWeight: 800,
-        color: CARD_COLORS.primary,
-        marginRight: 16,
-        marginBottom: 16,
+        overflow: "hidden",
+        maxHeight: 320,
       }}
     >
-      {label}
-    </span>
+      {tags.map((tag, index) => {
+        const col = index % columns;
+        const row = Math.floor(index / columns);
+        const hasRightNeighbor = col < columns - 1 && index + 1 < tags.length;
+        const hasBottomNeighbor = row < rows - 1;
+        return (
+          <div
+            key={tag}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "50%",
+              padding: "36px 24px",
+              borderRight: hasRightNeighbor ? `2px solid ${CARD_COLORS.primarySoftBorder}` : "none",
+              borderBottom: hasBottomNeighbor ? `2px solid ${CARD_COLORS.primarySoftBorder}` : "none",
+            }}
+          >
+            <span style={{ fontSize, fontWeight: 900, color: CARD_COLORS.primary, letterSpacing: "-1px" }}>{tag}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -194,7 +234,7 @@ export function buildIdealTypeCardElement(result: IdealTypeResult, side: Reflect
             display: "flex",
             maxHeight: 300,
             overflow: "hidden",
-            marginBottom: 28,
+            marginBottom: 36,
           }}
         >
           <span
@@ -210,7 +250,13 @@ export function buildIdealTypeCardElement(result: IdealTypeResult, side: Reflect
           </span>
         </div>
 
-        <div style={{ display: "flex", maxHeight: 110, overflow: "hidden", marginBottom: 32 }}>
+        {tags.length > 0 ? (
+          <div style={{ display: "flex", marginBottom: 36 }}>
+            <TagGrid tags={tags} />
+          </div>
+        ) : null}
+
+        <div style={{ display: "flex", maxHeight: 110, overflow: "hidden" }}>
           <span
             style={{
               fontSize: oneLinerFontSize(oneLiner),
@@ -222,14 +268,6 @@ export function buildIdealTypeCardElement(result: IdealTypeResult, side: Reflect
             {oneLiner}
           </span>
         </div>
-
-        {tags.length > 0 ? (
-          <div style={{ display: "flex", flexWrap: "wrap", maxHeight: 160, overflow: "hidden" }}>
-            {tags.map((tag) => (
-              <TagChip key={tag} label={tag} />
-            ))}
-          </div>
-        ) : null}
       </div>
 
       {reflectionSentence ? (
