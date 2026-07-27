@@ -30,6 +30,12 @@
   --color-hair-lightbrown: #a06a3e;
   --color-hair-blonde: #e8c078;
   --color-hair-dyed: #c25b7c;
+  /* 같은 실루엣 전용 팔레트 — 얼굴·목(피부)과 옷(윗옷) 면을 채우는
+     중립 톤. 특정 인종을 연상시키지 않는 뉴트럴한 색으로 골랐다.
+     실루엣을 뺄 때 이 2줄과 tailwind.config.ts의 figure-skin/
+     figure-garment 항목도 같이 지운다. */
+  --color-figure-skin: #ddd0bf;
+  --color-figure-garment: #99a2b3;
   --radius-small: 12px;
   --radius-medium: 18px;
   --radius-large: 28px;
