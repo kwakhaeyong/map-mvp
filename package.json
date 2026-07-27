@@ -9,7 +9,6 @@
     "typecheck": "tsc --noEmit",
     "harness:check": "node scripts/harness-check.mjs",
     "design:check": "node scripts/design-check.mjs",
-    "silhouette:check": "node scripts/silhouette-check.mjs",
     "visual:test": "playwright test",
     "visual:update": "playwright test --update-snapshots",
     "visual:install": "playwright install --with-deps chromium"

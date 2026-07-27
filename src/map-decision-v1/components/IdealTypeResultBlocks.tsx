@@ -1,6 +1,4 @@
-import { resolveSilhouetteParts } from "../engine/ideal-type-silhouette";
 import { IdealTypeFlags, IdealTypeMatrix, IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmap, IdealTypeSelfReflection, IdealTypeSilhouetteLabels } from "../types";
-import { CombinedSilhouette } from "./IdealTypeVisualParts";
 import { Card } from "./ui/primitives";
 
 // 이상형 결과를 "보여주기만" 하는 순수 프레젠테이션 컴포넌트 모음.
@@ -25,21 +23,18 @@ function SectionHeader({ icon, title, description }: { icon: string; title: stri
   );
 }
 
-// 실루엣은 아직 품질이 가장 약한 블록이라 첫인상을 정하지 않도록
-// 기준·패턴·매트릭스·신호등·성찰 다음, 로드맵 바로 앞에 둔다(탭
-// 순서도 콘텐츠 순서와 맞춘다).
 const NAV_ITEMS: Array<{ id: string; label: string }> = [
   { id: "criteria", label: "기준" },
   { id: "patterns", label: "패턴" },
   { id: "matrix", label: "매트릭스" },
   { id: "flags", label: "신호등" },
   { id: "reflection", label: "성찰" },
-  { id: "silhouette", label: "실루엣" },
+  { id: "appearance", label: "외모 취향" },
   { id: "roadmap", label: "로드맵" },
 ];
 
-function SectionNav({ showSilhouette }: { showSilhouette: boolean }) {
-  const items = showSilhouette ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.id !== "silhouette");
+function SectionNav({ showAppearance }: { showAppearance: boolean }) {
+  const items = showAppearance ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.id !== "appearance");
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((item) => (
@@ -55,26 +50,25 @@ function SectionNav({ showSilhouette }: { showSilhouette: boolean }) {
   );
 }
 
-// result.silhouette가 있어도(라벨 5개는 존재해도) 아주 오래된 공유
-// 링크가 지금은 없는 옛날 라벨을 들고 있으면 resolveSilhouetteParts가
-// null을 돌려준다 — 이때는 깨진 그림 대신 이 섹션 자체를 생략하고
-// 나머지 텍스트 결과는 그대로 보여준다(런타임 안전장치).
-function SilhouetteSection({ labels }: { labels: IdealTypeSilhouetteLabels }) {
-  const parts = resolveSilhouetteParts(labels);
-  if (!parts) return null;
+// 실루엣 그림(CombinedSilhouette)은 프로덕션 품질 기준 미달로 걷어냈다
+// (PR #83/#84 → 제거). 그림 없이도 사용자가 실제로 고른 답변은 계속
+// 보여준다 — 부품 ID가 아니라 라벨 텍스트를 그대로 칩으로 나열한다.
+// 로드맵 바로 앞이라는 위치는 그림이 있던 시절과 동일하게 유지한다.
+function AppearanceChipsSection({ labels }: { labels: IdealTypeSilhouetteLabels }) {
+  const items = [labels.hairStyle, labels.hairColor, labels.clothingStyle, labels.accessory, labels.colorImpression];
   return (
-    <Card id="silhouette" className="scroll-mt-6 flex flex-col items-center gap-3">
-      <div className="flex w-full items-start gap-2">
-        <span className="text-lg" aria-hidden="true">🎨</span>
-        <div>
-          <h2 className="text-base font-black tracking-[-0.02em] text-text-primary">외모 취향 실루엣</h2>
-          <p className="mt-0.5 text-xs font-semibold leading-5 text-text-secondary">퀴즈에서 직접 고른 그림 그대로예요.</p>
-        </div>
+    <Card id="appearance" className="scroll-mt-6 flex flex-col gap-3">
+      <SectionHeader icon="🎨" title="외모 취향" description="퀴즈에서 고른 답변이에요." />
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((label) => (
+          <span
+            key={label}
+            className="inline-flex items-center rounded-pill border border-border/60 bg-surface/70 px-2.5 py-1 text-xs font-extrabold text-text-primary"
+          >
+            {label}
+          </span>
+        ))}
       </div>
-      <CombinedSilhouette parts={parts} />
-      <p className="break-keep text-center text-xs font-bold leading-5 text-text-secondary">
-        {labels.hairStyle} · {labels.hairColor} · {labels.clothingStyle} · {labels.accessory} · {labels.colorImpression}
-      </p>
     </Card>
   );
 }
@@ -357,13 +351,13 @@ export function IdealTypeResultBlocks({ result }: { result: IdealTypeResult }) {
   return (
     <>
       <HeroHeader result={result} />
-      <SectionNav showSilhouette={Boolean(result.silhouette)} />
+      <SectionNav showAppearance={Boolean(result.silhouette)} />
       <CriteriaSection criteria={result.criteria} />
       <PatternsSection items={result.attractionPatterns} />
       <MatrixSection matrix={result.matrix} />
       <FlagsSection flags={result.flags} />
       <SelfReflectionSection selfReflection={result.selfReflection} />
-      {result.silhouette ? <SilhouetteSection labels={result.silhouette} /> : null}
+      {result.silhouette ? <AppearanceChipsSection labels={result.silhouette} /> : null}
       <RoadmapSection roadmap={result.roadmap} />
     </>
   );

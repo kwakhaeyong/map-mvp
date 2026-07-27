@@ -326,9 +326,9 @@ async function attemptGeneration(client: Anthropic, session: MapSession): Promis
     // 붙인다(session.quizAnswers가 없는 예전 세션이면 빈 배열).
     tags: getIdealTypeTags(session.quizAnswers),
     // AI가 만든 필드가 아니다 — 태그와 같은 방식으로 퀴즈 답변에서
-    // 코드로 결정적으로 고른 "외모 취향 실루엣" 라벨 5개(부품 ID가
-    // 아니라 라벨 텍스트 그대로). 5개 축 중 하나라도 없으면(예전 세션)
-    // undefined가 되고, 화면은 그림 섹션만 생략한다.
+    // 코드로 결정적으로 고른 "외모 취향" 라벨 5개(부품 ID가 아니라
+    // 라벨 텍스트 그대로). 그림(CombinedSilhouette)은 걷어냈지만 답변
+    // 자체는 텍스트 칩으로 계속 보여준다.
     silhouette: getIdealTypeSilhouetteLabels(session.quizAnswers),
   };
 }

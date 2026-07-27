@@ -1,7 +1,6 @@
 // 이상형 퀴즈의 "외모 취향" 문항(hairStyle/hairColor/clothingStyle/
 // accessory/colorImpression)을 텍스트 라벨이 아니라 그림으로 보고
-// 고르게 하는 썸네일 렌더러 — 그리고 결과 카드·공유 링크에서 고른
-// 5개 부품을 하나로 조합해 보여주는 CombinedSilhouette.
+// 고르게 하는 썸네일 렌더러.
 //
 // ★어깨 위 구도(증명사진 스타일)다 — 전신이 아니다. 체형을 그리지
 // 않아서 타겟 연령(10대 중반 포함)에 부적절할 수 있는 요소가 아예
@@ -9,53 +8,27 @@
 // 잘 보인다. 얼굴 이목구비는 계속 그리지 않는다(원 안이 항상 비어
 // 있다) — 특정 인상이 박히면 절반은 "내 취향 아닌데"가 되기 때문이다.
 //
-// ★프로덕션 확인 후 전면 재작업(2차) — 선(윤곽선)만으로 그렸더니
-// "머리가 안 보인다·목이 끊겨 보인다·옷이 텅 빈 흰색이다·귀걸이가
-// 안 보인다"는 문제가 났다. 그래서 얼굴·목·머리·옷을 전부 "채워진
-// 면"으로 바꿨다 — 머리는 스타일마다 다른 윤곽의 채워진 덩어리(피부색이
-// 아니라 머리 색으로 채움)이고, 얼굴·목은 같은 중립 톤(figure-skin)의
-// 이어진 면이라 끊겨 보이지 않는다. 옷도 중립 톤(figure-garment)으로
-// 채우고 옷깃마다 넥라인 모양만 다르게 판다. 배경 색 블롭은 면적을
-// 줄여서 머리·옷이 화면의 주인공이 되게 했다.
-//
-// ★썸네일과 결과 조합 그림이 같은 부품 함수(HairSilhouette/
-// GarmentSilhouette/AccessoryShape)를 그대로 재사용한다 — 두 화면의
-// 그림이 다르면 "내가 고른 게 이게 맞나" 싶어져서 실루엣의 의미가
-// 사라진다. 크기 차이는 svg viewBox로만 다르게 잡는다(부품 좌표 자체는
-// 안 바꿈).
-//
 // ★이 파일은 순수 표현 계층이다 — topics.ts의 답변 데이터는 이 파일이
-// 있든 없든 라벨 텍스트로만 저장된다(session.quizAnswers와
-// IdealTypeResult.silhouette 둘 다 부품 ID가 아니라 라벨 문자열만
-// 가진다 — 라벨→부품 매핑은 engine/ideal-type-silhouette.ts가
-// 렌더링 시점에 담당한다). 실루엣 품질이 기준에 못 미쳐 통째로 뺄 경우:
-//   1) 이 파일(IdealTypeVisualParts.tsx) 삭제
-//   2) TopicQuiz.tsx의 VisualGridStep 함수와 그 사용처(phase 분기) 삭제
-//   3) topics.ts에서 hairStyle/hairColor/clothingStyle/accessory/
-//      colorImpression 5개 축의 type을 "visualPick"에서 "quickTap"으로
-//      변경(라벨·설명은 그대로 재사용 가능)
-//   4) engine/ideal-type-silhouette.ts 삭제, ideal-type-generator.ts의
-//      silhouette 필드 부착 코드 삭제, IdealTypeResultBlocks.tsx의
-//      실루엣 섹션 삭제, share-validation.ts의 silhouette 검증 삭제,
-//      scripts/silhouette-check.mjs와 package.json/quality-gate.yml의
-//      해당 스텝 삭제
-//   5) design-tokens.css의 --color-hair-* 5줄과 --color-figure-* 2줄,
-//      tailwind.config.ts의 hair-*/figure-* 항목 삭제
-// 이 문항들의 질문 문구·옵션 데이터는 그대로 두고 표현만 텍스트 칩으로
-// 되돌아간다 — 데이터 계층을 다시 설계할 필요가 없다.
-import {
-  ACCESSORY_KEYS,
-  AccessoryKey,
-  COLLAR_KEYS,
-  COLOR_KEYS,
-  CollarKey,
-  ColorKey,
-  HAIR_COLOR_KEYS,
-  HAIR_KEYS,
-  HairColorKey,
-  HairKey,
-  IdealTypeSilhouetteParts,
-} from "../engine/ideal-type-silhouette";
+// 있든 없든 라벨 텍스트로만 저장된다(session.quizAnswers에 부품 ID가
+// 아니라 라벨 문자열이 들어간다). 이 문항들을 통째로 텍스트 칩으로
+// 되돌리려면 topics.ts에서 5개 축의 type을 "visualPick"에서
+// "quickTap"으로 바꾸고 TopicQuiz.tsx의 VisualGridStep 사용처를
+// 지우면 된다 — 데이터 계층을 다시 설계할 필요가 없다.
+//
+// (참고: 이 부품 그림을 결과 카드에 하나로 조합해 보여주는 기능을
+// PR #83/#84에서 시도했다가 품질 기준 미달로 걷어냈다 — 지금 이
+// 파일은 "고르는 화면"용 썸네일만 담당한다.)
+export const HAIR_KEYS = ["lightBob", "sleekStraight", "softWave", "asymmetricCrop", "neatPart", "activeShort"] as const;
+export const HAIR_COLOR_KEYS = ["black", "darkBrown", "lightBrown", "blonde", "dyed"] as const;
+export const COLLAR_KEYS = ["shirtCollar", "knitNeckline", "hoodieNeckline", "turtleneck", "blazerCollar", "basicTee"] as const;
+export const ACCESSORY_KEYS = ["none", "glasses", "earring", "hat", "scarf"] as const;
+export const COLOR_KEYS = ["warm", "deep", "soft", "bold", "fresh", "calm"] as const;
+
+type HairKey = (typeof HAIR_KEYS)[number];
+type HairColorKey = (typeof HAIR_COLOR_KEYS)[number];
+type CollarKey = (typeof COLLAR_KEYS)[number];
+type AccessoryKey = (typeof ACCESSORY_KEYS)[number];
+type ColorKey = (typeof COLOR_KEYS)[number];
 
 const LINE = "stroke-text-primary";
 const LINE_WIDTH = 2.2;
@@ -336,29 +309,6 @@ export function ColorThumb({ index }: { index: number }) {
   return (
     <svg viewBox="0 0 100 100" className="h-16 w-16" role="img" aria-hidden="true">
       <circle cx="50" cy="50" r="42" className={ACCENT_FILL_CLASS[color]} />
-    </svg>
-  );
-}
-
-// 결과 카드·공유 링크에서 고른 5개 부품을 하나로 조합해 보여주는 그림.
-// 위 5개 Thumb과 완전히 같은 부품 함수·좌표를 쓴다. 배경 색은 인물보다
-// 훨씬 작게 잡아서 "정보 없는 큰 단색 원"이 되지 않게 하고, 머리·옷을
-// 전부 채워진 면으로 그려서 머리 모양이 실루엣의 주인공이 되게 했다.
-// 쌓는 순서(뒤→앞): 배경 색(작게) → 옷 몸통 → 목(피부, 터틀넥이면
-// 생략) → 넥라인 오버레이(후드는 목보다 먼저 와야 자연스러움) → 얼굴
-// → 머리 → 소품(맨 위).
-export function CombinedSilhouette({ parts }: { parts: IdealTypeSilhouetteParts }) {
-  const accentFill = ACCENT_FILL_CLASS[parts.color];
-  return (
-    <svg viewBox="6 0 148 204" className="h-64 w-auto" role="img" aria-label="선택한 외모 취향을 조합한 그림">
-      <ellipse cx="80" cy="76" rx="46" ry="52" className={accentFill} />
-      <GarmentBase />
-      {parts.collar === "hoodieNeckline" ? <CollarOverlay collar={parts.collar} /> : null}
-      {parts.collar !== "turtleneck" ? <NeckFill /> : null}
-      {parts.collar !== "hoodieNeckline" ? <CollarOverlay collar={parts.collar} /> : null}
-      <HeadFill />
-      <HairSilhouette hair={parts.hair} color={parts.hairColor} />
-      <AccessoryShape accessory={parts.accessory} />
     </svg>
   );
 }
