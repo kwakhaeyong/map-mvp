@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateIdealTypeResult } from "../../../src/map-decision-v1/engine/ideal-type-generator";
 import {
   MAX_INPUT_LENGTH,
-  checkGenerationAllowed,
-  commitGenerationFailure,
-  commitGenerationSuccess,
   getClientIp,
+  isTrustedRequestOrigin,
+  releaseGenerationSlotOnFailure,
+  reserveGenerationSlot,
 } from "../../../src/map-decision-v1/engine/rate-limit";
 import { resolveTopic } from "../../../src/map-decision-v1/engine/topics";
 import { IdealTypeResult, MapSession } from "../../../src/map-decision-v1/types";
@@ -50,6 +50,16 @@ function isOversized(session: MapSession): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  // curl 한 줄로 직접 때리는 기회주의적 남용을 막는다 — 위조는 가능하지만
+  // 헤더 자체를 안 붙이는 가장 흔한 경우는 걸러진다. 공유 링크에서 넘어와
+  // 새 카드를 만드는 경로도 이 시점 기준 Origin이라 정상적으로 통과한다.
+  if (!isTrustedRequestOrigin(request)) {
+    return NextResponse.json(
+      { blocked: true, reason: "invalid_request", message: "요청 형식이 올바르지 않아요." } satisfies BlockedResponse,
+      { status: 400 },
+    );
+  }
+
   const body: unknown = await request.json().catch(() => null);
   if (!isRequestBody(body)) {
     return NextResponse.json(
@@ -70,19 +80,31 @@ export async function POST(request: NextRequest) {
   // 진로의 generate-result와 같은 레이트리밋 예산을 공유한다(엔드포인트만
   // 분리, 안전장치는 그대로 재사용).
   //
-  // 한도는 호출 "전"에 확인만 하고, 실제 차감(commitGenerationSuccess)은
-  // 생성이 성공한 뒤에만 한다 — 생성이 실패했는데 사용자 몫이 깎이면
-  // 안 되기 때문이다. 대신 실패에는 별도의 낮은 상한(failure_limit)이
-  // 있어서, 항상 실패하는 입력으로 무제한 재시도하는 걸 막는다.
-  const { allowed, reason } = checkGenerationAllowed(ip, session.startedAt);
-  if (!allowed) {
+  // 세션/IP-하루/전체-하루 세 한도를 Redis 원자적 연산으로 먼저 "예약"한다
+  // (reserveGenerationSlot 주석 참고) — 예약에 성공한 뒤 생성이 실패하면
+  // releaseGenerationSlotOnFailure로 세션/IP 몫만 되돌린다.
+  const reservation = await reserveGenerationSlot(ip, session.startedAt);
+  if (!reservation.allowed) {
     const message =
-      reason === "session_limit"
+      reservation.reason === "session_limit"
         ? "이 카드에서 만들 수 있는 횟수를 모두 사용했어요. 새로 시작해 주세요."
-        : reason === "daily_limit"
+        : reservation.reason === "ip_daily_limit"
           ? "오늘 만들 수 있는 카드 수를 모두 사용했어요. 내일 다시 시도해 주세요."
-          : "이 카드는 반복해서 만들지 못했어요. 잠시 후 다시 시도하거나 새로 시작해 주세요.";
-    const blockedReason = reason === "session_limit" ? "session_generation_limit" : reason === "daily_limit" ? "daily_generation_limit" : "generation_failure_limit";
+          : reservation.reason === "global_daily_limit"
+            ? "지금 이용자가 많아요. 잠시 후 다시 시도해 주세요."
+            : reservation.reason === "unavailable"
+              ? "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요."
+              : "이 카드는 반복해서 만들지 못했어요. 잠시 후 다시 시도하거나 새로 시작해 주세요.";
+    const blockedReason =
+      reservation.reason === "session_limit"
+        ? "session_generation_limit"
+        : reservation.reason === "ip_daily_limit"
+          ? "ip_daily_generation_limit"
+          : reservation.reason === "global_daily_limit"
+            ? "global_daily_generation_limit"
+            : reservation.reason === "unavailable"
+              ? "generation_unavailable"
+              : "generation_failure_limit";
     return NextResponse.json(
       { blocked: true, reason: blockedReason, message } satisfies BlockedResponse,
       { status: 429 },
@@ -91,13 +113,12 @@ export async function POST(request: NextRequest) {
 
   const result = await generateIdealTypeResult(session);
   if (!result) {
-    commitGenerationFailure(session.startedAt);
+    await releaseGenerationSlotOnFailure(ip, session.startedAt);
     return NextResponse.json(
       { blocked: true, reason: "generation_failed", message: "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
       { status: 502 },
     );
   }
 
-  commitGenerationSuccess(ip, session.startedAt);
   return NextResponse.json({ result } satisfies SuccessResponse);
 }

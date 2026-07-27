@@ -1,14 +1,12 @@
-import { Redis } from "@upstash/redis";
 import { randomBytes } from "crypto";
+import { getRedisClient } from "./redis-client";
 
 // 익명 공유 링크 저장소. Upstash Redis(Vercel Marketplace)를 쓴다 — 로그인
 // 없이 "ID로 저장하고 꺼내 쓰기"만 필요하고, 만료 기능이 기본 내장돼
-// 있어서 별도 삭제 배치 작업이 필요 없다. Vercel 프로젝트에 Upstash를
-// 연결하면 UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN 환경변수가
-// 자동으로 채워진다(대시보드에서 Marketplace로 연결하는 건 오너가
-// 직접 해야 하는 부분 — 이 파일은 그 환경변수가 있다고 가정하고, 없으면
-// 조용히 null을 반환해 호출부가 "지금은 공유 기능을 쓸 수 없어요"로
-// 처리하게 한다. ANTHROPIC_API_KEY 없을 때의 처리 방식과 같다).
+// 있어서 별도 삭제 배치 작업이 필요 없다. 연결 설정 자체는
+// redis-client.ts에 있다(rate-limit.ts의 생성 한도와 같은 인스턴스를
+// 쓴다). 연결 정보가 없으면 호출부가 "지금은 공유 기능을 쓸 수 없어요"로
+// 처리한다(ANTHROPIC_API_KEY 없을 때의 처리 방식과 같다).
 
 const SHARE_TTL_SECONDS = 60 * 60 * 24 * 90; // 90일
 
@@ -28,25 +26,12 @@ export type SharedResultRecord = {
   quizDepth?: "quick" | "deep";
 };
 
-let client: Redis | null | undefined;
-
-function getClient(): Redis | null {
-  if (client !== undefined) return client;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  // 자동 파이프라이닝(같은 틱 안의 여러 호출을 한 요청으로 묶는 기능)은
-  // 끈다 — 우리는 요청마다 많아야 호출 한두 번뿐이라 얻는 이득이 없고,
-  // 끄면 매 호출이 단순한 단일 명령 요청이 되어 동작을 예측하기 쉽다.
-  client = url && token ? new Redis({ url, token, enableAutoPipelining: false }) : null;
-  return client;
-}
-
 function shareKey(id: string): string {
   return `share:${id}`;
 }
 
 export function isShareStoreConfigured(): boolean {
-  return getClient() !== null;
+  return getRedisClient() !== null;
 }
 
 // base64url 12바이트(96비트) — URL에 넣기 좋고 추측이 사실상 불가능하다.
@@ -60,7 +45,7 @@ export function createShareId(): string {
 // 횟수 확인 중 하나라도 이 상태면 나머지도 같은 Redis라 어차피 실패할
 // 가능성이 높으므로, 굳이 개별적으로 복구를 시도하지 않는다.
 export async function saveShare(record: SharedResultRecord): Promise<boolean> {
-  const redis = getClient();
+  const redis = getRedisClient();
   if (!redis) return false;
   try {
     await redis.set(shareKey(record.id), JSON.stringify(record), { ex: SHARE_TTL_SECONDS });
@@ -78,7 +63,7 @@ export async function saveShare(record: SharedResultRecord): Promise<boolean> {
 export type GetShareResult = { status: "ok"; record: SharedResultRecord } | { status: "not_found" } | { status: "unavailable" };
 
 export async function getShare(id: string): Promise<GetShareResult> {
-  const redis = getClient();
+  const redis = getRedisClient();
   if (!redis) return { status: "unavailable" };
   let raw: string | SharedResultRecord | null;
   try {
@@ -105,12 +90,20 @@ export async function getShare(id: string): Promise<GetShareResult> {
 // 한다(기존 generate-result 쪽 제한은 메모리 기반이라 콜드 스타트마다
 // 풀리는 한계가 있는데, 여기서는 이미 영구 저장소를 쓰니 더 안정적으로
 // 만들 수 있다).
-const DAILY_SHARE_LIMIT = 5;
+//
+// 5였던 걸 25로 올렸다 — 국내 이동통신사 CGNAT 환경에서는 여러 실사용자가
+// 같은 공인 IP를 공유해서, 5로는 무관한 사용자가 남의 사용량으로 차단될
+// 위험이 있었다. 공유 1건의 실비용은 Redis SET 1번뿐이라(생성처럼 AI
+// 호출 비용이 없음) 한도를 넉넉히 둬도 실제 비용 방어에는 영향이 없고,
+// 스팸성 대량 생성만 막으면 된다. 게다가 링크 재사용(ShareResult.tsx의
+// ensureShareUrl)이 들어가 정상 사용자는 같은 결과를 여러 번 눌러도
+// 한도를 한 번만 소모한다.
+const DAILY_SHARE_LIMIT = 25;
 
 export type ShareAttemptReason = "daily_limit" | "unavailable";
 
 export async function registerShareAttempt(ip: string): Promise<{ allowed: boolean; reason?: ShareAttemptReason }> {
-  const redis = getClient();
+  const redis = getRedisClient();
   if (!redis) return { allowed: false, reason: "unavailable" };
   const day = new Date().toISOString().slice(0, 10);
   const key = `share-limit:${ip}:${day}`;
