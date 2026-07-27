@@ -141,7 +141,20 @@ export default function PrivacyPage() {
         </section>
 
         <section className="mt-8 space-y-3">
-          <h2 className="text-xl font-black tracking-[-0.02em]">7. 개인정보 보호책임자</h2>
+          <h2 className="text-xl font-black tracking-[-0.02em]">7. 만 14세 미만 아동의 개인정보</h2>
+          <p className="break-keep leading-7 text-text-secondary">
+            본 서비스는 만 14세 미만 아동의 개인정보를 수집하지 않습니다. 만
+            14세 미만 아동의 개인정보가 수집된 사실을 알게 된 경우 지체 없이
+            해당 정보를 파기합니다. 관련 문의는{" "}
+            <a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} className="underline underline-offset-2 hover:text-text-primary">
+              {PRIVACY_CONTACT_EMAIL}
+            </a>
+            로 연락해 주세요.
+          </p>
+        </section>
+
+        <section className="mt-8 space-y-3">
+          <h2 className="text-xl font-black tracking-[-0.02em]">8. 개인정보 보호책임자</h2>
           <p className="break-keep leading-7 text-text-secondary">
             성명: {PRIVACY_CONTACT_NAME}
             <br />
@@ -153,7 +166,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="mt-8 space-y-3">
-          <h2 className="text-xl font-black tracking-[-0.02em]">8. 문의처</h2>
+          <h2 className="text-xl font-black tracking-[-0.02em]">9. 문의처</h2>
           <p className="break-keep leading-7 text-text-secondary">
             개인정보 관련 문의는{" "}
             <a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} className="underline underline-offset-2 hover:text-text-primary">
@@ -164,9 +177,9 @@ export default function PrivacyPage() {
         </section>
 
         <p className="mt-10 text-xs font-semibold text-text-muted">
-          시행일: 2026-07-25
+          시행일: 2026-07-27
           <br />
-          최근 개정일: 2026-07-25 (공유 링크 관련 내용 추가)
+          최근 개정일: 2026-07-27 (만 14세 미만 아동의 개인정보 관련 조항 추가)
         </p>
       </article>
     </main>
