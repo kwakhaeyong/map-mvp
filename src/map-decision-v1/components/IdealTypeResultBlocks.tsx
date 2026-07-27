@@ -280,34 +280,55 @@ function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
   );
 }
 
-// ★가장 강조하는 섹션★ — 킬러 요소라 다른 카드보다 테두리·배경을
-// 눈에 띄게 다르게 만든다(진로 결과의 "핵심 메시지·통찰" 카드와 같은
-// border-primary + bg-surface-elevated 강조 처리를 그대로 따른다).
+// ★가장 강조하는 섹션★ — 이 제품의 유일한 차별점(교차 발견)이 여기 있다.
+// 다른 6개 블록은 전부 흰 카드 + 이모지라 묻히므로, 이 블록만 배경을
+// 반전(어두운 배경 + 밝은 글자)해서 캡처하고 싶어지는 지점으로 만든다.
+// 이모지 대신 영문 eyebrow 라벨 + 크기·굵기 차이로 위계를 준다(MAP OS
+// Bible: professional/premium/calm, 유치한 시각 언어 회피). "내가 줄 수
+// 있는 것"은 채워진 패널, "내가 보완할 부분"은 테두리만 있는 패널로 —
+// 색을 늘리지 않고 채움 유무만으로 두 그룹을 구분한다. 문장이 강하게
+// 읽히도록 항목 사이 간격과 줄간격을 다른 블록보다 넉넉하게 둔다.
+//
+// 다른 섹션처럼 <Card>를 그대로 쓰지 않는다 — Card/Surface가 이미
+// "bg-surface-elevated"(흰 배경)를 내부에서 고정으로 넣고 있어서,
+// className으로 bg-primary를 얹어도 실제 생성되는 CSS 순서상
+// bg-surface-elevated가 이겨서 카드가 계속 흰 배경으로 남는 문제가
+// 있었다(Tailwind는 JSX의 클래스 순서가 아니라 컴파일된 스타일시트
+// 순서로 우선순위가 정해진다). 그래서 이 섹션만 Card를 거치지 않고
+// Surface/Card와 같은 시각 속성(테두리·둥근 모서리·그림자·패딩)을
+// bg-primary가 유일한 배경색이 되도록 직접 조합한다.
 function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSelfReflection }) {
   return (
-    <Card id="reflection" className="scroll-mt-6 flex flex-col gap-4 border-2 border-primary bg-surface-elevated shadow-floating">
-      <SectionHeader icon="✨" title="자기 성찰" description="이상형 답변을 뒤집어서 본 나의 모습이에요." />
-      <div className="rounded-medium border border-value bg-value/50 p-3">
-        <p className="text-xs font-black text-text-primary">내가 줄 수 있는 것</p>
-        <ul className="mt-1.5 space-y-1.5">
+    <div
+      id="reflection"
+      className="scroll-mt-6 flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
+    >
+      <div>
+        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-primary-foreground/70">Self Reflection</p>
+        <h2 className="mt-2 text-lg font-black tracking-[-0.02em] text-primary-foreground sm:text-xl">자기 성찰</h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-primary-foreground/70">이상형 답변을 뒤집어서 본 나의 모습이에요.</p>
+      </div>
+      <div className="flex flex-col gap-3">
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground/70">내가 줄 수 있는 것</p>
+        <ul className="flex flex-col gap-4 rounded-medium border border-primary-foreground/15 bg-primary-foreground/15 p-4 sm:p-5">
           {selfReflection.whatYouOffer.map((item, index) => (
-            <li key={index} className="text-sm font-bold leading-6 text-text-primary">
-              · {item}
+            <li key={index} className="text-base font-semibold leading-7 text-primary-foreground sm:text-lg sm:leading-8">
+              {item}
             </li>
           ))}
         </ul>
       </div>
-      <div className="rounded-medium border border-action bg-action/50 p-3">
-        <p className="text-xs font-black text-text-primary">내가 보완할 부분</p>
-        <ul className="mt-1.5 space-y-1.5">
+      <div className="flex flex-col gap-3">
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground/70">내가 보완할 부분</p>
+        <ul className="flex flex-col gap-4 rounded-medium border border-primary-foreground/25 p-4 sm:p-5">
           {selfReflection.whatToImprove.map((item, index) => (
-            <li key={index} className="text-sm font-bold leading-6 text-text-primary">
-              · {item}
+            <li key={index} className="text-base font-semibold leading-7 text-primary-foreground/90 sm:text-lg sm:leading-8">
+              {item}
             </li>
           ))}
         </ul>
       </div>
-    </Card>
+    </div>
   );
 }
 
