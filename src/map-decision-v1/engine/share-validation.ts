@@ -87,11 +87,10 @@ function isValidIdealTypeResultShape(value: unknown): boolean {
   // 데이터 방지"이지 내용 검열이 아니다).
   if (r.tags !== undefined && !isShortStringArray(r.tags)) return false;
 
-  // 외모 취향 실루엣(silhouette)도 이 기능 이전에 저장된 결과에는 없다 —
+  // 외모 취향(silhouette) 라벨도 이 기능 이전에 저장된 결과에는 없다 —
   // 없어도 통과시키고, 있으면 5개 라벨 필드가 전부 짧은 문자열인지만
-  // 확인한다(어떤 라벨이 실제 topics.ts 옵션에 있는지까지는 여기서
-  // 재검증하지 않는다 — 라벨 → 부품 매핑 완전성은 빌드 시점에
-  // scripts/silhouette-check.mjs가 따로 검사한다).
+  // 확인한다(그림 렌더링은 걷어냈지만 라벨 텍스트는 계속 칩으로
+  // 보여주므로 이 검증은 남겨둔다).
   if (r.silhouette !== undefined) {
     const silhouette = r.silhouette as Record<string, unknown>;
     if (typeof silhouette !== "object" || silhouette === null) return false;
