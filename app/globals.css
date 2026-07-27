@@ -1,4 +1,5 @@
 @import "../src/styles/design-tokens.css";
+@import "../src/styles/fonts.css";
 
 @tailwind base;
 @tailwind components;
@@ -36,7 +37,13 @@ body {
     radial-gradient(circle at 88% 12%, rgba(99,179,237,.12), transparent 24rem),
     radial-gradient(circle at 55% 90%, rgba(92,211,167,.10), transparent 30rem),
     linear-gradient(180deg, var(--map-ivory) 0%, #f8f1e7 45%, #fbf8f1 100%);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+  /* "Pretendard Variable"을 맨 앞에 둔다 — -apple-system/BlinkMacSystemFont가
+     먼저 오면 iOS/macOS는 라틴 문자만 그 폰트로 그리고 한글은 OS가 내부적으로
+     자체 한글 폰트(Apple SD Gothic Neo 등)로 조용히 대체해버려서, 목록 뒤쪽에
+     있는 "Pretendard"/"Noto Sans KR"까지 캐스케이드가 내려가지 않는다. 그러면
+     같은 폰트를 실제로 로드해도 한글에는 전혀 반영되지 않는다 — 맨 앞에 둬야
+     한글까지 이 폰트로 그려진다. */
+  font-family: "Pretendard Variable", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
   letter-spacing: -0.014em;
   color: var(--map-navy);
 }
