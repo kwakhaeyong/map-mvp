@@ -35,10 +35,7 @@ export type TopicOption = TopicChoice & { subOptions?: TopicChoice[] };
 // 단일 선택 + 세부 선택지 없음 + 고르는 즉시 자동으로 다음 문항으로
 // 넘어간다(TopicQuiz.tsx의 QuickTapStep). 설명(description)은 데이터에는
 // 있어도 화면에는 안 보여준다("한눈에 고르기"가 목적) — AI에게 보내는
-// 답변 텍스트에는 여전히 포함된다. visualPick: quickTap과 동작은
-// 같지만(단일 선택+자동 다음 넘김) 라벨 대신 그림(썸네일)을 보고
-// 고른다(TopicQuiz.tsx의 VisualGridStep) — 외모처럼 말보다 그림이
-// 더 정확한 문항에 쓴다. ranking: 옵션 전부를 원하는 순서대로 매긴다
+// 답변 텍스트에는 여전히 포함된다. ranking: 옵션 전부를 원하는 순서대로 매긴다
 // (RankingStep) — "제일 좋은 것"만 아니라 전체 우선순위를 알아낼 때
 // 쓴다. slider: 양 끝 사이의 정도를 고른다(SliderStep) — 데이터 구조는
 // preference형처럼 options 배열이지만, 양자택일로 자르기 애매한 축을
@@ -52,7 +49,6 @@ export type TopicQuestionType =
   | "binary"
   | "experience"
   | "quickTap"
-  | "visualPick"
   | "ranking"
   | "slider"
   | "scenario"
@@ -140,20 +136,15 @@ export const TOPICS: Record<string, TopicConfig> = {
     // 새로 추가했다. clothingStyle은 "옷 실루엣"에서 "옷깃·넥라인"으로
     // 의미가 바뀌었다(질문·옵션 내용 변경). 필수 36→37개로 늘었다
     // (외모 클러스터가 bodyFeel 제거 1개 + hairColor/accessory 추가
-    // 2개로 순증가 1개).
-    quizVersion: 5,
+    // 2개로 순증가 1개). 6: 시각적 외모 관련 요소를 전부 제거했다 —
+    // hairStyle/hairColor/clothingStyle/accessory/colorImpression 5개
+    // 문항(썸네일 그리드로 고르던 시각 선택)과 결과 화면의 실루엣
+    // 잔여물(외모 취향 블록·탭, IdealTypeSilhouetteLabels 타입,
+    // ideal-type-silhouette.ts, IdealTypeVisualParts.tsx)을 전부 없앴다.
+    // 태그 4축(relationship/lifestyle/experienceStressResponse/binary1)은
+    // 이 5개 축과 무관해 영향 없다. 필수 37→32개로 줄었다.
+    quizVersion: 6,
     axes: [
-      // ── 1~8: 외모 클러스터 ────────────────────────────────────────
-      // hairStyle/hairColor/clothingStyle/accessory/colorImpression은
-      // 텍스트 라벨이 아니라 어깨 위 구도(증명사진 스타일) 실루엣 부품
-      // 썸네일을 직접 보고 고르는 시각적 선택이다
-      // (components/IdealTypeVisualParts.tsx). 전신이 아니라 어깨
-      // 위까지만 그려서 체형을 아예 그리지 않는다 — 타겟 연령(10대
-      // 중반 포함)에 부적절할 수 있는 요소를 원천적으로 없앴다(이전
-      // 버전의 bodyFeel 문항은 그래서 제거했다). "같은 형식 3개 연속
-      // 금지" 규칙 때문에 시각 선택 5개를 한 번에 붙이지 않고 사이에
-      // giftStyle(순위 매기기)·personality(선호형)를 끼워 2개씩
-      // 끊었다 — 그래도 외모라는 주제 흐름은 그대로 유지된다.
       {
         id: "appearance",
         type: "quickTap",
@@ -168,39 +159,6 @@ export const TOPICS: Record<string, TopicConfig> = {
         ],
       },
       {
-        id: "hairStyle",
-        type: "visualPick",
-        required: true,
-        question: "어떤 머리 스타일에 더 끌려? 그림을 보고 골라줘",
-        options: [
-          { label: "가벼운 단발", description: "턱선 정도 길이의 산뜻한 단발" },
-          { label: "슬릭한 생머리", description: "매끈하게 떨어지는 긴 생머리" },
-          { label: "부드러운 웨이브", description: "자연스러운 웨이브가 있는 머리" },
-          { label: "비대칭 크롭", description: "개성 있는 비대칭 크롭 스타일" },
-          { label: "단정한 가르마", description: "깔끔하게 정돈된 가르마 스타일" },
-          { label: "짧은 액티브컷", description: "활동적인 느낌의 짧은 스타일" },
-        ],
-      },
-      {
-        id: "hairColor",
-        type: "visualPick",
-        required: true,
-        question: "어떤 머리 색에 더 끌려? 그림을 보고 골라줘",
-        options: [
-          { label: "흑발", description: "차분하고 깨끗한 인상의 검은 머리" },
-          { label: "짙은 갈색", description: "자연스러운 무게감이 있는 진한 갈색" },
-          { label: "밝은 갈색", description: "부드럽고 화사한 밝은 갈색" },
-          { label: "밝은 톤", description: "화사하고 눈에 띄는 밝은 색(금발 등)" },
-          { label: "염색 톤", description: "과감하고 개성 있는 컬러 염색" },
-        ],
-      },
-      // ── 순위 매기기 ───────────────────────────────────────────────
-      // giftStyle을 단일 선택(quickTap)에서 순위 매기기로 바꿨다 —
-      // "어떤 표현이 제일 좋아?"보다 "표현 방식 4개를 순서대로 매겨줘"가
-      // 더 진한 정보를 준다(1순위만 알면 안 되는 나머지 우선순위도
-      // 드러난다). 시각 선택 2개(hairStyle/hairColor) 뒤에 배치해
-      // "같은 형식 3개 연속 금지" 규칙을 지킨다.
-      {
         id: "giftStyle",
         type: "ranking",
         required: true,
@@ -210,33 +168,6 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "깜짝 이벤트", description: "예상 못한 서프라이즈를 좋아함" },
           { label: "필요한 걸 알아서 챙겨주기", description: "말 안 해도 알아서 챙겨주는 걸 좋아함" },
           { label: "함께하는 시간 자체", description: "물건보다 같이 보내는 시간이 더 중요함" },
-        ],
-      },
-      {
-        id: "clothingStyle",
-        type: "visualPick",
-        required: true,
-        question: "어떤 옷깃·넥라인에 더 끌려? 그림을 보고 골라줘",
-        options: [
-          { label: "셔츠 칼라", description: "단정하게 각진 셔츠 옷깃" },
-          { label: "니트 넥라인", description: "둥글고 부드러운 니트 넥라인" },
-          { label: "후드 넥라인", description: "편안하고 캐주얼한 후드 넥라인" },
-          { label: "터틀넥", description: "목까지 올라오는 터틀넥" },
-          { label: "재킷 칼라", description: "정갈하고 각진 재킷 옷깃" },
-          { label: "기본 티 넥라인", description: "심플한 기본 티셔츠 넥라인" },
-        ],
-      },
-      {
-        id: "accessory",
-        type: "visualPick",
-        required: true,
-        question: "어떤 소품이 어울리는 사람에게 더 끌려? 그림을 보고 골라줘",
-        options: [
-          { label: "없음", description: "소품 없이 깔끔한 인상" },
-          { label: "안경", description: "지적이고 단정한 안경 인상" },
-          { label: "귀걸이", description: "포인트가 되는 귀걸이 인상" },
-          { label: "모자", description: "캐주얼하고 활동적인 모자 인상" },
-          { label: "목도리", description: "포근하고 따뜻한 목도리 인상" },
         ],
       },
       {
@@ -305,20 +236,6 @@ export const TOPICS: Record<string, TopicConfig> = {
               { label: "자기만의 세계가 있는", description: "취향과 관심사가 독특한" },
             ],
           },
-        ],
-      },
-      {
-        id: "colorImpression",
-        type: "visualPick",
-        required: true,
-        question: "어떤 배경 색감에 더 끌려? 색을 보고 골라줘",
-        options: [
-          { label: "밝고 따뜻한 색", description: "보는 순간 화사하고 밝은 인상" },
-          { label: "차분하고 깊은 색", description: "무게감 있고 차분한 인상" },
-          { label: "부드러운 색", description: "은은하고 부드러운 인상" },
-          { label: "선명하고 강한 색", description: "또렷하고 강렬한 인상" },
-          { label: "산뜻한 색", description: "싱그럽고 산뜻한 인상" },
-          { label: "은은한 뉴트럴 색", description: "꾸미지 않은 듯 차분한 인상" },
         ],
       },
       {

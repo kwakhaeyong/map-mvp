@@ -27,16 +27,6 @@ const config: Config = {
         action: "var(--color-action)",
         success: "var(--color-success)",
         error: "var(--color-error)",
-        // 이상형 퀴즈 실루엣(IdealTypeVisualParts.tsx) 전용 — 실루엣을
-        // 통째로 뺄 때 design-tokens.css의 --color-hair-* 5줄과 함께
-        // 지우면 된다.
-        "hair-black": "var(--color-hair-black)",
-        "hair-darkbrown": "var(--color-hair-darkbrown)",
-        "hair-lightbrown": "var(--color-hair-lightbrown)",
-        "hair-blonde": "var(--color-hair-blonde)",
-        "hair-dyed": "var(--color-hair-dyed)",
-        "figure-skin": "var(--color-figure-skin)",
-        "figure-garment": "var(--color-figure-garment)",
       },
       borderRadius: {
         small: "var(--radius-small)",

@@ -1,4 +1,4 @@
-import { IdealTypeFlags, IdealTypeMatrix, IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmap, IdealTypeSelfReflection, IdealTypeSilhouetteLabels } from "../types";
+import { IdealTypeFlags, IdealTypeMatrix, IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmap, IdealTypeSelfReflection } from "../types";
 import { Card } from "./ui/primitives";
 
 // 이상형 결과를 "보여주기만" 하는 순수 프레젠테이션 컴포넌트 모음.
@@ -29,15 +29,13 @@ const NAV_ITEMS: Array<{ id: string; label: string }> = [
   { id: "matrix", label: "매트릭스" },
   { id: "flags", label: "신호등" },
   { id: "reflection", label: "성찰" },
-  { id: "appearance", label: "외모 취향" },
   { id: "roadmap", label: "로드맵" },
 ];
 
-function SectionNav({ showAppearance }: { showAppearance: boolean }) {
-  const items = showAppearance ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.id !== "appearance");
+function SectionNav() {
   return (
     <div className="flex flex-wrap gap-1.5">
-      {items.map((item) => (
+      {NAV_ITEMS.map((item) => (
         <a
           key={item.id}
           href={`#${item.id}`}
@@ -47,29 +45,6 @@ function SectionNav({ showAppearance }: { showAppearance: boolean }) {
         </a>
       ))}
     </div>
-  );
-}
-
-// 실루엣 그림(CombinedSilhouette)은 프로덕션 품질 기준 미달로 걷어냈다
-// (PR #83/#84 → 제거). 그림 없이도 사용자가 실제로 고른 답변은 계속
-// 보여준다 — 부품 ID가 아니라 라벨 텍스트를 그대로 칩으로 나열한다.
-// 로드맵 바로 앞이라는 위치는 그림이 있던 시절과 동일하게 유지한다.
-function AppearanceChipsSection({ labels }: { labels: IdealTypeSilhouetteLabels }) {
-  const items = [labels.hairStyle, labels.hairColor, labels.clothingStyle, labels.accessory, labels.colorImpression];
-  return (
-    <Card id="appearance" className="scroll-mt-6 flex flex-col gap-3">
-      <SectionHeader icon="🎨" title="외모 취향" description="퀴즈에서 고른 답변이에요." />
-      <div className="flex flex-wrap gap-1.5">
-        {items.map((label) => (
-          <span
-            key={label}
-            className="inline-flex items-center rounded-pill border border-border/60 bg-surface/70 px-2.5 py-1 text-xs font-extrabold text-text-primary"
-          >
-            {label}
-          </span>
-        ))}
-      </div>
-    </Card>
   );
 }
 
@@ -372,13 +347,12 @@ export function IdealTypeResultBlocks({ result }: { result: IdealTypeResult }) {
   return (
     <>
       <HeroHeader result={result} />
-      <SectionNav showAppearance={Boolean(result.silhouette)} />
+      <SectionNav />
       <CriteriaSection criteria={result.criteria} />
       <PatternsSection items={result.attractionPatterns} />
       <MatrixSection matrix={result.matrix} />
       <FlagsSection flags={result.flags} />
       <SelfReflectionSection selfReflection={result.selfReflection} />
-      {result.silhouette ? <AppearanceChipsSection labels={result.silhouette} /> : null}
       <RoadmapSection roadmap={result.roadmap} />
     </>
   );
