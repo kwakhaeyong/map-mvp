@@ -73,7 +73,7 @@ function IdealTypeCardBody({
   // 공유하기를 눌렀을 때만 서버에 저장 요청을 보낸다 — 카드를 만든다고
   // 자동으로 저장되지 않는다. 서버는 이 결과(JSON)만 저장하고, 대화
   // 원문은 절대 받지도 저장하지도 않는다.
-  const { shareState, shareError, sharedUrl, share } = useShareResult({
+  const { shareState, shareError, sharedUrl, canNativeShare, share, copyLink } = useShareResult({
     topicId: session.topicId ?? "idealType",
     result,
     quizDepth: session.idealTypeQuizDepth,
@@ -94,13 +94,18 @@ function IdealTypeCardBody({
 
       <ShareStatusCard shareState={shareState} shareError={shareError} sharedUrl={sharedUrl} />
       <div className="flex gap-2">
-        <Button variant="secondary" size="lg" className="flex-1" onClick={share} disabled={shareState === "creating"}>
-          {shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : "공유하기"}
-        </Button>
-        <Button variant="primary" size="lg" className="flex-1" onClick={onReset}>
-          ✨ 너도 만들어봐
+        {canNativeShare ? (
+          <Button variant="secondary" size="lg" className="flex-1" onClick={share} disabled={shareState === "creating"}>
+            {shareState === "creating" ? "링크 만드는 중…" : "카톡·인스타로 공유"}
+          </Button>
+        ) : null}
+        <Button variant={canNativeShare ? "ghost" : "secondary"} size="lg" className="flex-1" onClick={copyLink} disabled={shareState === "creating"}>
+          {shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : "링크 복사"}
         </Button>
       </div>
+      <Button variant="primary" size="lg" onClick={onReset}>
+        ✨ 너도 만들어봐
+      </Button>
       <a href="/privacy" className="text-center text-xs font-semibold text-text-muted underline underline-offset-2 hover:text-text-primary">
         개인정보처리방침
       </a>
