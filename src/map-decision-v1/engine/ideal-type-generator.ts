@@ -261,9 +261,16 @@ function capRoadmapPhases(phases: RawRoadmap["phases"]): IdealTypeRoadmapPhase[]
 // 실패"로만 보이고 원인을 알 수 없었다.
 //
 // 1차 시도가 잘림으로 실패하면, 2차 시도는 같은 조건으로 또 잘릴 확률이
-// 높으므로 더 큰 max_tokens로 재시도한다.
+// 높으므로 더 큰 max_tokens로 재시도한다 — 단, 여기 두 호출은 스트리밍을
+// 쓰지 않는 client.messages.create() 방식이라 Anthropic 공식 문서가 명시한
+// "논스트리밍은 max_tokens 16,000 초과 시 어느 모델이든 SDK/인프라 타임아웃
+// 위험이 있다(그럴 경우 스트리밍으로 전환)"는 상한을 넘기지 않도록
+// 24576이 아니라 16384로 제한한다. 재시도가 1차와 같은 상한을 쓰게 되어
+// "예산을 키워서 구제"하는 효과는 약해지지만, 재시도가 타임아웃으로 죽어
+// 사용자가 아무것도 못 받는 것보다는 안전하다. 16384에서도 계속 잘리면
+// 스트리밍 전환이 필요하다는 신호 — 별도 승인 후 처리한다.
 const IDEAL_TYPE_MAX_TOKENS = 16384;
-const IDEAL_TYPE_MAX_TOKENS_RETRY = 24576;
+const IDEAL_TYPE_MAX_TOKENS_RETRY = 16384;
 
 async function attemptGeneration(client: Anthropic, session: MapSession, maxTokens: number): Promise<{ result: IdealTypeResult | null; truncated: boolean }> {
   let responseText: string | undefined;

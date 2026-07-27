@@ -295,8 +295,16 @@ function buildInsightBlock(raw: RawInsights): InsightBlock {
 // 구형 모델 기준으로 잡은 값이라 새 토크나이저(같은 텍스트에 약 30% 더
 // 많은 토큰)와 사고 토큰까지 더해지면 부족할 수 있다 — 1차 시도가
 // 잘리면(stop_reason === "max_tokens") 2차는 더 큰 상한으로 재시도한다.
+// 단, 이 호출은 스트리밍을 쓰지 않는 client.messages.create() 방식이라
+// Anthropic 공식 문서가 명시한 "논스트리밍은 max_tokens 16,000 초과 시
+// 어느 모델이든 SDK/인프라 타임아웃 위험이 있다(그럴 경우 스트리밍으로
+// 전환)"는 상한을 넘기지 않도록 24576이 아니라 16384로 제한한다. 재시도가
+// 1차와 같은 상한을 쓰게 되어 "예산을 키워서 구제"하는 효과는 약해지지만,
+// 재시도가 타임아웃으로 죽어 사용자가 아무것도 못 받는 것보다는 안전하다.
+// 16384에서도 계속 잘리면 스트리밍 전환이 필요하다는 신호 — 별도 승인 후
+// 처리한다.
 const FULL_GENERATION_MAX_TOKENS = 16384;
-const FULL_GENERATION_MAX_TOKENS_RETRY = 24576;
+const FULL_GENERATION_MAX_TOKENS_RETRY = 16384;
 
 // One attempt: call Sonnet, parse, validate. Returns null on any failure so
 // generateFinalResult can retry it without duplicating this logic.
