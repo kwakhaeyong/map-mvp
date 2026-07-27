@@ -1,9 +1,9 @@
 import { ImageResponse } from "next/og";
 import { getShare } from "../../../../src/map-decision-v1/engine/share-store";
 import { IdealTypeResult } from "../../../../src/map-decision-v1/types";
-import { buildIdealTypeCardElement, CARD_HEIGHT, CARD_WIDTH, loadCardFonts, ReflectionSide } from "../../../../src/map-decision-v1/engine/ideal-type-card-image";
+import { buildIdealTypeCardElement, CardTheme, CARD_HEIGHT, CARD_WIDTH, loadCardFonts } from "../../../../src/map-decision-v1/engine/ideal-type-card-image";
 
-// 인스타 등에 저장해서 올릴 수 있는 "한 장 MAP" PNG. 어떤 metadata나
+// 인스타 스토리에 올릴 수 있는 "한 장 MAP" PNG. 어떤 metadata나
 // opengraph-image 규칙에도 연결하지 않은 독립 라우트다(그러면 카톡/
 // 인스타 링크 미리보기에 자동으로 끼어들어 "동적 OG"가 되어버린다) —
 // 이 URL은 오직 사용자가 직접 저장 버튼을 눌렀을 때만 호출된다.
@@ -15,8 +15,8 @@ function isIdealTypeResult(value: unknown): value is IdealTypeResult {
   return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.selfReflection === "object";
 }
 
-function isReflectionSide(value: string | null): value is ReflectionSide {
-  return value === "offer" || value === "improve";
+function isCardTheme(value: string | null): value is CardTheme {
+  return value === "purple" || value === "navy" || value === "colorBlock";
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -26,11 +26,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return new Response("Not found", { status: 404 });
   }
 
+  // 최종 테마는 아직 오너 승인 전이라 쿼리 파라미터로 3안을 전부 볼 수
+  // 있게 해뒀다. 승인되면 이 기본값을 확정하고 파라미터 분기는 정리한다.
   const url = new URL(request.url);
-  const sideParam = url.searchParams.get("reflection");
-  const side: ReflectionSide = isReflectionSide(sideParam) ? sideParam : "offer";
+  const themeParam = url.searchParams.get("theme");
+  const theme: CardTheme = isCardTheme(themeParam) ? themeParam : "navy";
 
-  return new ImageResponse(buildIdealTypeCardElement(share.record.result, side), {
+  return new ImageResponse(buildIdealTypeCardElement(share.record.result, theme), {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     fonts: loadCardFonts(),

@@ -1,8 +1,15 @@
-// A형 한 장 MAP(인스타용 PNG) 카드의 satori(next/og ImageResponse) 렌더링
-// 로직. app/r/[id]/card.png/route.ts(프로덕션)와 개발 전용 미리보기
-// 라우트가 이 모듈을 함께 쓴다 — 실제 공유 데이터를 읽는 부분(getShare)은
-// 각 라우트에 남겨두고, "IdealTypeResult를 받아서 1080x1350 satori
-// 엘리먼트를 만든다"는 순수 로직만 여기 둔다.
+// A형 한 장 MAP(인스타 스토리용 PNG) 카드의 satori(next/og ImageResponse)
+// 렌더링 로직. app/r/[id]/card.png/route.ts(프로덕션)와 개발 전용
+// 미리보기 라우트가 이 모듈을 함께 쓴다 — 실제 공유 데이터를 읽는
+// 부분(getShare)은 각 라우트에 남겨두고, "IdealTypeResult를 받아서
+// 1080x1920 satori 엘리먼트를 만든다"는 순수 로직만 여기 둔다.
+//
+// 규격은 인스타 스토리(9:16)다. 인터뷰 조사 결과 20대는 심리테스트
+// 결과를 피드보다 스토리에 훨씬 자주 올린다 — "게시물로 올리기엔
+// 부담스럽지만 공유는 하고 싶은 것"의 자리가 스토리이기 때문이다.
+// 그래서 상하단 약 250px은 인스타 UI(프로필·답장창)를 피하고 사용자가
+// 스티커·손글씨를 얹을 여백("스꾸")으로 비워두고, 실제 내용은 가운데
+// 약 1420px 안에만 그린다.
 //
 // AI가 만드는 title/oneLiner/selfReflection 문장은 길이가 매번 달라서,
 // 그대로 그리면 카드 밖으로 넘치는(overflow) 문제가 생긴다. 이 파일은
@@ -11,11 +18,15 @@
 // overflow: hidden을 걸어 "잘리더라도 카드 틀을 절대 뚫지 않게" 한다.
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import type { ReactNode } from "react";
 import { CARD_COLORS } from "./ideal-type-card-colors";
 import type { IdealTypeResult } from "../types";
 
 export const CARD_WIDTH = 1080;
-export const CARD_HEIGHT = 1350;
+export const CARD_HEIGHT = 1920;
+const SAFE_ZONE = 250;
+const SIDE_PADDING = 72;
+const CONTENT_WIDTH = CARD_WIDTH - SIDE_PADDING * 2;
 
 const FONT_DIR = path.join(process.cwd(), "assets/fonts/pretendard-static");
 
@@ -97,42 +108,30 @@ function oneLinerFontSize(oneLiner: string): number {
   );
 }
 
+// 자기성찰 문장이 이제 두 개(내가 줄 수 있는 것 / 내가 보완할 부분)라
+// 한 블록 안에 둘 다 들어간다 — 예전 한 문장짜리 버전보다 한 단계씩
+// 작게 잡아서 두 개를 합친 높이가 안전 영역을 넘지 않게 한다.
 function reflectionFontSize(sentence: string): number {
   return pickBySteps(
     sentence.length,
     [
-      { max: 20, size: 38 },
-      { max: 34, size: 34 },
-      { max: 50, size: 30 },
-      { max: 70, size: 27 },
+      { max: 20, size: 34 },
+      { max: 34, size: 30 },
+      { max: 50, size: 27 },
+      { max: 70, size: 24 },
     ],
-    24,
+    22,
   );
 }
 
-export type ReflectionSide = "offer" | "improve";
+export type CardTheme = "purple" | "navy" | "colorBlock";
 
-// 자기성찰 문장 두 후보 중 하나를 고른다. 둘 다 없는(빈 배열) 경우는
-// 실제로는 selfReflection이 결과 스키마상 항상 채워지지만, 방어적으로
-// 빈 문자열을 반환해 호출부가 블록 자체를 생략할 수 있게 한다.
-export function pickReflectionSentence(result: IdealTypeResult, side: ReflectionSide): string {
-  const source = side === "offer" ? result.selfReflection.whatYouOffer : result.selfReflection.whatToImprove;
+function pickReflectionSentence(source: string[]): string {
   const first = source[0];
   if (!first) return "";
   return clampForSafety(firstSentence(first), 90);
 }
 
-const REFLECTION_LABEL: Record<ReflectionSide, string> = {
-  offer: "내가 줄 수 있는 것",
-  improve: "내가 보완할 부분",
-};
-
-// 태그 4개는 MBTI 결과의 "ENFP" 네 글자와 같은 역할 — 이 카드에서
-// 제목 다음으로 눈에 띄어야 한다. 그래서 작은 회색 알약이 아니라
-// 2열 그리드에 큼직하고 굵은 글자로 배치하고, 칸 사이에는 선(자체
-// 제작 도형)만 긋는다. 배경색 하나로 "이 블록은 정체성 블록"이라는
-// 면 분할을 주되, 일러스트·아이콘 없이 타이포그래피 대비만으로
-// 존재감을 낸다.
 function tagFontSize(tags: string[]): number {
   const maxLen = tags.reduce((max, tag) => Math.max(max, tag.length), 0);
   return pickBySteps(
@@ -147,22 +146,55 @@ function tagFontSize(tags: string[]): number {
   );
 }
 
-function TagGrid({ tags }: { tags: string[] }) {
+function BrandMark({ color, borderColor }: { color: string; borderColor: string }) {
+  return (
+    <div style={{ display: "flex", width: CONTENT_WIDTH, alignItems: "center", marginBottom: 40 }}>
+      <span
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 40,
+          height: 40,
+          borderRadius: 12,
+          border: `2px solid ${borderColor}`,
+          color,
+          fontSize: 20,
+          fontWeight: 900,
+          marginRight: 12,
+        }}
+      >
+        M
+      </span>
+      <span style={{ fontSize: 26, fontWeight: 800, color, letterSpacing: "-0.5px" }}>MAP Decision</span>
+    </div>
+  );
+}
+
+function TitleText({ title, color }: { title: string; color: string }) {
+  return (
+    <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: 300, overflow: "hidden", marginBottom: 36 }}>
+      <span style={{ fontSize: titleFontSize(title), fontWeight: 900, lineHeight: 1.15, color, letterSpacing: "-1.5px" }}>{title}</span>
+    </div>
+  );
+}
+
+// 태그 4개는 MBTI 결과의 "ENFP" 네 글자와 같은 역할 — 친구와 서로
+// 맞춰볼 수 있는 "소속감" 축이다. 타이틀(고유성)과 이 카드 안에서
+// 크기·존재감으로 맞대비를 이루도록 2열 그리드에 큼직하고 굵은
+// 글자로 배치하고, 칸 사이에는 선(자체 제작 도형)만 긋는다.
+function TagGrid({ tags, textColor, fillColor, borderColor }: { tags: string[]; textColor: string; fillColor: string; borderColor: string }) {
   if (tags.length === 0) return null;
   const columns = 2;
   const rows = Math.ceil(tags.length / columns);
   const fontSize = tagFontSize(tags);
+  // satori(yoga)에서 width:'50%'가 부모의 auto 너비를 기준으로 0으로
+  // 풀리는 경우가 있어(부모가 명시적 width 없이 stretch에 의존하면
+  // 자식 퍼센트 계산이 어긋난다), 퍼센트 대신 실제 픽셀값을 계산해서
+  // 명시한다.
+  const cellWidth = CONTENT_WIDTH / columns;
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        borderRadius: 32,
-        backgroundColor: CARD_COLORS.primarySoftFill,
-        overflow: "hidden",
-        maxHeight: 320,
-      }}
-    >
+    <div style={{ display: "flex", flexWrap: "wrap", width: CONTENT_WIDTH, borderRadius: 32, backgroundColor: fillColor, overflow: "hidden", maxHeight: 320, marginBottom: 36 }}>
       {tags.map((tag, index) => {
         const col = index % columns;
         const row = Math.floor(index / columns);
@@ -175,13 +207,13 @@ function TagGrid({ tags }: { tags: string[] }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: "50%",
+              width: cellWidth,
               padding: "36px 24px",
-              borderRight: hasRightNeighbor ? `2px solid ${CARD_COLORS.primarySoftBorder}` : "none",
-              borderBottom: hasBottomNeighbor ? `2px solid ${CARD_COLORS.primarySoftBorder}` : "none",
+              borderRight: hasRightNeighbor ? `2px solid ${borderColor}` : "none",
+              borderBottom: hasBottomNeighbor ? `2px solid ${borderColor}` : "none",
             }}
           >
-            <span style={{ fontSize, fontWeight: 900, color: CARD_COLORS.primary, letterSpacing: "-1px" }}>{tag}</span>
+            <span style={{ fontSize, fontWeight: 900, color: textColor, letterSpacing: "-1px" }}>{tag}</span>
           </div>
         );
       })}
@@ -189,112 +221,169 @@ function TagGrid({ tags }: { tags: string[] }) {
   );
 }
 
-export function buildIdealTypeCardElement(result: IdealTypeResult, side: ReflectionSide) {
-  const title = clampForSafety(result.title.trim(), 60);
-  const oneLiner = clampForSafety(result.oneLiner.trim(), 120);
-  const tags = (result.tags ?? []).slice(0, 4);
-  const reflectionSentence = pickReflectionSentence(result, side);
+function OneLinerText({ oneLiner, color }: { oneLiner: string; color: string }) {
+  return (
+    <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: 110, overflow: "hidden" }}>
+      <span style={{ fontSize: oneLinerFontSize(oneLiner), fontWeight: 700, lineHeight: 1.4, color }}>{oneLiner}</span>
+    </div>
+  );
+}
+
+type ReflectionPanelProps = {
+  offerSentence: string;
+  improveSentence: string;
+  boxBackground: string | null;
+  boxBorder?: string;
+  textColor: string;
+  labelColor: string;
+  dividerColor: string;
+};
+
+// 자기성찰은 이제 "내가 줄 수 있는 것"과 "내가 보완할 부분" 둘 다
+// 한 블록에 보여준다(예전 버전은 둘 중 하나를 골라야 했다). 두 문장을
+// 구분선 하나로 나눠 쌓는다. boxBackground가 null이면(C안처럼 이미
+// 그 영역 전체가 색면으로 구분된 경우) 별도 박스 없이 투명하게 얹는다.
+function ReflectionPanel({ offerSentence, improveSentence, boxBackground, boxBorder, textColor, labelColor, dividerColor }: ReflectionPanelProps) {
+  if (!offerSentence && !improveSentence) return null;
+  const rows: { label: string; sentence: string }[] = [];
+  if (offerSentence) rows.push({ label: "내가 줄 수 있는 것", sentence: offerSentence });
+  if (improveSentence) rows.push({ label: "내가 보완할 부분", sentence: improveSentence });
 
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        width: CARD_WIDTH,
-        height: CARD_HEIGHT,
-        padding: "84px 72px 64px",
-        backgroundColor: CARD_COLORS.background,
-        fontFamily: "Pretendard",
+        width: CONTENT_WIDTH,
+        boxSizing: "border-box",
+        borderRadius: boxBackground ? 32 : 0,
+        backgroundColor: boxBackground ?? "transparent",
+        border: boxBorder ? `2px solid ${boxBorder}` : "none",
+        padding: boxBackground ? "40px 48px" : "0px",
+        maxHeight: 480,
+        overflow: "hidden",
+        marginTop: 56,
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 40 }}>
-          <span
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              border: `2px solid ${CARD_COLORS.primary}`,
-              color: CARD_COLORS.primary,
-              fontSize: 20,
-              fontWeight: 900,
-              marginRight: 12,
-            }}
-          >
-            M
-          </span>
-          <span style={{ fontSize: 26, fontWeight: 800, color: CARD_COLORS.textSecondary, letterSpacing: "-0.5px" }}>MAP Decision</span>
-        </div>
-
+      {rows.map((row, index) => (
         <div
-          style={{
-            display: "flex",
-            maxHeight: 300,
-            overflow: "hidden",
-            marginBottom: 36,
-          }}
-        >
-          <span
-            style={{
-              fontSize: titleFontSize(title),
-              fontWeight: 900,
-              lineHeight: 1.15,
-              color: CARD_COLORS.primary,
-              letterSpacing: "-1.5px",
-            }}
-          >
-            {title}
-          </span>
-        </div>
-
-        {tags.length > 0 ? (
-          <div style={{ display: "flex", marginBottom: 36 }}>
-            <TagGrid tags={tags} />
-          </div>
-        ) : null}
-
-        <div style={{ display: "flex", maxHeight: 110, overflow: "hidden" }}>
-          <span
-            style={{
-              fontSize: oneLinerFontSize(oneLiner),
-              fontWeight: 700,
-              lineHeight: 1.4,
-              color: CARD_COLORS.textSecondary,
-            }}
-          >
-            {oneLiner}
-          </span>
-        </div>
-      </div>
-
-      {reflectionSentence ? (
-        <div
+          key={row.label}
           style={{
             display: "flex",
             flexDirection: "column",
-            borderRadius: 32,
-            backgroundColor: CARD_COLORS.primary,
-            padding: "44px 48px",
-            maxHeight: 320,
-            overflow: "hidden",
-            marginTop: 64,
+            paddingTop: index === 0 ? 0 : 28,
+            marginTop: index === 0 ? 0 : 28,
+            borderTop: index === 0 ? "none" : `2px solid ${dividerColor}`,
           }}
         >
-          <span style={{ fontSize: 24, fontWeight: 700, color: CARD_COLORS.foregroundFaint, letterSpacing: "-0.3px", marginBottom: 16 }}>
-            {REFLECTION_LABEL[side]}
-          </span>
-          <span style={{ fontSize: reflectionFontSize(reflectionSentence), fontWeight: 700, lineHeight: 1.5, color: CARD_COLORS.primaryForeground }}>
-            {reflectionSentence}
-          </span>
+          <span style={{ fontSize: 22, fontWeight: 700, color: labelColor, letterSpacing: "-0.3px", marginBottom: 12 }}>{row.label}</span>
+          <span style={{ fontSize: reflectionFontSize(row.sentence), fontWeight: 700, lineHeight: 1.5, color: textColor }}>{row.sentence}</span>
         </div>
-      ) : null}
+      ))}
+    </div>
+  );
+}
 
-      <div style={{ display: "flex", justifyContent: "center", marginTop: "auto", paddingTop: 64 }}>
-        <span style={{ fontSize: 26, fontWeight: 700, color: CARD_COLORS.textSecondary, letterSpacing: "-0.3px" }}>mapdecision.com</span>
-      </div>
+function FooterText({ color }: { color: string }) {
+  return (
+    <div style={{ display: "flex", width: CONTENT_WIDTH, justifyContent: "center", marginTop: "auto", paddingTop: 48 }}>
+      <span style={{ fontSize: 26, fontWeight: 700, color, letterSpacing: "-0.3px" }}>mapdecision.com</span>
+    </div>
+  );
+}
+
+// 위쪽 그룹(브랜드·타이틀·태그·한줄설명)은 실제 내용 높이만큼만 차지하고,
+// 아래쪽 그룹(자기성찰·footer)은 flexGrow:1로 남는 공간을 전부 먹어서
+// 캔버스 맨 아래까지 채운다. 예전에는 "자기성찰 영역이 시작되는 지점"을
+// 픽셀 숫자로 미리 추측해서 색 띠 경계를 고정했는데, 실제 렌더 높이는
+// 내용 길이에 따라 달라져서 추측이 자주 빗나갔다(자기성찰 글자가 보라
+// 영역 위에 흰 글씨로 얹혀 안 보이는 사고가 실제로 났다). 이 구조는
+// 추측 없이 항상 실제 내용 경계에 맞춰 색이 나뉜다.
+function TopGroup({ children, backgroundColor }: { children: ReactNode; backgroundColor: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: CARD_WIDTH,
+        boxSizing: "border-box",
+        paddingTop: SAFE_ZONE,
+        paddingLeft: SIDE_PADDING,
+        paddingRight: SIDE_PADDING,
+        backgroundColor,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function BottomGroup({ children, backgroundColor }: { children: ReactNode; backgroundColor: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: CARD_WIDTH,
+        flexGrow: 1,
+        boxSizing: "border-box",
+        paddingLeft: SIDE_PADDING,
+        paddingRight: SIDE_PADDING,
+        paddingBottom: SAFE_ZONE,
+        backgroundColor,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function buildIdealTypeCardElement(result: IdealTypeResult, theme: CardTheme) {
+  const title = clampForSafety(result.title.trim(), 60);
+  const oneLiner = clampForSafety(result.oneLiner.trim(), 120);
+  const tags = (result.tags ?? []).slice(0, 4);
+  const offerSentence = pickReflectionSentence(result.selfReflection.whatYouOffer);
+  const improveSentence = pickReflectionSentence(result.selfReflection.whatToImprove);
+
+  const rootStyle =
+    theme === "navy"
+      ? { backgroundColor: CARD_COLORS.primary }
+      : theme === "colorBlock"
+        ? {}
+        : { backgroundImage: `linear-gradient(135deg, ${CARD_COLORS.value}, ${CARD_COLORS.feeling}, ${CARD_COLORS.action})` };
+
+  const topBackground = theme === "colorBlock" ? CARD_COLORS.value : "transparent";
+  const bottomBackground = theme === "colorBlock" ? CARD_COLORS.primary : "transparent";
+
+  const titleColor = theme === "navy" ? CARD_COLORS.primaryForeground : CARD_COLORS.primary;
+  const tagFill = theme === "navy" ? CARD_COLORS.onDarkSoftFill : CARD_COLORS.primarySoftFill;
+  const tagBorder = theme === "navy" ? CARD_COLORS.onDarkSoftBorder : CARD_COLORS.primarySoftBorder;
+  const oneLinerColor = theme === "navy" ? CARD_COLORS.foregroundSoft : CARD_COLORS.textSecondary;
+  const reflectionBoxBackground = theme === "navy" ? CARD_COLORS.onDarkSoftFill : theme === "colorBlock" ? null : CARD_COLORS.primary;
+  const reflectionBoxBorder = theme === "navy" ? CARD_COLORS.onDarkSoftBorder : undefined;
+  const reflectionDividerColor = theme === "purple" ? CARD_COLORS.foregroundFaint : CARD_COLORS.onDarkSoftBorder;
+  const footerColor = theme === "purple" ? CARD_COLORS.textSecondary : CARD_COLORS.foregroundFaint;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", width: CARD_WIDTH, height: CARD_HEIGHT, fontFamily: "Pretendard", ...rootStyle }}>
+      <TopGroup backgroundColor={topBackground}>
+        <BrandMark color={titleColor} borderColor={titleColor} />
+        <TitleText title={title} color={titleColor} />
+        <TagGrid tags={tags} textColor={titleColor} fillColor={tagFill} borderColor={tagBorder} />
+        <OneLinerText oneLiner={oneLiner} color={oneLinerColor} />
+      </TopGroup>
+      <BottomGroup backgroundColor={bottomBackground}>
+        <ReflectionPanel
+          offerSentence={offerSentence}
+          improveSentence={improveSentence}
+          boxBackground={reflectionBoxBackground}
+          boxBorder={reflectionBoxBorder}
+          textColor={CARD_COLORS.primaryForeground}
+          labelColor={CARD_COLORS.foregroundFaint}
+          dividerColor={reflectionDividerColor}
+        />
+        <FooterText color={footerColor} />
+      </BottomGroup>
     </div>
   );
 }

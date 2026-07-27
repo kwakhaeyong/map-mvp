@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { IdealTypeResult } from "../../../src/map-decision-v1/types";
-import { buildIdealTypeCardElement, CARD_HEIGHT, CARD_WIDTH, loadCardFonts, ReflectionSide } from "../../../src/map-decision-v1/engine/ideal-type-card-image";
+import { buildIdealTypeCardElement, CardTheme, CARD_HEIGHT, CARD_WIDTH, loadCardFonts } from "../../../src/map-decision-v1/engine/ideal-type-card-image";
 
 // 개발 환경 전용 — 한 장 MAP PNG 디자인을 Upstash 없이 mock 데이터로
 // 바로 확인하기 위한 라우트. 프로덕션에는 절대 노출하지 않는다.
@@ -48,8 +48,8 @@ const LONG_MOCK: IdealTypeResult = {
   tags: ["#거리존중형", "#각자시간형", "#혼자정리형", "#설렘추구형"],
 };
 
-function isReflectionSide(value: string | null): value is ReflectionSide {
-  return value === "offer" || value === "improve";
+function isCardTheme(value: string | null): value is CardTheme {
+  return value === "purple" || value === "navy" || value === "colorBlock";
 }
 
 export async function GET(request: Request) {
@@ -59,10 +59,10 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const variant = url.searchParams.get("variant") === "long" ? LONG_MOCK : SHORT_MOCK;
-  const sideParam = url.searchParams.get("reflection");
-  const side: ReflectionSide = isReflectionSide(sideParam) ? sideParam : "offer";
+  const themeParam = url.searchParams.get("theme");
+  const theme: CardTheme = isCardTheme(themeParam) ? themeParam : "purple";
 
-  return new ImageResponse(buildIdealTypeCardElement(variant, side), {
+  return new ImageResponse(buildIdealTypeCardElement(variant, theme), {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     fonts: loadCardFonts(),

@@ -13,4 +13,17 @@ export const CARD_COLORS = {
   primarySoftBorder: "rgba(21, 33, 59, 0.16)",
   foregroundSoft: "rgba(255, 255, 255, 0.7)",
   foregroundFaint: "rgba(255, 255, 255, 0.55)",
+  // 아래 3개는 새로 만든 색이 아니라 design-tokens.css의 --color-value/
+  // --color-feeling/--color-action을 그대로 옮긴 것 — 이상형 결과 화면
+  // 히어로 영역(IdealTypeResultBlocks.tsx)이 이미 이 세 색으로
+  // "from-value via-feeling to-action" 그라데이션을 쓰고 있다. A안은
+  // 이 기존 그라데이션의 연장선이다.
+  value: "#e7ddff",
+  feeling: "#eee7ff",
+  action: "#dff5ff",
+  // B/C안에서 다크 네이비 배경 위에 얹는 옅은 흰색 오버레이 — 새 색이
+  // 아니라 흰색의 투명도만 다르게 쓴 것으로, 배경과 같은 계열 안에서
+  // "면 분할"만 표현한다.
+  onDarkSoftFill: "rgba(255, 255, 255, 0.08)",
+  onDarkSoftBorder: "rgba(255, 255, 255, 0.18)",
 } as const;
