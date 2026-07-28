@@ -124,7 +124,7 @@ function IdealTypeCardBody({
       </Button>
       {imageError ? <p className="text-center text-xs font-bold text-error">{imageError}</p> : null}
       <Button variant="primary" size="lg" onClick={onReset}>
-        ✨ 너도 만들어봐
+        너도 만들어봐
       </Button>
       <a href="/privacy" className="text-center text-xs font-semibold text-text-muted underline underline-offset-2 hover:text-text-primary">
         개인정보처리방침
