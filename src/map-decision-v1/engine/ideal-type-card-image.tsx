@@ -126,10 +126,32 @@ function reflectionFontSize(sentence: string): number {
 
 export type CardTheme = "purple" | "navy" | "colorBlock";
 
+// #99: satori(next/og ImageResponse)는 실제 브라우저와 달리
+// overflow:hidden + 고정 height를 안정적으로 지키지 않는다 — 내용이
+// 박스보다 크면 조용히 박스를 뚫고 자라며, 그 결과 카드 전체 레이아웃이
+// 밀려서 맨 아래 footer가 통째로 사라지거나 문장 뒷부분이 캔버스
+// 경계에서 마침표도 말줄임표도 없이 그대로 잘린다. 직접 재현해서
+// 확인했다(/dev/card-preview?variant=noperiod&theme=navy — 원본 문장
+// 길이를 점점 늘려가며 실제로 footer가 사라지는 지점까지 확인함).
+//
+// 마침표가 있는 정상적인 문장은 90자까지도 안전하다(실측: 두 문장이
+// 동시에 90자에 가까워도 카드 틀을 넘기지 않음). 문제는 마침표가 없는
+// 경우(firstSentence()가 원문을 그대로 반환) — 이런 문장은 애초에
+// 어디서 끝날지 예측할 수 없어 더 빡빡하게 잡아야 한다.
+const REFLECTION_SENTENCE_MAX = 90;
+const REFLECTION_NO_PERIOD_MAX = 55;
+
+// 안전 길이를 넘으면 억지로 자르지 않는다 — 어디를 잘라도 "~하면서",
+// "~하고"처럼 연결 어미에서 끊겨 미완성 문장으로 보인다(말줄임표를
+// 붙여도 마찬가지). 잘린 문장을 보여주는 것보다 이 항목을 통째로
+// 비우는 쪽이 카드 완성도를 지킨다 — 실제로 대부분의 자기성찰
+// 문장은 이 길이 안에 들어온다.
 function pickReflectionSentence(source: string[]): string {
   const first = source[0];
   if (!first) return "";
-  return clampForSafety(firstSentence(first), 90);
+  const sentence = firstSentence(first);
+  const max = sentence.endsWith(".") ? REFLECTION_SENTENCE_MAX : REFLECTION_NO_PERIOD_MAX;
+  return sentence.length <= max ? sentence : "";
 }
 
 function tagFontSize(tags: string[]): number {

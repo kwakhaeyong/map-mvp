@@ -84,6 +84,56 @@ const LONG_MOCK: IdealTypeResult = {
   tags: ["#거리존중형", "#각자시간형", "#혼자정리형", "#설렘추구형"],
 };
 
+// #99 재현·회귀 검증용 — 자기성찰 문장에 마침표가 없어서 firstSentence()가
+// 원문을 그대로 반환하는 경우. 이 정도 길이(55자 이하)는 안전 범위 안이라
+// 마침표 없이도 그대로 보여야 정상이다.
+const NO_PERIOD_MOCK: IdealTypeResult = {
+  version: 2,
+  generatedAt: new Date().toISOString(),
+  model: "claude-sonnet-5",
+  title: "다정한데 은근히 까칠한 사람",
+  oneLiner: "챙길 땐 확실히 챙기지만, 선 넘으면 은근히 단호해지는 사람을 찾고 있어요.",
+  criteria: { mustHave: [], niceToHave: [], canCompromise: [] },
+  attractionPatterns: [],
+  matrix: { xAxisLabel: { low: "", high: "" }, yAxisLabel: { low: "", high: "" }, types: [] },
+  flags: { green: [], red: [] },
+  selfReflection: {
+    whatYouOffer: [
+      "힘들 때 옆에서 이야기를 들어주고 상대의 감정을 판단하지 않고 있는 그대로 받아들이는 여유가 있어요",
+    ],
+    whatToImprove: ["서운한 걸 바로 말 못 하고 쌓아두는 편이에요."],
+  },
+  roadmap: { firstAction: "", phases: [] },
+  tags: ["#표현중시형", "#여행형", "#갈등해결형", "#설렘추구형"],
+};
+
+// #99 재현·회귀 검증용 — 마침표 없이 아주 길게 이어지는 문장(연결
+// 어미가 계속 이어지는 경우). satori는 overflow:hidden을 지키지 않고
+// 카드 틀을 그대로 뚫고 자라서 footer가 통째로 사라지는 사고가 났었다
+// (직접 재현해서 확인함). 지금은 이 길이가 안전 상한(55자)을 넘기므로
+// 이 항목 자체가 빠지고, 나머지 카드(footer 포함)는 멀쩡해야 한다.
+const TOO_LONG_NO_PERIOD_MOCK: IdealTypeResult = {
+  version: 2,
+  generatedAt: new Date().toISOString(),
+  model: "claude-sonnet-5",
+  title: "다정한데 은근히 까칠한 사람",
+  oneLiner: "챙길 땐 확실히 챙기지만, 선 넘으면 은근히 단호해지는 사람을 찾고 있어요.",
+  criteria: { mustHave: [], niceToHave: [], canCompromise: [] },
+  attractionPatterns: [],
+  matrix: { xAxisLabel: { low: "", high: "" }, yAxisLabel: { low: "", high: "" }, types: [] },
+  flags: { green: [], red: [] },
+  selfReflection: {
+    whatYouOffer: [
+      "힘들 때 옆에서 이야기를 들어주고 상대의 감정을 판단하지 않고 있는 그대로 받아들이면서 필요할 때마다 곁에서 힘이 되어주려고 하는 사람이라 오래 봐도 편안하게 느껴지는 여유가 있고 그런 편안함이 관계가 오래갈수록 더 진해지는 편이라 시간이 지날수록 서로에게 더 좋은 사람이 되어줄 수 있고 작은 약속이라도 꼭 지키려고 하는 편이라 신뢰가 천천히 그러나 단단하게 쌓이는 편이라 나중에는 그 신뢰가 관계 전체를 지탱하는 힘이 되어줄 수 있어요",
+    ],
+    whatToImprove: [
+      "서운한 게 있어도 괜히 분위기를 무겁게 만들까 봐 바로 말하지 못하고 혼자 며칠씩 삭이다가 결국 다른 일로 짜증을 내는 식으로 터져 나오는 편이라 그때그때 표현하는 연습이 필요하고 그 연습이 쌓여야 관계가 더 편안해질 수 있다고 생각해요",
+    ],
+  },
+  roadmap: { firstAction: "", phases: [] },
+  tags: ["#표현중시형", "#여행형", "#갈등해결형", "#설렘추구형"],
+};
+
 function isCardTheme(value: string | null): value is CardTheme {
   return value === "purple" || value === "navy" || value === "colorBlock";
 }
@@ -102,7 +152,11 @@ export async function GET(request: Request) {
         ? MEDIUM_MOCK
         : variantParam === "oneline"
           ? ONELINE_MOCK
-          : SHORT_MOCK;
+          : variantParam === "noperiod"
+            ? NO_PERIOD_MOCK
+            : variantParam === "toolong"
+              ? TOO_LONG_NO_PERIOD_MOCK
+              : SHORT_MOCK;
   const themeParam = url.searchParams.get("theme");
   const theme: CardTheme = isCardTheme(themeParam) ? themeParam : "purple";
 
