@@ -120,7 +120,7 @@ function IdealTypeCardBody({
         onClick={saveImage}
         disabled={imageState === "preparing-link" || imageState === "preparing-image"}
       >
-        {imageState === "preparing-link" ? "링크 확인 중…" : imageState === "preparing-image" ? "이미지 만드는 중…" : "📸 이미지로 저장"}
+        {imageState === "preparing-link" ? "링크 확인 중…" : imageState === "preparing-image" ? "이미지 만드는 중…" : "이미지로 저장"}
       </Button>
       {imageError ? <p className="text-center text-xs font-bold text-error">{imageError}</p> : null}
       <Button variant="primary" size="lg" onClick={onReset}>

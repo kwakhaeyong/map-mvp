@@ -32,16 +32,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const themeParam = url.searchParams.get("theme");
   const theme: CardTheme = isCardTheme(themeParam) ? themeParam : "navy";
 
-  // 같은 id+테마의 결과물은 항상 같다(공유된 결과는 수정할 수 없다) —
-  // 그래서 캐시를 길게 걸어도 안전하다. 유효한 공유 id 없이는 satori/
-  // resvg 렌더링까지 가지 않고 위에서 이미 404로 끝나지만, 실제 id를
-  // 아는 사람이 이 주소를 반복 요청하면 그때마다 서버가 다시 그리는
-  // 부담이 있었다 — CDN·브라우저가 캐시해두면 그 반복 요청이 렌더링까지
-  // 가지 않는다.
+  // ★캐시 기간을 길게 주지 않는다. 공유 데이터는 제3자 정보 신고 등으로
+  // 관리자가 Redis에서 직접 지워야 하는 경우가 있는데(개인정보 상담
+  // 항목에도 명시된 사안), 삭제와 "캐시 비우기"를 자동으로 연결하는
+  // 코드가 없다(수동으로 Vercel 캐시를 지워야 하는데, 급한 신고 대응
+  // 상황에서 빠뜨리기 쉽다). 게다가 브라우저 캐시는 원격으로 지울
+  // 방법이 아예 없다 — 통제 가능한 유일한 변수는 "처음에 얼마나 긴
+  // 캐시 기간을 나눠주느냐"뿐이라, immutable 없이 짧은 max-age만
+  // 준다. 그래도 같은 사람이 짧은 시간 안에 반복 요청하는 경우(카톡/
+  // 인스타 인앱 브라우저의 중복 로드 등)에는 여전히 도움이 된다.
   return new ImageResponse(buildIdealTypeCardElement(share.record.result, theme), {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     fonts: loadCardFonts(),
-    headers: { "Cache-Control": "public, max-age=604800, s-maxage=2592000, immutable" },
+    headers: { "Cache-Control": "public, max-age=60, s-maxage=60" },
   });
 }
