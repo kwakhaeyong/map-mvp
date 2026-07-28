@@ -84,6 +84,29 @@ const LONG_MOCK: IdealTypeResult = {
   tags: ["#거리존중형", "#각자시간형", "#혼자정리형", "#설렘추구형"],
 };
 
+// #99 재현·회귀 검증용 — 실제 프로덕션에서 잘렸던 문장 그대로(92자,
+// 마침표 있음). 오너가 직접 지적한 케이스라 이 문장만큼은 절대
+// 드롭되면 안 된다 — 드롭되면 이 mock이 곧바로 표시해준다.
+const REAL_PRODUCTION_MOCK: IdealTypeResult = {
+  version: 2,
+  generatedAt: new Date().toISOString(),
+  model: "claude-sonnet-5",
+  title: "다정한데 은근히 까칠한 사람",
+  oneLiner: "챙길 땐 확실히 챙기지만, 선 넘으면 은근히 단호해지는 사람을 찾고 있어요.",
+  criteria: { mustHave: [], niceToHave: [], canCompromise: [] },
+  attractionPatterns: [],
+  matrix: { xAxisLabel: { low: "", high: "" }, yAxisLabel: { low: "", high: "" }, types: [] },
+  flags: { green: [], red: [] },
+  selfReflection: {
+    whatYouOffer: [
+      "오랜만에 만난 자리에서 말이 없어도 개입하지 않고 존중해주는 반응을 편하게 여기는 걸 보면, 본인도 관계에서 상대의 침묵이나 거리를 있는 그대로 받아들이는 편이에요.",
+    ],
+    whatToImprove: ["서운한 걸 바로 말 못 하고 쌓아두는 편이에요."],
+  },
+  roadmap: { firstAction: "", phases: [] },
+  tags: ["#표현중시형", "#여행형", "#갈등해결형", "#설렘추구형"],
+};
+
 // #99 재현·회귀 검증용 — 자기성찰 문장에 마침표가 없어서 firstSentence()가
 // 원문을 그대로 반환하는 경우. 이 정도 길이(55자 이하)는 안전 범위 안이라
 // 마침표 없이도 그대로 보여야 정상이다.
@@ -107,11 +130,12 @@ const NO_PERIOD_MOCK: IdealTypeResult = {
   tags: ["#표현중시형", "#여행형", "#갈등해결형", "#설렘추구형"],
 };
 
-// #99 재현·회귀 검증용 — 마침표 없이 아주 길게 이어지는 문장(연결
-// 어미가 계속 이어지는 경우). satori는 overflow:hidden을 지키지 않고
-// 카드 틀을 그대로 뚫고 자라서 footer가 통째로 사라지는 사고가 났었다
-// (직접 재현해서 확인함). 지금은 이 길이가 안전 상한(55자)을 넘기므로
-// 이 항목 자체가 빠지고, 나머지 카드(footer 포함)는 멀쩡해야 한다.
+// #99 재현·회귀 검증용 — 마침표 없이 아주 길게(약 280자) 이어지는
+// 연결 어미 나열. satori는 overflow:hidden을 지키지 않고 카드 틀을
+// 그대로 뚫고 자라서 footer가 통째로 사라지는 사고가 났었다(직접
+// 재현해서 확인함). 폰트를 38→36→32→28까지 다 줄여도 이 길이는
+// 못 들어가므로, 이 항목만 빠지고 나머지 카드(footer 포함)는
+// 멀쩡해야 한다.
 const TOO_LONG_NO_PERIOD_MOCK: IdealTypeResult = {
   version: 2,
   generatedAt: new Date().toISOString(),
@@ -134,6 +158,64 @@ const TOO_LONG_NO_PERIOD_MOCK: IdealTypeResult = {
   tags: ["#표현중시형", "#여행형", "#갈등해결형", "#설렘추구형"],
 };
 
+// #99 후속 확인용 — 타이틀/한줄설명/태그도 satori overflow 위험이
+// 있는지 극단 케이스로 확인하기 위한 mock. 검증이 끝나면 결과에 따라
+// 유지하거나 정리한다.
+const EXTREME_TITLE_MOCK: IdealTypeResult = {
+  version: 2,
+  generatedAt: new Date().toISOString(),
+  model: "claude-sonnet-5",
+  title: "겉으로는 정말 무심해 보이지만 사실은 속마음이 누구보다도 여리고 섬세해서 아주 잘 다치는 편인 사람",
+  oneLiner: "챙길 땐 확실히 챙기지만, 선 넘으면 은근히 단호해지는 사람을 찾고 있어요.",
+  criteria: { mustHave: [], niceToHave: [], canCompromise: [] },
+  attractionPatterns: [],
+  matrix: { xAxisLabel: { low: "", high: "" }, yAxisLabel: { low: "", high: "" }, types: [] },
+  flags: { green: [], red: [] },
+  selfReflection: {
+    whatYouOffer: ["필요할 때 확실하게 챙겨줄 수 있어요."],
+    whatToImprove: ["한번 삐지면 티가 좀 나는 편이에요."],
+  },
+  roadmap: { firstAction: "", phases: [] },
+  tags: ["#표현중시형", "#여행형", "#갈등해결형", "#설렘추구형"],
+};
+
+const EXTREME_ONELINER_MOCK: IdealTypeResult = {
+  version: 2,
+  generatedAt: new Date().toISOString(),
+  model: "claude-sonnet-5",
+  title: "다정한데 은근히 까칠한 사람",
+  oneLiner:
+    "표현은 서툴러도 상대를 향한 마음만큼은 누구보다 진심이고, 시간이 걸리더라도 결국에는 자기만의 방식대로 끝까지 곁을 지켜주는 사람을 오랫동안 찾아왔던 것 같아요.",
+  criteria: { mustHave: [], niceToHave: [], canCompromise: [] },
+  attractionPatterns: [],
+  matrix: { xAxisLabel: { low: "", high: "" }, yAxisLabel: { low: "", high: "" }, types: [] },
+  flags: { green: [], red: [] },
+  selfReflection: {
+    whatYouOffer: ["필요할 때 확실하게 챙겨줄 수 있어요."],
+    whatToImprove: ["한번 삐지면 티가 좀 나는 편이에요."],
+  },
+  roadmap: { firstAction: "", phases: [] },
+  tags: ["#표현중시형", "#여행형", "#갈등해결형", "#설렘추구형"],
+};
+
+const EXTREME_TAGS_MOCK: IdealTypeResult = {
+  version: 2,
+  generatedAt: new Date().toISOString(),
+  model: "claude-sonnet-5",
+  title: "다정한데 은근히 까칠한 사람",
+  oneLiner: "챙길 땐 확실히 챙기지만, 선 넘으면 은근히 단호해지는 사람을 찾고 있어요.",
+  criteria: { mustHave: [], niceToHave: [], canCompromise: [] },
+  attractionPatterns: [],
+  matrix: { xAxisLabel: { low: "", high: "" }, yAxisLabel: { low: "", high: "" }, types: [] },
+  flags: { green: [], red: [] },
+  selfReflection: {
+    whatYouOffer: ["필요할 때 확실하게 챙겨줄 수 있어요."],
+    whatToImprove: ["한번 삐지면 티가 좀 나는 편이에요."],
+  },
+  roadmap: { firstAction: "", phases: [] },
+  tags: ["#장거리연애도가능형", "#갑작스러운연락환영형", "#표현중시형", "#설렘추구형"],
+};
+
 function isCardTheme(value: string | null): value is CardTheme {
   return value === "purple" || value === "navy" || value === "colorBlock";
 }
@@ -152,11 +234,19 @@ export async function GET(request: Request) {
         ? MEDIUM_MOCK
         : variantParam === "oneline"
           ? ONELINE_MOCK
-          : variantParam === "noperiod"
-            ? NO_PERIOD_MOCK
-            : variantParam === "toolong"
-              ? TOO_LONG_NO_PERIOD_MOCK
-              : SHORT_MOCK;
+          : variantParam === "real"
+            ? REAL_PRODUCTION_MOCK
+            : variantParam === "noperiod"
+              ? NO_PERIOD_MOCK
+              : variantParam === "toolong"
+                ? TOO_LONG_NO_PERIOD_MOCK
+                : variantParam === "extremetitle"
+                  ? EXTREME_TITLE_MOCK
+                  : variantParam === "extremeoneliner"
+                    ? EXTREME_ONELINER_MOCK
+                    : variantParam === "extremetags"
+                      ? EXTREME_TAGS_MOCK
+                      : SHORT_MOCK;
   const themeParam = url.searchParams.get("theme");
   const theme: CardTheme = isCardTheme(themeParam) ? themeParam : "purple";
 

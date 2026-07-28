@@ -108,50 +108,87 @@ function oneLinerFontSize(oneLiner: string): number {
   );
 }
 
-// 자기성찰 문장이 이제 두 개(내가 줄 수 있는 것 / 내가 보완할 부분)라
-// 한 블록 안에 둘 다 들어간다 — 예전 한 문장짜리 버전보다 한 단계씩
-// 작게 잡아서 두 개를 합친 높이가 안전 영역을 넘지 않게 한다.
-function reflectionFontSize(sentence: string): number {
-  return pickBySteps(
-    sentence.length,
-    [
-      { max: 20, size: 34 },
-      { max: 34, size: 30 },
-      { max: 50, size: 27 },
-      { max: 70, size: 24 },
-    ],
-    22,
-  );
-}
-
 export type CardTheme = "purple" | "navy" | "colorBlock";
+
+// 자기성찰 문장에서 첫 문장만 뽑는다 — 길이 컷은 여기서 하지 않는다.
+// 실제로 보여줄 수 있는지(폰트를 줄여서 들어가는지, 그래도 안 들어가면
+// 뺄지)는 아래 fitReflectionSentence()가 렌더 단계에서 실제 줄바꿈을
+// 추정해 판단한다.
+function pickReflectionSentence(source: string[]): string {
+  const first = source[0];
+  if (!first) return "";
+  return firstSentence(first);
+}
 
 // #99: satori(next/og ImageResponse)는 실제 브라우저와 달리
 // overflow:hidden + 고정 height를 안정적으로 지키지 않는다 — 내용이
 // 박스보다 크면 조용히 박스를 뚫고 자라며, 그 결과 카드 전체 레이아웃이
 // 밀려서 맨 아래 footer가 통째로 사라지거나 문장 뒷부분이 캔버스
 // 경계에서 마침표도 말줄임표도 없이 그대로 잘린다. 직접 재현해서
-// 확인했다(/dev/card-preview?variant=noperiod&theme=navy — 원본 문장
-// 길이를 점점 늘려가며 실제로 footer가 사라지는 지점까지 확인함).
+// 확인했다(/dev/card-preview?variant=toolong&theme=navy).
 //
-// 마침표가 있는 정상적인 문장은 90자까지도 안전하다(실측: 두 문장이
-// 동시에 90자에 가까워도 카드 틀을 넘기지 않음). 문제는 마침표가 없는
-// 경우(firstSentence()가 원문을 그대로 반환) — 이런 문장은 애초에
-// 어디서 끝날지 예측할 수 없어 더 빡빡하게 잡아야 한다.
-const REFLECTION_SENTENCE_MAX = 90;
-const REFLECTION_NO_PERIOD_MAX = 55;
+// 처음엔 "글자 수가 N자 넘으면 통째로 뺀다"로 막았는데, 실제 프로덕션
+// 문장(마침표 있고 92자)이 그 기준에 걸려 정상 문장까지 빠지는
+// 부작용이 있었다(#99 후속 피드백). 글자 수 자체는 위험 신호가
+// 아니다 — 진짜 위험한 건 "실제로 몇 줄로 줄바꿈되어 몇 px를
+// 차지하는가"다. 그래서 아래는 폰트 크기별로 줄바꿈 줄 수를 추정해
+// 실제로 들어갈 것 같은 가장 큰 폰트를 고르고, 가장 작은 폰트(28px)
+// 로도 못 들어갈 때만 문장을 뺀다.
+//
+// charsPerLine 계산에 쓰는 0.73은 실측 기반 근사치다 — Pretendard
+// Bold 한글이 CONTENT_WIDTH(936px) 안에서 실제로 몇 글자씩
+// 줄바꿈되는지를 이미 검증된 두 케이스(80자 문장이 32px에서 2줄,
+// 55자 문장이 36px에서 2줄로 렌더된 것)로 역산해서 맞췄다. 정확한
+// 폰트 메트릭 API가 없는 satori 환경이라 근사치이지만, 실측치와
+// 어긋나지 않는 선에서 보수적으로(줄 수를 약간 넉넉하게 잡는 쪽으로)
+// 잡아뒀다 — 실제보다 줄이 하나 더 필요하다고 보는 쪽이 폰트를
+// 필요 이상 줄이는 손해는 있어도 카드 틀을 뚫는 사고보다는 안전하다.
+// 자기성찰뿐 아니라 한줄설명(oneLiner)에도 같은 계산을 쓴다 — 같은
+// 폰트(Pretendard Bold)를 쓰는 한 이 비율은 문맥과 무관하게 성립한다.
+const CARD_TEXT_CHAR_WIDTH_RATIO = 0.73;
+const REFLECTION_LINE_HEIGHT = 1.5;
 
-// 안전 길이를 넘으면 억지로 자르지 않는다 — 어디를 잘라도 "~하면서",
-// "~하고"처럼 연결 어미에서 끊겨 미완성 문장으로 보인다(말줄임표를
-// 붙여도 마찬가지). 잘린 문장을 보여주는 것보다 이 항목을 통째로
-// 비우는 쪽이 카드 완성도를 지킨다 — 실제로 대부분의 자기성찰
-// 문장은 이 길이 안에 들어온다.
-function pickReflectionSentence(source: string[]): string {
-  const first = source[0];
-  if (!first) return "";
-  const sentence = firstSentence(first);
-  const max = sentence.endsWith(".") ? REFLECTION_SENTENCE_MAX : REFLECTION_NO_PERIOD_MAX;
-  return sentence.length <= max ? sentence : "";
+function estimateWrappedHeight(text: string, fontSize: number, lineHeight: number = REFLECTION_LINE_HEIGHT): number {
+  const charsPerLine = Math.max(1, Math.floor(CONTENT_WIDTH / (fontSize * CARD_TEXT_CHAR_WIDTH_RATIO)));
+  const lines = Math.ceil(text.length / charsPerLine);
+  return lines * fontSize * lineHeight;
+}
+
+type FittedReflection = { text: string; fontSize: number };
+
+// fontSizes는 큰 것부터 순서대로 — 가장 먼저 예산 안에 들어가는(가장
+// 큰) 폰트를 쓴다. 라벨("내가 줄 수 있는 것" 등)까지 포함한 한 행
+// 전체 높이가 budget을 넘지 않아야 통과. 끝까지 다 시도해도 못
+// 들어가면 null을 돌려줘서 이 항목을 화면에서 뺀다.
+function fitReflectionSentence(sentence: string, fontSizes: number[], labelHeight: number, budget: number): FittedReflection | null {
+  if (!sentence) return null;
+  for (const fontSize of fontSizes) {
+    if (labelHeight + estimateWrappedHeight(sentence, fontSize) <= budget) {
+      return { text: sentence, fontSize };
+    }
+  }
+  return null;
+}
+
+// #99 후속 확인: 한줄설명(oneLiner)도 같은 위험이 있었다 — Navy 카드의
+// 한줄설명 구역(NAVY_ZONE.oneLiner=100px)이 폰트 크기 고정(34px)이라,
+// 80자 안팎만 돼도 다음 구역(자기성찰) 위로 텍스트가 넘쳐서 마지막
+// 줄이 마침표 없이 잘렸다(직접 재현: /dev/card-preview?variant=
+// extremeoneliner&theme=navy). 자기성찰과 달리 한줄설명은 카드에
+// 항상 있어야 하는 필수 요소라 "안 들어가면 뺀다"를 쓸 수 없다 —
+// 가장 작은 폰트로도 못 들어가는 극단적인 경우에만 단어 경계에서
+// 잘라 그 폰트에 맞춘다(clampForSafety와 달리 말줄임표를 붙인다 —
+// 한줄설명은 원래도 "요약"이라 짧아져도 어색하지 않다).
+function fitOneLiner(text: string, fontSizes: number[], budget: number, lineHeight: number): FittedReflection {
+  for (const fontSize of fontSizes) {
+    if (estimateWrappedHeight(text, fontSize, lineHeight) <= budget) {
+      return { text, fontSize };
+    }
+  }
+  const smallest = fontSizes[fontSizes.length - 1];
+  const charsPerLine = Math.max(1, Math.floor(CONTENT_WIDTH / (smallest * CARD_TEXT_CHAR_WIDTH_RATIO)));
+  const maxLines = Math.max(1, Math.floor(budget / (smallest * lineHeight)));
+  return { text: clampForSafety(text, charsPerLine * maxLines), fontSize: smallest };
 }
 
 function tagFontSize(tags: string[]): number {
@@ -261,15 +298,27 @@ type ReflectionPanelProps = {
   dividerColor: string;
 };
 
+// 라벨(fontSize 22, 기본 줄간격 ~1.2배) + marginBottom 12의 대략적인
+// 높이. 한 행의 예산(REFLECTION_PANEL_ROW_BUDGET)을 계산할 때 쓴다.
+const REFLECTION_PANEL_LABEL_HEIGHT = 38;
+// maxHeight(480)에서 두 행 사이 구분선 여백(28+28+2=58)과 박스 자체
+// 패딩(위아래 80, boxBackground가 있을 때 기준 — 없을 때가 더
+// 여유로우니 있을 때 기준으로 보수적으로 잡는다)을 뺀 나머지를 두
+// 행에 나눠 배정한다.
+const REFLECTION_PANEL_ROW_BUDGET = 170;
+const REFLECTION_PANEL_FONT_SIZES = [34, 30, 27, 24];
+
 // 자기성찰은 이제 "내가 줄 수 있는 것"과 "내가 보완할 부분" 둘 다
 // 한 블록에 보여준다(예전 버전은 둘 중 하나를 골라야 했다). 두 문장을
 // 구분선 하나로 나눠 쌓는다. boxBackground가 null이면(C안처럼 이미
 // 그 영역 전체가 색면으로 구분된 경우) 별도 박스 없이 투명하게 얹는다.
 function ReflectionPanel({ offerSentence, improveSentence, boxBackground, boxBorder, textColor, labelColor, dividerColor }: ReflectionPanelProps) {
-  if (!offerSentence && !improveSentence) return null;
-  const rows: { label: string; sentence: string }[] = [];
-  if (offerSentence) rows.push({ label: "내가 줄 수 있는 것", sentence: offerSentence });
-  if (improveSentence) rows.push({ label: "내가 보완할 부분", sentence: improveSentence });
+  const offer = fitReflectionSentence(offerSentence, REFLECTION_PANEL_FONT_SIZES, REFLECTION_PANEL_LABEL_HEIGHT, REFLECTION_PANEL_ROW_BUDGET);
+  const improve = fitReflectionSentence(improveSentence, REFLECTION_PANEL_FONT_SIZES, REFLECTION_PANEL_LABEL_HEIGHT, REFLECTION_PANEL_ROW_BUDGET);
+  if (!offer && !improve) return null;
+  const rows: { label: string; text: string; fontSize: number }[] = [];
+  if (offer) rows.push({ label: "내가 줄 수 있는 것", ...offer });
+  if (improve) rows.push({ label: "내가 보완할 부분", ...improve });
 
   return (
     <div
@@ -299,7 +348,7 @@ function ReflectionPanel({ offerSentence, improveSentence, boxBackground, boxBor
           }}
         >
           <span style={{ fontSize: 22, fontWeight: 700, color: labelColor, letterSpacing: "-0.3px", marginBottom: 12 }}>{row.label}</span>
-          <span style={{ fontSize: reflectionFontSize(row.sentence), fontWeight: 700, lineHeight: 1.5, color: textColor }}>{row.sentence}</span>
+          <span style={{ fontSize: row.fontSize, fontWeight: 700, lineHeight: 1.5, color: textColor }}>{row.text}</span>
         </div>
       ))}
     </div>
@@ -442,20 +491,18 @@ function navyTitleFontSize(title: string): number {
   );
 }
 
-// 자기성찰 블록은 밝은 면으로 뒤집혀서 본문이 36px 이상이어야 축소해도
-// 읽힌다는 요구를 만족한다 — 짧은 문장(실제 데이터 대다수)은 38px,
-// 아주 긴 예외 케이스에서만 그 아래로 내려간다.
-function navyReflectionFontSize(sentence: string): number {
-  return pickBySteps(
-    sentence.length,
-    [
-      { max: 45, size: 38 },
-      { max: 65, size: 36 },
-      { max: 85, size: 32 },
-    ],
-    28,
-  );
-}
+// 자기성찰 블록은 밝은 면으로 뒤집혀서 본문이 커야 축소해도 읽힌다는
+// 요구가 있다 — 짧은 문장(실제 데이터 대다수)은 38px로 크게, 길어질
+// 때만 36→32→28 순으로 줄인다. 실제로 들어가는지는
+// fitReflectionSentence()가 줄바꿈을 추정해서 판단한다(#99).
+const NAVY_REFLECTION_FONT_SIZES = [38, 36, 32, 28];
+// 라벨(fontSize 26, 기본 줄간격 ~1.2배 + marginBottom 14)의 대략적인
+// 높이. NAVY_ZONE.reflection(510px)에서 두 행 사이 구분선 여백
+// (32+32+2=66)과 라벨 두 개(45×2=90)를 뺀 나머지(354px)를 두 행에
+// 나눠 배정하되, 실측 여유를 두기 위해 조금 더 빡빡하게(210) 잡는다
+// — 두 행이 동시에 이 예산을 꽉 채워도 354px 안에 들어온다.
+const NAVY_REFLECTION_LABEL_HEIGHT = 45;
+const NAVY_REFLECTION_ROW_BUDGET = 210;
 
 function NavyZone({ height, children, style }: { height: number; children: ReactNode; style?: Record<string, unknown> }) {
   return (
@@ -526,6 +573,39 @@ function NavyTitle({ title }: { title: string }) {
   );
 }
 
+// #99 후속 확인: 태그도 같은 위험이 있었다 — pill(배경 있는 알약)이
+// 텍스트+padding만큼 자기 크기를 갖고, 부모는 그 크기를 줄이거나
+// 줄바꿈시키지 않는다. 태그 이름이 길면(예: "#장거리연애도가능형")
+// 두 pill의 폭 합이 CONTENT_WIDTH를 넘어 카드 옆 여백 밖으로 pill이
+// 삐져나오거나 서로 겹쳤다(직접 재현: /dev/card-preview?variant=
+// extremetags&theme=navy). 태그는 자기성찰처럼 "빼는" 선택지가
+// 없다(4개가 한 세트라 하나만 빠지면 더 어색함) — 폰트를 계속
+// 줄여서라도 반드시 한 줄 안에 들어가게 한다.
+//
+// fontWeight:900(Black)은 자기성찰 문장에 쓰는 700(Bold)보다 글자가
+// 눈에 띄게 굵고 넓어서, 같은 0.73 비율을 쓰면 실제보다 좁게 계산돼
+// 위험을 놓친다. 0.92로 더 넉넉하게 잡아 재현 테스트로 실측
+// 보정했다.
+const NAVY_TAG_CHAR_WIDTH_RATIO = 0.92;
+const NAVY_TAG_PADDING_X = 40;
+const NAVY_TAG_GAP = 24;
+const NAVY_TAG_FONT_SIZES = [48, 46, 42, 38, 34, 30, 26, 22];
+
+function fitNavyTagFontSize(tags: string[]): number {
+  const rows: string[][] = [];
+  for (let i = 0; i < tags.length; i += 2) rows.push(tags.slice(i, i + 2));
+  for (const fontSize of NAVY_TAG_FONT_SIZES) {
+    const fits = rows.every((row) => {
+      const textWidth = row.reduce((sum, tag) => sum + tag.length * fontSize * NAVY_TAG_CHAR_WIDTH_RATIO, 0);
+      const paddingWidth = row.length * NAVY_TAG_PADDING_X * 2;
+      const gapWidth = row.length > 1 ? NAVY_TAG_GAP : 0;
+      return textWidth + paddingWidth + gapWidth <= CONTENT_WIDTH;
+    });
+    if (fits) return fontSize;
+  }
+  return NAVY_TAG_FONT_SIZES[NAVY_TAG_FONT_SIZES.length - 1];
+}
+
 // 태그를 데이터 표처럼 보이게 하던 테두리·칸 구분선을 없애고, 배경만
 // 있는 알약(pill)으로 바꿨다 — 2개씩 정확히 두 줄로 쌓는다(줄바꿈에
 // 기대면 글자 길이에 따라 1개나 3개로 흐트러질 수 있어 행을 직접
@@ -534,6 +614,7 @@ function NavyTags({ tags }: { tags: string[] }) {
   if (tags.length === 0) return null;
   const rows: string[][] = [];
   for (let i = 0; i < tags.length; i += 2) rows.push(tags.slice(i, i + 2));
+  const fontSize = fitNavyTagFontSize(tags);
   return (
     <NavyZone height={NAVY_ZONE.tags}>
       <div style={{ display: "flex", flexDirection: "column", width: CONTENT_WIDTH }}>
@@ -548,7 +629,7 @@ function NavyTags({ tags }: { tags: string[] }) {
                   color: CARD_COLORS.primary,
                   borderRadius: 999,
                   padding: "26px 40px",
-                  fontSize: 48,
+                  fontSize,
                   fontWeight: 900,
                   letterSpacing: "-1px",
                   marginLeft: tagIndex === 0 ? 0 : 24,
@@ -564,11 +645,19 @@ function NavyTags({ tags }: { tags: string[] }) {
   );
 }
 
+// NAVY_ZONE.oneLiner(100px) 예산으로 34px부터 시도해서 줄여나간다.
+// 여유(10px)를 조금 빼서 잡는다 — justifyContent:center로 세로
+// 중앙 정렬되니 약간의 여백이 있어야 위아래로 잘리지 않는다.
+const NAVY_ONELINER_FONT_SIZES = [34, 30, 26, 22];
+const NAVY_ONELINER_BUDGET = NAVY_ZONE.oneLiner - 10;
+const NAVY_ONELINER_LINE_HEIGHT = 1.4;
+
 function NavyOneLiner({ oneLiner }: { oneLiner: string }) {
+  const fitted = fitOneLiner(oneLiner, NAVY_ONELINER_FONT_SIZES, NAVY_ONELINER_BUDGET, NAVY_ONELINER_LINE_HEIGHT);
   return (
     <NavyZone height={NAVY_ZONE.oneLiner}>
       <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: NAVY_ZONE.oneLiner, overflow: "hidden" }}>
-        <span style={{ fontSize: 34, fontWeight: 700, lineHeight: 1.4, color: CARD_COLORS.foregroundSoft }}>{oneLiner}</span>
+        <span style={{ fontSize: fitted.fontSize, fontWeight: 700, lineHeight: NAVY_ONELINER_LINE_HEIGHT, color: CARD_COLORS.foregroundSoft }}>{fitted.text}</span>
       </div>
     </NavyZone>
   );
@@ -579,9 +668,15 @@ function NavyOneLiner({ oneLiner }: { oneLiner: string }) {
 // 어두운 카드 한가운데 밝은 띠가 지나가게 만든다. 캔버스 양 끝까지
 // 닿는 색면이라 "이 블록만 다르다"는 게 분명히 보인다.
 function NavyReflection({ offerSentence, improveSentence }: { offerSentence: string; improveSentence: string }) {
-  const rows: { label: string; sentence: string }[] = [];
-  if (offerSentence) rows.push({ label: "내가 줄 수 있는 것", sentence: offerSentence });
-  if (improveSentence) rows.push({ label: "내가 보완할 부분", sentence: improveSentence });
+  const offer = fitReflectionSentence(offerSentence, NAVY_REFLECTION_FONT_SIZES, NAVY_REFLECTION_LABEL_HEIGHT, NAVY_REFLECTION_ROW_BUDGET);
+  const improve = fitReflectionSentence(improveSentence, NAVY_REFLECTION_FONT_SIZES, NAVY_REFLECTION_LABEL_HEIGHT, NAVY_REFLECTION_ROW_BUDGET);
+  const rows: { label: string; text: string; fontSize: number }[] = [];
+  if (offer) rows.push({ label: "내가 줄 수 있는 것", ...offer });
+  if (improve) rows.push({ label: "내가 보완할 부분", ...improve });
+  // 둘 다 못 들어가서 빈 경우, 크림색 띠만 덩그러니 남으면 오히려 더
+  // 어색하다(카드 존재 이유인 블록이 텅 빈 색면으로 보임) — 배경색을
+  // 주지 않아 카드 전체 배경(네이비)이 그대로 이어지게 해서, 이
+  // 구간이 원래 없었던 것처럼 자연스럽게 지나가게 한다.
   if (rows.length === 0) return <div style={{ display: "flex", width: CARD_WIDTH, height: NAVY_ZONE.reflection, flexShrink: 0 }} />;
 
   return (
@@ -613,7 +708,7 @@ function NavyReflection({ offerSentence, improveSentence }: { offerSentence: str
           }}
         >
           <span style={{ fontSize: 26, fontWeight: 700, color: CARD_COLORS.textSecondary, letterSpacing: "-0.3px", marginBottom: 14 }}>{row.label}</span>
-          <span style={{ fontSize: navyReflectionFontSize(row.sentence), fontWeight: 700, lineHeight: 1.5, color: CARD_COLORS.primary }}>{row.sentence}</span>
+          <span style={{ fontSize: row.fontSize, fontWeight: 700, lineHeight: 1.5, color: CARD_COLORS.primary }}>{row.text}</span>
         </div>
       ))}
     </div>
