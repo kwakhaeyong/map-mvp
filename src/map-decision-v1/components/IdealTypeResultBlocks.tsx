@@ -55,10 +55,14 @@ function SectionNav() {
 // title/oneLiner 바로 아래, 폰 화면 스크롤 없이 첫 화면에서 보이는
 // 위치에 둔다. result.tags가 없는(이 기능 이전에 만들어진) 결과·공유
 // 링크는 그냥 이 줄만 생략되고 나머지는 그대로 보인다.
-function TagRow({ tags }: { tags: string[] }) {
+//
+// 대기 화면(GenerationProgress.tsx)에서도 같은 칩 디자인을 그대로
+// 재사용한다 — 간격만 자리마다 다를 수 있어서 여백은 className으로
+// 호출부가 정하게 한다(이 컴포넌트 자체엔 여백을 박아넣지 않는다).
+export function TagRow({ tags, className }: { tags: string[]; className?: string }) {
   if (tags.length === 0) return null;
   return (
-    <div className="mt-3 flex flex-wrap gap-1.5">
+    <div className={cx("flex flex-wrap gap-1.5", className)}>
       {tags.map((tag) => (
         <span
           key={tag}
@@ -79,7 +83,7 @@ function HeroHeader({ result }: { result: IdealTypeResult }) {
       </span>
       <h1 className="mt-3 text-balance break-keep text-3xl font-black leading-9 tracking-[-0.03em] text-text-primary">{result.title}</h1>
       <p className="mt-2 text-sm font-bold leading-6 text-text-primary/90">{result.oneLiner}</p>
-      <TagRow tags={result.tags ?? []} />
+      <TagRow tags={result.tags ?? []} className="mt-3" />
     </Card>
   );
 }

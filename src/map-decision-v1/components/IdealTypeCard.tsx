@@ -1,6 +1,7 @@
 "use client";
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { getIdealTypeTags } from "../engine/ideal-type-tags";
 import { now } from "../engine/session";
 import { resolveTopic } from "../engine/topics";
 import { MapSession } from "../types";
@@ -213,7 +214,12 @@ export function IdealTypeCard({
         {session.idealTypeResult ? (
           <IdealTypeCardBody session={session} setSession={setSession} onReset={onReset} />
         ) : generationState === "loading" ? (
-          <GenerationWaitCard key={attempt} stages={IDEAL_TYPE_GENERATION_STAGES} onRetry={generate} />
+          <GenerationWaitCard
+            key={attempt}
+            stages={IDEAL_TYPE_GENERATION_STAGES}
+            onRetry={generate}
+            tags={getIdealTypeTags(session.quizAnswers)}
+          />
         ) : generationState === "fallback" ? (
           <Card className="flex flex-col items-center gap-3 py-10 text-center">
             <p className="text-sm font-extrabold text-text-secondary">지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요.</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { TagRow } from "./IdealTypeResultBlocks";
 import { Button, Card } from "./ui/primitives";
 
 // AI 생성 중에는 실제 진행률(%)을 알 방법이 없다 — 시간 기반으로 숫자를
@@ -20,9 +21,16 @@ const SAVED_REASSURANCE_TEXT = "답변은 이미 저장돼 있어요";
 export function GenerationWaitCard({
   stages,
   onRetry,
+  tags,
 }: {
   stages: string[];
   onRetry: () => void;
+  // 이상형 퀴즈에서만 쓴다. 공유 태그(ideal-type-tags.ts)는 AI 호출 없이
+  // 퀴즈 답변만으로 코드가 결정적으로 정하는 값이라, 결과가 오기 전에
+  // 미리 보여줘도 최종 결과에 실제로 붙는 태그와 항상 똑같다 — 같은
+  // session.quizAnswers를 같은 함수(getIdealTypeTags)에 넣은 값이라
+  // 달라질 수가 없다. 진로 결과처럼 태그 개념이 없는 화면은 생략하면 된다.
+  tags?: string[];
 }) {
   const [elapsedMs, setElapsedMs] = useState(0);
 
@@ -39,15 +47,23 @@ export function GenerationWaitCard({
   const canRetry = elapsedMs >= RETRY_AFTER_MS;
 
   return (
-    <Card className="flex flex-col items-center gap-3 py-10 text-center">
-      <p className="text-sm font-extrabold text-text-secondary">{stages[stageIndex]}</p>
-      <p className="text-xs font-semibold text-text-muted">{isDelayed ? DELAYED_TEXT : GENERATION_ESTIMATE_TEXT}</p>
-      <p className="text-[11px] font-medium text-text-muted">{SAVED_REASSURANCE_TEXT}</p>
-      {canRetry ? (
-        <Button variant="secondary" onClick={onRetry}>
-          다시 시도
-        </Button>
+    <div className="flex flex-col gap-3">
+      {tags && tags.length > 0 ? (
+        <Card className="flex flex-col items-center gap-2 py-4 text-center">
+          <p className="text-xs font-extrabold text-text-secondary">당신의 태그는 이미 나왔어요</p>
+          <TagRow tags={tags} className="justify-center" />
+        </Card>
       ) : null}
-    </Card>
+      <Card className="flex flex-col items-center gap-3 py-10 text-center">
+        <p className="text-sm font-extrabold text-text-secondary">{stages[stageIndex]}</p>
+        <p className="text-xs font-semibold text-text-muted">{isDelayed ? DELAYED_TEXT : GENERATION_ESTIMATE_TEXT}</p>
+        <p className="text-[11px] font-medium text-text-muted">{SAVED_REASSURANCE_TEXT}</p>
+        {canRetry ? (
+          <Button variant="secondary" onClick={onRetry}>
+            다시 시도
+          </Button>
+        ) : null}
+      </Card>
+    </div>
   );
 }
