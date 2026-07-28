@@ -177,8 +177,13 @@ export const TOPICS: Record<string, TopicConfig> = {
     // 나란히 대비되도록 의도적으로 배치돼 있어 짝 없이 옮길 수 없다).
     // 태그 4축(relationship/lifestyle/experienceStressResponse/binary1)과
     // 결과 생성 프롬프트는 배열 위치가 아니라 axisId·문항 종류/개수만
-    // 참조하므로 이 이동으로 영향받지 않는다.
-    quizVersion: 8,
+    // 참조하므로 이 이동으로 영향받지 않는다. 9: binary6("이성적 대화
+    // vs 감정 공감")을 scenarioAdvice(회사 스트레스를 얘기했을 때
+    // 조언 vs 공감 반응)로 교체했다 — "깻잎 논쟁형" 시범 적용 1건.
+    // 기존 scenario 3개와 달리 "이상형이라면"이 아니라 "나"의 반응을
+    // 묻는 문항이라 SYSTEM_PROMPT에서 별도로 구분해 selfReflection
+    // 재료로 쓰도록 지시했다.
+    quizVersion: 9,
     axes: [
       {
         id: "currentMood",
@@ -1045,14 +1050,24 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "누구에게나 두루 잘하는 사람", description: "누구에게나 배려가 몸에 밴 사람" },
         ],
       },
+      // ── 상황 제시형 4(신규, quizVersion 9) ────────────────────────
+      // 기존 binary6("이성적 대화 vs 감정 공감")을 교체한 것 — 추상적인
+      // 양자택일 대신 구체적 장면을 주고 반응을 고르게 했다("깻잎
+      // 논쟁형"). ★scenarioCancel/scenarioMood/scenarioSilence와 달리
+      // 이건 "이상형이라면"이 아니라 "나"의 반응을 묻는 문항이다 —
+      // ideal-type-generator.ts SYSTEM_PROMPT에서 반드시 구분해서
+      // selfReflection 재료로 쓰도록 지시해야 한다(다른 3개는 그대로
+      // 상대 취향 신호).
       {
-        id: "binary6",
-        type: "binary",
+        id: "scenarioAdvice",
+        type: "scenario",
         required: true,
-        question: "이성적으로 대화하는 사람 vs 감정에 공감해주는 사람, 힘들 때 더 필요한 쪽은?",
+        question: "회사에서 힘든 일이 있었다고 얘기했어. 상대가 \"그래서 어떻게 됐는데, 이렇게 해보는 게 어때?\"라고 답해. 기분이 어때?",
         options: [
-          { label: "이성적으로 대화하는 사람", description: "문제를 침착하게 같이 풀어가는 사람" },
-          { label: "감정에 공감해주는 사람", description: "내 감정을 먼저 알아주고 다독여주는 사람" },
+          { label: "도움이 돼, 해결책이 있어서 좋아", description: "문제를 같이 풀어주는 것 같아 든든한 반응" },
+          { label: "지금은 그냥 들어주면 좋겠는데 싶어", description: "해결책보다 공감이 먼저 필요한 반응" },
+          { label: "말한 걸 후회하게 돼", description: "털어놓은 게 오히려 부담스러워지는 반응" },
+          { label: "고맙긴 한데 뭔가 아쉬운 기분이야", description: "조언은 맞는 말인데 마음이 개운친 않은 반응" },
         ],
       },
       {
