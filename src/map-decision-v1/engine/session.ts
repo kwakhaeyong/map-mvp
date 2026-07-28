@@ -11,7 +11,7 @@ export function createId(prefix = "id") { return `${prefix}-${Date.now()}-${Math
 // still resolves to career via resolveTopic, but the picker screen only
 // ever calls this with implemented topics, so that fallback shouldn't fire
 // in practice.
-export function createSession(topicId?: string): MapSession {
+export function createSession(topicId?: string, compareWithId?: string): MapSession {
   const timestamp = now();
   const topic = topicId ? resolveTopic(topicId) : undefined;
   const isQuiz = topic?.inputMode === "quiz";
@@ -43,6 +43,7 @@ export function createSession(topicId?: string): MapSession {
     startedAt: timestamp,
     updatedAt: timestamp,
     ...(isQuiz ? { quizStep: 0, quizVersion: topic?.quizVersion } : {}),
+    ...(compareWithId ? { compareWithId } : {}),
   };
 }
 

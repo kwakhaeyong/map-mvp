@@ -85,13 +85,21 @@ const PRIMARY_CTA_CLASS =
 // 건너뛰고 같은 주제의 퀴즈/대화를 곧장 시작한다(MapDecisionProduct.tsx의
 // 마운트 effect가 이 쿼리 파라미터를 읽는다). topicId를 모르는 상황
 // (레이아웃을 모르는 결과, 링크 만료 등)에서는 그냥 "/"로 보낸다.
-function ctaHref(topicId?: string) {
-  return topicId ? `/?start=${encodeURIComponent(topicId)}` : "/";
+//
+// withId(이 카드의 공유 ID)가 같이 있으면 "&with=<id>"도 붙인다 — 지금
+// 이 카드(A)를 보고 있는 사람(B)이 퀴즈를 마치면 자기 결과 화면에서
+// "친구와의 궁합 보기" 배너를 볼 수 있게 하는 용도다(궁합 기능).
+// topicId가 없을 때는 애초에 "/"로만 보내므로 with도 같이 생략된다.
+function ctaHref(topicId?: string, withId?: string) {
+  if (!topicId) return "/";
+  const params = new URLSearchParams({ start: topicId });
+  if (withId) params.set("with", withId);
+  return `/?${params.toString()}`;
 }
 
-function TryItCta({ topicId }: { topicId?: string }) {
+function TryItCta({ topicId, withId }: { topicId?: string; withId?: string }) {
   return (
-    <Link href={ctaHref(topicId)} className={PRIMARY_CTA_CLASS}>
+    <Link href={ctaHref(topicId, withId)} className={PRIMARY_CTA_CLASS}>
       너도 만들어봐
     </Link>
   );
@@ -100,10 +108,10 @@ function TryItCta({ topicId }: { topicId?: string }) {
 // 자기성찰 블록(가장 감정적으로 몰입되는 지점) 바로 다음에 놓는 두 번째
 // CTA. 맨 아래 CTA(강조 버튼)와 똑같이 생기면 같은 걸 두 번 보여주는
 // 것처럼 느껴져서, 여기는 테두리만 있는 은은한 카드형으로 차등을 둔다.
-function MidResultCta({ topicId }: { topicId?: string }) {
+function MidResultCta({ topicId, withId }: { topicId?: string; withId?: string }) {
   return (
     <Link
-      href={ctaHref(topicId)}
+      href={ctaHref(topicId, withId)}
       className="flex items-center justify-between gap-3 rounded-large border border-primary/30 bg-primary/5 px-5 py-4 text-sm font-extrabold text-primary transition-colors hover:bg-primary/10"
     >
       <span>나도 이런 발견, 해보고 싶다면?</span>
@@ -146,12 +154,12 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                 </div>
               }
             />
-            <TryItCta topicId={share.status === "ok" ? share.record.topicId : undefined} />
+            <TryItCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />
             <div className="h-px w-full bg-border" />
             <CollapsibleFriendResult>
               <IdealTypeResultBlocks
                 result={renderable.result}
-                afterReflection={<MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} />}
+                afterReflection={<MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />}
               />
             </CollapsibleFriendResult>
           </>
