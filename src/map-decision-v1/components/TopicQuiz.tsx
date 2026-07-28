@@ -505,14 +505,19 @@ function ReflectionStep({
         rows={3}
       />
       {speech.supported ? (
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 break-keep">
             <p className="text-xs font-semibold text-text-muted">
               {speech.listening ? `듣고 있어요 · ${speech.seconds}초` : "말로 답해도 돼요"}
             </p>
             {speech.error ? <p className="text-xs font-semibold text-error">{speech.error}</p> : null}
           </div>
-          <VoiceButton type="button" listening={speech.listening} onClick={speech.listening ? speech.stop : speech.start}>
+          <VoiceButton
+            type="button"
+            listening={speech.listening}
+            onClick={speech.listening ? speech.stop : speech.start}
+            className="shrink-0 whitespace-nowrap"
+          >
             {speech.listening ? "멈추기" : "말하기"}
           </VoiceButton>
         </div>
