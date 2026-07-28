@@ -162,6 +162,13 @@ export function IdealTypeCard({
   // 덮어쓰는 경쟁 상태를 막는다.
   const controllerRef = useRef<AbortController | null>(null);
 
+  // 대기 화면에 "몇 개 답했는지" 보여줄 때 34/40을 하드코딩하지 않고
+  // topics.ts의 실제 축 구성에서 계산한다 — DeepenResultBanner가 "34개
+  // 답변으로 만들었어요"를 계산하는 것과 같은 방식.
+  const topicAxes = resolveTopic(session.topicId).axes ?? [];
+  const requiredAxisCount = topicAxes.filter((axis) => axis.required).length;
+  const answeredCount = session.idealTypeQuizDepth === "deep" ? topicAxes.length : requiredAxisCount;
+
   const generate = () => {
     controllerRef.current?.abort();
     const controller = new AbortController();
@@ -219,6 +226,7 @@ export function IdealTypeCard({
             stages={IDEAL_TYPE_GENERATION_STAGES}
             onRetry={generate}
             tags={getIdealTypeTags(session.quizAnswers)}
+            answeredCount={answeredCount}
           />
         ) : generationState === "fallback" ? (
           <Card className="flex flex-col items-center gap-3 py-10 text-center">

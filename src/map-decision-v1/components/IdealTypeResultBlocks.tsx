@@ -59,14 +59,28 @@ function SectionNav() {
 // 대기 화면(GenerationProgress.tsx)에서도 같은 칩 디자인을 그대로
 // 재사용한다 — 간격만 자리마다 다를 수 있어서 여백은 className으로
 // 호출부가 정하게 한다(이 컴포넌트 자체엔 여백을 박아넣지 않는다).
-export function TagRow({ tags, className }: { tags: string[]; className?: string }) {
+export function TagRow({
+  tags,
+  className,
+  activeIndex,
+}: {
+  tags: string[];
+  className?: string;
+  // 대기 화면(GenerationProgress.tsx)의 정지 구간에서만 쓴다. 태그 하나를
+  // 순서대로 옅게 강조해 "화면이 살아있다"는 느낌을 주는 용도라, 넘기지
+  // 않으면(결과 화면 등 기본 사용) 색이 전혀 바뀌지 않는다.
+  activeIndex?: number;
+}) {
   if (tags.length === 0) return null;
   return (
     <div className={cx("flex flex-wrap gap-1.5", className)}>
-      {tags.map((tag) => (
+      {tags.map((tag, index) => (
         <span
           key={tag}
-          className="inline-flex items-center rounded-pill border border-border/60 bg-surface/70 px-2.5 py-1 text-xs font-extrabold text-text-primary"
+          className={cx(
+            "inline-flex items-center rounded-pill border px-2.5 py-1 text-xs font-extrabold text-text-primary transition-colors duration-700",
+            index === activeIndex ? "border-primary/50 bg-primary/10" : "border-border/60 bg-surface/70",
+          )}
         >
           {tag}
         </span>

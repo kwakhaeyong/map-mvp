@@ -17,11 +17,20 @@ const RETRY_AFTER_MS = 180_000; // 3분 경과
 export const GENERATION_ESTIMATE_TEXT = "보통 1~2분 정도 걸려요";
 const DELAYED_TEXT = "조금 더 걸리고 있어요. 화면을 닫지 마세요.";
 const SAVED_REASSURANCE_TEXT = "답변은 이미 저장돼 있어요";
+// 태그 순차 강조가 다음 태그로 넘어가는 간격. 너무 빠르면 산만하고
+// 너무 느리면 "멈췄다"는 인상을 다시 준다 — animate-pulse(2s 주기)보다
+// 느긋하게, 부드러운 색 전환(TagRow의 duration-700)만으로 충분히
+// 눈에 띄되 튀지 않게 골랐다.
+const TAG_HIGHLIGHT_INTERVAL_MS = 1600;
+// docs/MAP_CONSTITUTION.md의 Core statement를 그대로 인용한다 — 새로
+// 지어내는 카피가 아니라 이미 정해둔 서비스 정체성 문구를 재사용한다.
+const BRAND_STATEMENT = "정답을 대신 주는 AI가 아니라, 내 생각이 보이게 만드는 AI.";
 
 export function GenerationWaitCard({
   stages,
   onRetry,
   tags,
+  answeredCount,
 }: {
   stages: string[];
   onRetry: () => void;
@@ -31,6 +40,9 @@ export function GenerationWaitCard({
   // session.quizAnswers를 같은 함수(getIdealTypeTags)에 넣은 값이라
   // 달라질 수가 없다. 진로 결과처럼 태그 개념이 없는 화면은 생략하면 된다.
   tags?: string[];
+  // 실제로 답한 문항 수(세션에서 계산해 넘겨받음, 여기서 하드코딩하지
+  // 않는다). 태그와 마찬가지로 확정된 사실만 보여준다.
+  answeredCount?: number;
 }) {
   const [elapsedMs, setElapsedMs] = useState(0);
 
@@ -45,13 +57,29 @@ export function GenerationWaitCard({
   const stageIndex = Math.min(stages.length - 1, Math.floor(elapsedMs / STAGE_INTERVAL_MS));
   const isDelayed = elapsedMs >= DELAYED_AFTER_MS;
   const canRetry = elapsedMs >= RETRY_AFTER_MS;
+  // 5단계 문구가 다 끝나 마지막 문구에 멈춰 있는 정지 구간(48초 이후,
+  // 실제 생성은 보통 그보다 오래 걸림). 이 구간에서만 태그를 하나씩
+  // 순서대로 옅게 강조해 "화면이 멈추지 않았다"를 보여준다 — 진행률이나
+  // 남은 시간을 아는 척하지 않는 순수 시각 신호다.
+  const isFrozenStage = stageIndex === stages.length - 1;
+  const [activeTagIndex, setActiveTagIndex] = useState(0);
+  useEffect(() => {
+    if (!isFrozenStage || !tags || tags.length === 0) return;
+    const timer = setInterval(() => {
+      setActiveTagIndex((index) => (index + 1) % tags.length);
+    }, TAG_HIGHLIGHT_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [isFrozenStage, tags]);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-h-[65dvh] flex-col gap-3">
       {tags && tags.length > 0 ? (
         <Card className="flex flex-col items-center gap-2 py-4 text-center">
           <p className="text-xs font-extrabold text-text-secondary">당신의 태그는 이미 나왔어요</p>
-          <TagRow tags={tags} className="justify-center" />
+          <TagRow tags={tags} className="justify-center" activeIndex={isFrozenStage ? activeTagIndex : undefined} />
+          {answeredCount ? (
+            <p className="text-[11px] font-medium text-text-muted">{answeredCount}개 답변을 반영해서 만들고 있어요</p>
+          ) : null}
         </Card>
       ) : null}
       <Card className="flex flex-col items-center gap-3 py-10 text-center">
@@ -64,6 +92,7 @@ export function GenerationWaitCard({
           </Button>
         ) : null}
       </Card>
+      <p className="mt-auto pb-2 text-center text-[11px] font-medium text-text-muted">{BRAND_STATEMENT}</p>
     </div>
   );
 }
