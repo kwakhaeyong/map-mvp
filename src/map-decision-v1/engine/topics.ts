@@ -182,8 +182,14 @@ export const TOPICS: Record<string, TopicConfig> = {
     // 조언 vs 공감 반응)로 교체했다 — "깻잎 논쟁형" 시범 적용 1건.
     // 기존 scenario 3개와 달리 "이상형이라면"이 아니라 "나"의 반응을
     // 묻는 문항이라 SYSTEM_PROMPT에서 별도로 구분해 selfReflection
-    // 재료로 쓰도록 지시했다.
-    quizVersion: 9,
+    // 재료로 쓰도록 지시했다. 10: scenarioAdvice를 32번에서 4번으로
+    // 옮겼다 — 32번은 "형식이 실제로 재밌는지" 반응을 볼 수 없을 만큼
+    // 뒤쪽이었다. scenarioCancel(6번)과 바로 붙지 않고, scenarioMood
+    // (13번)와도 3연속이 되지 않는 자리다. 동시에 선택지를 "조언 긍정
+    // 1 : 부정 3"에서 "조언 긍정 2 : 공감 선호 2"로 다시 짰다 — 강도
+    // 차이가 아니라 서로 다른 이유의 선택지 4개로, 어느 쪽도 정답처럼
+    // 보이지 않게 했다.
+    quizVersion: 10,
     axes: [
       {
         id: "currentMood",
@@ -220,6 +226,31 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "깜짝 이벤트", description: "예상 못한 서프라이즈를 좋아함" },
           { label: "필요한 걸 알아서 챙겨주기", description: "말 안 해도 알아서 챙겨주는 걸 좋아함" },
           { label: "함께하는 시간 자체", description: "물건보다 같이 보내는 시간이 더 중요함" },
+        ],
+      },
+      // ── 상황 제시형 4(신규, quizVersion 10) ───────────────────────
+      // 기존 binary6("이성적 대화 vs 감정 공감")을 교체한 것 — 추상적인
+      // 양자택일 대신 구체적 장면을 주고 반응을 고르게 했다("깻잎
+      // 논쟁형"). ★scenarioCancel/scenarioMood/scenarioSilence와 달리
+      // 이건 "이상형이라면"이 아니라 "나"의 반응을 묻는 문항이다 —
+      // ideal-type-generator.ts SYSTEM_PROMPT에서 반드시 구분해서
+      // selfReflection 재료로 쓰도록 지시해야 한다(다른 3개는 그대로
+      // 상대 취향 신호). 선택지는 "조언 긍정 2 : 공감 선호 2"로
+      // 대등하게 짜서 어느 쪽도 정답처럼 보이지 않게 했고, 같은 방향
+      // 안에서도 이유가 다르게(강도 차이가 아니라) 만들었다 — 오너
+      // 피드백 반영. 4번 문항으로 둬서 10번 이내에 놓이면서도
+      // scenarioCancel(6번)과 바로 붙지 않게, scenarioMood(13번)와도
+      // 3연속이 되지 않게 배치했다.
+      {
+        id: "scenarioAdvice",
+        type: "scenario",
+        required: true,
+        question: "회사에서 힘든 일이 있었다고 얘기했어. 상대가 \"그래서 어떻게 됐는데, 이렇게 해보는 게 어때?\"라고 답해. 기분이 어때?",
+        options: [
+          { label: "해결책이 있어서 든든해", description: "문제를 같이 풀어주는 것 같아 안심되는 반응" },
+          { label: "나도 그렇게 답하는 편이라 편해", description: "익숙한 방식이라 자연스럽게 느껴지는 반응" },
+          { label: "지금은 그냥 들어주면 좋겠는데 싶어", description: "해결책보다 공감이 먼저 필요한 반응" },
+          { label: "이미 생각해본 방법이라 아쉬워", description: "새로운 도움보다 그냥 알아주길 바랐던 반응" },
         ],
       },
       {
@@ -1048,26 +1079,6 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "반반인 사람", description: "가까운 사람과 아닌 사람을 크게 구분 안 하는 사람" },
           { label: "그래도 두루두루인 사람", description: "내 사람도 챙기지만 남에게도 잘하는 사람" },
           { label: "누구에게나 두루 잘하는 사람", description: "누구에게나 배려가 몸에 밴 사람" },
-        ],
-      },
-      // ── 상황 제시형 4(신규, quizVersion 9) ────────────────────────
-      // 기존 binary6("이성적 대화 vs 감정 공감")을 교체한 것 — 추상적인
-      // 양자택일 대신 구체적 장면을 주고 반응을 고르게 했다("깻잎
-      // 논쟁형"). ★scenarioCancel/scenarioMood/scenarioSilence와 달리
-      // 이건 "이상형이라면"이 아니라 "나"의 반응을 묻는 문항이다 —
-      // ideal-type-generator.ts SYSTEM_PROMPT에서 반드시 구분해서
-      // selfReflection 재료로 쓰도록 지시해야 한다(다른 3개는 그대로
-      // 상대 취향 신호).
-      {
-        id: "scenarioAdvice",
-        type: "scenario",
-        required: true,
-        question: "회사에서 힘든 일이 있었다고 얘기했어. 상대가 \"그래서 어떻게 됐는데, 이렇게 해보는 게 어때?\"라고 답해. 기분이 어때?",
-        options: [
-          { label: "도움이 돼, 해결책이 있어서 좋아", description: "문제를 같이 풀어주는 것 같아 든든한 반응" },
-          { label: "지금은 그냥 들어주면 좋겠는데 싶어", description: "해결책보다 공감이 먼저 필요한 반응" },
-          { label: "말한 걸 후회하게 돼", description: "털어놓은 게 오히려 부담스러워지는 반응" },
-          { label: "고맙긴 한데 뭔가 아쉬운 기분이야", description: "조언은 맞는 말인데 마음이 개운친 않은 반응" },
         ],
       },
       {
