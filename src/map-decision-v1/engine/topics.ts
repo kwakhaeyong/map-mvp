@@ -167,9 +167,31 @@ export const TOPICS: Record<string, TopicConfig> = {
     // 피드백("32문항에 7분 넘게 걸림")을 받고 문항 수를 늘리는 방향은
     // 폐기했다 — 그 3개는 만들지 않는다. 이번엔 승격 2개만 반영해서
     // 필수 32→34개, 심화는 8→6개로 줄었다(총 문항 풀은 그대로, 심화 2개가
-    // 필수로 자리만 옮김).
-    quizVersion: 7,
+    // 필수로 자리만 옮김). 8: 1~14번에 "나"에 대한 문항이 하나도 없다는
+    // 지적(34문항 전수 조사 결과)에 따라, 원래 27번째였던 currentMood
+    // (요즘 마음 상태)를 맨 앞으로 옮겼다 — 짝이 되는 선호 문항이 없는
+    // 독립 quickTap 축이라 이동에 제약이 없었다. myRelationshipRole과
+    // experience형 7개는 그대로 둔다("무거운 자기 문항으로 시작하면
+    // 기대와 어긋난다"는 우려, 그리고 experienceApology·
+    // experienceEarlyStyle은 각각 reconcileStyle·firstMoveStyle과
+    // 나란히 대비되도록 의도적으로 배치돼 있어 짝 없이 옮길 수 없다).
+    // 태그 4축(relationship/lifestyle/experienceStressResponse/binary1)과
+    // 결과 생성 프롬프트는 배열 위치가 아니라 axisId·문항 종류/개수만
+    // 참조하므로 이 이동으로 영향받지 않는다.
+    quizVersion: 8,
     axes: [
+      {
+        id: "currentMood",
+        type: "quickTap",
+        required: true,
+        question: "요즘 마음 상태에 가장 가까운 건?",
+        options: [
+          { label: "새로운 인연에 열려있어", description: "누군가를 만나고 싶은 마음이 있는 상태" },
+          { label: "그냥 무난하게 지내", description: "특별한 마음의 동요 없이 평범한 상태" },
+          { label: "요즘 좀 지쳐있어", description: "마음의 여유가 크지 않은 상태" },
+          { label: "혼자만의 시간이 편해", description: "지금은 나 자신에게 집중하고 싶은 상태" },
+        ],
+      },
       {
         id: "appearance",
         type: "quickTap",
@@ -913,18 +935,6 @@ export const TOPICS: Record<string, TopicConfig> = {
         question: "그 아쉬움이 가장 크게 남았던 순간이 언제였어요?\n그때 실제로 어떻게 했어요?",
         placeholder: "예: 헤어지기 전에 서운했던 걸 말 안 하고 참았는데, 결국 곪아서 터졌어요",
         options: [],
-      },
-      {
-        id: "currentMood",
-        type: "quickTap",
-        required: true,
-        question: "요즘 마음 상태에 가장 가까운 건?",
-        options: [
-          { label: "새로운 인연에 열려있어", description: "누군가를 만나고 싶은 마음이 있는 상태" },
-          { label: "그냥 무난하게 지내", description: "특별한 마음의 동요 없이 평범한 상태" },
-          { label: "요즘 좀 지쳐있어", description: "마음의 여유가 크지 않은 상태" },
-          { label: "혼자만의 시간이 편해", description: "지금은 나 자신에게 집중하고 싶은 상태" },
-        ],
       },
       {
         id: "communication",

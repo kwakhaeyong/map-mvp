@@ -361,7 +361,7 @@ function SliderStep({
         <div className="h-1 w-full rounded-pill bg-background-subtle" />
         <div className="flex items-start justify-between gap-1 text-center">
           {options.map((option) => (
-            <span key={option.label} className="flex-1 break-keep text-[10px] font-bold leading-tight text-text-secondary">
+            <span key={option.label} className="flex-1 break-keep text-[11px] font-bold leading-snug text-text-secondary">
               {option.label}
             </span>
           ))}
