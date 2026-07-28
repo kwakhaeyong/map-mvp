@@ -4,8 +4,9 @@ import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { createId, now } from "../engine/session";
 import { resolveTopic, TopicAxis, TopicChoice, TopicOption } from "../engine/topics";
 import { MapSession } from "../types";
+import { useWebSpeech } from "../voice/use-web-speech";
 import { Brand } from "./Landing";
-import { Badge, Button, Textarea } from "./ui/primitives";
+import { Badge, Button, Textarea, VoiceButton } from "./ui/primitives";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -460,14 +461,23 @@ function RankingStep({
 // 건너뛰기를 항상 허용한다. reflection 문항은 태그 매핑(ideal-type
 // -tags.ts)과 무관해서 selectedTopLevelLabels 없이 답변 텍스트만
 // commitAnswer로 넘긴다.
+//
+// 음성 입력은 Conversation.tsx와 같은 훅(useWebSpeech)·같은 패턴을
+// 그대로 쓴다 — 타이핑은 한두 줄에서 멈추지만 말은 자연스럽게 길어져서,
+// 문항을 사건을 소환하는 방향으로 바꾼 것과 같이 가야 이탈을 늘리지
+// 않는다. 미지원/거부 시 마이크 버튼 자체를 렌더링하지 않아 조용히
+// 타이핑으로 폴백되고, 변환된 텍스트는 그대로 textarea 값이라 자유롭게
+// 고쳐 쓸 수 있다. 글자 수 게이트는 두지 않는다 — 건너뛰기는 항상 허용.
 function ReflectionStep({
   question,
+  placeholder,
   onSubmit,
   onBack,
   showBack,
   isFirst,
 }: {
   question: string;
+  placeholder?: string;
   onSubmit: (answerText: string) => void;
   onBack: () => void;
   showBack: boolean;
@@ -477,9 +487,10 @@ function ReflectionStep({
   isFirst: boolean;
 }) {
   const [text, setText] = useState("");
+  const speech = useWebSpeech((heard) => setText((current) => `${current}${current ? " " : ""}${heard}`));
   return (
     <div className="flex w-full flex-col gap-5">
-      <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
+      <h2 className="text-balance break-keep whitespace-pre-line text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
       {isFirst ? (
         <p className="-mt-2 text-xs font-semibold text-text-muted">
           여기 적어주신 내용은 카드를 만들 때 분석을 위해 Anthropic(미국) 서버로 전송돼요.
@@ -489,10 +500,23 @@ function ReflectionStep({
         autoFocus
         value={text}
         onChange={(event) => setText(event.target.value)}
-        placeholder="한 줄이면 충분해요 (선택)"
+        placeholder={placeholder ?? "생각나는 대로 편하게 적어주세요 (선택)"}
         className="min-h-16"
         rows={3}
       />
+      {speech.supported ? (
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-text-muted">
+              {speech.listening ? `듣고 있어요 · ${speech.seconds}초` : "말로 답해도 돼요"}
+            </p>
+            {speech.error ? <p className="text-xs font-semibold text-error">{speech.error}</p> : null}
+          </div>
+          <VoiceButton type="button" listening={speech.listening} onClick={speech.listening ? speech.stop : speech.start}>
+            {speech.listening ? "멈추기" : "말하기"}
+          </VoiceButton>
+        </div>
+      ) : null}
       <div className="mt-1 flex items-center justify-between gap-3">
         {showBack ? (
           <button type="button" onClick={onBack} className="text-xs font-black text-text-muted hover:text-text-primary">
@@ -823,6 +847,7 @@ export function TopicQuiz({
           <ReflectionStep
             key={currentAxis.id}
             question={currentAxis.question}
+            placeholder={currentAxis.placeholder}
             showBack={step > 0}
             isFirst={currentAxis.id === firstReflectionAxisId}
             onBack={goBack}

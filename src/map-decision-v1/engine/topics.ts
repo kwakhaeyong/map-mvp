@@ -55,7 +55,17 @@ export type TopicQuestionType =
   | "reflection";
 // required=false인 문항은 "심화" 구간으로, 필수 문항을 다 답한 뒤에만
 // 볼지 말지 선택할 수 있다(TopicQuiz.tsx의 결정 화면 참고).
-export type TopicAxis = { id: string; type: TopicQuestionType; question: string; options: TopicOption[]; required: boolean };
+export type TopicAxis = {
+  id: string;
+  type: TopicQuestionType;
+  question: string;
+  options: TopicOption[];
+  required: boolean;
+  // reflection(자유 서술) 문항에서만 사용. 예시 답변을 보여줘서 "이 정도
+  // 길이·구체성으로 쓰면 되는구나"를 느끼게 한다 — 빈 입력창만 있으면
+  // 뭘 얼마나 써야 할지 몰라 한두 단어로 끝나기 쉽다.
+  placeholder?: string;
+};
 
 export type TopicConfig = {
   id: string;
@@ -694,7 +704,8 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "reflectionEnding",
         type: "reflection",
         required: true,
-        question: "왜 그랬던 것 같아요? (한 줄이면 충분해요)",
+        question: "가장 최근에 그렇게 멀어졌던 관계, 언제였어요?\n무슨 일이 있었는지 적어주세요",
+        placeholder: "예: 작년에 만나던 사람이 연락이 점점 줄었는데, 저도 먼저 연락 안 하고 그냥 뒀어요",
         options: [],
       },
       {
@@ -817,7 +828,8 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "reflectionStress",
         type: "reflection",
         required: true,
-        question: "그렇게 풀고 나면, 보통 기분이 어때요? (한 줄이면 충분해요)",
+        question: "최근에 그렇게 스트레스를 풀었던 때가 언제였어요?\n그때 어떤 상황이었어요?",
+        placeholder: "예: 저번 주에 친구랑 트러블 있었을 때 게임하면서 풀었는데, 다음 날 먼저 연락해서 풀었어요",
         options: [],
       },
       {
@@ -898,7 +910,8 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "reflectionRegret",
         type: "reflection",
         required: true,
-        question: "지금이라면 어떻게 다르게 해볼 것 같아요? (한 줄이면 충분해요)",
+        question: "그 아쉬움이 가장 크게 남았던 순간이 언제였어요?\n그때 실제로 어떻게 했어요?",
+        placeholder: "예: 헤어지기 전에 서운했던 걸 말 안 하고 참았는데, 결국 곪아서 터졌어요",
         options: [],
       },
       {
