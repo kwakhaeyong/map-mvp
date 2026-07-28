@@ -198,7 +198,13 @@ const EXTREME_ONELINER_MOCK: IdealTypeResult = {
   tags: ["#표현중시형", "#여행형", "#갈등해결형", "#설렘추구형"],
 };
 
-const EXTREME_TAGS_MOCK: IdealTypeResult = {
+// ideal-type-tags.ts의 18개 고정 태그 중 4개 축(관계에서 원하는 것 /
+// 라이프스타일 / 갈등 대처 방식 / 관계 리듬) 각각에서 가장 긴 것만
+// 골라 조합한 실제로 나올 수 있는 최악의 경우다 — 태그는 항상 이
+// 4개 축에서 하나씩 나오므로(getIdealTypeTags), 이 조합이 실제
+// 프로덕션에서 등장 가능한 가장 긴 케이스다. (임의로 만든 가상의
+// 긴 태그명이 아니라 실제 사전에서 뽑은 값이다 — #99 리뷰 지적사항.)
+const REAL_LONGEST_TAGS_MOCK: IdealTypeResult = {
   version: 2,
   generatedAt: new Date().toISOString(),
   model: "claude-sonnet-5",
@@ -213,7 +219,7 @@ const EXTREME_TAGS_MOCK: IdealTypeResult = {
     whatToImprove: ["한번 삐지면 티가 좀 나는 편이에요."],
   },
   roadmap: { firstAction: "", phases: [] },
-  tags: ["#장거리연애도가능형", "#갑작스러운연락환영형", "#표현중시형", "#설렘추구형"],
+  tags: ["#티키타카중시형", "#집순이집돌이형", "#직진소통형", "#편안함추구형"],
 };
 
 function isCardTheme(value: string | null): value is CardTheme {
@@ -245,7 +251,7 @@ export async function GET(request: Request) {
                   : variantParam === "extremeoneliner"
                     ? EXTREME_ONELINER_MOCK
                     : variantParam === "extremetags"
-                      ? EXTREME_TAGS_MOCK
+                      ? REAL_LONGEST_TAGS_MOCK
                       : SHORT_MOCK;
   const themeParam = url.searchParams.get("theme");
   const theme: CardTheme = isCardTheme(themeParam) ? themeParam : "purple";
