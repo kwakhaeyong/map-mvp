@@ -17,13 +17,21 @@ import { FinalResult, IdealTypeResult } from "../../../src/map-decision-v1/types
 // 카톡 대화 로그에 그대로 남고, 외부 OG 캐시는 우리 쪽 90일 만료와
 // 무관하게 따로 남아 있어서 링크가 만료된 뒤에도 미리보기에 내용이
 // 노출될 수 있다는 점 때문에 의도적으로 고정해둔다.
+//
+// 카톡 미리보기 문구 3안 (오너 검토용, A안을 기본 적용):
+// A안 (호기심, 현재 적용): title "친구가 자기 MAP을 보냈어요" /
+//   desc "MBTI 16개로는 안 나오는, 그 사람만의 유형"
+// B안 (직접): title "나를 4글자로 요약할 수 없어서" /
+//   desc "37개 질문으로 만드는 나만의 MAP"
+// C안 (현재 개선): title "친구가 공유한 MAP" /
+//   desc "열어보고, 나도 만들어볼까요?"
 export const metadata: Metadata = {
-  title: "공유된 MAP | MAP Decision",
-  description: "친구가 공유한 MAP이에요.",
+  title: "친구가 자기 MAP을 보냈어요",
+  description: "MBTI 16개로는 안 나오는, 그 사람만의 유형",
   robots: { index: false, follow: false },
   openGraph: {
-    title: "공유된 MAP | MAP Decision",
-    description: "친구가 공유한 MAP이에요.",
+    title: "친구가 자기 MAP을 보냈어요",
+    description: "MBTI 16개로는 안 나오는, 그 사람만의 유형",
     images: [{ url: "/og-share.png", width: 1200, height: 630 }],
   },
 };
@@ -71,10 +79,33 @@ function resolveRenderableShare(share: GetShareResult): RenderableShare {
 const PRIMARY_CTA_CLASS =
   "inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-pill border border-primary bg-primary px-6 text-base font-extrabold tracking-[-0.01em] text-primary-foreground shadow-subtle transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-floating active:translate-y-0";
 
-function TryItCta() {
+// topicId가 있으면 "/?start=<topicId>"로 보내 랜딩(종류 선택 화면)을
+// 건너뛰고 같은 주제의 퀴즈/대화를 곧장 시작한다(MapDecisionProduct.tsx의
+// 마운트 effect가 이 쿼리 파라미터를 읽는다). topicId를 모르는 상황
+// (레이아웃을 모르는 결과, 링크 만료 등)에서는 그냥 "/"로 보낸다.
+function ctaHref(topicId?: string) {
+  return topicId ? `/?start=${encodeURIComponent(topicId)}` : "/";
+}
+
+function TryItCta({ topicId }: { topicId?: string }) {
   return (
-    <Link href="/" className={PRIMARY_CTA_CLASS}>
-      ✨ 너도 만들어봐
+    <Link href={ctaHref(topicId)} className={PRIMARY_CTA_CLASS}>
+      너도 만들어봐
+    </Link>
+  );
+}
+
+// 자기성찰 블록(가장 감정적으로 몰입되는 지점) 바로 다음에 놓는 두 번째
+// CTA. 맨 아래 CTA(강조 버튼)와 똑같이 생기면 같은 걸 두 번 보여주는
+// 것처럼 느껴져서, 여기는 테두리만 있는 은은한 카드형으로 차등을 둔다.
+function MidResultCta({ topicId }: { topicId?: string }) {
+  return (
+    <Link
+      href={ctaHref(topicId)}
+      className="flex items-center justify-between gap-3 rounded-large border border-primary/30 bg-primary/5 px-5 py-4 text-sm font-extrabold text-primary transition-colors hover:bg-primary/10"
+    >
+      <span>나도 이런 발견, 해보고 싶다면?</span>
+      <span aria-hidden="true">→</span>
     </Link>
   );
 }
@@ -97,20 +128,23 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                 🔍 심층 분석 포함
               </Badge>
             ) : null}
-            <IdealTypeResultBlocks result={renderable.result} />
-            <TryItCta />
+            <IdealTypeResultBlocks
+              result={renderable.result}
+              afterReflection={<MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} />}
+            />
+            <TryItCta topicId={share.status === "ok" ? share.record.topicId : undefined} />
           </>
         ) : renderable?.kind === "career" ? (
           <>
             <FinalResultSectionReadOnly result={renderable.result} />
-            <TryItCta />
+            <TryItCta topicId={share.status === "ok" ? share.record.topicId : undefined} />
           </>
         ) : renderable?.kind === "unsupported" ? (
           // 알 수 없는(또는 아직 지원하지 않는) 레이아웃 — 데이터가
           // 없거나 만료된 것과는 다른 상황이라 문구를 구분해준다.
           <Card className="flex flex-col items-center gap-4 py-10 text-center">
             <p className="text-sm font-extrabold text-text-secondary">이 카드는 지금 화면에서 볼 수 있는 형식이 아니에요.</p>
-            <TryItCta />
+            <TryItCta topicId={share.status === "ok" ? share.record.topicId : undefined} />
           </Card>
         ) : share.status === "unavailable" ? (
           // 저장소 장애로 지금 당장 확인이 안 되는 상태 — 링크 자체는

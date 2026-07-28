@@ -71,6 +71,17 @@ export function MapDecisionProduct() {
       setSession(saved);
       setHasSavedDraft(saved.messages.length > 0 || saved.nodes.length > 0 || Boolean(saved.localDraft?.trim()));
     }
+    // 공유 화면(/r/{id})의 "너도 만들어봐"가 랜딩(종류 선택)을 한 번 더
+    // 거치게 하면 그 사이에 이탈한다 — /?start=<topicId>로 오면 랜딩을
+    // 건너뛰고 그 주제 퀴즈를 곧장 시작한다. 이미 진행 중인 세션(진짜
+    // 메시지·노드가 있는 상태)이 있으면 그 진행을 지우지 않고 무시한다.
+    // 소비하고 나면 주소에서 지워서, 새로고침해도 처음부터 다시
+    // 시작되지 않게 한다.
+    const startTopic = new URLSearchParams(window.location.search).get("start");
+    if (startTopic && !(saved && (saved.messages.length > 0 || saved.nodes.length > 0))) {
+      setSession(createSession(startTopic));
+      window.history.replaceState({}, "", window.location.pathname);
+    }
     setSaveState("saved");
     setHydrated(true);
   }, []);

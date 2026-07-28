@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { IdealTypeFlags, IdealTypeMatrix, IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmap, IdealTypeSelfReflection } from "../types";
 import { Card } from "./ui/primitives";
 
@@ -343,7 +344,12 @@ function RoadmapSection({ roadmap }: { roadmap: IdealTypeRoadmap }) {
 
 // 라이브 결과 화면과 공유 읽기 전용 화면이 공통으로 쓰는 전체 블록
 // 묶음. 공유하기/다시 만들기 같은 버튼은 호출부가 각자 다르게 붙인다.
-export function IdealTypeResultBlocks({ result }: { result: IdealTypeResult }) {
+// afterReflection: 자기성찰 블록(가장 감정적으로 몰입되는 지점) 바로
+// 다음에 끼워 넣을 요소 — 지금은 공유 읽기 전용 화면(app/r/[id]/
+// page.tsx)의 중간 CTA만 이 자리를 쓴다. 라이브 결과 화면
+// (IdealTypeCard.tsx)은 이 prop을 넘기지 않아 undefined로 떨어지고,
+// 그러면 아무것도 렌더링되지 않아 기존 화면은 그대로다.
+export function IdealTypeResultBlocks({ result, afterReflection }: { result: IdealTypeResult; afterReflection?: ReactNode }) {
   return (
     <>
       <HeroHeader result={result} />
@@ -353,6 +359,7 @@ export function IdealTypeResultBlocks({ result }: { result: IdealTypeResult }) {
       <MatrixSection matrix={result.matrix} />
       <FlagsSection flags={result.flags} />
       <SelfReflectionSection selfReflection={result.selfReflection} />
+      {afterReflection}
       <RoadmapSection roadmap={result.roadmap} />
     </>
   );
