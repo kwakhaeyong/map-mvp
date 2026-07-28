@@ -19,6 +19,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { ReactNode } from "react";
+import sharp from "sharp";
 import { CARD_COLORS } from "./ideal-type-card-colors";
 import type { IdealTypeResult } from "../types";
 
@@ -29,6 +30,8 @@ const SIDE_PADDING = 72;
 const CONTENT_WIDTH = CARD_WIDTH - SIDE_PADDING * 2;
 
 const FONT_DIR = path.join(process.cwd(), "assets/fonts/pretendard-static");
+const NOTO_SERIF_KR_DIR = path.join(process.cwd(), "assets/fonts/noto-serif-kr");
+const PAPER_TEXTURE_PATH = path.join(process.cwd(), "assets/textures/paper-noise.png");
 
 type CardFont = { data: Buffer; name: string; weight: 400 | 500 | 600 | 700 | 800 | 900; style: "normal" };
 
@@ -50,6 +53,44 @@ export function loadCardFonts(): CardFont[] {
     weight,
     style: "normal" as const,
   }));
+}
+
+// 초대장 컨셉(invitation 테마) 전용 세리프. google/fonts 저장소의 가변
+// 폰트를 fonttools로 400/700 두 굵기만 정적 인스턴스로 뽑고, 한글·라틴
+// 범위로 서브셋한 파일이다(scripts/generate-paper-texture.mjs 옆에 폰트
+// 자체를 만드는 스크립트는 없다 — 폰트는 코드로 생성할 수 있는 자산이
+// 아니라 공개 오픈소스 폰트 파일 자체를 받은 것이고, 텍스처처럼 저작권
+// 우려가 있는 "이미지"가 아니라서 1단계에서 이미 사용을 승인받았다).
+// 서버에서만 래스터화에 쓰이고 클라이언트로 내려가지 않아 용량 제약이
+// 없다.
+export function loadInvitationFonts(): CardFont[] {
+  return [
+    { data: readFileSync(path.join(NOTO_SERIF_KR_DIR, "NotoSerifKR-Regular.ttf")), name: "Noto Serif KR", weight: 400, style: "normal" as const },
+    { data: readFileSync(path.join(NOTO_SERIF_KR_DIR, "NotoSerifKR-Bold.ttf")), name: "Noto Serif KR", weight: 700, style: "normal" as const },
+  ];
+}
+
+// scripts/generate-paper-texture.mjs가 미리 만들어둔 48x48 타일(약
+// 1KB)을 data URI로 감싼다. 요청마다 디스크에서 다시 읽지만 파일이
+// 작아 비용은 무시할 만하고, 모듈이 콜드스타트 중 여러 번 재사용되면
+// 이 캐시가 그 안에서는 재사용된다.
+let paperTextureDataUri: string | undefined;
+function loadPaperTextureDataUri(): string {
+  if (!paperTextureDataUri) {
+    const bytes = readFileSync(PAPER_TEXTURE_PATH);
+    paperTextureDataUri = `data:image/png;base64,${bytes.toString("base64")}`;
+  }
+  return paperTextureDataUri;
+}
+
+// satori(next/og)가 직접 만드는 PNG는 압축률이 낮다 — 특히 종이
+// 질감처럼 픽셀마다 값이 미세하게 다른 영역이 섞이면 파일 크기가 몇
+// 배로 뛴다(실측: 텍스처 추가 직후 700KB대였던 카드가, 아래처럼 sharp로
+// 한 번 더 인코딩하면 160KB대로 줄었다 — 같은 그림, 다른 압축기 차이일
+// 뿐 화질 손실은 눈에 띄지 않는다). 그래서 라우트가 satori 결과를 그대로
+// 내보내지 않고 이 함수로 한 번 더 압축한다.
+export async function optimizeCardPng(buffer: Buffer): Promise<Buffer> {
+  return sharp(buffer).png({ compressionLevel: 9, palette: true }).toBuffer();
 }
 
 // 마침표 기준 첫 문장만 남긴다. 글자 수로 자르면 문장 중간이 끊겨서
@@ -108,7 +149,12 @@ function oneLinerFontSize(oneLiner: string): number {
   );
 }
 
-export type CardTheme = "purple" | "navy" | "colorBlock";
+export type CardTheme = "purple" | "navy" | "colorBlock" | "invitation";
+// 카드에서 태그 4개를 얼마나 크게 보여줄지 두 안을 비교하는 용도 —
+// invitation 테마에서만 의미가 있다(다른 테마는 이 값을 무시한다).
+// 오너가 실제 캡처를 보고 하나를 고르기 전까지는 값을 코드에 박아넣지
+// 않고 호출부(카드 라우트)가 명시적으로 골라서 넘긴다.
+export type TagEmphasis = "normal" | "large";
 
 // 자기성찰 문장에서 첫 문장만 뽑는다 — 길이 컷은 여기서 하지 않는다.
 // 실제로 보여줄 수 있는지(폰트를 줄여서 들어가는지, 그래도 안 들어가면
@@ -754,7 +800,321 @@ function buildNavyStoryCard(result: IdealTypeResult) {
   );
 }
 
-export function buildIdealTypeCardElement(result: IdealTypeResult, theme: CardTheme) {
+// ── 초대장 컨셉(invitation) 전용 레이아웃 ──────────────────────────────
+// navy 테마의 "고정 픽셀 구역" 방식을 그대로 물려받는다(내용이 짧아도
+// 구역이 늘 자기 자리를 지켜서 아래가 텅 비어 보이지 않는다). 색만
+// 반전(짙은 배경 → 크림 배경 + 옅은 종이 질감)하고, 잉크는 기존
+// 네이비 하나만 쓰며, 활자를 Noto Serif KR로 바꾼다.
+//
+// tagEmphasis로 title:tags 구역 배분만 다른 두 안을 만든다 — "타이틀이
+// 크고 태그가 작은" 현행 위계(normal)와 "태그가 타이틀급으로 커지고
+// 타이틀은 상대적으로 작아지는"(large) 안. 나머지 구역(brand·한줄설명·
+// 자기성찰·footer) 높이는 두 안이 동일해서 title+tags에 배정되는 예산
+// (760px)만 두 안 사이에서 다르게 나뉜다.
+const INVITATION_FIXED_ZONE = { brand: 90, oneLiner: 110, reflection: 460, footer: 250 } as const;
+const INVITATION_TITLE_TAGS_BUDGET =
+  1670 - INVITATION_FIXED_ZONE.brand - INVITATION_FIXED_ZONE.oneLiner - INVITATION_FIXED_ZONE.reflection - INVITATION_FIXED_ZONE.footer;
+
+function invitationZoneHeights(tagEmphasis: TagEmphasis): { title: number; tags: number } {
+  return tagEmphasis === "large"
+    ? { title: 320, tags: INVITATION_TITLE_TAGS_BUDGET - 320 }
+    : { title: 480, tags: INVITATION_TITLE_TAGS_BUDGET - 480 };
+}
+
+function invitationTitleFontSize(title: string, tagEmphasis: TagEmphasis): number {
+  const steps =
+    tagEmphasis === "large"
+      ? [{ max: 12, size: 100 }, { max: 20, size: 82 }, { max: 26, size: 68 }, { max: 38, size: 58 }, { max: 52, size: 50 }]
+      : [{ max: 12, size: 140 }, { max: 20, size: 110 }, { max: 26, size: 88 }, { max: 38, size: 76 }, { max: 52, size: 64 }];
+  return pickBySteps(title.length, steps, tagEmphasis === "large" ? 40 : 54);
+}
+
+// navy의 fitNavyTagFontSize()와 같은 계산이지만, 두 안이 각자 다른
+// 후보 폰트 크기·패딩·글자폭 비율을 쓸 수 있게 인자로 뺐다(태그가
+// 커질수록 굵은 세리프 글자가 실측 폭도 달라지므로).
+function fitPillFontSize(tags: string[], candidateSizes: number[], paddingX: number, gap: number, charWidthRatio: number): number {
+  const rows: string[][] = [];
+  for (let i = 0; i < tags.length; i += 2) rows.push(tags.slice(i, i + 2));
+  for (const fontSize of candidateSizes) {
+    const fits = rows.every((row) => {
+      const textWidth = row.reduce((sum, tag) => sum + tag.length * fontSize * charWidthRatio, 0);
+      const paddingWidth = row.length * paddingX * 2;
+      const gapWidth = row.length > 1 ? gap : 0;
+      return textWidth + paddingWidth + gapWidth <= CONTENT_WIDTH;
+    });
+    if (fits) return fontSize;
+  }
+  return candidateSizes[candidateSizes.length - 1];
+}
+
+// large안은 패딩·간격을 줄여 같은 2줄×2칸 배치 안에서 실제로 더 큰
+// 글자가 들어갈 폭을 확보한다(패딩을 그대로 두고 후보 크기만 올리면
+// 폭 계산에서 전부 걸러져 결국 normal과 같은 크기로 수렴해버렸다 —
+// 처음 렌더 결과를 직접 보고 발견해 고쳤다).
+const INVITATION_TAG_CHAR_WIDTH_RATIO = 0.92;
+const INVITATION_TAG_NORMAL = { sizes: [48, 46, 42, 38, 34, 30, 26, 22], paddingX: 36, gap: 20 };
+const INVITATION_TAG_LARGE = { sizes: [72, 68, 64, 58, 52, 46, 40, 34], paddingX: 32, gap: 20 };
+
+function InvitationZone({ height, children, style }: { height: number; children: ReactNode; style?: Record<string, unknown> }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: CARD_WIDTH,
+        height,
+        flexShrink: 0,
+        boxSizing: "border-box",
+        paddingLeft: SIDE_PADDING,
+        paddingRight: SIDE_PADDING,
+        justifyContent: "center",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// 기존 사각 테두리 브랜드 마크를 봉랍(왁스 실)처럼 원형 하나로 바꾼다
+// — 다른 장식(테두리 선)은 아래 카드 전체 테두리 하나뿐이라, 이
+// 봉랍 자체에는 별도 테두리를 더 얹지 않고 옅은 그림자만으로 입체감을
+// 준다.
+function InvitationBrand() {
+  return (
+    <InvitationZone height={INVITATION_FIXED_ZONE.brand}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, alignItems: "center" }}>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 56,
+            height: 56,
+            borderRadius: 999,
+            backgroundColor: CARD_COLORS.primary,
+            boxShadow: "0 3px 6px rgba(21, 33, 59, 0.3)",
+            color: CARD_COLORS.background,
+            fontSize: 24,
+            fontWeight: 700,
+            marginRight: 16,
+          }}
+        >
+          M
+        </span>
+        <span style={{ fontSize: 28, fontWeight: 400, color: CARD_COLORS.primary, letterSpacing: "-0.3px" }}>MAP Decision</span>
+      </div>
+    </InvitationZone>
+  );
+}
+
+function InvitationTitle({ title, tagEmphasis, height }: { title: string; tagEmphasis: TagEmphasis; height: number }) {
+  return (
+    <InvitationZone height={height}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: height, overflow: "hidden" }}>
+        <span
+          style={{
+            fontSize: invitationTitleFontSize(title, tagEmphasis),
+            fontWeight: 700,
+            lineHeight: 1.25,
+            color: CARD_COLORS.primary,
+            letterSpacing: "-1px",
+            wordBreak: "keep-all",
+          }}
+        >
+          {title}
+        </span>
+      </div>
+    </InvitationZone>
+  );
+}
+
+function InvitationTags({ tags, tagEmphasis, height }: { tags: string[]; tagEmphasis: TagEmphasis; height: number }) {
+  if (tags.length === 0) return null;
+  const preset = tagEmphasis === "large" ? INVITATION_TAG_LARGE : INVITATION_TAG_NORMAL;
+  const fontSize = fitPillFontSize(tags, preset.sizes, preset.paddingX, preset.gap, INVITATION_TAG_CHAR_WIDTH_RATIO);
+  const rows: string[][] = [];
+  for (let i = 0; i < tags.length; i += 2) rows.push(tags.slice(i, i + 2));
+  return (
+    <InvitationZone height={height}>
+      <div style={{ display: "flex", flexDirection: "column", width: CONTENT_WIDTH, maxHeight: height, overflow: "hidden" }}>
+        {rows.map((row, rowIndex) => (
+          <div key={row.join("-")} style={{ display: "flex", justifyContent: "center", marginTop: rowIndex === 0 ? 0 : preset.gap }}>
+            {row.map((tag, tagIndex) => (
+              <span
+                key={tag}
+                style={{
+                  display: "flex",
+                  backgroundColor: CARD_COLORS.primarySoftFill,
+                  color: CARD_COLORS.primary,
+                  borderRadius: 999,
+                  padding: `${preset.paddingX * 0.6}px ${preset.paddingX}px`,
+                  fontSize,
+                  fontWeight: 700,
+                  letterSpacing: "-0.5px",
+                  marginLeft: tagIndex === 0 ? 0 : preset.gap,
+                }}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </InvitationZone>
+  );
+}
+
+const INVITATION_ONELINER_FONT_SIZES = [32, 28, 25, 22];
+const INVITATION_ONELINER_BUDGET = INVITATION_FIXED_ZONE.oneLiner - 10;
+const INVITATION_ONELINER_LINE_HEIGHT = 1.4;
+
+function InvitationOneLiner({ oneLiner }: { oneLiner: string }) {
+  const fitted = fitOneLiner(oneLiner, INVITATION_ONELINER_FONT_SIZES, INVITATION_ONELINER_BUDGET, INVITATION_ONELINER_LINE_HEIGHT);
+  return (
+    <InvitationZone height={INVITATION_FIXED_ZONE.oneLiner}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: INVITATION_FIXED_ZONE.oneLiner, overflow: "hidden" }}>
+        <span style={{ fontSize: fitted.fontSize, fontWeight: 400, lineHeight: INVITATION_ONELINER_LINE_HEIGHT, color: CARD_COLORS.textSecondary }}>
+          {fitted.text}
+        </span>
+      </div>
+    </InvitationZone>
+  );
+}
+
+const INVITATION_REFLECTION_FONT_SIZES = [32, 29, 26, 23];
+const INVITATION_REFLECTION_LABEL_HEIGHT = 40;
+const INVITATION_REFLECTION_ROW_BUDGET = 165;
+
+// 카드 전체에 허용된 테두리 선 1개는 바깥 카드 프레임에 이미 쓰므로,
+// 이 패널은 테두리 없이 옅은 잉크색 배경 면(primarySoftFill)만으로
+// 자기성찰 영역을 구분한다.
+function InvitationReflection({ offerSentence, improveSentence }: { offerSentence: string; improveSentence: string }) {
+  const offer = fitReflectionSentence(offerSentence, INVITATION_REFLECTION_FONT_SIZES, INVITATION_REFLECTION_LABEL_HEIGHT, INVITATION_REFLECTION_ROW_BUDGET);
+  const improve = fitReflectionSentence(
+    improveSentence,
+    INVITATION_REFLECTION_FONT_SIZES,
+    INVITATION_REFLECTION_LABEL_HEIGHT,
+    INVITATION_REFLECTION_ROW_BUDGET,
+  );
+  const rows: { label: string; text: string; fontSize: number }[] = [];
+  if (offer) rows.push({ label: "내가 줄 수 있는 것", ...offer });
+  if (improve) rows.push({ label: "내가 보완할 부분", ...improve });
+  if (rows.length === 0) return <div style={{ display: "flex", width: CARD_WIDTH, height: INVITATION_FIXED_ZONE.reflection, flexShrink: 0 }} />;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: CARD_WIDTH,
+        height: INVITATION_FIXED_ZONE.reflection,
+        flexShrink: 0,
+        boxSizing: "border-box",
+        paddingLeft: SIDE_PADDING,
+        paddingRight: SIDE_PADDING,
+        justifyContent: "center",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          width: CONTENT_WIDTH,
+          boxSizing: "border-box",
+          borderRadius: 24,
+          backgroundColor: CARD_COLORS.primarySoftFill,
+          padding: "40px 44px",
+        }}
+      >
+        {rows.map((row, index) => (
+          <div
+            key={row.label}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              paddingTop: index === 0 ? 0 : 30,
+              marginTop: index === 0 ? 0 : 30,
+              borderTop: index === 0 ? "none" : `1px solid ${CARD_COLORS.primarySoftBorder}`,
+            }}
+          >
+            <span style={{ fontSize: 24, fontWeight: 700, color: CARD_COLORS.textSecondary, letterSpacing: "-0.2px", marginBottom: 14 }}>{row.label}</span>
+            <span style={{ fontSize: row.fontSize, fontWeight: 400, lineHeight: 1.5, color: CARD_COLORS.primary }}>{row.text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InvitationFooter() {
+  return (
+    <InvitationZone height={INVITATION_FIXED_ZONE.footer} style={{ justifyContent: "flex-start", paddingTop: 40 }}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, justifyContent: "center" }}>
+        <span style={{ fontSize: 24, fontWeight: 400, color: CARD_COLORS.textSecondary, letterSpacing: "-0.2px" }}>mapdecision.com</span>
+      </div>
+    </InvitationZone>
+  );
+}
+
+// 카드 전체에 허용된 테두리 선 1개 — 캔버스 가장자리에서 안쪽으로
+// 들여서 "종이 카드 자체의 가장자리"처럼 보이게 한다. 절대 위치로
+// 콘텐츠 위에 얹되 배경이 없어(border만 있음) 아래 내용을 가리지
+// 않는다.
+function InvitationFrame() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        position: "absolute",
+        top: 40,
+        left: 40,
+        right: 40,
+        bottom: 40,
+        border: `2px solid ${CARD_COLORS.primarySoftBorder}`,
+        borderRadius: 16,
+      }}
+    />
+  );
+}
+
+function buildInvitationCard(result: IdealTypeResult, tagEmphasis: TagEmphasis) {
+  const title = clampForSafety(result.title.trim(), 60);
+  const oneLiner = clampForSafety(result.oneLiner.trim(), 120);
+  const tags = (result.tags ?? []).slice(0, 4);
+  const offerSentence = pickReflectionSentence(result.selfReflection.whatYouOffer);
+  const improveSentence = pickReflectionSentence(result.selfReflection.whatToImprove);
+  const zones = invitationZoneHeights(tagEmphasis);
+  const textureDataUri = loadPaperTextureDataUri();
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+        width: CARD_WIDTH,
+        height: CARD_HEIGHT,
+        backgroundColor: CARD_COLORS.background,
+        backgroundImage: `url(${textureDataUri})`,
+        backgroundRepeat: "repeat",
+        fontFamily: "Noto Serif KR",
+      }}
+    >
+      <InvitationFrame />
+      <div style={{ display: "flex", width: CARD_WIDTH, height: SAFE_ZONE, flexShrink: 0 }} />
+      <InvitationBrand />
+      <InvitationTitle title={title} tagEmphasis={tagEmphasis} height={zones.title} />
+      <InvitationTags tags={tags} tagEmphasis={tagEmphasis} height={zones.tags} />
+      <InvitationOneLiner oneLiner={oneLiner} />
+      <InvitationReflection offerSentence={offerSentence} improveSentence={improveSentence} />
+      <InvitationFooter />
+    </div>
+  );
+}
+
+export function buildIdealTypeCardElement(result: IdealTypeResult, theme: CardTheme, tagEmphasis: TagEmphasis = "normal") {
   if (theme === "navy") return buildNavyStoryCard(result);
+  if (theme === "invitation") return buildInvitationCard(result, tagEmphasis);
   return buildContent(result, theme);
 }

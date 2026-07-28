@@ -109,7 +109,7 @@ export default async function CompatibilityPage({
   const topicId = share.status === "ok" ? share.record.topicId : undefined;
 
   return (
-    <main className="min-h-dvh px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary">
+    <main className="min-h-dvh bg-background px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary">
       <div className="mx-auto flex w-full max-w-sm flex-col gap-3">
         <div className="flex items-center px-1">
           <Brand />

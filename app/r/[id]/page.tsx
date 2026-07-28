@@ -125,8 +125,21 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
   const share = await getShare(id);
   const renderable = resolveRenderableShare(share);
 
+  // 초대장 컨셉(card.png) 배경과 톤을 맞춘다 — 이 화면 전체를 앱의
+  // 다른 화면(퀴즈·결과 화면)이 쓰는 컬러풀한 그라데이션 배경 대신
+  // card.png와 같은 단색 크림(#fbf7ef, bg-background 토큰)으로 바꾼다.
+  // 이상형이 아닌 결과(진로 등)는 이번 범위 밖이라 기존 배경을 그대로
+  // 쓴다.
+  const isInvitationBackground = renderable?.kind === "idealType";
+
   return (
-    <main className="min-h-dvh px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary">
+    <main
+      className={
+        isInvitationBackground
+          ? "min-h-dvh bg-background px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary"
+          : "min-h-dvh px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary"
+      }
+    >
       <div className="mx-auto flex w-full max-w-sm flex-col gap-3">
         <div className="flex items-center px-1">
           <Brand />
