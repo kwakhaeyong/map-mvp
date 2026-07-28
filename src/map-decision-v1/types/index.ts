@@ -40,7 +40,7 @@ export type MapSession = {
   localDraft?: string;
   result?: FinalResult;
   idealTypeResult?: IdealTypeResult;
-  // 이상형 퀴즈를 필수 37문항에서 끝냈는지("quick"), 선택 6문항까지
+  // 이상형 퀴즈를 필수 34문항에서 끝냈는지("quick"), 선택 6문항까지
   // 마쳤는지("deep") — 결과 화면의 "🔍 심층 분석 포함" 배지와, 결과를
   // 이미 본 뒤 "6개 더 답하기"를 안내할지 판단하는 데 쓴다.
   idealTypeQuizDepth?: "quick" | "deep";

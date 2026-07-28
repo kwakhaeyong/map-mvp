@@ -514,7 +514,7 @@ function ReflectionStep({
   );
 }
 
-// 필수 37문항을 다 마친 직후 나오는 갈림길 화면 — 여기서 끝내도 결과를
+// 필수 34문항을 다 마친 직후 나오는 갈림길 화면 — 여기서 끝내도 결과를
 // 만들 수 있지만, 6개를 더 답하면 결과의 어디가 구체적으로 달라지는지를
 // 여기서 정확히 말해준다("더 정확해진다" 같은 막연한 말 대신).
 function DecisionStep({ onQuick, onDeep, onBack }: { onQuick: () => void; onDeep: () => void; onBack: () => void }) {
