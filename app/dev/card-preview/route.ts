@@ -3,9 +3,7 @@ import { IdealTypeResult } from "../../../src/map-decision-v1/types";
 import {
   buildIdealTypeCardElement,
   CardTheme,
-  TagEmphasis,
-  CARD_HEIGHT,
-  CARD_WIDTH,
+  getCardDimensions,
   loadCardFonts,
   loadInvitationFonts,
   optimizeCardPng,
@@ -235,10 +233,6 @@ function isCardTheme(value: string | null): value is CardTheme {
   return value === "purple" || value === "navy" || value === "colorBlock" || value === "invitation";
 }
 
-function isTagEmphasis(value: string | null): value is TagEmphasis {
-  return value === "normal" || value === "large";
-}
-
 export async function GET(request: Request) {
   if (process.env.NODE_ENV === "production") {
     return new Response("Not found", { status: 404 });
@@ -268,12 +262,11 @@ export async function GET(request: Request) {
                       : SHORT_MOCK;
   const themeParam = url.searchParams.get("theme");
   const theme: CardTheme = isCardTheme(themeParam) ? themeParam : "purple";
-  const tagEmphasisParam = url.searchParams.get("tagEmphasis");
-  const tagEmphasis: TagEmphasis = isTagEmphasis(tagEmphasisParam) ? tagEmphasisParam : "normal";
 
-  const response = new ImageResponse(buildIdealTypeCardElement(variant, theme, tagEmphasis), {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+  const { width, height } = getCardDimensions(theme);
+  const response = new ImageResponse(buildIdealTypeCardElement(variant, theme), {
+    width,
+    height,
     fonts: theme === "invitation" ? loadInvitationFonts() : loadCardFonts(),
   });
   const optimized = await optimizeCardPng(Buffer.from(await response.arrayBuffer()));

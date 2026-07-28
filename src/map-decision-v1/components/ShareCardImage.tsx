@@ -3,7 +3,8 @@
 import { useCallback, useState, type ReactNode } from "react";
 
 // /r/{id} 받는 사람 화면에서만 쓴다. 이미지가 뜨기 전에도 레이아웃이
-// 흔들리지 않게 카드의 실제 비율(1080x1920)로 자리를 미리 확보하고,
+// 흔들리지 않게 카드의 실제 비율(초대장 컨셉 기준 1080x1350, 4:5)로
+// 자리를 미리 확보하고,
 // 생성이 실패해도(캐시 만료 후 재생성 실패 등) 깨진 이미지 아이콘 대신
 // fallback(타이틀·한줄 설명·태그 텍스트)으로 조용히 전환한다 — 카드
 // 안에 같은 내용이 있어서 평소엔 fallback을 안 보여주는 게 맞고,
@@ -25,7 +26,7 @@ export function ShareCardImage({ src, alt, fallback }: { src: string; alt: strin
 
   if (failed) return <>{fallback}</>;
   return (
-    <div className="mx-auto aspect-[1080/1920] w-4/5">
+    <div className="mx-auto aspect-[1080/1350] w-4/5">
       <img
         ref={checkAlreadyFailed}
         src={src}

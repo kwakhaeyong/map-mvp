@@ -4,9 +4,7 @@ import { IdealTypeResult } from "../../../../src/map-decision-v1/types";
 import {
   buildIdealTypeCardElement,
   CardTheme,
-  TagEmphasis,
-  CARD_HEIGHT,
-  CARD_WIDTH,
+  getCardDimensions,
   loadCardFonts,
   loadInvitationFonts,
   optimizeCardPng,
@@ -28,10 +26,6 @@ function isCardTheme(value: string | null): value is CardTheme {
   return value === "purple" || value === "navy" || value === "colorBlock" || value === "invitation";
 }
 
-function isTagEmphasis(value: string | null): value is TagEmphasis {
-  return value === "normal" || value === "large";
-}
-
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const share = await getShare(id);
@@ -45,12 +39,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const themeParam = url.searchParams.get("theme");
   const theme: CardTheme = isCardTheme(themeParam) ? themeParam : "invitation";
 
-  // 태그를 타이틀급으로 키운 안(large)이 나을지는 아직 오너 승인 전이라
-  // ?tagEmphasis=large로 비교해볼 수 있게 열어뒀다. 승인되면 기본값을
-  // 확정하고 파라미터 분기는 정리한다.
-  const tagEmphasisParam = url.searchParams.get("tagEmphasis");
-  const tagEmphasis: TagEmphasis = isTagEmphasis(tagEmphasisParam) ? tagEmphasisParam : "normal";
-
   // ★캐시 기간을 길게 주지 않는다. 공유 데이터는 제3자 정보 신고 등으로
   // 관리자가 Redis에서 직접 지워야 하는 경우가 있는데(개인정보 상담
   // 항목에도 명시된 사안), 삭제와 "캐시 비우기"를 자동으로 연결하는
@@ -60,9 +48,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   // 캐시 기간을 나눠주느냐"뿐이라, immutable 없이 짧은 max-age만
   // 준다. 그래도 같은 사람이 짧은 시간 안에 반복 요청하는 경우(카톡/
   // 인스타 인앱 브라우저의 중복 로드 등)에는 여전히 도움이 된다.
-  const response = new ImageResponse(buildIdealTypeCardElement(share.record.result, theme, tagEmphasis), {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+  const { width, height } = getCardDimensions(theme);
+  const response = new ImageResponse(buildIdealTypeCardElement(share.record.result, theme), {
+    width,
+    height,
     fonts: theme === "invitation" ? loadInvitationFonts() : loadCardFonts(),
   });
   const optimized = await optimizeCardPng(Buffer.from(await response.arrayBuffer()));
