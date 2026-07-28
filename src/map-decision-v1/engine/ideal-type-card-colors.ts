@@ -9,6 +9,11 @@ export const CARD_COLORS = {
   primary: "#15213b",
   primaryForeground: "#ffffff",
   textSecondary: "#465672",
+  // primary(#15213b)와 textSecondary(#465672) 사이 색 — 초대장 카드의
+  // 한 줄 설명(InvitationOneLiner)이 375px 축소 시 안 읽힌다는 피드백으로
+  // textSecondary보다 진하게(본문 잉크에 더 가깝게) 추가했다. primary를
+  // 그대로 쓰면 타이틀과 색이 같아져 위계가 흐려지므로 살짝 옅게 낮춘 톤이다.
+  inkStrong: "#24314c",
   primarySoftFill: "rgba(21, 33, 59, 0.07)",
   primarySoftBorder: "rgba(21, 33, 59, 0.16)",
   foregroundSoft: "rgba(255, 255, 255, 0.7)",
