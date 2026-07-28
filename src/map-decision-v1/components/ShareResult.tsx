@@ -74,6 +74,13 @@ export function useShareResult({
       sharedForKeyRef.current = key;
       sharedUrlRef.current = url;
       setSharedUrl(url);
+      // 이 함수를 부르고 나서 "shared"/"copied" 같은 더 구체적인 상태로
+      // 넘어가는 건 호출한 쪽(share/copyLink)의 몫이다 — 그런데
+      // useImageShare처럼 그런 후속 처리가 없는 호출자도 있어서, 여기서
+      // 일단 "idle"로 되돌려놔야 "creating"에 계속 멈춰 있지 않는다.
+      // share()/copyLink()는 바로 다음 줄에서 자기 상태로 다시 덮어쓰므로
+      // 기존 동작에는 영향이 없다.
+      setShareState("idle");
       return url;
     } catch {
       setShareError("네트워크 문제로 링크를 만들지 못했어요.");
