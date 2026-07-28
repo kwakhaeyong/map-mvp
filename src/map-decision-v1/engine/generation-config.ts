@@ -11,7 +11,13 @@ export type GenerationEffort = "low" | "medium" | "high" | "xhigh" | "max";
 const VALID_EFFORTS: readonly GenerationEffort[] = ["low", "medium", "high", "xhigh", "max"];
 const DEFAULT_GENERATION_EFFORT: GenerationEffort = "medium";
 
+// Vercel은 Sensitive로 표시된 환경변수 값을 대시보드에 보여주지 않아서,
+// ANTHROPIC_GENERATION_EFFORT가 실제로 코드까지 도달했는지 대시보드만으로는
+// 확인할 수 없다 — Runtime Logs로 직접 확인한다. 사용자 입력은 절대 여기
+// 안 들어간다(effort는 고정된 5개 값 중 하나뿐이다).
 export function getGenerationEffort(): GenerationEffort {
   const raw = process.env.ANTHROPIC_GENERATION_EFFORT;
-  return (VALID_EFFORTS as readonly string[]).includes(raw ?? "") ? (raw as GenerationEffort) : DEFAULT_GENERATION_EFFORT;
+  const effort = (VALID_EFFORTS as readonly string[]).includes(raw ?? "") ? (raw as GenerationEffort) : DEFAULT_GENERATION_EFFORT;
+  console.log(`[generation] effort=${effort}`);
+  return effort;
 }
