@@ -142,8 +142,26 @@ export const TOPICS: Record<string, TopicConfig> = {
     // 잔여물(외모 취향 블록·탭, IdealTypeSilhouetteLabels 타입,
     // ideal-type-silhouette.ts, IdealTypeVisualParts.tsx)을 전부 없앴다.
     // 태그 4축(relationship/lifestyle/experienceStressResponse/binary1)은
-    // 이 5개 축과 무관해 영향 없다. 필수 37→32개로 줄었다.
-    quizVersion: 6,
+    // 이 5개 축과 무관해 영향 없다. 필수 37→32개로 줄었다. 7: 심화
+    // 8문항 중 experienceApology(사과 방식)·experienceEarlyStyle(연애
+    // 초반 스타일) 2개를 필수로 승격했다 — 프로덕션에서 나온 최고의
+    // 자기성찰 두 개가 전부 experienceApology에서 나왔는데, 심화라서
+    // 건너뛴 사용자는 못 받고 있었다. experienceEarlyStyle은
+    // firstMoveStyle(이상형에게 바라는 썸 초반 스타일)과 이미 필수에
+    // 있는 짝이 있어 승격 우선순위가 높았다. experienceCommitment·
+    // experienceSupport는 짝이 되는 선호형 문항이 필수에 없어 이번엔
+    // 보류했다. 승격 2개로 부족해진 3개는 "짝 없는 필수 선호형 문항"을
+    // 찾아 그 문항의 자기 행동 버전을 새로 썼다 — mySignatureShow(
+    // giftStyle의 자기 버전, 순위), decisionOutcome(decisionStyle의
+    // 자기 버전, 상황 제시형 — 단 "나는 이런 사람이다"가 아니라 "실제
+    // 의견이 갈렸을 때 결국 어떻게 됐다"를 묻는다, 자기 인식은 방어가
+    // 걸리지만 실제 결과는 방어가 덜 걸리기 때문), myWarmthRange(
+    // binaryWarmth의 자기 버전, 슬라이더). myWarmthRange는
+    // binaryWarmth 바로 앞이 아니라 훨씬 앞쪽(11문항 차이)에 자기
+    // 답변을 먼저 배치했다 — 이상형 답변이 먼저 나와 있으면 그 답에
+    // 맞춰 자기 답변을 무의식적으로 일치시키는(일관성 편향) 위험이
+    // 있어서다. 필수 32→37개로 늘었고, 심화는 8→6개로 줄었다.
+    quizVersion: 7,
     axes: [
       {
         id: "appearance",
@@ -246,6 +264,24 @@ export const TOPICS: Record<string, TopicConfig> = {
         options: [
           { label: "오래 편안한 사람", description: "시간이 지나도 무너지지 않는 편안함이 있는 사람" },
           { label: "매일 설레는 사람", description: "만날 때마다 두근거림을 주는 사람" },
+        ],
+      },
+      // ── giftStyle의 자기 버전 ─────────────────────────────────────
+      // "받고 싶은 방식"(giftStyle) 바로 가까이에 "내가 실제로 표현하는
+      // 방식"을 둔다 — 둘이 다르면 "받고 싶은 건 A인데 정작 나는 B로만
+      // 표현한다"는 간극이 드러난다. giftStyle과 옵션 라벨을 똑같이
+      // 쓰지 않고 표현만 바꿔서, 기계적 비교가 아니라 자연스럽게
+      // 읽히게 했다.
+      {
+        id: "mySignatureShow",
+        type: "ranking",
+        required: true,
+        question: "나는 마음을 표현할 때, 어떤 방식을 더 많이 써? 많이 쓰는 순서대로 골라줘",
+        options: [
+          { label: "손편지·메시지", description: "글로 마음을 전하는 걸 더 좋아함" },
+          { label: "깜짝 이벤트", description: "예상 못한 서프라이즈를 준비하는 편" },
+          { label: "필요한 걸 알아서 챙겨주기", description: "말 안 해도 알아서 챙겨주는 편" },
+          { label: "함께하는 시간 자체", description: "물건보다 같이 보내는 시간으로 표현하는 편" },
         ],
       },
       // ── 상황 제시형 1 ─────────────────────────────────────────────
@@ -446,6 +482,25 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "먼저 미안하다고 말하는 반응", description: "이유를 몰라도 일단 사과하는" },
         ],
       },
+      // ── decisionStyle의 자기 버전 ─────────────────────────────────
+      // "이상형이라면 어떻게 반응할까"가 아니라 "나는 실제로 어떻게
+      // 됐는지"를 묻는다 — "나는 신중한 사람이다" 같은 자기 인식형
+      // 질문은 방어(사회적으로 바람직하게 답하려는 경향)가 걸리지만,
+      // 실제로 있었던 일의 결과를 물으면 방어가 덜 걸린다. 관계 안의
+      // 실제 힘의 균형(내 뜻대로 되는 편인지, 맞춰주는 편인지)이
+      // 드러난다.
+      {
+        id: "decisionOutcome",
+        type: "scenario",
+        required: true,
+        question: "가까운 사람과 뭘 할지 의견이 갈렸을 때, 결국 보통 어떻게 됐어?",
+        options: [
+          { label: "내 뜻대로 된 경우가 많았다", description: "결국 내가 원하는 쪽으로 정해진 편이다" },
+          { label: "상대 뜻대로 된 경우가 많았다", description: "결국 상대가 원하는 쪽으로 맞춰준 편이다" },
+          { label: "절충해서 정한 경우가 많았다", description: "서로 조금씩 양보해서 합의점을 찾은 편이다" },
+          { label: "흐지부지되다가 아무것도 안 한 경우가 많았다", description: "결정을 못 내리고 그냥 넘어간 편이다" },
+        ],
+      },
       {
         id: "lifestyle",
         type: "preference",
@@ -534,6 +589,23 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "시간 두고 차분히 대화하는", description: "감정이 가라앉은 뒤 얘기하는" },
           { label: "장난스럽게 풀어주는", description: "가볍게 농담으로 분위기를 푸는" },
           { label: "메시지로 마음을 전하는", description: "글로 먼저 마음을 표현하는" },
+        ],
+      },
+      // ── 심화에서 필수로 승격(quizVersion 7) ───────────────────────
+      // 프로덕션에서 나온 최고의 자기성찰 두 개가 전부 이 문항에서
+      // 나왔는데, 심화라서 건너뛴 사용자는 못 받고 있었다. 화해 방식
+      // 선호(reconcileStyle) 바로 뒤에 둬서 "화해는 어떻게 하고
+      // 싶은지"와 "사과는 실제로 어떻게 하는지"가 나란히 대비된다.
+      {
+        id: "experienceApology",
+        type: "experience",
+        required: true,
+        question: "내가 잘못했을 때, 사과는 보통 어떻게 하는 편이야?",
+        options: [
+          { label: "바로 인정하고 사과하는 편", description: "잘못을 깨달으면 바로 말하는 편이다" },
+          { label: "시간이 좀 지나야 사과하는 편", description: "마음을 정리한 뒤에 사과하는 편이다" },
+          { label: "행동으로 갚는 편", description: "말보다 행동으로 미안함을 표현하는 편이다" },
+          { label: "자존심 때문에 잘 못하는 편", description: "알면서도 먼저 말을 못 꺼내는 편이다" },
         ],
       },
       {
@@ -675,6 +747,82 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "은근하게 티 내는", description: "직접 말은 안 해도 티가 나는" },
           { label: "내가 다가가면 잘 받아주는", description: "먼저 다가가면 편하게 받아주는" },
           { label: "자연스럽게 친구처럼 시작하는", description: "부담 없이 친구처럼 다가오는" },
+        ],
+      },
+      // ── 심화에서 필수로 승격(quizVersion 7) ───────────────────────
+      // firstMoveStyle(이상형에게 바라는 썸 초반 스타일) 바로 뒤에 둬서
+      // "이상형에게 바라는 것"과 "내가 실제로 했던 것"이 나란히
+      // 대비된다 — 이미 짝이 있는 문항이라 승격 우선순위가 가장
+      // 높았다. "아직 연애 경험이 없다" 이탈 옵션이 있어서 필수로
+      // 옮겨도 경험 없는 사용자를 막다른 길로 몰지 않는다.
+      {
+        id: "experienceEarlyStyle",
+        type: "experience",
+        required: true,
+        question: "연애 초반, 나는 보통 어떤 모습이었어?",
+        options: [
+          {
+            label: "마음을 빨리 표현하는 편",
+            description: "좋아하면 티가 금방 나는 편이었다",
+            subOptions: [
+              { label: "고백을 먼저 하는 편", description: "마음을 확인하면 바로 표현했다" },
+              { label: "적극적으로 다가간 편", description: "연락도 만남도 먼저 시도한 편이다" },
+              { label: "스킨십도 빨리 편해진 편", description: "가까워지는 속도가 빠른 편이다" },
+              { label: "티가 잘 나는 편", description: "숨기지 못하고 표현이 드러난 편이다" },
+            ],
+          },
+          {
+            label: "마음을 천천히 확인하는 편",
+            description: "신중하게 감정을 확인해온 편이었다",
+            subOptions: [
+              { label: "관찰을 먼저 하는 편", description: "상대를 충분히 지켜본 뒤 다가갔다" },
+              { label: "확신이 서야 움직이는 편", description: "애매하면 먼저 나서지 않았다" },
+              { label: "친구 기간이 긴 편", description: "편해지고 나서야 마음을 열었다" },
+              { label: "표현을 아끼는 편", description: "마음을 바로 드러내지 않는 편이다" },
+            ],
+          },
+          {
+            label: "상대의 리드를 따라간 편",
+            description: "상대가 이끄는 대로 자연스럽게 따라간 편이었다",
+            subOptions: [
+              { label: "고백을 받는 쪽이었던 편", description: "먼저 다가오길 기다린 편이다" },
+              { label: "흐름에 맡긴 편", description: "굳이 정의하려 하지 않았다" },
+              { label: "편하게 받아들인 편", description: "부담 없이 관계를 시작한 편이다" },
+              { label: "서두르지 않아도 괜찮았던 편", description: "상대 속도에 맞춰갔다" },
+            ],
+          },
+          {
+            label: "매번 다른 모습이었다",
+            description: "상대나 상황에 따라 태도가 달라졌다",
+            subOptions: [
+              { label: "끌림의 정도에 따라 달랐다", description: "마음의 크기가 태도를 바꿨다" },
+              { label: "상대 스타일에 맞춰갔다", description: "상대가 어떤 사람이냐에 따라 달랐다" },
+              { label: "그때그때 달랐다", description: "정해진 패턴이 없는 편이다" },
+              { label: "상황에 영향을 많이 받았다", description: "타이밍이나 환경에 따라 달라졌다" },
+            ],
+          },
+          { label: "아직 연애 경험이 없다", description: "이 질문은 아직 해당 사항이 없다" },
+        ],
+      },
+      // ── binaryWarmth의 자기 버전 ──────────────────────────────────
+      // ★binaryWarmth 바로 앞이 아니라 훨씬 앞쪽에 둔다(10문항 차이).
+      // 이상형에게 바라는 정도(binaryWarmth)를 먼저 답하게 하면, 그
+      // 답이 기억에 남아있는 채로 자기 답을 하게 되면서 "두루두루
+      // 원한다고 했으니 나도 두루두루"처럼 무의식적으로 답을
+      // 일치시키는(일관성 편향) 위험이 있다 — 그러면 간극이 사용자
+      // 스스로에 의해 지워진다. 자기 답을 먼저, 이상형 답을 훨씬 뒤에
+      // 배치해서 이 편향이 끼어들 여지를 없앤다.
+      {
+        id: "myWarmthRange",
+        type: "slider",
+        required: true,
+        question: "나는 가까운 사람에게만 유독 잘하는 편이야, 누구에게나 두루 잘하는 편이야?",
+        options: [
+          { label: "내 사람에게만 잘하는 편", description: "가까운 사람에게 유독 다정해지는, 낯가림 있는 다정함" },
+          { label: "그래도 내 사람 위주인 편", description: "두루 잘해도 내 사람에게 더 마음이 가는 편" },
+          { label: "반반인 편", description: "가까운 사람과 아닌 사람을 크게 구분 안 하는 편" },
+          { label: "그래도 두루두루인 편", description: "내 사람도 챙기지만 남에게도 잘하는 편" },
+          { label: "누구에게나 두루 잘하는 편", description: "배려가 몸에 밴 편" },
         ],
       },
       {
@@ -1041,56 +1189,10 @@ export const TOPICS: Record<string, TopicConfig> = {
           },
         ],
       },
-      // ── 심화(선택) 8문항 — 구조·내용 변경 없음 ──────────────────────
-      {
-        id: "experienceEarlyStyle",
-        type: "experience",
-        required: false,
-        question: "연애 초반, 나는 보통 어떤 모습이었어?",
-        options: [
-          {
-            label: "마음을 빨리 표현하는 편",
-            description: "좋아하면 티가 금방 나는 편이었다",
-            subOptions: [
-              { label: "고백을 먼저 하는 편", description: "마음을 확인하면 바로 표현했다" },
-              { label: "적극적으로 다가간 편", description: "연락도 만남도 먼저 시도한 편이다" },
-              { label: "스킨십도 빨리 편해진 편", description: "가까워지는 속도가 빠른 편이다" },
-              { label: "티가 잘 나는 편", description: "숨기지 못하고 표현이 드러난 편이다" },
-            ],
-          },
-          {
-            label: "마음을 천천히 확인하는 편",
-            description: "신중하게 감정을 확인해온 편이었다",
-            subOptions: [
-              { label: "관찰을 먼저 하는 편", description: "상대를 충분히 지켜본 뒤 다가갔다" },
-              { label: "확신이 서야 움직이는 편", description: "애매하면 먼저 나서지 않았다" },
-              { label: "친구 기간이 긴 편", description: "편해지고 나서야 마음을 열었다" },
-              { label: "표현을 아끼는 편", description: "마음을 바로 드러내지 않는 편이다" },
-            ],
-          },
-          {
-            label: "상대의 리드를 따라간 편",
-            description: "상대가 이끄는 대로 자연스럽게 따라간 편이었다",
-            subOptions: [
-              { label: "고백을 받는 쪽이었던 편", description: "먼저 다가오길 기다린 편이다" },
-              { label: "흐름에 맡긴 편", description: "굳이 정의하려 하지 않았다" },
-              { label: "편하게 받아들인 편", description: "부담 없이 관계를 시작한 편이다" },
-              { label: "서두르지 않아도 괜찮았던 편", description: "상대 속도에 맞춰갔다" },
-            ],
-          },
-          {
-            label: "매번 다른 모습이었다",
-            description: "상대나 상황에 따라 태도가 달라졌다",
-            subOptions: [
-              { label: "끌림의 정도에 따라 달랐다", description: "마음의 크기가 태도를 바꿨다" },
-              { label: "상대 스타일에 맞춰갔다", description: "상대가 어떤 사람이냐에 따라 달랐다" },
-              { label: "그때그때 달랐다", description: "정해진 패턴이 없는 편이다" },
-              { label: "상황에 영향을 많이 받았다", description: "타이밍이나 환경에 따라 달라졌다" },
-            ],
-          },
-          { label: "아직 연애 경험이 없다", description: "이 질문은 아직 해당 사항이 없다" },
-        ],
-      },
+      // ── 심화(선택) 6문항 ──────────────────────────────────────────
+      // experienceEarlyStyle·experienceApology는 quizVersion 7에서
+      // 필수로 승격돼 위쪽으로 옮겨갔다(firstMoveStyle·reconcileStyle
+      // 근처 참고) — 여기 있던 자리다.
       {
         id: "experienceCommitment",
         type: "experience",
@@ -1101,18 +1203,6 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "상대가 먼저 말해주길 기다리는 편", description: "고백받는 쪽을 편하게 여기는 편이다" },
           { label: "자연스럽게 흘러가는 편", description: "누가 먼저랄 것 없이 정해지는 편이다" },
           { label: "확신이 들 때까지 계속 미루는 편", description: "확실해지기 전까지는 정의하지 않는 편이다" },
-        ],
-      },
-      {
-        id: "experienceApology",
-        type: "experience",
-        required: false,
-        question: "내가 잘못했을 때, 사과는 보통 어떻게 하는 편이야?",
-        options: [
-          { label: "바로 인정하고 사과하는 편", description: "잘못을 깨달으면 바로 말하는 편이다" },
-          { label: "시간이 좀 지나야 사과하는 편", description: "마음을 정리한 뒤에 사과하는 편이다" },
-          { label: "행동으로 갚는 편", description: "말보다 행동으로 미안함을 표현하는 편이다" },
-          { label: "자존심 때문에 잘 못하는 편", description: "알면서도 먼저 말을 못 꺼내는 편이다" },
         ],
       },
       {
