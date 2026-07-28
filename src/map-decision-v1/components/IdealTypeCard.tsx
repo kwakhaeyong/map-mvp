@@ -96,7 +96,7 @@ function IdealTypeCardBody({
     <div className="flex flex-col gap-3">
       {session.idealTypeQuizDepth === "deep" ? (
         <Badge tone="success" className="self-start">
-          🔍 심층 분석 포함
+          심층 분석 포함
         </Badge>
       ) : null}
       <IdealTypeResultBlocks result={result} />

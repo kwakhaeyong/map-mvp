@@ -125,7 +125,7 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
           <>
             {share.status === "ok" && share.record.quizDepth === "deep" ? (
               <Badge tone="success" className="self-start">
-                🔍 심층 분석 포함
+                심층 분석 포함
               </Badge>
             ) : null}
             <IdealTypeResultBlocks
