@@ -73,12 +73,20 @@ export function MapDecisionProduct() {
     }
     // 공유 화면(/r/{id})의 "너도 만들어봐"가 랜딩(종류 선택)을 한 번 더
     // 거치게 하면 그 사이에 이탈한다 — /?start=<topicId>로 오면 랜딩을
-    // 건너뛰고 그 주제 퀴즈를 곧장 시작한다. 이미 진행 중인 세션(진짜
-    // 메시지·노드가 있는 상태)이 있으면 그 진행을 지우지 않고 무시한다.
-    // 소비하고 나면 주소에서 지워서, 새로고침해도 처음부터 다시
-    // 시작되지 않게 한다.
+    // 건너뛰고 그 주제 퀴즈를 곧장 시작한다. 이미 진행 중인 세션(대화나
+    // 결과 화면에 실제로 머물러 있는 상태)이 있으면 그 진행을 지우지
+    // 않고 무시한다. 소비하고 나면 주소에서 지워서, 새로고침해도
+    // 처음부터 다시 시작되지 않게 한다.
+    //
+    // ★stage가 아니라 messages/nodes 길이만으로 판단하면 안 된다(#99) —
+    // 대화를 시작했다가 브라우저 뒤로가기로 랜딩까지 되돌아온 경우
+    // stage는 "landing"으로 바뀌지만 messages/nodes는 그대로 남아있다.
+    // 그 상태에서 공유 링크로 들어와 CTA를 눌러도 이 조건이 "진행 중"
+    // 이라고 오판해 오버라이드를 건너뛰어, 결국 랜딩(종류 선택 화면)
+    // 그대로 보여지는 문제가 있었다 — 직접 재현해서 확인함.
+    const hasActiveSession = Boolean(saved && saved.stage !== "landing" && (saved.messages.length > 0 || saved.nodes.length > 0));
     const startTopic = new URLSearchParams(window.location.search).get("start");
-    if (startTopic && !(saved && (saved.messages.length > 0 || saved.nodes.length > 0))) {
+    if (startTopic && !hasActiveSession) {
       setSession(createSession(startTopic));
       window.history.replaceState({}, "", window.location.pathname);
     }
