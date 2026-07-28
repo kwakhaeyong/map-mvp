@@ -1,6 +1,7 @@
 "use client";
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { getIdealTypeTags } from "../engine/ideal-type-tags";
 import { now } from "../engine/session";
 import { resolveTopic } from "../engine/topics";
@@ -42,6 +43,28 @@ function DeepenResultBanner({ onDeepen }: { onDeepen: () => void }) {
       <Button type="button" variant="secondary" onClick={onDeepen}>
         6개 더 답하기
       </Button>
+    </Card>
+  );
+}
+
+// 친구의 공유 카드(/r/{id})를 타고 들어와 퀴즈를 마친 사람에게만 보인다
+// (session.compareWithId). 그 친구의 태그는 서버가 이미 알고 있는 값
+// (공유 레코드)을 그대로 쓰고, 여기서는 "내" 태그 4개만 쿼리로 실어
+// 보낸다 — 이 화면(궁합 보기)은 아직 내가 공유하지 않은 결과로도 볼 수
+// 있어야 해서(공유 버튼을 먼저 누를 필요 없이), 태그를 URL에 직접
+// 담아 보내는 방식을 쓴다.
+function CompatibilityBanner({ withId, tags }: { withId: string; tags: string[] }) {
+  const params = new URLSearchParams();
+  for (const tag of tags) params.append("tag", tag);
+  return (
+    <Card className="flex flex-col gap-3 text-sm">
+      <p className="font-extrabold text-text-primary">공유 링크로 여기까지 왔다면, 그 친구와 어디가 통하는지도 볼 수 있어요.</p>
+      <Link
+        href={`/r/${withId}/match?${params.toString()}`}
+        className="inline-flex min-h-11 items-center justify-center rounded-pill border border-primary bg-primary px-5 text-sm font-extrabold text-primary-foreground shadow-subtle transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-floating"
+      >
+        친구와의 궁합 보기
+      </Link>
     </Card>
   );
 }
@@ -103,6 +126,10 @@ function IdealTypeCardBody({
       <IdealTypeResultBlocks result={result} />
 
       {session.idealTypeQuizDepth === "quick" ? <DeepenResultBanner onDeepen={deepenAnswers} /> : null}
+
+      {session.compareWithId && (result.tags ?? []).length > 0 ? (
+        <CompatibilityBanner withId={session.compareWithId} tags={result.tags!} />
+      ) : null}
 
       <ShareStatusCard shareState={shareState} shareError={shareError} sharedUrl={sharedUrl} />
       <div className="flex gap-2">

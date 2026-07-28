@@ -85,9 +85,17 @@ export function MapDecisionProduct() {
     // 이라고 오판해 오버라이드를 건너뛰어, 결국 랜딩(종류 선택 화면)
     // 그대로 보여지는 문제가 있었다 — 직접 재현해서 확인함.
     const hasActiveSession = Boolean(saved && saved.stage !== "landing" && (saved.messages.length > 0 || saved.nodes.length > 0));
-    const startTopic = new URLSearchParams(window.location.search).get("start");
+    const searchParams = new URLSearchParams(window.location.search);
+    const startTopic = searchParams.get("start");
+    // 친구의 공유 카드(/r/{id})를 통해 들어온 경우, 그 친구의 공유 ID를
+    // 같이 받아 세션에 남겨둔다(궁합 기능 — 결과 화면에서 "친구와의 궁합
+    // 보기" 배너를 띄우는 데만 쓴다). createShareId()가 만드는 형식(16자
+    // base64url)이 아니면 무시한다 — 다른 값이 들어와도 조용히 버려지고
+    // 나머지 흐름에는 영향이 없다.
+    const withParam = searchParams.get("with");
+    const compareWithId = withParam && /^[A-Za-z0-9_-]{16}$/.test(withParam) ? withParam : undefined;
     if (startTopic && !hasActiveSession) {
-      setSession(createSession(startTopic));
+      setSession(createSession(startTopic, compareWithId));
       window.history.replaceState({}, "", window.location.pathname);
     }
     setSaveState("saved");

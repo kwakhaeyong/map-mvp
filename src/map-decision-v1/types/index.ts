@@ -49,6 +49,11 @@ export type MapSession = {
   // 곧장 결과를 다시 만든다(이미 한 번 답한 마무리 질문을 또 물으면
   // 어색하다).
   idealTypeResuming?: boolean;
+  // 친구가 공유한 이상형 카드(/r/{id})의 "너도 만들어봐"를 타고 들어와
+  // 퀴즈를 시작했을 때, 그 친구의 공유 ID. 결과 화면에서 "친구와의 궁합
+  // 보기" 배너를 띄울지 판단하는 데만 쓴다 — 이 값이 있어도 AI 호출이나
+  // 결과 생성 로직에는 전혀 영향을 주지 않는다.
+  compareWithId?: string;
 };
 
 export type FactorMatrixItem = { id: string; text: string; kind: NodeKind; x: number; y: number };
