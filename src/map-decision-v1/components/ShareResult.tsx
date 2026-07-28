@@ -111,7 +111,7 @@ export function useShareResult({
     }
   };
 
-  return { shareState, shareError, sharedUrl, canNativeShare, share, copyLink };
+  return { shareState, shareError, sharedUrl, canNativeShare, share, copyLink, ensureShareUrl };
 }
 
 export function ShareStatusCard({

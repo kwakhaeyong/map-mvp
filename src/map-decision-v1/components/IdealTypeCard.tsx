@@ -8,6 +8,7 @@ import { Brand } from "./Landing";
 import { GenerationWaitCard } from "./GenerationProgress";
 import { IdealTypeResultBlocks } from "./IdealTypeResultBlocks";
 import { ShareStatusCard, useShareResult } from "./ShareResult";
+import { ImageSaveModal, useImageShare } from "./ImageShare";
 import { Badge, Button, Card } from "./ui/primitives";
 
 // 이상형 결과의 실제 구성 순서(발견 엔진 프롬프트 기준: 끌림 패턴 →
@@ -73,10 +74,20 @@ function IdealTypeCardBody({
   // 공유하기를 눌렀을 때만 서버에 저장 요청을 보낸다 — 카드를 만든다고
   // 자동으로 저장되지 않는다. 서버는 이 결과(JSON)만 저장하고, 대화
   // 원문은 절대 받지도 저장하지도 않는다.
-  const { shareState, shareError, sharedUrl, canNativeShare, share, copyLink } = useShareResult({
+  const { shareState, shareError, sharedUrl, canNativeShare, share, copyLink, ensureShareUrl } = useShareResult({
     topicId: session.topicId ?? "idealType",
     result,
     quizDepth: session.idealTypeQuizDepth,
+    shareTitle: "내 이상형 카드",
+    buildShareText: (shareUrl) => `내 이상형은 "${result.title}"\n${result.oneLiner}\n\n${shareUrl}`,
+  });
+
+  // "이미지로 저장"은 위 useShareResult가 만든 ensureShareUrl을 그대로
+  // 쓴다 — 이미 "공유" 버튼으로 링크를 만들었다면 새로 만들지 않고
+  // 그 링크의 카드 이미지만 받아온다(하루 공유 한도가 이중으로 깎이지
+  // 않는다).
+  const { imageState, imageError, modalOpen, previewUrl, closeModal, handleTap: saveImage } = useImageShare({
+    ensureShareUrl,
     shareTitle: "내 이상형 카드",
     buildShareText: (shareUrl) => `내 이상형은 "${result.title}"\n${result.oneLiner}\n\n${shareUrl}`,
   });
@@ -103,12 +114,22 @@ function IdealTypeCardBody({
           {shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : "링크 복사"}
         </Button>
       </div>
+      <Button
+        variant="secondary"
+        size="lg"
+        onClick={saveImage}
+        disabled={imageState === "preparing-link" || imageState === "preparing-image"}
+      >
+        {imageState === "preparing-link" ? "링크 확인 중…" : imageState === "preparing-image" ? "이미지 만드는 중…" : "이미지로 저장"}
+      </Button>
+      {imageError ? <p className="text-center text-xs font-bold text-error">{imageError}</p> : null}
       <Button variant="primary" size="lg" onClick={onReset}>
         ✨ 너도 만들어봐
       </Button>
       <a href="/privacy" className="text-center text-xs font-semibold text-text-muted underline underline-offset-2 hover:text-text-primary">
         개인정보처리방침
       </a>
+      <ImageSaveModal open={modalOpen} previewUrl={previewUrl} onClose={closeModal} />
     </div>
   );
 }
