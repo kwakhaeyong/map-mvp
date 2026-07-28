@@ -40,11 +40,11 @@ export type MapSession = {
   localDraft?: string;
   result?: FinalResult;
   idealTypeResult?: IdealTypeResult;
-  // 이상형 퀴즈를 필수 32문항에서 끝냈는지("quick"), 선택 8문항까지
+  // 이상형 퀴즈를 필수 34문항에서 끝냈는지("quick"), 선택 6문항까지
   // 마쳤는지("deep") — 결과 화면의 "🔍 심층 분석 포함" 배지와, 결과를
-  // 이미 본 뒤 "8개 더 답하기"를 안내할지 판단하는 데 쓴다.
+  // 이미 본 뒤 "6개 더 답하기"를 안내할지 판단하는 데 쓴다.
   idealTypeQuizDepth?: "quick" | "deep";
-  // 결과를 이미 본 뒤 "8개 더 답하기"로 되돌아간 상태 — true인 동안
+  // 결과를 이미 본 뒤 "6개 더 답하기"로 되돌아간 상태 — true인 동안
   // TopicQuiz는 마지막 심화 문항을 답하면 마무리 질문을 다시 묻지 않고
   // 곧장 결과를 다시 만든다(이미 한 번 답한 마무리 질문을 또 물으면
   // 어색하다).

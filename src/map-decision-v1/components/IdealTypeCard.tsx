@@ -28,18 +28,18 @@ const IDEAL_TYPE_GENERATION_STAGES = [
 // 진로 결과 화면(Result.tsx)과 같이 쓴다. 이 파일은 "내 결과를 생성·
 // 다시 만들기" 같은 이 화면만의 상호작용만 담당한다.
 
-// 필수 32문항만 답하고 결과를 본 사람에게 "8개 더 답하기"를 안내한다.
-// 건너뛴 걸 탓하는 표현("아쉽네요" 등)은 쓰지 않고, 8개를 더 답하면
+// 필수 34문항만 답하고 결과를 본 사람에게 "6개 더 답하기"를 안내한다.
+// 건너뛴 걸 탓하는 표현("아쉽네요" 등)은 쓰지 않고, 6개를 더 답하면
 // 구체적으로 뭐가 달라지는지만 말한다 — 결정 화면(TopicQuiz.tsx의
 // DecisionStep)과 같은 내용을 결과 화면에서 다시 한 번 짚어주는 것.
 function DeepenResultBanner({ onDeepen }: { onDeepen: () => void }) {
   return (
     <Card className="flex flex-col gap-3 text-sm">
       <p className="font-extrabold text-text-primary">
-        이 결과는 32개 답변으로 만들었어요. 8개를 더 답하면 앞으로 어떤 사람에게 끌릴지 전망하거나, 예전과 달라진 점을 짚어주는 통찰이 추가돼요.
+        이 결과는 34개 답변으로 만들었어요. 6개를 더 답하면 앞으로 어떤 사람에게 끌릴지 전망하거나, 예전과 달라진 점을 짚어주는 통찰이 추가돼요.
       </p>
       <Button type="button" variant="secondary" onClick={onDeepen}>
-        8개 더 답하기
+        6개 더 답하기
       </Button>
     </Card>
   );
@@ -56,8 +56,8 @@ function IdealTypeCardBody({
 }) {
   const result = session.idealTypeResult!;
 
-  // "8개 더 답하기"를 누르면 대화(퀴즈) 화면으로 돌아가되, 처음부터가
-  // 아니라 심화 문항 시작 지점으로 곧장 이동한다. 필수 32문항 답변은
+  // "6개 더 답하기"를 누르면 대화(퀴즈) 화면으로 돌아가되, 처음부터가
+  // 아니라 심화 문항 시작 지점으로 곧장 이동한다. 필수 34문항 답변은
   // session.messages에 이미 남아 있으니 그대로 유지된다.
   const deepenAnswers = () => {
     const topic = resolveTopic(session.topicId);
@@ -115,12 +115,18 @@ function IdealTypeCardBody({
         </Button>
       </div>
       <Button
-        variant="secondary"
+        variant={imageState === "ready" ? "primary" : "secondary"}
         size="lg"
         onClick={saveImage}
         disabled={imageState === "preparing-link" || imageState === "preparing-image"}
       >
-        {imageState === "preparing-link" ? "링크 확인 중…" : imageState === "preparing-image" ? "이미지 만드는 중…" : "이미지로 저장"}
+        {imageState === "preparing-link"
+          ? "링크 확인 중…"
+          : imageState === "preparing-image"
+            ? "이미지 만드는 중…"
+            : imageState === "ready"
+              ? "한 번 더 눌러 저장"
+              : "이미지로 저장"}
       </Button>
       {imageError ? <p className="text-center text-xs font-bold text-error">{imageError}</p> : null}
       <Button variant="primary" size="lg" onClick={onReset}>

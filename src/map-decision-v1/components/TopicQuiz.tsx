@@ -4,8 +4,9 @@ import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { createId, now } from "../engine/session";
 import { resolveTopic, TopicAxis, TopicChoice, TopicOption } from "../engine/topics";
 import { MapSession } from "../types";
+import { useWebSpeech } from "../voice/use-web-speech";
 import { Brand } from "./Landing";
-import { Badge, Button, Textarea } from "./ui/primitives";
+import { Badge, Button, Textarea, VoiceButton } from "./ui/primitives";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -460,14 +461,23 @@ function RankingStep({
 // 건너뛰기를 항상 허용한다. reflection 문항은 태그 매핑(ideal-type
 // -tags.ts)과 무관해서 selectedTopLevelLabels 없이 답변 텍스트만
 // commitAnswer로 넘긴다.
+//
+// 음성 입력은 Conversation.tsx와 같은 훅(useWebSpeech)·같은 패턴을
+// 그대로 쓴다 — 타이핑은 한두 줄에서 멈추지만 말은 자연스럽게 길어져서,
+// 문항을 사건을 소환하는 방향으로 바꾼 것과 같이 가야 이탈을 늘리지
+// 않는다. 미지원/거부 시 마이크 버튼 자체를 렌더링하지 않아 조용히
+// 타이핑으로 폴백되고, 변환된 텍스트는 그대로 textarea 값이라 자유롭게
+// 고쳐 쓸 수 있다. 글자 수 게이트는 두지 않는다 — 건너뛰기는 항상 허용.
 function ReflectionStep({
   question,
+  placeholder,
   onSubmit,
   onBack,
   showBack,
   isFirst,
 }: {
   question: string;
+  placeholder?: string;
   onSubmit: (answerText: string) => void;
   onBack: () => void;
   showBack: boolean;
@@ -477,9 +487,10 @@ function ReflectionStep({
   isFirst: boolean;
 }) {
   const [text, setText] = useState("");
+  const speech = useWebSpeech((heard) => setText((current) => `${current}${current ? " " : ""}${heard}`));
   return (
     <div className="flex w-full flex-col gap-5">
-      <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
+      <h2 className="text-balance break-keep whitespace-pre-line text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
       {isFirst ? (
         <p className="-mt-2 text-xs font-semibold text-text-muted">
           여기 적어주신 내용은 카드를 만들 때 분석을 위해 Anthropic(미국) 서버로 전송돼요.
@@ -489,10 +500,28 @@ function ReflectionStep({
         autoFocus
         value={text}
         onChange={(event) => setText(event.target.value)}
-        placeholder="한 줄이면 충분해요 (선택)"
+        placeholder={placeholder ?? "생각나는 대로 편하게 적어주세요 (선택)"}
         className="min-h-16"
         rows={3}
       />
+      {speech.supported ? (
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 break-keep">
+            <p className="text-xs font-semibold text-text-muted">
+              {speech.listening ? `듣고 있어요 · ${speech.seconds}초` : "말로 답해도 돼요"}
+            </p>
+            {speech.error ? <p className="text-xs font-semibold text-error">{speech.error}</p> : null}
+          </div>
+          <VoiceButton
+            type="button"
+            listening={speech.listening}
+            onClick={speech.listening ? speech.stop : speech.start}
+            className="shrink-0 whitespace-nowrap"
+          >
+            {speech.listening ? "멈추기" : "말하기"}
+          </VoiceButton>
+        </div>
+      ) : null}
       <div className="mt-1 flex items-center justify-between gap-3">
         {showBack ? (
           <button type="button" onClick={onBack} className="text-xs font-black text-text-muted hover:text-text-primary">
@@ -514,15 +543,15 @@ function ReflectionStep({
   );
 }
 
-// 필수 32문항을 다 마친 직후 나오는 갈림길 화면 — 여기서 끝내도 결과를
-// 만들 수 있지만, 8개를 더 답하면 결과의 어디가 구체적으로 달라지는지를
+// 필수 34문항을 다 마친 직후 나오는 갈림길 화면 — 여기서 끝내도 결과를
+// 만들 수 있지만, 6개를 더 답하면 결과의 어디가 구체적으로 달라지는지를
 // 여기서 정확히 말해준다("더 정확해진다" 같은 막연한 말 대신).
 function DecisionStep({ onQuick, onDeep, onBack }: { onQuick: () => void; onDeep: () => void; onBack: () => void }) {
   return (
     <div className="flex w-full flex-col gap-5">
       <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">여기까지만 해도 결과가 나와요</h2>
       <div className="break-keep text-sm font-semibold leading-7 text-text-secondary">
-        <p>8개를 더 답하면, 지금 답변만으로는 알 수 없는 것들이 결과에 들어가요.</p>
+        <p>6개를 더 답하면, 지금 답변만으로는 알 수 없는 것들이 결과에 들어가요.</p>
         <ul className="mt-2 space-y-1">
           <li>· 앞으로 어떤 사람에게 끌릴지 전망하는 문장이 추가돼요</li>
           <li>· 예전과 지금 달라진 점을 짚어주는 통찰이 들어가요</li>
@@ -530,7 +559,7 @@ function DecisionStep({ onQuick, onDeep, onBack }: { onQuick: () => void; onDeep
       </div>
       <div className="flex flex-col gap-2">
         <Button type="button" variant="primary" size="lg" onClick={onDeep}>
-          8개 더 답하기 · 약 1분
+          6개 더 답하기 · 약 1분
         </Button>
         <Button type="button" variant="secondary" size="lg" onClick={onQuick}>
           지금 결과 보기
@@ -567,7 +596,7 @@ function ClosingStep({ prompt, onSubmit, onBack }: { prompt: string; onSubmit: (
 }
 
 // 필수 문항을 다 마치면 "지금 결과 보기"로 곧장 마무리 질문(closing)으로
-// 건너뛸 수도, "8개 더"로 심화(선택) 문항을 이어갈 수도 있다. 이 갈림길이
+// 건너뛸 수도, "6개 더"로 심화(선택) 문항을 이어갈 수도 있다. 이 갈림길이
 // 있어서 quizStep을 axes 배열 인덱스로 그대로 못 쓰고, 아래처럼 구간별로
 // 해석한다:
 //   0 .. requiredAxes.length-1      필수 문항
@@ -669,7 +698,7 @@ export function TopicQuiz({
     setSession((current) => ({ ...current, quizStep: nextStep, updatedAt: now() }));
   };
 
-  // 결과를 이미 본 뒤 "8개 더 답하기"로 돌아온 경우(session.idealTypeResuming)
+  // 결과를 이미 본 뒤 "6개 더 답하기"로 돌아온 경우(session.idealTypeResuming)
   // 마지막 심화 문항을 답하면 마무리 질문을 또 묻지 않고 곧장 결과를
   // 다시 만든다 — 마무리 질문은 처음 퀴즈를 마칠 때 이미 한 번 답했다.
   const finishResumedDeepDive = () => {
@@ -823,6 +852,7 @@ export function TopicQuiz({
           <ReflectionStep
             key={currentAxis.id}
             question={currentAxis.question}
+            placeholder={currentAxis.placeholder}
             showBack={step > 0}
             isFirst={currentAxis.id === firstReflectionAxisId}
             onBack={goBack}

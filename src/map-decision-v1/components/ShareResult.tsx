@@ -27,7 +27,7 @@ export function useShareResult({
 }: {
   topicId: string;
   result: unknown;
-  // 이상형 퀴즈를 심화(선택 8문항)까지 답하고 만든 결과인지 — 공유
+  // 이상형 퀴즈를 심화(선택 6문항)까지 답하고 만든 결과인지 — 공유
   // 페이지에서 "🔍 심층 분석 포함" 배지를 보여줄지 판단하는 데 쓴다.
   // 진로 결과 등 이 개념이 없는 화면에서는 그냥 생략하면 된다.
   quizDepth?: "quick" | "deep";
@@ -47,7 +47,7 @@ export function useShareResult({
 
   // 지금 sharedUrl이 어떤 topicId/result/quizDepth로 만들어졌는지 기억해서,
   // 그 값이 그대로면(예: 같은 결과를 다시 공유) 서버를 다시 호출하지 않는다.
-  // "8개 더 답하기"처럼 결과 자체가 바뀌면 키가 달라져 새로 만든다.
+  // "6개 더 답하기"처럼 결과 자체가 바뀌면 키가 달라져 새로 만든다.
   const sharedForKeyRef = useRef<string | null>(null);
   const sharedUrlRef = useRef<string | null>(null);
 

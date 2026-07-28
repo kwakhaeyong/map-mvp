@@ -22,7 +22,7 @@ import { FinalResult, IdealTypeResult } from "../../../src/map-decision-v1/types
 // A안 (호기심, 현재 적용): title "친구가 자기 MAP을 보냈어요" /
 //   desc "MBTI 16개로는 안 나오는, 그 사람만의 유형"
 // B안 (직접): title "나를 4글자로 요약할 수 없어서" /
-//   desc "37개 질문으로 만드는 나만의 MAP"
+//   desc "34개 질문으로 만드는 나만의 MAP"
 // C안 (현재 개선): title "친구가 공유한 MAP" /
 //   desc "열어보고, 나도 만들어볼까요?"
 export const metadata: Metadata = {
