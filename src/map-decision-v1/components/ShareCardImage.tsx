@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 
 // /r/{id} 받는 사람 화면에서만 쓴다. 이미지가 뜨기 전에도 레이아웃이
 // 흔들리지 않게 카드의 실제 비율(1080x1920)로 자리를 미리 확보하고,
 // 생성이 실패해도(캐시 만료 후 재생성 실패 등) 깨진 이미지 아이콘 대신
-// 조용히 사라지게 한다 — 이 위에 별도 HTML로 렌더되는 타이틀·한줄
-// 설명·태그가 이미 있어서, 이미지가 없어도 화면이 비지 않는다.
-export function ShareCardImage({ src }: { src: string }) {
+// fallback(타이틀·한줄 설명·태그 텍스트)으로 조용히 전환한다 — 카드
+// 안에 같은 내용이 있어서 평소엔 fallback을 안 보여주는 게 맞고,
+// 이미지가 실제로 없을 때만 그 내용을 텍스트로 대신 보여준다.
+export function ShareCardImage({ src, alt, fallback }: { src: string; alt: string; fallback: ReactNode }) {
   const [failed, setFailed] = useState(false);
 
   // 서버가 이미 <img> 태그를 그려서 내려보내므로, 브라우저는 React가
@@ -22,13 +23,13 @@ export function ShareCardImage({ src }: { src: string }) {
     }
   }, []);
 
-  if (failed) return null;
+  if (failed) return <>{fallback}</>;
   return (
     <div className="mx-auto aspect-[1080/1920] w-4/5">
       <img
         ref={checkAlreadyFailed}
         src={src}
-        alt="공유된 이상형 카드 이미지"
+        alt={alt}
         loading="eager"
         decoding="async"
         className="h-full w-full rounded-large border border-border object-cover shadow-floating"

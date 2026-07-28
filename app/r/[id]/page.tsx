@@ -130,17 +130,22 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                 심층 분석 포함
               </Badge>
             ) : null}
-            <ShareCardImage src={`/r/${id}/card.png`} />
-            {/* 카드 이미지 안에도 같은 내용이 있지만 의도적으로 다시
-                텍스트로 렌더한다 — 이미지 로드 실패 시의 폴백이자,
-                복사·선택·접근성을 위해서다. */}
-            <div className="flex flex-col items-center gap-2 text-center">
-              <h1 className="text-balance break-keep text-2xl font-black leading-8 tracking-[-0.03em] text-text-primary">
-                {renderable.result.title}
-              </h1>
-              <p className="text-sm font-bold leading-6 text-text-secondary">{renderable.result.oneLiner}</p>
-              <TagRow tags={renderable.result.tags ?? []} className="justify-center" />
-            </div>
+            <ShareCardImage
+              src={`/r/${id}/card.png`}
+              alt={renderable.result.title}
+              // 카드 이미지 안에도 같은 내용이 있어서 평소엔 안 보여준다 —
+              // 이미지 로드가 실패했을 때만 텍스트로 대신 보여주는
+              // fallback이다(복사·선택·접근성 목적 겸용).
+              fallback={
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <h1 className="text-balance break-keep text-2xl font-black leading-8 tracking-[-0.03em] text-text-primary">
+                    {renderable.result.title}
+                  </h1>
+                  <p className="text-sm font-bold leading-6 text-text-secondary">{renderable.result.oneLiner}</p>
+                  <TagRow tags={renderable.result.tags ?? []} className="justify-center" />
+                </div>
+              }
+            />
             <TryItCta topicId={share.status === "ok" ? share.record.topicId : undefined} />
             <div className="h-px w-full bg-border" />
             <CollapsibleFriendResult>
