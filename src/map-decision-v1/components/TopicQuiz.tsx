@@ -231,9 +231,9 @@ function BinaryStep({
 
 // 빠른 탭형은 문항 수가 많아진 만큼(필수 12→30) 속도가 핵심이다 — 단일
 // 선택 + 세부 선택지 없음 + 고르는 즉시 자동으로 다음 문항으로 넘어간다
-// ("다음" 버튼이 없다). description은 화면에 안 보여주지만(한눈에
-// 고르기가 목적) commitAnswer로 넘어가는 답변 텍스트에는 그대로
-// 포함시켜서 AI가 맥락을 알 수 있게 한다.
+// ("다음" 버튼이 없다). description을 라벨 아래 작은 글씨로 같이
+// 보여준다 — "키워드만 고르는 방식"이라는 테스터 피드백에 대응한
+// 것으로, 이미 데이터에 있던 설명을 노출만 시켰을 뿐 새로 쓰지 않았다.
 function QuickTapStep({
   question,
   options,
@@ -260,9 +260,12 @@ function QuickTapStep({
             key={option.label}
             type="button"
             onClick={() => pick(option)}
-            className="rounded-large border border-border bg-surface px-4 py-5 text-center text-sm font-extrabold tracking-[-0.01em] text-text-primary transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating"
+            className="group flex flex-col items-center gap-0.5 rounded-large border border-border bg-surface px-4 py-4 text-center transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating"
           >
-            {option.label}
+            <span className="text-sm font-extrabold tracking-[-0.01em] text-text-primary group-hover:text-primary-foreground">{option.label}</span>
+            <span className="text-[11px] font-medium text-text-muted transition-colors duration-normal ease-emphasized group-hover:text-primary-foreground/80">
+              {option.description}
+            </span>
           </button>
         ))}
       </div>
@@ -316,7 +319,10 @@ function ScenarioStep({
 // 슬라이더형 — 양 끝 사이의 정도를 고른다(binaryWarmth처럼 강제
 // 양자택일로 자르기 애매한 축). options가 이미 "한쪽 끝 → 반반 →
 // 반대쪽 끝" 순서로 정렬돼 있다고 가정하고 가로 트랙 위에 점으로
-// 늘어놓는다. 동작은 quickTap과 같다(단일 선택 + 자동 다음 넘김).
+// 늘어놓는다. 동작은 quickTap과 같다(단일 선택 + 자동 다음 넘김). 원
+// 각각에 라벨을 달아서(예전엔 양 끝 2개만 보이고 가운데 3개는
+// title 속성에만 있어 터치 화면에서는 아예 안 보였다) 뭘 고르는지
+// 모른 채 탭하는 일이 없게 한다.
 function SliderStep({
   question,
   options,
@@ -353,11 +359,14 @@ function SliderStep({
           ))}
         </div>
         <div className="h-1 w-full rounded-pill bg-background-subtle" />
-        <div className="flex items-start justify-between gap-2 text-center">
-          <span className="max-w-[40%] break-keep text-xs font-bold leading-5 text-text-secondary">{options[0]?.label}</span>
-          <span className="max-w-[40%] break-keep text-xs font-bold leading-5 text-text-secondary">{options[options.length - 1]?.label}</span>
+        <div className="flex items-start justify-between gap-1 text-center">
+          {options.map((option) => (
+            <span key={option.label} className="flex-1 break-keep text-[10px] font-bold leading-tight text-text-secondary">
+              {option.label}
+            </span>
+          ))}
         </div>
-        <p className="text-center text-xs font-semibold text-text-muted">가운데로 갈수록 둘 다에 가까워요 · 원을 탭해서 골라주세요</p>
+        <p className="text-center text-xs font-semibold text-text-muted">원을 탭해서 골라주세요</p>
       </div>
       {showBack ? (
         <button type="button" onClick={onBack} className="self-start text-xs font-black text-text-muted hover:text-text-primary">
