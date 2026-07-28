@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes, ReactNode } from "react";
 
-type Variant = "default" | "primary" | "secondary" | "ghost" | "danger";
+type Variant = "default" | "primary" | "secondary" | "ghost" | "danger" | "outline";
 type Size = "sm" | "md" | "lg";
 
 const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(" ");
@@ -13,6 +13,11 @@ const buttonVariants: Record<Variant, string> = {
   secondary: "border border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:border-border-strong hover:bg-surface-elevated hover:shadow-floating",
   ghost: "border border-transparent bg-transparent text-text-secondary hover:bg-surface hover:text-text-primary",
   danger: "border border-error/30 bg-risk text-text-primary hover:-translate-y-0.5 hover:border-error hover:shadow-floating",
+  // 채우지 않고 테두리만 브랜드 색을 써서 "보조 기능"으로 톤을 낮추되
+  // 완전히 존재감을 지우지는 않는다(VoiceButton이 건너뛰기의 대안임을
+  // 알아차릴 수는 있어야 한다). primary처럼 꽉 찬 배경이 아니라서
+  // "다음" 같은 진짜 주요 액션과 시각적으로 경쟁하지 않는다.
+  outline: "border-2 border-primary bg-transparent text-primary hover:-translate-y-0.5 hover:bg-primary/10",
 };
 const buttonSizes: Record<Size, string> = {
   sm: "min-h-9 px-4 text-sm",
@@ -49,11 +54,18 @@ export function Textarea({ error, className, ...props }: TextareaHTMLAttributes<
   return <textarea className={cx("min-h-28 w-full resize-y rounded-medium border bg-surface-elevated px-4 py-3 leading-7 text-text-primary shadow-subtle transition duration-normal ease-standard placeholder:text-text-muted hover:border-border-strong", error ? "border-error" : "border-border", focus, disabled, className)} {...props} />;
 }
 
-export function VoiceButton({ listening, loading, className, children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { listening?: boolean; loading?: boolean }) {
+export function VoiceButton({
+  listening,
+  loading,
+  variant = "primary",
+  className,
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { listening?: boolean; loading?: boolean; variant?: Variant }) {
   return (
     <span className="relative inline-flex">
       {listening ? <span aria-hidden="true" className="absolute -inset-1.5 -z-10 animate-pulse rounded-pill bg-primary/20" /> : null}
-      <Button variant={listening ? "danger" : "primary"} size="lg" loading={loading} className={className} {...props}>
+      <Button variant={listening ? "danger" : variant} size="lg" loading={loading} className={className} {...props}>
         {children ?? (listening ? "듣는 중" : "말로 시작")}
       </Button>
     </span>

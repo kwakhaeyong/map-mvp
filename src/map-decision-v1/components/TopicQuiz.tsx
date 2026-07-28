@@ -544,6 +544,7 @@ function ReflectionStep({
           <VoiceButton
             type="button"
             listening={speech.listening}
+            variant="outline"
             onClick={speech.listening ? speech.stop : speech.start}
             className="shrink-0 whitespace-nowrap"
           >
@@ -559,10 +560,18 @@ function ReflectionStep({
         ) : (
           <span />
         )}
-        <div className="flex gap-2">
-          <Button type="button" variant="secondary" size="lg" onClick={() => onSubmit("")}>
+        <div className="flex items-center gap-3">
+          {/* 건너뛰기는 없애지 않되(막으면 이탈함) 시각적 우선순위를
+              낮췄다 — "다음"과 크기·톤이 같으면 "둘 다 동등한 선택"으로
+              읽힌다. 텍스트 링크로만 톤을 낮추고, 탭하기엔 충분한
+              여백(py-3)은 유지해서 찾기 어렵게 만들지 않는다. */}
+          <button
+            type="button"
+            onClick={() => onSubmit("")}
+            className="rounded-pill px-2 py-3 text-sm font-bold text-text-muted underline underline-offset-2 hover:text-text-primary"
+          >
             건너뛰기
-          </Button>
+          </button>
           <Button type="button" variant="primary" size="lg" onClick={() => onSubmit(text.trim())}>
             다음
           </Button>
