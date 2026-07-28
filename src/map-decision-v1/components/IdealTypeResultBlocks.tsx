@@ -11,14 +11,16 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function SectionHeader({ icon, title, description }: { icon: string; title: string; description: string }) {
+// 이모지 아이콘 대신 자기성찰 블록("Self Reflection")과 같은 방식의
+// 영문 eyebrow 라벨로 위계를 준다 — 기기마다 다르게 보이는 이모지를
+// 없애면서도 헤더가 허전해지지 않게. 모든 블록 헤더가 이 컴포넌트
+//하나로 통일되므로, 이모지를 넣거나 빼는 게 섞이지 않는다.
+function SectionHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   return (
-    <div className="flex items-start gap-2">
-      <span className="text-lg" aria-hidden="true">{icon}</span>
-      <div>
-        <h2 className="text-base font-black tracking-[-0.02em] text-text-primary">{title}</h2>
-        <p className="mt-0.5 text-xs font-semibold leading-5 text-text-secondary">{description}</p>
-      </div>
+    <div>
+      <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-text-muted">{eyebrow}</p>
+      <h2 className="mt-1 text-base font-black tracking-[-0.02em] text-text-primary">{title}</h2>
+      <p className="mt-0.5 text-xs font-semibold leading-5 text-text-secondary">{description}</p>
     </div>
   );
 }
@@ -72,7 +74,7 @@ function HeroHeader({ result }: { result: IdealTypeResult }) {
   return (
     <Card id="summary" className="scroll-mt-6 bg-gradient-to-br from-value via-feeling to-action p-5">
       <span className="inline-flex items-center rounded-pill border border-border/60 bg-surface-elevated/80 px-3 py-1 text-xs font-extrabold text-text-primary">
-        💘 이상형 카드
+        이상형 카드
       </span>
       <h1 className="mt-3 text-balance break-keep text-3xl font-black leading-9 tracking-[-0.03em] text-text-primary">{result.title}</h1>
       <p className="mt-2 text-sm font-bold leading-6 text-text-primary/90">{result.oneLiner}</p>
@@ -106,7 +108,7 @@ function CriteriaTier({ label, items, tone }: { label: string; items: string[]; 
 function CriteriaSection({ criteria }: { criteria: IdealTypeResult["criteria"] }) {
   return (
     <Card id="criteria" className="scroll-mt-6 flex flex-col gap-4">
-      <SectionHeader icon="📋" title="이상형 기준" description="답변에서 우선순위를 세 단계로 나눠봤어요." />
+      <SectionHeader eyebrow="Criteria" title="이상형 기준" description="답변에서 우선순위를 세 단계로 나눠봤어요." />
       <div className="grid gap-3 sm:grid-cols-3">
         <CriteriaTier label="필수" items={criteria.mustHave} tone="strong" />
         <CriteriaTier label="선호" items={criteria.niceToHave} tone="medium" />
@@ -119,7 +121,7 @@ function CriteriaSection({ criteria }: { criteria: IdealTypeResult["criteria"] }
 function PatternsSection({ items }: { items: string[] }) {
   return (
     <Card id="patterns" className="scroll-mt-6 flex flex-col gap-3">
-      <SectionHeader icon="🔁" title="끌림 패턴" description="답변을 가로질러 반복되는 경향이에요." />
+      <SectionHeader eyebrow="Patterns" title="끌림 패턴" description="답변을 가로질러 반복되는 경향이에요." />
       <div className="flex flex-col gap-2">
         {items.map((item, index) => (
           <blockquote key={index} className="rounded-medium border border-border bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
@@ -207,7 +209,7 @@ function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
 function MatrixSection({ matrix }: { matrix: IdealTypeMatrix }) {
   return (
     <Card id="matrix" className="scroll-mt-6 flex flex-col gap-4">
-      <SectionHeader icon="📍" title="끌림 × 관계 적합도" description="답변에서 나온 4가지 상대 유형을 놓고 봤어요." />
+      <SectionHeader eyebrow="Matrix" title="끌림 × 관계 적합도" description="답변에서 나온 4가지 상대 유형을 놓고 봤어요." />
       <MatrixChart matrix={matrix} />
       <ul className="flex flex-col gap-2">
         {matrix.types.map((point, index) => (
@@ -228,10 +230,13 @@ function MatrixSection({ matrix }: { matrix: IdealTypeMatrix }) {
 function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
   return (
     <Card id="flags" className="scroll-mt-6 flex flex-col gap-4">
-      <SectionHeader icon="🚦" title="신호등" description="실제로 만날 때 참고할 신호들이에요." />
+      <SectionHeader eyebrow="Signals" title="신호등" description="실제로 만날 때 참고할 신호들이에요." />
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-medium border border-option/60 bg-option/40 p-3">
-          <p className="text-xs font-black text-success">🟢 좋은 신호</p>
+          <p className="flex items-center gap-1.5 text-xs font-black text-success">
+            <span className="size-2 rounded-full bg-success" aria-hidden="true" />
+            좋은 신호
+          </p>
           <ul className="mt-1.5 space-y-1">
             {flags.green.map((item, index) => (
               <li key={index} className="text-xs font-bold leading-5 text-text-primary">
@@ -241,7 +246,10 @@ function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
           </ul>
         </div>
         <div className="rounded-medium border border-risk/60 bg-risk/50 p-3">
-          <p className="text-xs font-black text-error">🔴 주의 신호</p>
+          <p className="flex items-center gap-1.5 text-xs font-black text-error">
+            <span className="size-2 rounded-full bg-error" aria-hidden="true" />
+            주의 신호
+          </p>
           <ul className="mt-1.5 space-y-1">
             {flags.red.map((item, index) => (
               <li key={index} className="text-xs font-bold leading-5 text-text-primary">
@@ -310,9 +318,9 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
 function RoadmapSection({ roadmap }: { roadmap: IdealTypeRoadmap }) {
   return (
     <Card id="roadmap" className="scroll-mt-6 flex flex-col gap-4">
-      <SectionHeader icon="🗺️" title="로드맵" description="바로 시작할 수 있는 것부터 30일 계획까지예요." />
+      <SectionHeader eyebrow="Roadmap" title="로드맵" description="바로 시작할 수 있는 것부터 30일 계획까지예요." />
       <div className="rounded-medium border border-primary bg-surface p-3">
-        <p className="text-xs font-black text-primary">⚡ 24시간 안에</p>
+        <p className="text-xs font-black text-primary">24시간 안에</p>
         <p className="mt-1 text-sm font-bold leading-6 text-text-primary">{roadmap.firstAction}</p>
       </div>
       <ol className="flex flex-col gap-4">
