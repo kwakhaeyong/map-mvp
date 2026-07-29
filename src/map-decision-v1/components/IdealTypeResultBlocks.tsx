@@ -35,18 +35,33 @@ const NAV_ITEMS: Array<{ id: string; label: string }> = [
   { id: "roadmap", label: "로드맵" },
 ];
 
+// 스크롤해도 화면에 붙어있게 만든다 — 테스터 지적("스크롤이 길다")에
+// 대한 대응으로, 6블록을 숨기거나 접지는 않고(자기성찰·신호등처럼
+// 중요한 블록이 4~5번째라 기본 접힘은 결과 품질 우선 원칙과 부딪힌다)
+// "지금 어디로도 한 번에 갈 수 있다"는 감각만 항상 쥐여준다.
+// flex-wrap 대신 overflow-x-auto+shrink-0으로 바꿨다 — 줄바꿈되면
+// sticky 바 자체가 두 배로 두꺼워져 375px 화면을 많이 잠식하기
+// 때문이다. 375px 뷰포트(콘텐츠 폭 343px)에서 실측한 결과 이 6개
+// 라벨조차 이미 5px 정도 넘쳐서 가로 스크롤이 실제로 발동한다 — 처음
+// 예상과 달리 여유가 없는 상태였다. flex-wrap이었다면 이 5px 초과분
+// 때문에 곧바로 두 줄로 갈라졌을 것이다.
+// bg-background는 커스텀 토큰이라 슬래시 투명도(bg-background/95 등)를
+// 쓰면 design:check(#116)에 걸린다 — 불투명 solid로 충분히 아래
+// 내용을 가린다.
 function SectionNav() {
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {NAV_ITEMS.map((item) => (
-        <a
-          key={item.id}
-          href={`#${item.id}`}
-          className="inline-flex min-h-8 items-center rounded-pill border border-border bg-surface-elevated px-3 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
-        >
-          {item.label}
-        </a>
-      ))}
+    <div className="sticky top-0 z-10 border-b border-border bg-background py-2">
+      <div className="flex gap-1.5 overflow-x-auto">
+        {NAV_ITEMS.map((item) => (
+          <a
+            key={item.id}
+            href={`#${item.id}`}
+            className="inline-flex min-h-8 shrink-0 items-center rounded-pill border border-border bg-surface-elevated px-3 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
+          >
+            {item.label}
+          </a>
+        ))}
+      </div>
     </div>
   );
 }
@@ -144,7 +159,7 @@ function CriteriaTier({ label, items, tone }: { label: string; items: string[]; 
 
 function CriteriaSection({ criteria }: { criteria: IdealTypeResult["criteria"] }) {
   return (
-    <Card id="criteria" className="scroll-mt-6 flex flex-col gap-4">
+    <Card id="criteria" className="scroll-mt-16 flex flex-col gap-4">
       <SectionHeader eyebrow="Criteria" title="이상형 기준" description="답변에서 우선순위를 세 단계로 나눠봤어요." />
       <div className="grid gap-3 sm:grid-cols-3">
         <CriteriaTier label="필수" items={criteria.mustHave} tone="strong" />
@@ -157,7 +172,7 @@ function CriteriaSection({ criteria }: { criteria: IdealTypeResult["criteria"] }
 
 function PatternsSection({ items }: { items: string[] }) {
   return (
-    <Card id="patterns" className="scroll-mt-6 flex flex-col gap-3">
+    <Card id="patterns" className="scroll-mt-16 flex flex-col gap-3">
       <SectionHeader eyebrow="Patterns" title="끌림 패턴" description="답변을 가로질러 반복되는 경향이에요." />
       <div className="flex flex-col gap-2">
         {items.map((item, index) => (
@@ -270,7 +285,7 @@ function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
 
 function MatrixSection({ matrix }: { matrix: IdealTypeMatrix }) {
   return (
-    <Card id="matrix" className="scroll-mt-6 flex flex-col gap-4">
+    <Card id="matrix" className="scroll-mt-16 flex flex-col gap-4">
       <SectionHeader eyebrow="Matrix" title="끌림 × 관계 적합도" description="답변에서 나온 4가지 상대 유형을 놓고 봤어요." />
       <MatrixChart matrix={matrix} />
       <ul className="flex flex-col gap-2">
@@ -291,7 +306,7 @@ function MatrixSection({ matrix }: { matrix: IdealTypeMatrix }) {
 
 function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
   return (
-    <Card id="flags" className="scroll-mt-6 flex flex-col gap-4">
+    <Card id="flags" className="scroll-mt-16 flex flex-col gap-4">
       <SectionHeader eyebrow="Signals" title="신호등" description="실제로 만날 때 참고할 신호들이에요." />
       {/* 박스 배경은 option/risk 파스텔 대신 다른 블록과 같은 잉크
           중간 톤(border-border-strong bg-ink-wash, #116)으로 통일한다 —
@@ -349,7 +364,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
   return (
     <div
       id="reflection"
-      className="scroll-mt-6 flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
+      className="scroll-mt-16 flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
     >
       <div>
         <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-primary-foreground/70">Self Reflection</p>
@@ -382,7 +397,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
 
 function RoadmapSection({ roadmap }: { roadmap: IdealTypeRoadmap }) {
   return (
-    <Card id="roadmap" className="scroll-mt-6 flex flex-col gap-4">
+    <Card id="roadmap" className="scroll-mt-16 flex flex-col gap-4">
       <SectionHeader eyebrow="Roadmap" title="로드맵" description="바로 시작할 수 있는 것부터 30일 계획까지예요." />
       <div className="rounded-medium border border-primary bg-surface p-3">
         <p className="text-xs font-black text-primary">24시간 안에</p>
