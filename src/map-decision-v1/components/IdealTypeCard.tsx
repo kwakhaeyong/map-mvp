@@ -60,6 +60,14 @@ function DeepenResultBanner({ onDeepen }: { onDeepen: () => void }) {
 // 패턴과 동일), 거기서 뽑은 id를 myId 쿼리로 같이 실어 보낸다. 링크
 // 생성이 실패해도(한도 초과 등) 궁합 보기 자체는 막지 않는다 — myId
 // 없이 이동하면 궁합 화면이 알아서 예전 CTA로 대체한다.
+//
+// 배너를 6블록 뒤에서 상단(이상형 카드 바로 아래)으로 옮기면서 문구도
+// 손봤다 — "공유 링크로 여기까지 왔다면"은 이미 그렇게 온 사람에게
+// 조건을 다시 확인시키는 어색한 표현이라 단정형으로 바꿨다. 친구(A)의
+// 타이틀은 /api/share/[id]로 따로 물어봐서(마운트 시 1회) 문구에
+// 넣는다 — A의 타이틀은 /r/{id}를 열면 누구나 이미 보는 정보라(card.png·
+// 본문 전부에 노출) 새로 유출되는 게 아니다. 요청이 실패하거나 아직
+// 응답 전이면 타이틀 없는 문구로 조용히 대체한다.
 function CompatibilityBanner({
   withId,
   tags,
@@ -71,6 +79,22 @@ function CompatibilityBanner({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [friendTitle, setFriendTitle] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/share/${withId}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!cancelled && data && typeof data.title === "string") setFriendTitle(data.title);
+      })
+      .catch(() => {
+        // 실패해도 조용히 무시 — 타이틀 없는 문구로 대체된다.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [withId]);
 
   const handleClick = async () => {
     setLoading(true);
@@ -84,14 +108,16 @@ function CompatibilityBanner({
 
   return (
     <Card className="flex flex-col gap-3 text-sm">
-      <p className="font-extrabold text-text-primary">공유 링크로 여기까지 왔다면, 그 친구와 어디가 통하는지도 볼 수 있어요.</p>
+      <p className="font-extrabold text-text-primary">
+        {friendTitle ? `"${friendTitle}"을 찾는 친구와의 궁합이에요.` : "친구 링크로 왔네요. 둘이 어디가 통하는지 볼까요?"}
+      </p>
       <button
         type="button"
         onClick={handleClick}
         disabled={loading}
         className="inline-flex min-h-11 items-center justify-center rounded-pill border border-primary bg-primary px-5 text-sm font-extrabold text-primary-foreground shadow-subtle transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-floating disabled:opacity-60"
       >
-        {loading ? "준비하는 중…" : "친구와의 궁합 보기"}
+        {loading ? "준비하는 중…" : "궁합 보기"}
       </button>
     </Card>
   );
