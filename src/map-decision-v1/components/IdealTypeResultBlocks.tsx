@@ -193,15 +193,29 @@ function spreadMatrixPoints(points: IdealTypeMatrixPoint[]): PlottedMatrixPoint[
   return placed.map((point) => ({ ...point, plotX: clampPercent(point.plotX), plotY: clampPercent(point.plotY) }));
 }
 
-// 리터럴 클래스 문자열로만 참조한다 — 동적으로 조합하면 Tailwind JIT
-// 스캐너가 소스에서 문자열을 못 찾아 클래스가 생성되지 않는다.
-// CriteriaTier와 같은 이유로 4가지 파스텔 대신 잉크(primary) 농도
-// 차이로 점을 구분한다.
-const MATRIX_POINT_FILL_CLASS = ["fill-primary", "fill-primary/70", "fill-primary/45", "fill-primary/25"];
+// ★버그 원인: Tailwind가 이 커스텀 색(CSS 변수 기반)에는 fill-primary/70
+// 같은 "슬래시 투명도" 유틸리티를 만들어주지 않는다(실제로 컴파일된
+// CSS를 확인해보면 .fill-primary\/70 규칙 자체가 없다) — 그래서 그
+// 클래스가 붙은 점들은 전부 SVG 기본값인 불투명 검정(#000)으로
+// 그려지고 있었다. 1번 점(fill-primary, 슬래시 없음)만 유효한
+// 클래스라 원래 의도한 잉크 네이비(#15213b)로 그려졌는데, 마침 숫자
+// 색도 같은 색이라 숫자가 사라져 보인 것 — 2~4번은 "검정 배경에
+// 짙은 네이비 숫자"라 우연히 읽혔을 뿐, 의도한 옅은 톤은 애초에
+// 적용된 적이 없었다.
+//
+// 그래서 투명도는 Tailwind 클래스가 아니라 SVG 표준 속성인
+// fillOpacity를 직접 준다(브라우저가 항상 지원하는 방식이라 이런
+// 클래스 생성 문제 자체가 생기지 않는다) — 색 자체는 fill-primary
+// 하나로 고정하고 투명도만 4단계로 바꿔 잉크 농도 위계를 표현한다.
+const MATRIX_POINT_OPACITY = [1, 0.7, 0.45, 0.25];
+// 점 안 순번 숫자 색 — 1번(불투명 100%)은 배경이 진한 잉크 그대로라
+// 밝은 색(primary-foreground, 흰색)을 쓰고, 2~4번은 옅어진 배경이라
+// 어두운 색(text-primary)이 그대로 대비된다.
+const MATRIX_POINT_NUMBER_CLASS = ["fill-primary-foreground", "fill-text-primary", "fill-text-primary", "fill-text-primary"];
 
 function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
   const placed = spreadMatrixPoints(matrix.types);
-  const fillClasses = MATRIX_POINT_FILL_CLASS;
+  const numberClasses = MATRIX_POINT_NUMBER_CLASS;
   return (
     <div className="mx-auto w-full max-w-xs">
       <p className="mb-1 text-center text-[11px] font-black text-text-muted">{matrix.yAxisLabel.high}</p>
@@ -219,10 +233,18 @@ function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
                   cx={point.plotX}
                   cy={point.plotY}
                   r="4.2"
-                  className={cx(fillClasses[index % fillClasses.length], "stroke-surface")}
+                  className="fill-primary stroke-surface"
+                  fillOpacity={MATRIX_POINT_OPACITY[index % MATRIX_POINT_OPACITY.length]}
                   strokeWidth="0.8"
                 />
-                <text x={point.plotX} y={point.plotY} textAnchor="middle" dominantBaseline="central" className="fill-text-primary font-black" style={{ fontSize: "4px" }}>
+                <text
+                  x={point.plotX}
+                  y={point.plotY}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  className={cx(numberClasses[index % numberClasses.length], "font-black")}
+                  style={{ fontSize: "4px" }}
+                >
                   {index + 1}
                 </text>
               </g>
