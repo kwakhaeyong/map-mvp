@@ -39,4 +39,8 @@ export const CARD_COLORS = {
   // "면 분할"만 표현한다.
   onDarkSoftFill: "rgba(255, 255, 255, 0.08)",
   onDarkSoftBorder: "rgba(255, 255, 255, 0.18)",
+  // 봉랍(왁스 실) 그림자 — ideal-type-card-image.tsx와 og-share-image.tsx
+  // 둘 다 같은 값을 각자 하드코딩하고 있던 걸(design:check가 raw color
+  // 검사 파일 목록을 못 찾아 놓쳤던 중복, #116) 여기로 모은다.
+  sealShadow: "0 3px 6px rgba(21, 33, 59, 0.3)",
 } as const;

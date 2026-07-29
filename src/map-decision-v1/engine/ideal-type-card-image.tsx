@@ -911,7 +911,7 @@ function InvitationSeal() {
         height: 72,
         borderRadius: 999,
         backgroundColor: CARD_COLORS.primary,
-        boxShadow: "0 3px 6px rgba(21, 33, 59, 0.3)",
+        boxShadow: CARD_COLORS.sealShadow,
         color: CARD_COLORS.background,
         fontSize: 30,
         fontWeight: 700,

@@ -110,7 +110,11 @@ export function useImageShare({
 export function ImageSaveModal({ open, previewUrl, onClose }: { open: boolean; previewUrl: string | null; onClose: () => void }) {
   if (!open || !previewUrl) return null;
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-primary/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+    // #116: bg-primary/80이 이 커스텀 색엔 슬래시 투명도 클래스가
+    // 생성되지 않아 배경 없이 블러만 적용되고 있었다(흰 텍스트가 거의
+    // 안 보이는 문제) — primary-overlay(같은 색의 80% 오버레이 토큰)로
+    // 대체한다.
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-primary-overlay p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
       <img src={previewUrl} alt="저장할 카드 이미지" className="max-h-[70dvh] w-auto max-w-full rounded-medium shadow-modal" />
       <p className="text-center text-sm font-extrabold text-primary-foreground">길게 눌러 저장한 뒤 인스타 스토리에 올려보세요</p>
       <Button variant="secondary" size="lg" onClick={onClose}>

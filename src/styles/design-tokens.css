@@ -21,6 +21,17 @@
   --color-action: #dff5ff;
   --color-success: #2f8f6b;
   --color-error: #b94b43;
+  /* 아래 4개는 새 색이 아니라 Tailwind가 커스텀 색(위 토큰들)엔 슬래시
+     투명도 유틸리티(bg-primary/10 등)를 만들어주지 못하는 문제(#116)를
+     피하려고, engine/ideal-type-card-colors.ts가 이미 쓰던 값을 그대로
+     여기 옮겨온 것이다 — card.png/InvitationFrame이 이미 이 값으로
+     그려지고 있어 새 톤을 만드는 게 아니라 기존 톤을 HTML에서도 쓸 수
+     있게 한 것뿐이다. 값이 어긋나지 않도록 두 파일을 같이 확인한다.
+  */
+  --color-ink-wash: rgba(21, 33, 59, 0.07); /* = primarySoftFill */
+  --color-ink-wash-border: rgba(21, 33, 59, 0.16); /* = primarySoftBorder */
+  --color-tag-fill: #f0ece6; /* = invitationTagFill */
+  --color-primary-overlay: rgba(21, 33, 59, 0.8); /* primary 80% 오버레이(이미지 저장 모달 배경 전용) */
   --radius-small: 12px;
   --radius-medium: 18px;
   --radius-large: 28px;

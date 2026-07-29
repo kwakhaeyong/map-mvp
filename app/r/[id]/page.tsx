@@ -112,7 +112,10 @@ function MidResultCta({ topicId, withId }: { topicId?: string; withId?: string }
   return (
     <Link
       href={ctaHref(topicId, withId)}
-      className="flex items-center justify-between gap-3 rounded-large border border-primary/30 bg-primary/5 px-5 py-4 text-sm font-extrabold text-primary transition-colors hover:bg-primary/10"
+      // #116: border-primary/30, bg-primary/5, hover:bg-primary/10이 이 커스텀
+      // 색엔 슬래시 투명도 클래스가 생성되지 않아 실제로는 늘 투명이었다 —
+      // 같은 값의 ink-wash 토큰으로 대체한다.
+      className="flex items-center justify-between gap-3 rounded-large border border-ink-wash-border bg-ink-wash px-5 py-4 text-sm font-extrabold text-primary transition-colors hover:bg-ink-wash-border"
     >
       <span>나도 이런 발견, 해보고 싶다면?</span>
       <span aria-hidden="true">→</span>

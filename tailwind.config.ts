@@ -27,6 +27,11 @@ const config: Config = {
         action: "var(--color-action)",
         success: "var(--color-success)",
         error: "var(--color-error)",
+        // #116: 슬래시 투명도 클래스 대체용 — design-tokens.css 주석 참고.
+        "ink-wash": "var(--color-ink-wash)",
+        "ink-wash-border": "var(--color-ink-wash-border)",
+        "tag-fill": "var(--color-tag-fill)",
+        "primary-overlay": "var(--color-primary-overlay)",
       },
       borderRadius: {
         small: "var(--radius-small)",
