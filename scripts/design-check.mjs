@@ -82,6 +82,17 @@ const KNOWN_OPACITY_DEBT = {
     "border-primary-foreground/25",
     "text-primary-foreground/90",
   ],
+  // SelfIntroResultBlocks.tsx가 위 IdealTypeResultBlocks.tsx의 자기성찰
+  // 다크 블록을 그대로 복제하면서(#stage2) 같은 빚도 함께 들어왔다 — 새
+  // 파일이라 이 목록에 없어 검사가 새 위반으로 잡아냈을 뿐, 실제로는
+  // 위 항목과 동일한 기존 결정을 그대로 따른 것이다.
+  "src/map-decision-v1/components/SelfIntroResultBlocks.tsx": [
+    "text-primary-foreground/70",
+    "bg-primary-foreground/15",
+    "border-primary-foreground/15",
+    "border-primary-foreground/25",
+    "text-primary-foreground/90",
+  ],
   // 퀴즈 화면 — 테스트 세션 중 화면 변경 금지로 이번 스코프에서 제외.
   "src/map-decision-v1/components/TopicQuiz.tsx": ["text-primary-foreground/80", "bg-primary-foreground/20"],
   // 진로(career) 자유 대화 화면 — 이번 스코프(이상형)에서 제외.

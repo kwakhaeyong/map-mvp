@@ -76,7 +76,10 @@ function fitOneLiner(text: string, fontSizes: number[], budget: number, lineHeig
   return { text: clampForSafety(text, charsPerLine * maxLines), fontSize: smallest };
 }
 
-const ZONE = { topMargin: 60, title: 610, tags: 350, oneLiner: 200, footer: 70, bottomMargin: 60 } as const;
+// topicLabel(36)은 title에서 그만큼(610→574) 떼어와 마련했다 — 이유는
+// ideal-type-card-image.tsx의 같은 상수 옆 주석 참고(두 파일이 같은
+// 초대장 레이아웃을 각자 복제해 쓰고 있어 계산 근거도 동일하다).
+const ZONE = { topMargin: 60, topicLabel: 36, title: 574, tags: 350, oneLiner: 200, footer: 70, bottomMargin: 60 } as const;
 const TAG = { sizes: [72, 68, 64, 58, 52, 46, 40, 34], paddingX: 32, gap: 20 };
 const TAG_CHAR_WIDTH_RATIO = 0.92;
 const ONELINER_FONT_SIZES = [44, 40, 36, 30];
@@ -125,6 +128,19 @@ function Seal() {
     >
       M
     </span>
+  );
+}
+
+// ideal-type-card-image.tsx의 InvitationTopicLabel과 같은 이유·같은
+// 크기(30px, textSecondary)로 추가한다 — 두 카드가 태그 18개를 공유해
+// (교차 궁합용) 겉모습이 같아진 것을 킥커 한 줄로 구분한다.
+function TopicLabel({ label }: { label: string }) {
+  return (
+    <Zone height={ZONE.topicLabel}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH }}>
+        <span style={{ fontSize: 30, fontWeight: 700, letterSpacing: "0.06em", color: CARD_COLORS.textSecondary }}>{label}</span>
+      </div>
+    </Zone>
   );
 }
 
@@ -249,6 +265,7 @@ export function buildSelfIntroCardElement(result: SelfIntroResult) {
       <Frame />
       <Seal />
       <div style={{ display: "flex", width: INVITATION_CARD_WIDTH, height: ZONE.topMargin, flexShrink: 0 }} />
+      <TopicLabel label="나는 이런 사람" />
       <Title title={title} />
       <Tags tags={tags} />
       <OneLiner oneLiner={oneLiner} />

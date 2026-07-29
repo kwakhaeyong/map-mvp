@@ -157,11 +157,20 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
         </div>
         {renderable?.kind === "idealType" ? (
           <>
-            {share.status === "ok" && share.record.quizDepth === "deep" ? (
-              <Badge tone="success" className="self-start">
-                심층 분석 포함
+            <div className="flex flex-wrap items-center gap-2">
+              {/* 이상형·나소개 카드가 태그 18개를 공유해(교차 궁합용) card.png
+                  겉모습이 같아진 것과 같은 이유로, 카드 이미지 밖 HTML
+                  영역에도 같은 배지를 둔다 — showHero=false라 HeroHeader의
+                  "이상형 카드" 배지가 이 화면엔 렌더되지 않기 때문이다. */}
+              <Badge tone="default" className="self-start">
+                내가 끌리는 사람
               </Badge>
-            ) : null}
+              {share.status === "ok" && share.record.quizDepth === "deep" ? (
+                <Badge tone="success" className="self-start">
+                  심층 분석 포함
+                </Badge>
+              ) : null}
+            </div>
             <ShareCardImage
               src={`/r/${id}/card.png`}
               alt={renderable.result.title}
@@ -191,11 +200,16 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
           </>
         ) : renderable?.kind === "selfIntro" ? (
           <>
-            {share.status === "ok" && share.record.quizDepth === "deep" ? (
-              <Badge tone="success" className="self-start">
-                심층 분석 포함
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="default" className="self-start">
+                나는 이런 사람
               </Badge>
-            ) : null}
+              {share.status === "ok" && share.record.quizDepth === "deep" ? (
+                <Badge tone="success" className="self-start">
+                  심층 분석 포함
+                </Badge>
+              ) : null}
+            </div>
             <ShareCardImage
               src={`/r/${id}/card.png`}
               alt={renderable.result.title}
