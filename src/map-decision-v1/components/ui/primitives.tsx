@@ -17,7 +17,10 @@ const buttonVariants: Record<Variant, string> = {
   // 완전히 존재감을 지우지는 않는다(VoiceButton이 건너뛰기의 대안임을
   // 알아차릴 수는 있어야 한다). primary처럼 꽉 찬 배경이 아니라서
   // "다음" 같은 진짜 주요 액션과 시각적으로 경쟁하지 않는다.
-  outline: "border-2 border-primary bg-transparent text-primary hover:-translate-y-0.5 hover:bg-primary/10",
+  // hover:bg-primary/10은 이 커스텀 색엔 슬래시 투명도 클래스가 생성되지
+  // 않아(design:check#116) 항상 투명했다 — ink-wash 토큰(= primarySoftFill,
+  // 이미 이상형 카드에서 쓰는 값)을 그대로 재사용한다.
+  outline: "border-2 border-primary bg-transparent text-primary hover:-translate-y-0.5 hover:bg-ink-wash",
 };
 const buttonSizes: Record<Size, string> = {
   sm: "min-h-9 px-4 text-sm",
