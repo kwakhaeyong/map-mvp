@@ -8,7 +8,12 @@ export type Confidence = "user" | "ai" | "confirmed";
 export type NodeKind = "topic" | "trigger" | "fact" | "emotion" | "person" | "value" | "reason" | "constraint" | "option" | "benefit" | "risk" | "missing" | "direction" | "action" | "correction";
 export type RelationKind = "원인" | "영향" | "충돌" | "대안" | "장점" | "리스크" | "확인 필요" | "다음 행동";
 
-export type Message = { id: string; role: Role; text: string; timestamp: string; checkpoint?: boolean; provider?: "local" | "api"; followUpQuestions?: string[] };
+// axisId는 이 메시지가 TopicQuiz.tsx의 어떤 문항(topics.ts axis)에 대한
+// 질문·답변인지 표시한다. "이전" 버튼으로 되돌아가 같은 axisId를 다시
+// 답했을 때 예전 쌍을 찾아 제거하는 데만 쓴다(TopicQuiz.tsx의
+// commitAnswer 참고) — 자유 대화(Conversation.tsx)나 마무리 질문처럼
+// axisId가 없는 메시지는 이 값이 그냥 undefined다.
+export type Message = { id: string; role: Role; text: string; timestamp: string; checkpoint?: boolean; provider?: "local" | "api"; followUpQuestions?: string[]; axisId?: string };
 export type MapNode = { id: string; kind: NodeKind; label: string; text: string; confidence: Confidence; createdAt: string };
 export type MapRelation = { id: string; from: string; to: string; kind: RelationKind; strength: "solid" | "dotted" | "accent" };
 export type MapSession = {
