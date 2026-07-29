@@ -78,8 +78,11 @@ export function TagRow({
         <span
           key={tag}
           className={cx(
-            "inline-flex items-center rounded-pill border px-2.5 py-1 text-xs font-extrabold text-text-primary transition-colors duration-700",
-            index === activeIndex ? "border-primary/50 bg-primary/10" : "border-border/60 bg-surface/70",
+            "inline-flex items-center rounded-pill px-2.5 py-1 text-xs font-extrabold text-text-primary transition-colors duration-700",
+            // #116: bg-primary/10 등 슬래시 투명도 클래스가 이 커스텀 색엔
+            // 생성되지 않는 버그라 tag-fill/ink-wash 토큰으로 대체한다 —
+            // 기본 상태는 card.png 태그와 같은 처리(테두리 없이 flat 배경).
+            index === activeIndex ? "border border-ink-wash-border bg-ink-wash" : "bg-tag-fill",
           )}
         >
           {tag}
@@ -98,11 +101,13 @@ export function TagRow({
 function HeroHeader({ result }: { result: IdealTypeResult }) {
   return (
     <Card id="summary" className="scroll-mt-6 p-5">
-      <span className="inline-flex items-center rounded-pill border border-border/60 bg-surface-elevated/80 px-3 py-1 text-xs font-extrabold text-text-primary">
+      {/* #116: bg-surface-elevated/80가 흰 카드 위에서 사실상 안 보였다 — 태그
+          알약과 같은 tag-fill 톤으로 바꿔 카드 배경과 구분되게 한다. */}
+      <span className="inline-flex items-center rounded-pill bg-tag-fill px-3 py-1 text-xs font-extrabold text-text-primary">
         이상형 카드
       </span>
       <h1 className="mt-3 text-balance break-keep text-3xl font-black leading-9 tracking-[-0.03em] text-text-primary">{result.title}</h1>
-      <p className="mt-2 text-sm font-bold leading-6 text-text-primary/90">{result.oneLiner}</p>
+      <p className="mt-2 text-sm font-bold leading-6 text-text-primary">{result.oneLiner}</p>
       <TagRow tags={result.tags ?? []} className="mt-3" />
     </Card>
   );
@@ -111,9 +116,14 @@ function HeroHeader({ result }: { result: IdealTypeResult }) {
 type CriteriaTone = "strong" | "medium" | "light";
 // 크림 종이 배경 위에서는 연보라 파스텔(value/feeling)이 이질적으로
 // 뜬다는 피드백으로, 세 단계 위계를 잉크(primary) 농도 차이로 표현한다.
+// #116: bg-primary/10, bg-primary/5는 이 커스텀 색엔 슬래시 투명도
+// 클래스가 생성되지 않아 실제로는 항상 투명이었다(흰 박스만 나열되던
+// 원인). 두 단계 모두 같은 ink-wash 톤을 쓰고, 위계는 원래도 정상
+// 작동하던 테두리 색 차이(border-primary vs border-border-strong)로
+// 표현한다.
 const CRITERIA_TIER_CLASS: Record<CriteriaTone, string> = {
-  strong: "border-primary bg-primary/10",
-  medium: "border-border-strong bg-primary/5",
+  strong: "border-primary bg-ink-wash",
+  medium: "border-border-strong bg-ink-wash",
   light: "border-dashed border-border bg-surface",
 };
 
@@ -284,10 +294,10 @@ function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
     <Card id="flags" className="scroll-mt-6 flex flex-col gap-4">
       <SectionHeader eyebrow="Signals" title="신호등" description="실제로 만날 때 참고할 신호들이에요." />
       {/* 박스 배경은 option/risk 파스텔 대신 다른 블록과 같은 잉크
-          중간 톤(border-border-strong bg-primary/5)으로 통일한다 —
+          중간 톤(border-border-strong bg-ink-wash, #116)으로 통일한다 —
           좋다/주의 구분은 라벨의 success/error 색과 점만으로 충분하다. */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-medium border border-border-strong bg-primary/5 p-3">
+        <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
           <p className="flex items-center gap-1.5 text-xs font-black text-success">
             <span className="size-2 rounded-full bg-success" aria-hidden="true" />
             좋은 신호
@@ -300,7 +310,7 @@ function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
             ))}
           </ul>
         </div>
-        <div className="rounded-medium border border-border-strong bg-primary/5 p-3">
+        <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
           <p className="flex items-center gap-1.5 text-xs font-black text-error">
             <span className="size-2 rounded-full bg-error" aria-hidden="true" />
             주의 신호
