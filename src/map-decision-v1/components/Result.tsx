@@ -4,14 +4,8 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { now } from "../engine/session";
 import { isReadyForResult } from "../engine/readiness";
 import { MapOutputType, MapSession, NodeKind, ResultBlockKey } from "../types";
-import {
-  demoPaymentProvider,
-  localAuthProvider,
-  plannedPaymentProviders,
-} from "../engine/integration-providers";
 import { BlockRegenControls, FallbackSummaryCard, FinalResultSection } from "./FinalResultBlocks";
 import { GenerationWaitCard } from "./GenerationProgress";
-import { MapCanvas } from "./MapCanvas";
 import { ShareStatusCard, useShareResult } from "./ShareResult";
 import {
   Badge,
@@ -222,25 +216,6 @@ export function Result({
                 나눠두었어요.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2 print:hidden sm:flex sm:flex-wrap">
-              <Button onClick={onContinue}>더 이야기하기</Button>
-              <details className="relative">
-                <summary className="inline-flex min-h-11 cursor-pointer items-center rounded-pill border border-border bg-surface-elevated px-4 text-sm font-bold shadow-subtle">
-                  더 보기
-                </summary>
-                <div className="absolute right-0 z-20 mt-2 grid w-52 gap-2 rounded-large border border-border bg-surface-elevated p-3 shadow-modal">
-                  <Button variant="secondary" onClick={onContinue}>
-                    특정 내용 수정하기
-                  </Button>
-                  <Button variant="secondary" onClick={() => window.print()}>
-                    저장 / 내보내기
-                  </Button>
-                  <Button variant="ghost" onClick={safeReset}>
-                    {session.isDemo ? "처음으로" : "새 MAP 만들기"}
-                  </Button>
-                </div>
-              </details>
-            </div>
           </div>
           <div className="mt-5 flex flex-wrap gap-2 print:hidden">
             <Button
@@ -268,10 +243,6 @@ export function Result({
             </Badge>
           </div>
         </header>
-
-        <div className="mt-8">
-          <MapCanvas session={session} result onStartExample={onRealStart} />
-        </div>
 
         {!session.isDemo ? (
           session.result ? (
@@ -325,51 +296,6 @@ export function Result({
             }
           />
           <ResultCard title="걸리는 부분" body={byKind("risk")} />
-        </section>
-
-        <section className="mt-8 grid gap-4 lg:grid-cols-2 print:hidden">
-          <ReflectionCard>
-            <h2 className="text-xl font-extrabold">
-              이 MAP을 다른 기기에서도 다시 보고 싶나요?
-            </h2>
-            <p className="mt-2 font-medium leading-7 text-text-secondary">
-              지금은 로그인 없이 이 기기에만 저장할 수 있어요. Google, Apple,
-              Kakao, Naver 저장은 실제 인증 백엔드 연결 후 공개합니다.
-            </p>
-            <Button
-              className="mt-4 w-full"
-              onClick={() =>
-                localAuthProvider
-                  .saveCurrentDevice(session)
-                  .then((result) => window.alert(result.message))
-              }
-            >
-              지금은 이 기기에만 저장
-            </Button>
-          </ReflectionCard>
-          <ReflectionCard>
-            <h2 className="text-xl font-extrabold">프리미엄 내보내기 감사</h2>
-            <p className="mt-2 font-medium leading-7 text-text-secondary">
-              결제 성공을 흉내 내지 않습니다. 취소하면 이 결과 화면으로
-              돌아옵니다.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {plannedPaymentProviders.map((provider) => (
-                <Badge key={provider.id}>{provider.label} 준비 중</Badge>
-              ))}
-            </div>
-            <Button
-              variant="secondary"
-              className="mt-4"
-              onClick={() =>
-                demoPaymentProvider
-                  .requestUpgrade("프리미엄 내보내기")
-                  .then((result) => window.alert(result.message))
-              }
-            >
-              연동 요구사항 보기
-            </Button>
-          </ReflectionCard>
         </section>
 
         {/* 공유 버튼은 이상형 카드(IdealTypeCard.tsx)와 같은 위치 규칙을
