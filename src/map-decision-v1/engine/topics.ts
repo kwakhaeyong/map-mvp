@@ -65,6 +65,13 @@ export type TopicAxis = {
   // 길이·구체성으로 쓰면 되는구나"를 느끼게 한다 — 빈 입력창만 있으면
   // 뭘 얼마나 써야 할지 몰라 한두 단어로 끝나기 쉽다.
   placeholder?: string;
+  // true면 이상형이 아니라 지금 사용자 자신에 대해 묻는 문항이다(테스터
+  // 피드백: 이 전환이 화면에 안 보여 헷갈림) — TopicQuiz.tsx가 이 값을
+  // 보고 문항 위에 작은 "나에 대해" 라벨만 붙인다. 어떤 축이 여기
+  // 해당하는지는 engine/ideal-type-generator.ts의 SYSTEM_PROMPT가 이미
+  // 문장으로 설명하고 있던 걸(요즘 마음 상태·관계에서 맡는 역할·조언
+  // 상황에서의 내 기분) 코드에서도 판단 가능하게 값으로 옮긴 것이다.
+  aboutSelf?: boolean;
 };
 
 export type TopicConfig = {
@@ -195,6 +202,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "currentMood",
         type: "quickTap",
         required: true,
+        aboutSelf: true,
         question: "요즘 마음 상태에 가장 가까운 건?",
         options: [
           { label: "새로운 인연에 열려있어", description: "누군가를 만나고 싶은 마음이 있는 상태" },
@@ -245,6 +253,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "scenarioAdvice",
         type: "scenario",
         required: true,
+        aboutSelf: true,
         question: "회사에서 힘든 일이 있었다고 얘기했어. 상대가 \"그래서 어떻게 됐는데, 이렇게 해보는 게 어때?\"라고 답해. 기분이 어때?",
         options: [
           { label: "해결책이 있어서 든든해", description: "문제를 같이 풀어주는 것 같아 안심되는 반응" },
@@ -628,6 +637,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "experienceApology",
         type: "experience",
         required: true,
+        aboutSelf: true,
         question: "내가 잘못했을 때, 사과는 보통 어떻게 하는 편이야?",
         options: [
           { label: "바로 인정하고 사과하는 편", description: "잘못을 깨달으면 바로 말하는 편이다" },
@@ -708,6 +718,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "experienceEnding",
         type: "experience",
         required: true,
+        aboutSelf: true,
         question: "가까웠던 관계가 멀어질 때, 보통 어느 쪽이었어?",
         options: [
           {
@@ -762,6 +773,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "reflectionEnding",
         type: "reflection",
         required: true,
+        aboutSelf: true,
         question: "가장 최근에 그렇게 멀어졌던 관계, 언제였어요?\n무슨 일이 있었는지 적어주세요",
         placeholder: "예: 작년에 만나던 사람이 연락이 점점 줄었는데, 저도 먼저 연락 안 하고 그냥 뒀어요",
         options: [],
@@ -788,6 +800,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "experienceEarlyStyle",
         type: "experience",
         required: true,
+        aboutSelf: true,
         question: "연애 초반, 나는 보통 어떤 모습이었어?",
         options: [
           {
@@ -837,6 +850,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "experienceStressResponse",
         type: "experience",
         required: true,
+        aboutSelf: true,
         question: "가까운 사람과 갈등이 있을 때, 스트레스를 어떻게 푸는 편이야?",
         options: [
           {
@@ -886,6 +900,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "reflectionStress",
         type: "reflection",
         required: true,
+        aboutSelf: true,
         question: "최근에 그렇게 스트레스를 풀었던 때가 언제였어요?\n그때 어떤 상황이었어요?",
         placeholder: "예: 저번 주에 친구랑 트러블 있었을 때 게임하면서 풀었는데, 다음 날 먼저 연락해서 풀었어요",
         options: [],
@@ -919,6 +934,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "experienceRegret",
         type: "experience",
         required: true,
+        aboutSelf: true,
         question: "돌아보면, 가까운 관계에서 어떤 부분을 더 채워주고 싶었어?",
         options: [
           {
@@ -968,6 +984,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "reflectionRegret",
         type: "reflection",
         required: true,
+        aboutSelf: true,
         question: "그 아쉬움이 가장 크게 남았던 순간이 언제였어요?\n그때 실제로 어떻게 했어요?",
         placeholder: "예: 헤어지기 전에 서운했던 걸 말 안 하고 참았는데, 결국 곪아서 터졌어요",
         options: [],
@@ -1054,6 +1071,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "myRelationshipRole",
         type: "quickTap",
         required: true,
+        aboutSelf: true,
         question: "친구든 썸이든, 관계에서 나는 보통 어떤 역할이야?",
         options: [
           { label: "먼저 다가가고 챙기는 편", description: "적극적으로 먼저 움직이는 역할" },
@@ -1085,6 +1103,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "experienceEmotion",
         type: "experience",
         required: true,
+        aboutSelf: true,
         question: "가까운 관계에서, 나는 어떤 감정에 좀 더 예민한 편이야?",
         options: [
           {
@@ -1133,6 +1152,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "experienceChange",
         type: "experience",
         required: true,
+        aboutSelf: true,
         question: "예전과 비교하면, 나는 관계 맺는 방식이 어떻게 달라졌어?",
         options: [
           {
@@ -1185,6 +1205,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "experienceCommitment",
         type: "experience",
         required: false,
+        aboutSelf: true,
         question: "관계가 진지해지는 순간(사귀자고 말할 때 등), 나는 보통 어느 쪽이었어?",
         options: [
           { label: "내가 먼저 말하는 편", description: "마음을 확인하면 먼저 표현하는 편이다" },
@@ -1197,6 +1218,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "experienceSupport",
         type: "experience",
         required: false,
+        aboutSelf: true,
         question: "가까운 사람이 잘될 때(성취·좋은 일), 나는 보통 어떤 반응이야?",
         options: [
           { label: "내 일처럼 기뻐하는 편", description: "진심으로 같이 신나하는 편이다" },
