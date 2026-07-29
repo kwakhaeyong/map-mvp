@@ -684,13 +684,19 @@ export function TopicQuiz({
   const commitAnswer = (questionText: string, answerText: string, axisId?: string, selectedTopLevelLabels?: string[]) => {
     setSession((current) => {
       const timestamp = now();
+      // "이전"으로 되돌아가 같은 axisId를 다시 답한 경우, 그 축의 예전
+      // 질문·답변 쌍을 먼저 지운다 — 남겨두면 자기성찰 블록(답변 교차
+      // 분석)이 옛 답과 새 답을 진짜 모순으로 착각할 수 있다. 나머지
+      // 메시지의 순서는 그대로 두고 해당 쌍만 제거·교체한다(quizAnswers가
+      // 이미 axisId로 덮어쓰는 것과 같은 방식).
+      const baseMessages = axisId ? current.messages.filter((message) => message.axisId !== axisId) : current.messages;
       const nextMessages = answerText
         ? [
-            ...current.messages,
-            { id: createId("ai"), role: "ai" as const, provider: "local" as const, timestamp, text: questionText },
-            { id: createId("user"), role: "user" as const, timestamp, text: answerText },
+            ...baseMessages,
+            { id: createId("ai"), role: "ai" as const, provider: "local" as const, timestamp, text: questionText, axisId },
+            { id: createId("user"), role: "user" as const, timestamp, text: answerText, axisId },
           ]
-        : current.messages;
+        : baseMessages;
       const nextQuizAnswers =
         axisId && selectedTopLevelLabels && selectedTopLevelLabels.length > 0
           ? { ...current.quizAnswers, [axisId]: selectedTopLevelLabels }
