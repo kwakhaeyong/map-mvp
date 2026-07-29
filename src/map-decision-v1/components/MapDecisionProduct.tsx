@@ -9,6 +9,7 @@ import { Conversation } from "./Conversation";
 import { IdealTypeCard } from "./IdealTypeCard";
 import { Landing } from "./Landing";
 import { Result } from "./Result";
+import { SelfIntroCard } from "./SelfIntroCard";
 import { TopicQuiz } from "./TopicQuiz";
 
 function createDemoSession(): MapSession {
@@ -180,6 +181,9 @@ export function MapDecisionProduct() {
     const resultTopic = resolveTopic(session.topicId);
     if (resultTopic.resultLayoutId === "idealType") {
       return <IdealTypeCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
+    }
+    if (resultTopic.resultLayoutId === "selfIntro") {
+      return <SelfIntroCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
     }
     return <Result session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onSelectType={selectType} onRealStart={exitDemoToReal} saveState={saveState} />;
   }

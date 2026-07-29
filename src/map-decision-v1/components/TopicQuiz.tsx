@@ -680,6 +680,16 @@ export function TopicQuiz({
   const requiredAxes = axes.filter((axis) => axis.required);
   const optionalAxes = axes.filter((axis) => !axis.required);
 
+  // topics.ts의 "quiz" inputMode 주제는 지금 이상형(idealType)과 나
+  // 소개·성격(selfIntro) 둘이다 — 결과·진행도를 서로 다른 session
+  // 필드에 저장해야 두 주제를 오가며 진행해도 결과가 서로 안 덮어써진다.
+  // topic.id별로 필드 이름만 바꾸고 그 외 로직은 완전히 동일하다 —
+  // 이상형은 지금까지와 정확히 같은 필드 이름(idealTypeResult 등)을
+  // 그대로 쓰므로 이 분기가 생겨도 이상형 쪽 동작은 바뀌지 않는다.
+  const resultField: "selfIntroResult" | "idealTypeResult" = topic.id === "selfIntro" ? "selfIntroResult" : "idealTypeResult";
+  const depthField: "selfIntroQuizDepth" | "idealTypeQuizDepth" = topic.id === "selfIntro" ? "selfIntroQuizDepth" : "idealTypeQuizDepth";
+  const resumingField: "selfIntroResuming" | "idealTypeResuming" = topic.id === "selfIntro" ? "selfIntroResuming" : "idealTypeResuming";
+
   // 축 구성이 개편되면(topics.ts의 quizVersion 참고) 예전에 저장된
   // quizStep은 완전히 다른 문항을 가리키게 된다 — 진행 중이던 세션이
   // 그 상태 그대로 화면에 뜨면 몇 번째인지도, 무슨 질문인지도 안 맞게
@@ -697,7 +707,7 @@ export function TopicQuiz({
       quizStep: 0,
       quizVersion: topic.quizVersion,
       quizAnswers: {},
-      idealTypeResuming: false,
+      [resumingField]: false,
       updatedAt: now(),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -748,9 +758,9 @@ export function TopicQuiz({
   const finishResumedDeepDive = () => {
     setSession((current) => ({
       ...current,
-      idealTypeQuizDepth: "deep",
-      idealTypeResuming: false,
-      idealTypeResult: undefined,
+      [depthField]: "deep",
+      [resumingField]: false,
+      [resultField]: undefined,
       updatedAt: now(),
     }));
     onFinish();
@@ -822,7 +832,7 @@ export function TopicQuiz({
               commitAnswer(topic.closingPrompt ?? "더 하고 싶은 말이 있나요?", answerText);
               if (optionalAxes.length > 0) {
                 const depth = step === requiredAxes.length + 1 ? "quick" : "deep";
-                setSession((current) => ({ ...current, idealTypeQuizDepth: depth }));
+                setSession((current) => ({ ...current, [depthField]: depth }));
               }
               onFinish();
             }}
@@ -836,7 +846,7 @@ export function TopicQuiz({
             onBack={goBack}
             aboutSelf={currentAxis.aboutSelf}
             onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
@@ -849,7 +859,7 @@ export function TopicQuiz({
             showBack={step > 0}
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
@@ -863,7 +873,7 @@ export function TopicQuiz({
             onBack={goBack}
             aboutSelf={currentAxis.aboutSelf}
             onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
@@ -876,7 +886,7 @@ export function TopicQuiz({
             showBack={step > 0}
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
@@ -889,7 +899,7 @@ export function TopicQuiz({
             showBack={step > 0}
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
@@ -904,7 +914,7 @@ export function TopicQuiz({
             aboutSelf={currentAxis.aboutSelf}
             onBack={goBack}
             onSubmit={(answerText) => {
-              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
@@ -918,7 +928,7 @@ export function TopicQuiz({
             aboutSelf={currentAxis.aboutSelf}
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
+              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
