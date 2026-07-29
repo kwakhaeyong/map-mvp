@@ -40,8 +40,14 @@ export default function TermsPage() {
         <section className="mt-8 space-y-3">
           <h2 className="text-xl font-black tracking-[-0.02em]">3. 이용 자격</h2>
           <p className="break-keep leading-7 text-text-secondary">
-            본 서비스는 만 14세 이상만 이용할 수 있습니다. 만 14세 미만은
-            서비스 이용이 제한됩니다.
+            본 서비스는 만 14세 이상만 이용할 수 있습니다. 만 14세 미만
+            아동은 법정대리인(부모 등)의 동의 없이는 서비스를 이용할 수
+            없으며, 서비스는 만 14세 미만 아동의 개인정보를 법정대리인의
+            동의 없이 수집·이용하지 않습니다. 서비스 제공자가 이용자가 만
+            14세 미만임을 알게 된 경우, 해당 이용자의 서비스 이용을
+            제한하고 수집된 정보를 지체 없이 파기할 수 있습니다.
+            법정대리인은 자녀의 개인정보에 대한 열람, 정정·삭제, 처리
+            정지를 요청할 수 있으며, 관련 문의는 8. 문의처로 접수합니다.
           </p>
         </section>
 
@@ -94,7 +100,7 @@ export default function TermsPage() {
           </p>
         </section>
 
-        <p className="mt-10 text-xs font-semibold text-text-muted">시행일: 2026-07-27</p>
+        <p className="mt-10 text-xs font-semibold text-text-muted">시행일: 2026-07-29</p>
       </article>
     </main>
   );
