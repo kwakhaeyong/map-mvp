@@ -19,6 +19,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { ReactNode } from "react";
+import sharp from "sharp";
 import { CARD_COLORS } from "./ideal-type-card-colors";
 import type { IdealTypeResult } from "../types";
 
@@ -29,6 +30,8 @@ const SIDE_PADDING = 72;
 const CONTENT_WIDTH = CARD_WIDTH - SIDE_PADDING * 2;
 
 const FONT_DIR = path.join(process.cwd(), "assets/fonts/pretendard-static");
+const NOTO_SERIF_KR_DIR = path.join(process.cwd(), "assets/fonts/noto-serif-kr");
+const PAPER_TEXTURE_PATH = path.join(process.cwd(), "assets/textures/paper-noise.png");
 
 type CardFont = { data: Buffer; name: string; weight: 400 | 500 | 600 | 700 | 800 | 900; style: "normal" };
 
@@ -50,6 +53,61 @@ export function loadCardFonts(): CardFont[] {
     weight,
     style: "normal" as const,
   }));
+}
+
+// 초대장 컨셉(invitation 테마) 전용 세리프. google/fonts 저장소의 가변
+// 폰트를 scripts/subset-noto-serif-kr.py로 400/700 두 굵기만 정적
+// 인스턴스로 뽑고, KS X 1001 상용 한글 2,350자 + 라틴/문장부호 범위로
+// 서브셋한 파일이다(9.4MB → 약 2.4MB). AI가 쓰는 문장은 이론상 이
+// 2,350자 밖의 희귀 음절을 쓸 수도 있어, fontFamily에 Pretendard를
+// 폴백으로 같이 둔다(아래 목록에 Pretendard도 포함) — 세리프에 없는
+// 글자만 Pretendard로 자동 대체되고 두부(tofu) 빈 박스는 나오지 않는다.
+// 서버에서만 래스터화에 쓰이고 클라이언트로 내려가지 않아 용량 제약이
+// 없다.
+//
+// 모듈 스코프에서 한 번만 읽어 웜 인스턴스에서 재사용한다 — 실측
+// 결과 readFileSync 자체(폰트 4개 파일)는 10ms 안팎으로 빨랐지만,
+// 캐싱을 적용한 뒤 satori 렌더링 시간이 요청당 평균 약 1.0초→0.7초로
+// 줄었다(총 처리 시간 기준 약 1.4초→1.0초). 정확한 메커니즘은 satori
+// 내부 구현이라 알 수 없지만(버퍼 재사용이 V8/Node 메모리 상태에
+// 영향을 줬을 수 있다), 실측으로 확인된 효과라 유지한다.
+let invitationFontsCache: CardFont[] | undefined;
+export function loadInvitationFonts(): CardFont[] {
+  if (!invitationFontsCache) {
+    invitationFontsCache = [
+      { data: readFileSync(path.join(NOTO_SERIF_KR_DIR, "NotoSerifKR-Regular.ttf")), name: "Noto Serif KR", weight: 400, style: "normal" as const },
+      { data: readFileSync(path.join(NOTO_SERIF_KR_DIR, "NotoSerifKR-Bold.ttf")), name: "Noto Serif KR", weight: 700, style: "normal" as const },
+      // 세리프 서브셋(KS X 1001 2,350자) 밖의 글자를 위한 폴백. 정적
+      // 굵기가 Medium(500)부터라 400 대신 가장 가까운 Medium을 쓴다 —
+      // 드물게만 쓰이는 폴백 경로라 이 정도 굵기 차이는 감수한다.
+      { data: readFileSync(path.join(FONT_DIR, "Pretendard-Medium.otf")), name: "Pretendard", weight: 400, style: "normal" as const },
+      { data: readFileSync(path.join(FONT_DIR, "Pretendard-Bold.otf")), name: "Pretendard", weight: 700, style: "normal" as const },
+    ];
+  }
+  return invitationFontsCache;
+}
+
+// scripts/generate-paper-texture.mjs가 미리 만들어둔 48x48 타일(약
+// 1KB)을 data URI로 감싼다. 요청마다 디스크에서 다시 읽지만 파일이
+// 작아 비용은 무시할 만하고, 모듈이 콜드스타트 중 여러 번 재사용되면
+// 이 캐시가 그 안에서는 재사용된다.
+let paperTextureDataUri: string | undefined;
+function loadPaperTextureDataUri(): string {
+  if (!paperTextureDataUri) {
+    const bytes = readFileSync(PAPER_TEXTURE_PATH);
+    paperTextureDataUri = `data:image/png;base64,${bytes.toString("base64")}`;
+  }
+  return paperTextureDataUri;
+}
+
+// satori(next/og)가 직접 만드는 PNG는 압축률이 낮다 — 특히 종이
+// 질감처럼 픽셀마다 값이 미세하게 다른 영역이 섞이면 파일 크기가 몇
+// 배로 뛴다(실측: 텍스처 추가 직후 700KB대였던 카드가, 아래처럼 sharp로
+// 한 번 더 인코딩하면 160KB대로 줄었다 — 같은 그림, 다른 압축기 차이일
+// 뿐 화질 손실은 눈에 띄지 않는다). 그래서 라우트가 satori 결과를 그대로
+// 내보내지 않고 이 함수로 한 번 더 압축한다.
+export async function optimizeCardPng(buffer: Buffer): Promise<Buffer> {
+  return sharp(buffer).png({ compressionLevel: 9, palette: true }).toBuffer();
 }
 
 // 마침표 기준 첫 문장만 남긴다. 글자 수로 자르면 문장 중간이 끊겨서
@@ -108,7 +166,17 @@ function oneLinerFontSize(oneLiner: string): number {
   );
 }
 
-export type CardTheme = "purple" | "navy" | "colorBlock";
+export type CardTheme = "purple" | "navy" | "colorBlock" | "invitation";
+
+// invitation 테마는 다른 테마(9:16 인스타 스토리 규격)와 비율이 다르다
+// (4:5) — 라우트가 ImageResponse 크기를 테마에 맞게 정할 수 있게 노출한다.
+export const INVITATION_CARD_WIDTH = CARD_WIDTH;
+export const INVITATION_CARD_HEIGHT = 1350;
+export function getCardDimensions(theme: CardTheme): { width: number; height: number } {
+  return theme === "invitation"
+    ? { width: INVITATION_CARD_WIDTH, height: INVITATION_CARD_HEIGHT }
+    : { width: CARD_WIDTH, height: CARD_HEIGHT };
+}
 
 // 자기성찰 문장에서 첫 문장만 뽑는다 — 길이 컷은 여기서 하지 않는다.
 // 실제로 보여줄 수 있는지(폰트를 줄여서 들어가는지, 그래도 안 들어가면
@@ -754,7 +822,266 @@ function buildNavyStoryCard(result: IdealTypeResult) {
   );
 }
 
+// ── 초대장 컨셉(invitation) 전용 레이아웃 ──────────────────────────────
+// /r/{id}에서 카드가 컨테이너 폭의 80%로만 표시되다 보니(약 3.6배
+// 축소) 6개 구역(브랜드·타이틀·태그·한줄설명·자기성찰·footer)에 걸쳐
+// 나눠 담던 원래 구성은 실제 화면에서 본문이 아예 안 읽히는 문제가
+// 있었다 — 이미지 로드 실패 시의 텍스트 폴백보다도 읽기 나쁜
+// 역전이었다. 그래서 이 카드는 "본문 정리"가 아니라 "한눈에 훅 들어오는
+// 첫인상 카드" 하나로 범위를 좁힌다: 타이틀 + 태그 4개 + 한줄설명만
+// 남기고 자기성찰·footer 텍스트는 뺀다. 비율도 인스타 스토리(9:16)
+// 대신 카톡 공유에 더 맞는 4:5로 바꿨다(INVITATION_CARD_HEIGHT).
+// 남는 공간은 전부 타이틀·태그를 키우는 데 쓴다 — 태그 4개가
+// "줄어든 상태에서도" 또렷이 읽히는 게 기준이다.
+const INVITATION_ZONE = { topMargin: 60, title: 610, tags: 350, oneLiner: 200, footer: 70, bottomMargin: 60 } as const;
+
+function invitationTitleFontSize(title: string): number {
+  return pickBySteps(
+    title.length,
+    [
+      { max: 12, size: 130 },
+      { max: 20, size: 108 },
+      { max: 26, size: 90 },
+      { max: 38, size: 76 },
+      { max: 52, size: 62 },
+    ],
+    50,
+  );
+}
+
+// navy의 fitNavyTagFontSize()와 같은 계산 — 2줄×2칸 배치 안에서 실제로
+// 들어가는 가장 큰 폰트를 폭 기준으로 고른다.
+function fitPillFontSize(tags: string[], candidateSizes: number[], paddingX: number, gap: number, charWidthRatio: number): number {
+  const rows: string[][] = [];
+  for (let i = 0; i < tags.length; i += 2) rows.push(tags.slice(i, i + 2));
+  for (const fontSize of candidateSizes) {
+    const fits = rows.every((row) => {
+      const textWidth = row.reduce((sum, tag) => sum + tag.length * fontSize * charWidthRatio, 0);
+      const paddingWidth = row.length * paddingX * 2;
+      const gapWidth = row.length > 1 ? gap : 0;
+      return textWidth + paddingWidth + gapWidth <= CONTENT_WIDTH;
+    });
+    if (fits) return fontSize;
+  }
+  return candidateSizes[candidateSizes.length - 1];
+}
+
+const INVITATION_TAG_CHAR_WIDTH_RATIO = 0.92;
+const INVITATION_TAG = { sizes: [72, 68, 64, 58, 52, 46, 40, 34], paddingX: 32, gap: 20 };
+
+function InvitationZone({ height, children, style }: { height: number; children: ReactNode; style?: Record<string, unknown> }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: CARD_WIDTH,
+        height,
+        flexShrink: 0,
+        boxSizing: "border-box",
+        paddingLeft: SIDE_PADDING,
+        paddingRight: SIDE_PADDING,
+        justifyContent: "center",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// 봉랍(왁스 실) 마크 — 예전에는 카드 위쪽에 "MAP Decision" 글자와 함께
+// 가로로 놓여 있었는데, 상단부는 스크린샷 시선이 타이틀로 바로 가는
+// 자리라 잘 눈에 띄지 않았다. 절대 위치로 하단 좌측 모서리에 단독으로
+// 배치하고 글자(워드마크)는 뺀다 — 도메인 표기(InvitationFooter)는
+// 하단 중앙에 별도로 있어서 서로 겹치지 않는다. 카드가 /r/{id}에서
+// 컨테이너 폭의 80%로 축소되므로(원본 대비 약 3.6배 축소), 축소된
+// 상태에서도 보이는 크기(72px)를 유지한다.
+function InvitationSeal() {
+  return (
+    <span
+      style={{
+        display: "flex",
+        position: "absolute",
+        left: 64,
+        bottom: 64,
+        alignItems: "center",
+        justifyContent: "center",
+        width: 72,
+        height: 72,
+        borderRadius: 999,
+        backgroundColor: CARD_COLORS.primary,
+        boxShadow: "0 3px 6px rgba(21, 33, 59, 0.3)",
+        color: CARD_COLORS.background,
+        fontSize: 30,
+        fontWeight: 700,
+      }}
+    >
+      M
+    </span>
+  );
+}
+
+function InvitationTitle({ title, height }: { title: string; height: number }) {
+  return (
+    <InvitationZone height={height}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: height, overflow: "hidden" }}>
+        <span
+          style={{
+            fontSize: invitationTitleFontSize(title),
+            fontWeight: 700,
+            lineHeight: 1.25,
+            color: CARD_COLORS.primary,
+            letterSpacing: "-1px",
+            wordBreak: "keep-all",
+          }}
+        >
+          {title}
+        </span>
+      </div>
+    </InvitationZone>
+  );
+}
+
+function InvitationTags({ tags, height }: { tags: string[]; height: number }) {
+  if (tags.length === 0) return null;
+  const fontSize = fitPillFontSize(tags, INVITATION_TAG.sizes, INVITATION_TAG.paddingX, INVITATION_TAG.gap, INVITATION_TAG_CHAR_WIDTH_RATIO);
+  const rows: string[][] = [];
+  for (let i = 0; i < tags.length; i += 2) rows.push(tags.slice(i, i + 2));
+  return (
+    <InvitationZone height={height}>
+      <div style={{ display: "flex", flexDirection: "column", width: CONTENT_WIDTH, maxHeight: height, overflow: "hidden" }}>
+        {rows.map((row, rowIndex) => (
+          <div key={row.join("-")} style={{ display: "flex", justifyContent: "center", marginTop: rowIndex === 0 ? 0 : INVITATION_TAG.gap }}>
+            {row.map((tag, tagIndex) => (
+              <span
+                key={tag}
+                style={{
+                  display: "flex",
+                  backgroundColor: CARD_COLORS.primarySoftFill,
+                  color: CARD_COLORS.primary,
+                  borderRadius: 999,
+                  padding: `${INVITATION_TAG.paddingX * 0.6}px ${INVITATION_TAG.paddingX}px`,
+                  fontSize,
+                  fontWeight: 700,
+                  letterSpacing: "-0.5px",
+                  marginLeft: tagIndex === 0 ? 0 : INVITATION_TAG.gap,
+                }}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </InvitationZone>
+  );
+}
+
+// 375px로 축소됐을 때 이전 색(textSecondary, #465672)이 흐려서 잘
+// 안 읽힌다는 피드백으로 본문 잉크(CARD_COLORS.inkStrong)에 더 가깝게
+// 진하게 바꾸고 크기도 소폭(약 10%) 키웠다. 다만 타이틀(62~130px)·
+// 태그(34~72px)보다는 항상 작게 유지해 위계는 그대로 지킨다.
+const INVITATION_ONELINER_FONT_SIZES = [44, 40, 36, 30];
+const INVITATION_ONELINER_BUDGET = INVITATION_ZONE.oneLiner - 10;
+const INVITATION_ONELINER_LINE_HEIGHT = 1.4;
+
+function InvitationOneLiner({ oneLiner }: { oneLiner: string }) {
+  const fitted = fitOneLiner(oneLiner, INVITATION_ONELINER_FONT_SIZES, INVITATION_ONELINER_BUDGET, INVITATION_ONELINER_LINE_HEIGHT);
+  return (
+    <InvitationZone height={INVITATION_ZONE.oneLiner}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: INVITATION_ZONE.oneLiner, overflow: "hidden" }}>
+        <span style={{ fontSize: fitted.fontSize, fontWeight: 400, lineHeight: INVITATION_ONELINER_LINE_HEIGHT, color: CARD_COLORS.inkStrong }}>
+          {fitted.text}
+        </span>
+      </div>
+    </InvitationZone>
+  );
+}
+
+// 카드 하단 중앙 도메인 표기 — 본문 3블록을 뺄 때 같이 사라졌던 것을
+// 되살렸다. 이 카드는 인스타 스크린샷으로 퍼지는 게 목적이라 도메인이
+// 안 읽히면 유입 경로가 끊기므로, 375px로 축소된 상태에서도 읽히는
+// 크기(28px, NavyFooter와 동일한 기준)로 잡았다. 색은 잉크 네이비
+// 계열이되 본문(InvitationOneLiner, inkStrong)보다 옅은 textSecondary를
+// 써서 본문보다 시선이 덜 가게 한다.
+function InvitationFooter({ height }: { height: number }) {
+  return (
+    <InvitationZone height={height}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, justifyContent: "center" }}>
+        <span style={{ fontSize: 28, fontWeight: 700, color: CARD_COLORS.textSecondary, letterSpacing: "0.5px" }}>mapdecision.com</span>
+      </div>
+    </InvitationZone>
+  );
+}
+
+// 카드 전체에 허용된 테두리 선 1개 — 캔버스 가장자리에서 안쪽으로
+// 들여서 "종이 카드 자체의 가장자리"처럼 보이게 한다. 절대 위치로
+// 콘텐츠 위에 얹되 배경이 없어(border만 있음) 아래 내용을 가리지
+// 않는다.
+function InvitationFrame() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        position: "absolute",
+        top: 40,
+        left: 40,
+        right: 40,
+        bottom: 40,
+        border: `2px solid ${CARD_COLORS.primarySoftBorder}`,
+        borderRadius: 16,
+      }}
+    />
+  );
+}
+
+// 타이틀 + 태그 4개 + 한줄설명 + 하단 도메인만 남긴다 — 자기성찰
+// 텍스트는 뺐다(위 "본문 정리" 주석 참고). 봉랍은 절대 위치라 In-flow
+// 구역을 차지하지 않는다. 아래 In-flow 구역(topMargin/title/tags/
+// oneLiner/footer/bottomMargin)의 높이 합이 INVITATION_CARD_HEIGHT
+// (1350)와 정확히 맞도록 INVITATION_ZONE에서 배정한다.
+function buildInvitationCard(result: IdealTypeResult) {
+  const title = clampForSafety(result.title.trim(), 60);
+  const oneLiner = clampForSafety(result.oneLiner.trim(), 120);
+  const tags = (result.tags ?? []).slice(0, 4);
+  const textureDataUri = loadPaperTextureDataUri();
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+        width: INVITATION_CARD_WIDTH,
+        height: INVITATION_CARD_HEIGHT,
+        backgroundColor: CARD_COLORS.background,
+        backgroundImage: `url(${textureDataUri})`,
+        backgroundRepeat: "repeat",
+        // ★실측 확인: 세리프를 타이틀에만 한정해도(태그·한줄설명은
+        // Pretendard) 렌더링 시간이 거의 줄지 않았다(타이틀만 세리프로
+        // 써도 전체 세리프 때와 동일하게 ~1.0초) — 병목이 "세리프로 그리는
+        // 글자 수"가 아니라 "Noto Serif KR 폰트를 satori에 포함시키는
+        // 것 자체"의 고정 비용이었기 때문으로 보인다. 그래서 시간상
+        // 이득이 없는 폰트 혼용 대신, 카드 전체를 세리프로 통일하는 쪽을
+        // 유지한다(디자인 일관성을 공짜로 얻는 셈).
+        fontFamily: "Noto Serif KR, Pretendard",
+      }}
+    >
+      <InvitationFrame />
+      <InvitationSeal />
+      <div style={{ display: "flex", width: INVITATION_CARD_WIDTH, height: INVITATION_ZONE.topMargin, flexShrink: 0 }} />
+      <InvitationTitle title={title} height={INVITATION_ZONE.title} />
+      <InvitationTags tags={tags} height={INVITATION_ZONE.tags} />
+      <InvitationOneLiner oneLiner={oneLiner} />
+      <InvitationFooter height={INVITATION_ZONE.footer} />
+      <div style={{ display: "flex", width: INVITATION_CARD_WIDTH, height: INVITATION_ZONE.bottomMargin, flexShrink: 0 }} />
+    </div>
+  );
+}
+
 export function buildIdealTypeCardElement(result: IdealTypeResult, theme: CardTheme) {
   if (theme === "navy") return buildNavyStoryCard(result);
+  if (theme === "invitation") return buildInvitationCard(result);
   return buildContent(result, theme);
 }

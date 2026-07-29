@@ -66,7 +66,9 @@ function CompatibilityResult({ aTags, bTags, topicId }: { aTags: string[]; bTags
         <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-text-muted">친구와의 궁합</p>
         <h1 className="text-xl font-black tracking-[-0.02em] text-text-primary">{TIER_LABEL[tier]}</h1>
         <p className="text-sm font-semibold leading-6 text-text-secondary">{TIER_DESCRIPTION[tier]}</p>
-        <p className="text-xs font-bold text-text-muted">겹치는 축 {overlapCount}개 / 4개</p>
+        {/* 0/4는 숫자로 보면 "0%"와 같은 인상을 준다 — 겹침이 없을 때는
+            분수를 아예 보여주지 않고 위 문구(TIER_DESCRIPTION)만 남긴다. */}
+        {overlapCount > 0 ? <p className="text-xs font-bold text-text-muted">겹치는 축 {overlapCount}개 / 4개</p> : null}
       </Card>
       <Card className="flex flex-col gap-3">
         <div className="flex flex-col gap-1.5">
@@ -109,7 +111,7 @@ export default async function CompatibilityPage({
   const topicId = share.status === "ok" ? share.record.topicId : undefined;
 
   return (
-    <main className="min-h-dvh px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary">
+    <main className="min-h-dvh bg-background px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary">
       <div className="mx-auto flex w-full max-w-sm flex-col gap-3">
         <div className="flex items-center px-1">
           <Brand />

@@ -1,6 +1,13 @@
 import { ImageResponse } from "next/og";
 import { IdealTypeResult } from "../../../src/map-decision-v1/types";
-import { buildIdealTypeCardElement, CardTheme, CARD_HEIGHT, CARD_WIDTH, loadCardFonts } from "../../../src/map-decision-v1/engine/ideal-type-card-image";
+import {
+  buildIdealTypeCardElement,
+  CardTheme,
+  getCardDimensions,
+  loadCardFonts,
+  loadInvitationFonts,
+  optimizeCardPng,
+} from "../../../src/map-decision-v1/engine/ideal-type-card-image";
 
 // 개발 환경 전용 — 한 장 MAP PNG 디자인을 Upstash 없이 mock 데이터로
 // 바로 확인하기 위한 라우트. 프로덕션에는 절대 노출하지 않는다.
@@ -223,7 +230,7 @@ const REAL_LONGEST_TAGS_MOCK: IdealTypeResult = {
 };
 
 function isCardTheme(value: string | null): value is CardTheme {
-  return value === "purple" || value === "navy" || value === "colorBlock";
+  return value === "purple" || value === "navy" || value === "colorBlock" || value === "invitation";
 }
 
 export async function GET(request: Request) {
@@ -256,9 +263,12 @@ export async function GET(request: Request) {
   const themeParam = url.searchParams.get("theme");
   const theme: CardTheme = isCardTheme(themeParam) ? themeParam : "purple";
 
-  return new ImageResponse(buildIdealTypeCardElement(variant, theme), {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    fonts: loadCardFonts(),
+  const { width, height } = getCardDimensions(theme);
+  const response = new ImageResponse(buildIdealTypeCardElement(variant, theme), {
+    width,
+    height,
+    fonts: theme === "invitation" ? loadInvitationFonts() : loadCardFonts(),
   });
+  const optimized = await optimizeCardPng(Buffer.from(await response.arrayBuffer()));
+  return new Response(optimized, { headers: { "Content-Type": "image/png" } });
 }
