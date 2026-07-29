@@ -958,7 +958,7 @@ function InvitationTags({ tags, height }: { tags: string[]; height: number }) {
                 key={tag}
                 style={{
                   display: "flex",
-                  backgroundColor: CARD_COLORS.primarySoftFill,
+                  backgroundColor: CARD_COLORS.invitationTagFill,
                   color: CARD_COLORS.primary,
                   borderRadius: 999,
                   padding: `${INVITATION_TAG.paddingX * 0.6}px ${INVITATION_TAG.paddingX}px`,
