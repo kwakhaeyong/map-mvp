@@ -157,9 +157,15 @@ function IdealTypeCardBody({
     result,
     quizDepth: session.idealTypeQuizDepth,
     shareTitle: "내 이상형 카드",
-    buildShareText: (shareUrl) => `내 이상형은 "${result.title}"\n${result.oneLiner}\n\n${shareUrl}`,
+    // 결과 내용(제목·한줄설명)은 절대 넣지 않는다 — /r/[id]의 OG 문구와
+    // 같은 이유(app/layout.tsx 주석 참고)로, 공유 문구에 결과가 들어가면
+    // 카톡 대화 로그에 그 사람 결과가 그대로 남는다. 테스터가 실제로
+    // 공유하며 썼던 말("야 이게 내 이상형이래")을 고정 문구로 채워두고,
+    // 카톡에서 보내기 전에 자유롭게 고쳐 쓸 수 있게 한다.
+    buildShareText: (shareUrl) => `야 이게 내 이상형이래\n\n${shareUrl}`,
   });
 
+  // "이미지로 저장"도 위와 같은 이유로 결과 내용 없이 같은 고정 문구를 쓴다.
   // "이미지로 저장"은 위 useShareResult가 만든 ensureShareUrl을 그대로
   // 쓴다 — 이미 "공유" 버튼으로 링크를 만들었다면 새로 만들지 않고
   // 그 링크의 카드 이미지만 받아온다(하루 공유 한도가 이중으로 깎이지
@@ -167,7 +173,12 @@ function IdealTypeCardBody({
   const { imageState, imageError, modalOpen, previewUrl, closeModal, handleTap: saveImage } = useImageShare({
     ensureShareUrl,
     shareTitle: "내 이상형 카드",
-    buildShareText: (shareUrl) => `내 이상형은 "${result.title}"\n${result.oneLiner}\n\n${shareUrl}`,
+    // 결과 내용(제목·한줄설명)은 절대 넣지 않는다 — /r/[id]의 OG 문구와
+    // 같은 이유(app/layout.tsx 주석 참고)로, 공유 문구에 결과가 들어가면
+    // 카톡 대화 로그에 그 사람 결과가 그대로 남는다. 테스터가 실제로
+    // 공유하며 썼던 말("야 이게 내 이상형이래")을 고정 문구로 채워두고,
+    // 카톡에서 보내기 전에 자유롭게 고쳐 쓸 수 있게 한다.
+    buildShareText: (shareUrl) => `야 이게 내 이상형이래\n\n${shareUrl}`,
   });
 
   return (
