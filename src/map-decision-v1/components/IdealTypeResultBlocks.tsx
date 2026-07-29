@@ -89,9 +89,15 @@ export function TagRow({
   );
 }
 
+// 초대장 컨셉(card.png·/r/{id})과 톤을 맞춘다 — 예전엔 연보라
+// 그라데이션(from-value via-feeling to-action)이었는데, 카드 이미지와
+// 공유 화면이 전부 크림 종이 톤으로 바뀐 뒤 이 화면만 남아 한 흐름
+// 안에서 브랜드가 두 개로 보였다. Card 기본값(bg-surface-elevated,
+// 흰색)을 그대로 쓰도록 배경 override만 지운다 — 다른 섹션(기준·패턴 등)
+// 과 동일한 흰 카드가 되어 새 색을 만들지 않는다.
 function HeroHeader({ result }: { result: IdealTypeResult }) {
   return (
-    <Card id="summary" className="scroll-mt-6 bg-gradient-to-br from-value via-feeling to-action p-5">
+    <Card id="summary" className="scroll-mt-6 p-5">
       <span className="inline-flex items-center rounded-pill border border-border/60 bg-surface-elevated/80 px-3 py-1 text-xs font-extrabold text-text-primary">
         이상형 카드
       </span>
@@ -103,26 +109,17 @@ function HeroHeader({ result }: { result: IdealTypeResult }) {
 }
 
 type CriteriaTone = "strong" | "medium" | "light";
-// 라이브 결과 화면(IdealTypeCard.tsx)의 기본 톤 — value/feeling 파스텔로
-// 세 단계 위계를 표현한다.
+// 크림 종이 배경 위에서는 연보라 파스텔(value/feeling)이 이질적으로
+// 뜬다는 피드백으로, 세 단계 위계를 잉크(primary) 농도 차이로 표현한다.
 const CRITERIA_TIER_CLASS: Record<CriteriaTone, string> = {
-  strong: "border-primary bg-value/70",
-  medium: "border-border-strong bg-feeling/50",
-  light: "border-dashed border-border bg-surface",
-};
-// /r/{id} 공유 화면(paperTone) 전용 — 크림 종이 배경 위에서 연보라
-// 파스텔이 이질적으로 뜬다는 피드백으로, 같은 위계를 잉크(primary)
-// 농도 차이로만 표현한다. 이 상수만 쓰고 CRITERIA_TIER_CLASS는 그대로
-// 둬서 라이브 결과 화면은 전혀 영향받지 않는다.
-const CRITERIA_TIER_CLASS_PAPER: Record<CriteriaTone, string> = {
   strong: "border-primary bg-primary/10",
   medium: "border-border-strong bg-primary/5",
   light: "border-dashed border-border bg-surface",
 };
 
-function CriteriaTier({ label, items, tone, paperTone }: { label: string; items: string[]; tone: CriteriaTone; paperTone?: boolean }) {
+function CriteriaTier({ label, items, tone }: { label: string; items: string[]; tone: CriteriaTone }) {
   return (
-    <div className={cx("rounded-medium border p-3", (paperTone ? CRITERIA_TIER_CLASS_PAPER : CRITERIA_TIER_CLASS)[tone])}>
+    <div className={cx("rounded-medium border p-3", CRITERIA_TIER_CLASS[tone])}>
       <p className="text-xs font-black text-text-primary">{label}</p>
       <ul className="mt-1.5 space-y-1">
         {items.map((item, index) => (
@@ -135,14 +132,14 @@ function CriteriaTier({ label, items, tone, paperTone }: { label: string; items:
   );
 }
 
-function CriteriaSection({ criteria, paperTone }: { criteria: IdealTypeResult["criteria"]; paperTone?: boolean }) {
+function CriteriaSection({ criteria }: { criteria: IdealTypeResult["criteria"] }) {
   return (
     <Card id="criteria" className="scroll-mt-6 flex flex-col gap-4">
       <SectionHeader eyebrow="Criteria" title="이상형 기준" description="답변에서 우선순위를 세 단계로 나눠봤어요." />
       <div className="grid gap-3 sm:grid-cols-3">
-        <CriteriaTier label="필수" items={criteria.mustHave} tone="strong" paperTone={paperTone} />
-        <CriteriaTier label="선호" items={criteria.niceToHave} tone="medium" paperTone={paperTone} />
-        <CriteriaTier label="타협 가능" items={criteria.canCompromise} tone="light" paperTone={paperTone} />
+        <CriteriaTier label="필수" items={criteria.mustHave} tone="strong" />
+        <CriteriaTier label="선호" items={criteria.niceToHave} tone="medium" />
+        <CriteriaTier label="타협 가능" items={criteria.canCompromise} tone="light" />
       </div>
     </Card>
   );
@@ -198,14 +195,13 @@ function spreadMatrixPoints(points: IdealTypeMatrixPoint[]): PlottedMatrixPoint[
 
 // 리터럴 클래스 문자열로만 참조한다 — 동적으로 조합하면 Tailwind JIT
 // 스캐너가 소스에서 문자열을 못 찾아 클래스가 생성되지 않는다.
-const MATRIX_POINT_FILL_CLASS = ["fill-value", "fill-feeling", "fill-action", "fill-uncertainty"];
-// /r/{id} 공유 화면(paperTone) 전용 — 4가지 파스텔 대신 잉크(primary)
-// 농도 차이로 점을 구분한다(CriteriaTier의 paperTone과 같은 이유).
-const MATRIX_POINT_FILL_CLASS_PAPER = ["fill-primary", "fill-primary/70", "fill-primary/45", "fill-primary/25"];
+// CriteriaTier와 같은 이유로 4가지 파스텔 대신 잉크(primary) 농도
+// 차이로 점을 구분한다.
+const MATRIX_POINT_FILL_CLASS = ["fill-primary", "fill-primary/70", "fill-primary/45", "fill-primary/25"];
 
-function MatrixChart({ matrix, paperTone }: { matrix: IdealTypeMatrix; paperTone?: boolean }) {
+function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
   const placed = spreadMatrixPoints(matrix.types);
-  const fillClasses = paperTone ? MATRIX_POINT_FILL_CLASS_PAPER : MATRIX_POINT_FILL_CLASS;
+  const fillClasses = MATRIX_POINT_FILL_CLASS;
   return (
     <div className="mx-auto w-full max-w-xs">
       <p className="mb-1 text-center text-[11px] font-black text-text-muted">{matrix.yAxisLabel.high}</p>
@@ -240,11 +236,11 @@ function MatrixChart({ matrix, paperTone }: { matrix: IdealTypeMatrix; paperTone
   );
 }
 
-function MatrixSection({ matrix, paperTone }: { matrix: IdealTypeMatrix; paperTone?: boolean }) {
+function MatrixSection({ matrix }: { matrix: IdealTypeMatrix }) {
   return (
     <Card id="matrix" className="scroll-mt-6 flex flex-col gap-4">
       <SectionHeader eyebrow="Matrix" title="끌림 × 관계 적합도" description="답변에서 나온 4가지 상대 유형을 놓고 봤어요." />
-      <MatrixChart matrix={matrix} paperTone={paperTone} />
+      <MatrixChart matrix={matrix} />
       <ul className="flex flex-col gap-2">
         {matrix.types.map((point, index) => (
           <li key={index} className="flex items-start gap-2 text-sm font-semibold text-text-secondary">
@@ -265,8 +261,11 @@ function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
   return (
     <Card id="flags" className="scroll-mt-6 flex flex-col gap-4">
       <SectionHeader eyebrow="Signals" title="신호등" description="실제로 만날 때 참고할 신호들이에요." />
+      {/* 박스 배경은 option/risk 파스텔 대신 다른 블록과 같은 잉크
+          중간 톤(border-border-strong bg-primary/5)으로 통일한다 —
+          좋다/주의 구분은 라벨의 success/error 색과 점만으로 충분하다. */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-medium border border-option/60 bg-option/40 p-3">
+        <div className="rounded-medium border border-border-strong bg-primary/5 p-3">
           <p className="flex items-center gap-1.5 text-xs font-black text-success">
             <span className="size-2 rounded-full bg-success" aria-hidden="true" />
             좋은 신호
@@ -279,7 +278,7 @@ function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
             ))}
           </ul>
         </div>
-        <div className="rounded-medium border border-risk/60 bg-risk/50 p-3">
+        <div className="rounded-medium border border-border-strong bg-primary/5 p-3">
           <p className="flex items-center gap-1.5 text-xs font-black text-error">
             <span className="size-2 rounded-full bg-error" aria-hidden="true" />
             주의 신호
@@ -398,33 +397,25 @@ function RoadmapSection({ roadmap }: { roadmap: IdealTypeRoadmap }) {
 // showHero: /r/{id}의 "친구 결과 전체 보기" 접힌 영역에서는 타이틀·
 // 태그·한줄설명이 바로 위 card.png와 완전히 겹쳐서 false로 끈다.
 // 기본값 true라 다른 호출부는 그대로다.
-//
-// paperTone: /r/{id} 접힌 영역 전용 — 크림 종이 배경 위에서 기준·
-// 매트릭스 블록의 연보라 파스텔(value/feeling)이 이질적으로 뜬다는
-// 피드백으로, 그 두 블록만 잉크 농도 차이로 다시 그린다(자기성찰의
-// 다크 블록은 대상이 아니다 — 원래도 파스텔이 아니었다). 기본값
-// false라 라이브 결과 화면(IdealTypeCard.tsx)은 전혀 영향받지 않는다.
 export function IdealTypeResultBlocks({
   result,
   afterHero,
   afterReflection,
   showHero = true,
-  paperTone = false,
 }: {
   result: IdealTypeResult;
   afterHero?: ReactNode;
   afterReflection?: ReactNode;
   showHero?: boolean;
-  paperTone?: boolean;
 }) {
   return (
     <>
       {showHero ? <HeroHeader result={result} /> : null}
       {afterHero}
       <SectionNav />
-      <CriteriaSection criteria={result.criteria} paperTone={paperTone} />
+      <CriteriaSection criteria={result.criteria} />
       <PatternsSection items={result.attractionPatterns} />
-      <MatrixSection matrix={result.matrix} paperTone={paperTone} />
+      <MatrixSection matrix={result.matrix} />
       <FlagsSection flags={result.flags} />
       <SelfReflectionSection selfReflection={result.selfReflection} />
       {afterReflection}

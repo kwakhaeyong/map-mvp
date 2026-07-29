@@ -225,6 +225,14 @@ function IdealTypeCardBody({
   );
 }
 
+// 이 화면(생성 대기·에러·완성 결과 전부)의 배경을 카드 이미지·/r/{id}와
+// 같은 크림 톤(bg-background)으로 맞춘다 — 예전엔 앱 공통 배경(연보라
+// 그라데이션, globals.css의 body)을 그대로 썼는데, 카드·공유 화면이
+// 초대장 컨셉으로 바뀐 뒤 이 화면만 남아 한 흐름 안에서 브랜드가 두 개로
+// 보였다. body 자체를 바꾸지 않고 이 컴포넌트의 <main>에만 불투명한
+// bg-background를 얹는 방식이라(/r/{id}의 page.tsx와 같은 패턴)
+// 퀴즈 진행 화면(TopicQuiz.tsx)·랜딩·진로 결과 화면은 전혀 영향받지
+// 않는다(전부 별도의 <main>을 쓴다).
 export function IdealTypeCard({
   session,
   setSession,
@@ -294,7 +302,7 @@ export function IdealTypeCard({
   }, []);
 
   return (
-    <main className="min-h-dvh px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary">
+    <main className="min-h-dvh bg-background px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary">
       <div className="mx-auto flex w-full max-w-sm flex-col gap-3">
         <div className="flex items-center justify-between px-1">
           <Brand />
