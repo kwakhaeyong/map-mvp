@@ -1,6 +1,6 @@
 "use client";
 
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { createId, now } from "../engine/session";
 import { resolveTopic, TopicAxis, TopicChoice, TopicOption } from "../engine/topics";
 import { MapSession } from "../types";
@@ -36,6 +36,63 @@ function resolveTopLevelLabel(label: string, options: TopicOption[]): string {
 
 function uniqueInOrder(values: string[]): string[] {
   return values.filter((value, index) => values.indexOf(value) === index);
+}
+
+// 단일 선택 문항(binary/quickTap/scenario/slider)이 공유하는 "고르면
+// 바로 다음으로" 동작. 선택 즉시 넘기면 방금 고른 항목이 눈에 보일
+// 틈도 없이 화면이 바뀌어 "내가 뭘 눌렀는지" 확인할 수가 없다 —
+// 200~300ms(여기서는 250ms, 그 사이 값) 동안 선택된 상태를 먼저
+// 보여준 뒤에 넘어간다. requireConfirm이 true인 동안(심화 재방문의
+// 마지막 문항 — 결과 재생성을 곧장 트리거하는 유일한 경로라 명시적
+// 확인이 필요하다)은 자동으로 넘어가지 않고 pending만 갱신한다 —
+// 선택을 자유롭게 바꾼 뒤 별도 "다음" 버튼을 눌러야 한다.
+const AUTO_ADVANCE_DELAY_MS = 250;
+
+function useAutoAdvance(onAdvance: (choice: TopicChoice) => void, requireConfirm: boolean) {
+  const [pending, setPending] = useState<TopicChoice | null>(null);
+  // 연속 탭 방지: 자동 전환이 이미 예약된 뒤에는 잠가서 두 번 넘어가거나
+  // 답이 중복 기록되는 걸 막는다. requireConfirm 모드에서는 예약이
+  // 없으니(사용자가 직접 "다음"을 눌러야 진짜로 넘어감) 이 값이 절대
+  // true가 되지 않고, 그래서 마음이 바뀌면 자유롭게 다시 고를 수 있다.
+  const advancingRef = useRef(false);
+  const timeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  const pick = (choice: TopicChoice) => {
+    if (advancingRef.current) return;
+    setPending(choice);
+    if (requireConfirm) return;
+    advancingRef.current = true;
+    timeoutRef.current = window.setTimeout(() => onAdvance(choice), AUTO_ADVANCE_DELAY_MS);
+  };
+
+  const confirm = () => {
+    if (!pending || advancingRef.current) return;
+    advancingRef.current = true;
+    onAdvance(pending);
+  };
+
+  return { pending, pick, confirm };
+}
+
+// 자동으로 넘어가는 문항일수록 "잘못 눌렀을 때 되돌아갈 방법"이 더
+// 잘 보여야 한다 — 다른 문항의 옅은 텍스트 링크 대신 테두리가 있는
+// 알약 버튼으로 톤을 높였다.
+function EnhancedBackButton({ onBack }: { onBack: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onBack}
+      className="self-start rounded-pill border border-border bg-surface px-4 py-2 text-xs font-black text-text-secondary shadow-subtle transition-colors hover:border-border-strong hover:text-text-primary"
+    >
+      ← 이전
+    </button>
+  );
 }
 
 function OptionChip({
@@ -195,19 +252,21 @@ function BinaryStep({
   onSubmit,
   onBack,
   showBack,
+  requireConfirm,
 }: {
   question: string;
   options: TopicOption[];
   onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
   onBack: () => void;
   showBack: boolean;
+  // 심화 재방문의 마지막 문항일 때만 true — 결과 재생성을 곧장
+  // 트리거하는 유일한 경로라 자동으로 넘기지 않고 명시적 확인을 받는다.
+  requireConfirm: boolean;
 }) {
-  const [selected, setSelected] = useState<TopicChoice | null>(null);
-
-  const submit = () => {
-    if (!selected) return;
-    onSubmit(`${selected.label} — ${selected.description}`, [selected.label]);
-  };
+  const { pending, pick, confirm } = useAutoAdvance(
+    (choice) => onSubmit(`${choice.label} — ${choice.description}`, [choice.label]),
+    requireConfirm,
+  );
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -218,24 +277,22 @@ function BinaryStep({
           <OptionChip
             key={option.label}
             choice={option}
-            isSelected={selected?.label === option.label}
-            isDisabled={false}
-            onClick={() => setSelected(option)}
+            isSelected={pending?.label === option.label}
+            isDisabled={pending !== null && pending.label !== option.label}
+            onClick={() => pick(option)}
           />
         ))}
       </div>
-      <div className="mt-1 flex items-center justify-between gap-3">
-        {showBack ? (
-          <button type="button" onClick={onBack} className="text-xs font-black text-text-muted hover:text-text-primary">
-            ← 이전
-          </button>
-        ) : (
-          <span />
-        )}
-        <Button type="button" variant="primary" size="lg" onClick={submit} disabled={!selected}>
-          다음
-        </Button>
-      </div>
+      {requireConfirm ? (
+        <div className="mt-1 flex items-center justify-between gap-3">
+          {showBack ? <EnhancedBackButton onBack={onBack} /> : <span />}
+          <Button type="button" variant="primary" size="lg" onClick={confirm} disabled={!pending}>
+            다음
+          </Button>
+        </div>
+      ) : showBack ? (
+        <EnhancedBackButton onBack={onBack} />
+      ) : null}
     </div>
   );
 }
@@ -252,6 +309,7 @@ function QuickTapStep({
   onBack,
   showBack,
   aboutSelf,
+  requireConfirm,
 }: {
   question: string;
   options: TopicOption[];
@@ -259,34 +317,59 @@ function QuickTapStep({
   onBack: () => void;
   showBack: boolean;
   aboutSelf?: boolean;
+  requireConfirm: boolean;
 }) {
-  const pick = (choice: TopicChoice) => {
-    onSubmit(`${choice.label} — ${choice.description}`, [choice.label]);
-  };
+  const { pending, pick, confirm } = useAutoAdvance(
+    (choice) => onSubmit(`${choice.label} — ${choice.description}`, [choice.label]),
+    requireConfirm,
+  );
 
   return (
     <div className="flex w-full flex-col gap-5">
       {aboutSelf ? <SelfQuestionLabel /> : null}
       <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
       <div className="grid grid-cols-2 gap-3">
-        {options.map((option) => (
-          <button
-            key={option.label}
-            type="button"
-            onClick={() => pick(option)}
-            className="group flex flex-col items-center gap-0.5 rounded-large border border-border bg-surface px-4 py-4 text-center transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating"
-          >
-            <span className="text-sm font-extrabold tracking-[-0.01em] text-text-primary group-hover:text-primary-foreground">{option.label}</span>
-            <span className="text-[11px] font-medium text-text-muted transition-colors duration-normal ease-emphasized group-hover:text-primary-foreground/80">
-              {option.description}
-            </span>
-          </button>
-        ))}
+        {options.map((option) => {
+          const isSelected = pending?.label === option.label;
+          const isLocked = pending !== null && !isSelected;
+          return (
+            <button
+              key={option.label}
+              type="button"
+              onClick={() => pick(option)}
+              disabled={isLocked}
+              className={cx(
+                "group flex flex-col items-center gap-0.5 rounded-large border px-4 py-4 text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+                isSelected
+                  ? "border-primary bg-primary text-primary-foreground shadow-subtle"
+                  : "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating",
+                isLocked && "opacity-40",
+              )}
+            >
+              <span className={cx("text-sm font-extrabold tracking-[-0.01em]", isSelected ? "text-primary-foreground" : "text-text-primary group-hover:text-primary-foreground")}>
+                {option.label}
+              </span>
+              <span
+                className={cx(
+                  "text-[11px] font-medium transition-colors duration-normal ease-emphasized",
+                  isSelected ? "text-primary-foreground/80" : "text-text-muted group-hover:text-primary-foreground/80",
+                )}
+              >
+                {option.description}
+              </span>
+            </button>
+          );
+        })}
       </div>
-      {showBack ? (
-        <button type="button" onClick={onBack} className="self-start text-xs font-black text-text-muted hover:text-text-primary">
-          ← 이전
-        </button>
+      {requireConfirm ? (
+        <div className="mt-1 flex items-center justify-between gap-3">
+          {showBack ? <EnhancedBackButton onBack={onBack} /> : <span />}
+          <Button type="button" variant="primary" size="lg" onClick={confirm} disabled={!pending}>
+            다음
+          </Button>
+        </div>
+      ) : showBack ? (
+        <EnhancedBackButton onBack={onBack} />
       ) : null}
     </div>
   );
@@ -303,6 +386,7 @@ function ScenarioStep({
   onBack,
   showBack,
   aboutSelf,
+  requireConfirm,
 }: {
   question: string;
   options: TopicOption[];
@@ -310,10 +394,12 @@ function ScenarioStep({
   onBack: () => void;
   showBack: boolean;
   aboutSelf?: boolean;
+  requireConfirm: boolean;
 }) {
-  const pick = (choice: TopicChoice) => {
-    onSubmit(`${choice.label} — ${choice.description}`, [choice.label]);
-  };
+  const { pending, pick, confirm } = useAutoAdvance(
+    (choice) => onSubmit(`${choice.label} — ${choice.description}`, [choice.label]),
+    requireConfirm,
+  );
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -321,13 +407,24 @@ function ScenarioStep({
       <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
       <div className="flex flex-col gap-3">
         {options.map((option) => (
-          <OptionChip key={option.label} choice={option} isSelected={false} isDisabled={false} onClick={() => pick(option)} />
+          <OptionChip
+            key={option.label}
+            choice={option}
+            isSelected={pending?.label === option.label}
+            isDisabled={pending !== null && pending.label !== option.label}
+            onClick={() => pick(option)}
+          />
         ))}
       </div>
-      {showBack ? (
-        <button type="button" onClick={onBack} className="self-start text-xs font-black text-text-muted hover:text-text-primary">
-          ← 이전
-        </button>
+      {requireConfirm ? (
+        <div className="mt-1 flex items-center justify-between gap-3">
+          {showBack ? <EnhancedBackButton onBack={onBack} /> : <span />}
+          <Button type="button" variant="primary" size="lg" onClick={confirm} disabled={!pending}>
+            다음
+          </Button>
+        </div>
+      ) : showBack ? (
+        <EnhancedBackButton onBack={onBack} />
       ) : null}
     </div>
   );
@@ -346,34 +443,51 @@ function SliderStep({
   onSubmit,
   onBack,
   showBack,
+  requireConfirm,
 }: {
   question: string;
   options: TopicOption[];
   onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
   onBack: () => void;
   showBack: boolean;
+  requireConfirm: boolean;
 }) {
-  const pick = (choice: TopicChoice) => {
-    onSubmit(`${choice.label} — ${choice.description}`, [choice.label]);
-  };
+  const { pending, pick, confirm } = useAutoAdvance(
+    (choice) => onSubmit(`${choice.label} — ${choice.description}`, [choice.label]),
+    requireConfirm,
+  );
 
   return (
     <div className="flex w-full flex-col gap-5">
       <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-1">
-          {options.map((option) => (
-            <button
-              key={option.label}
-              type="button"
-              onClick={() => pick(option)}
-              aria-label={option.label}
-              title={option.label}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-normal ease-emphasized hover:scale-110"
-            >
-              <span className="h-6 w-6 rounded-full border-2 border-primary bg-surface transition-colors duration-normal ease-emphasized hover:bg-primary" />
-            </button>
-          ))}
+          {options.map((option) => {
+            const isSelected = pending?.label === option.label;
+            const isLocked = pending !== null && !isSelected;
+            return (
+              <button
+                key={option.label}
+                type="button"
+                onClick={() => pick(option)}
+                disabled={isLocked}
+                aria-label={option.label}
+                title={option.label}
+                className={cx(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+                  !isLocked && "hover:scale-110",
+                  isLocked && "opacity-40",
+                )}
+              >
+                <span
+                  className={cx(
+                    "h-6 w-6 rounded-full border-2 border-primary transition-colors duration-normal ease-emphasized",
+                    isSelected ? "bg-primary" : "bg-surface hover:bg-primary",
+                  )}
+                />
+              </button>
+            );
+          })}
         </div>
         <div className="h-1 w-full rounded-pill bg-background-subtle" />
         <div className="flex items-start justify-between gap-1 text-center">
@@ -385,10 +499,15 @@ function SliderStep({
         </div>
         <p className="text-center text-xs font-semibold text-text-muted">원을 탭해서 골라주세요</p>
       </div>
-      {showBack ? (
-        <button type="button" onClick={onBack} className="self-start text-xs font-black text-text-muted hover:text-text-primary">
-          ← 이전
-        </button>
+      {requireConfirm ? (
+        <div className="mt-1 flex items-center justify-between gap-3">
+          {showBack ? <EnhancedBackButton onBack={onBack} /> : <span />}
+          <Button type="button" variant="primary" size="lg" onClick={confirm} disabled={!pending}>
+            다음
+          </Button>
+        </div>
+      ) : showBack ? (
+        <EnhancedBackButton onBack={onBack} />
       ) : null}
     </div>
   );
@@ -794,6 +913,14 @@ export function TopicQuiz({
   // 자유 서술형(reflection) 문항 중 실제로 맨 처음 나오는 것 하나의 id만
   // 기억해서, TopicQuiz.tsx 전체에서 전송 안내를 딱 한 번만 보여준다.
   const firstReflectionAxisId = axes.find((axis) => axis.type === "reflection")?.id;
+  // 심화 재방문(6개 더 답하기로 돌아온 상태)의 마지막 문항 — 이 문항의
+  // 답을 확정하면 finishResumedDeepDive()가 곧바로 결과 재생성을
+  // 트리거한다(마무리 질문 화면을 거치지 않는 유일한 경로). 단일 선택
+  // 문항(binary/quickTap/scenario/slider)의 자동 다음 넘김이 이 지점에서는
+  // 꺼지고 명시적 "다음" 확인으로 바뀌는 기준이 된다 — 예전엔 각 분기마다
+  // onSubmit 안에서 따로 계산했는데, 렌더링 시점에도 필요해져서(requireConfirm
+  // prop) 한 곳으로 모았다.
+  const isLastOptionalWhileResuming = Boolean(session[resumingField]) && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
 
   return (
     <main className="min-h-screen px-4 py-4 text-text-primary sm:px-6 lg:px-8">
@@ -845,8 +972,8 @@ export function TopicQuiz({
             showBack={step > 0}
             onBack={goBack}
             aboutSelf={currentAxis.aboutSelf}
+            requireConfirm={isLastOptionalWhileResuming}
             onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
@@ -858,8 +985,8 @@ export function TopicQuiz({
             options={currentAxis.options}
             showBack={step > 0}
             onBack={goBack}
+            requireConfirm={isLastOptionalWhileResuming}
             onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
@@ -872,8 +999,8 @@ export function TopicQuiz({
             showBack={step > 0}
             onBack={goBack}
             aboutSelf={currentAxis.aboutSelf}
+            requireConfirm={isLastOptionalWhileResuming}
             onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
@@ -885,8 +1012,8 @@ export function TopicQuiz({
             options={currentAxis.options}
             showBack={step > 0}
             onBack={goBack}
+            requireConfirm={isLastOptionalWhileResuming}
             onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
@@ -899,7 +1026,6 @@ export function TopicQuiz({
             showBack={step > 0}
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
@@ -914,7 +1040,6 @@ export function TopicQuiz({
             aboutSelf={currentAxis.aboutSelf}
             onBack={goBack}
             onSubmit={(answerText) => {
-              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
@@ -928,7 +1053,6 @@ export function TopicQuiz({
             aboutSelf={currentAxis.aboutSelf}
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
-              const isLastOptionalWhileResuming = session[resumingField] && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
               if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
