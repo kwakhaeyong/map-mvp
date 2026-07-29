@@ -19,6 +19,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      # 상한값을 소스에서 읽어오려면(아래 GLOBAL_LIMIT) 저장소 파일이
+      # 필요하다 — 이전에는 이 워크플로가 저장소를 체크아웃하지 않고
+      # curl만 실행했다.
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Check daily global generation counter
         env:
           UPSTASH_REST_URL: ${{ secrets.UPSTASH_REST_URL }}
@@ -30,10 +36,30 @@ jobs:
             exit 0
           fi
 
-          # 이 숫자는 앱의 DAILY_GLOBAL_GENERATION_LIMIT(기본 300)과 별개인
-          # 조기 경고 기준값이다 — 한도 자체가 아니라 "평소보다 확실히
-          # 많다"를 알리는 용도라 낮게 잡는다.
-          ALERT_THRESHOLD=70
+          # ★경고 기준을 고정 숫자(예전 70) 대신 상한(GLOBAL_LIMIT)의 70%로
+          # 계산한다 — 예전엔 오너가 상한을 100으로 알고 70을 정했는데,
+          # 실제 코드 기본값은 300이라 70은 23% 지점에 불과했다(매일
+          # 아침에 알림이 울려서 무시하게 되는 문제).
+          #
+          # GLOBAL_LIMIT은 rate-limit.ts의 DEFAULT_DAILY_GLOBAL_GENERATION_LIMIT
+          # 상수를 grep으로 그대로 읽어온다 — 코드가 실제로 쓰는 기본값과
+          # 이 워크플로의 기준값이 항상 같은 숫자이게 하기 위해서다(상수
+          # 이름이 안 바뀌는 한 코드 쪽 숫자를 고치면 이 워크플로도 다음
+          # 실행부터 자동으로 따라간다).
+          #
+          # ★★단, Vercel에서만 DAILY_GLOBAL_GENERATION_LIMIT 환경변수로
+          # 이 기본값을 오버라이드했다면 이 워크플로는 그 사실을 알 방법이
+          # 없다 — GitHub Actions는 Vercel의 런타임 환경변수를 읽지 못한다.
+          # 그런 오버라이드를 했다면, 아래 GLOBAL_LIMIT 계산을 지우고 그
+          # 값을 GitHub 저장소 secret/variable로 똑같이 추가한 뒤 여기서
+          # 읽도록 바꿔야 한다 — 두 곳이 어긋나면 경고 시점이 실제 운영
+          # 상한과 안 맞게 된다.
+          GLOBAL_LIMIT=$(grep -oP 'DEFAULT_DAILY_GLOBAL_GENERATION_LIMIT = \K[0-9]+' src/map-decision-v1/engine/rate-limit.ts)
+          if [ -z "$GLOBAL_LIMIT" ]; then
+            echo "::error::rate-limit.ts에서 DEFAULT_DAILY_GLOBAL_GENERATION_LIMIT 상수를 못 찾았습니다 — 이름이 바뀌었으면 위 grep 패턴도 같이 고쳐야 합니다."
+            exit 1
+          fi
+          ALERT_THRESHOLD=$(( GLOBAL_LIMIT * 70 / 100 ))
 
           KST_DATE=$(TZ='Asia/Seoul' date +%F)
           KEY="gen-slot:global:${KST_DATE}"
@@ -47,9 +73,9 @@ jobs:
             exit 1
           fi
 
-          echo "오늘(KST ${KST_DATE}) 전체 생성 카운터: ${VALUE} / 경고 기준 ${ALERT_THRESHOLD}"
+          echo "오늘(KST ${KST_DATE}) 전체 생성 카운터: ${VALUE} / 경고 기준 ${ALERT_THRESHOLD}(상한 ${GLOBAL_LIMIT}의 70%) / 상한 ${GLOBAL_LIMIT}"
 
           if [ "$VALUE" -ge "$ALERT_THRESHOLD" ]; then
-            echo "::error::전체 생성 카운터(${VALUE})가 경고 기준(${ALERT_THRESHOLD}) 이상입니다."
+            echo "::error::전체 생성 카운터(${VALUE})가 경고 기준(${ALERT_THRESHOLD}, 상한 ${GLOBAL_LIMIT}의 70%) 이상입니다."
             exit 1
           fi
