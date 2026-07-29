@@ -174,7 +174,6 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
               <IdealTypeResultBlocks
                 result={renderable.result}
                 showHero={false}
-                paperTone
                 afterReflection={<MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />}
               />
             </CollapsibleFriendResult>
