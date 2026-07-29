@@ -1,0 +1,29 @@
+name: Health Check
+
+# n8n Cloud 무료 체험 종료(실행 횟수 소진)에 따라 이 체크를 GitHub Actions로
+# 옮긴다. mapdecision.com이 정상 응답하는지만 가볍게 확인한다 — 배포
+# 실패를 더 폭넓게 검증하는 production-smoke.yml(재시도+이슈 생성)과는
+# 별개의, 더 잦은 빈도의 단순 확인용이다.
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check mapdecision.com
+        run: |
+          set -e
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://mapdecision.com)
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::mapdecision.com이 HTTP ${STATUS}을 반환했습니다."
+            exit 1
+          fi
+          echo "mapdecision.com 정상 (HTTP ${STATUS})"

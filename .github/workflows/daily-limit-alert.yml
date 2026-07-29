@@ -1,0 +1,55 @@
+name: Daily Generation Limit Alert
+
+# n8n Cloud 무료 체험 종료(실행 횟수 소진)에 따라 이 체크를 GitHub Actions로
+# 옮긴다. src/map-decision-v1/engine/rate-limit.ts가 Upstash Redis에 쓰는
+# "서비스 전체 하루 생성 횟수" 카운터(키: gen-slot:global:<KST 날짜>,
+# KST 자정 기준)를 읽기 전용 토큰으로 조회해서 경고 기준을 넘었는지만
+# 확인한다 — 이 워크플로는 제품 코드를 전혀 건드리지 않는다.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-limit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check daily global generation counter
+        env:
+          UPSTASH_REST_URL: ${{ secrets.UPSTASH_REST_URL }}
+          UPSTASH_READONLY_TOKEN: ${{ secrets.UPSTASH_READONLY_TOKEN }}
+        run: |
+          set -e
+          if [ -z "$UPSTASH_REST_URL" ] || [ -z "$UPSTASH_READONLY_TOKEN" ]; then
+            echo "UPSTASH_REST_URL 또는 UPSTASH_READONLY_TOKEN이 아직 설정되지 않았습니다. 건너뜁니다."
+            exit 0
+          fi
+
+          # 이 숫자는 앱의 DAILY_GLOBAL_GENERATION_LIMIT(기본 300)과 별개인
+          # 조기 경고 기준값이다 — 한도 자체가 아니라 "평소보다 확실히
+          # 많다"를 알리는 용도라 낮게 잡는다.
+          ALERT_THRESHOLD=70
+
+          KST_DATE=$(TZ='Asia/Seoul' date +%F)
+          KEY="gen-slot:global:${KST_DATE}"
+
+          RESPONSE=$(curl -s --max-time 10 "${UPSTASH_REST_URL}/get/${KEY}" \
+            -H "Authorization: Bearer ${UPSTASH_READONLY_TOKEN}")
+          VALUE=$(echo "$RESPONSE" | jq -r '.result // "0"')
+
+          if ! [[ "$VALUE" =~ ^[0-9]+$ ]]; then
+            echo "예상치 못한 응답이라 값을 숫자로 읽을 수 없습니다."
+            exit 1
+          fi
+
+          echo "오늘(KST ${KST_DATE}) 전체 생성 카운터: ${VALUE} / 경고 기준 ${ALERT_THRESHOLD}"
+
+          if [ "$VALUE" -ge "$ALERT_THRESHOLD" ]; then
+            echo "::error::전체 생성 카운터(${VALUE})가 경고 기준(${ALERT_THRESHOLD}) 이상입니다."
+            exit 1
+          fi
