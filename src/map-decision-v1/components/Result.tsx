@@ -74,6 +74,13 @@ export function Result({
       onReset();
   };
 
+  // 하단 액션바를 평소엔 "더 이야기하기"+"더보기" 한 줄만 보이게 접어두고,
+  // "더보기"를 눌렀을 때만 나머지 버튼을 펼친다 — sticky 바가 화면 하단을
+  // 상시 가리는 면적을 줄이기 위함(펼친 채로 두면 다시 가려지므로 바깥을
+  // 탭하거나 버튼을 누르면 collapseActions로 자동으로 접는다).
+  const [actionsExpanded, setActionsExpanded] = useState(false);
+  const collapseActions = () => setActionsExpanded(false);
+
   const [generationState, setGenerationState] = useState<"idle" | "loading" | "error" | "fallback" | "too_early">(() =>
     session.isDemo || session.result ? "idle" : isReadyForResult(session) ? "idle" : "too_early",
   );
@@ -404,30 +411,72 @@ export function Result({
 
         {/* ResultActionBar는 sticky bottom-4라 스크롤 중 화면 하단에
             떠 있는 상태로 계속 보인다 — 바로 위 콘텐츠(공유 영역·디스클레이머)가
-            그 밑에 깔려 가려지지 않도록 여백을 넉넉히 둔다. 버튼이 두 줄로
-            접히는 좁은 화면 기준 실측 높이(약 126px)에 여유를 두고, 노치·
+            그 밑에 깔려 가려지지 않도록 여백을 둔다. 평소엔 "더 이야기하기"+
+            "더보기" 한 줄만 떠 있는 접힌 높이(실측 약 4.5rem) 기준이고, 노치·
             홈 인디케이터가 있는 기기의 실제 안전 영역(env(safe-area-inset-bottom))
             만큼 더 얹는다 — 데스크톱 브라우저 에뮬레이션은 이 값을 0으로
             돌려주기 때문에 로컬 스크린샷만으로는 실기기 여유분까지
             확인할 수 없어서, 계산으로 미리 여유를 확보해둔다. */}
-        <div className="h-[calc(9rem+env(safe-area-inset-bottom))] print:hidden" aria-hidden="true" />
+        <div className="h-[calc(4.5rem+env(safe-area-inset-bottom))] print:hidden" aria-hidden="true" />
 
-        <ResultActionBar className="pb-safe-bottom print:hidden">
-          <Button onClick={onContinue}>더 이야기하기</Button>
-          <Button variant="secondary" onClick={onContinue}>
-            특정 내용 수정하기
-          </Button>
-          <Button variant="secondary" onClick={() => window.print()}>
-            저장 / 내보내기
-          </Button>
-          <Button variant="ghost" onClick={safeReset}>
-            새 MAP 만들기
-          </Button>
-          {session.isDemo ? (
-            <Button variant="secondary" onClick={onRealStart}>
-              직접 해보기
-            </Button>
+        {actionsExpanded ? (
+          // 펼친 상태로 두면 다시 화면 하단을 상시 가리게 되므로, 바깥 영역을
+          // 탭하면 접히도록 뒤에 투명한 배경을 깐다(스크롤 리스너 대신 클릭
+          // 한 번으로 접는 방식 — 새 스크롤 감지 로직을 만들지 않기 위함).
+          <div className="fixed inset-0 z-30 print:hidden" onClick={collapseActions} aria-hidden="true" />
+        ) : null}
+
+        <ResultActionBar className="pb-safe-bottom print:hidden relative z-40">
+          {actionsExpanded ? (
+            <div className="absolute inset-x-3 bottom-full z-40 mb-2 grid gap-2 rounded-large border border-border bg-surface-elevated p-3 shadow-modal">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  onContinue();
+                  collapseActions();
+                }}
+              >
+                특정 내용 수정하기
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  window.print();
+                  collapseActions();
+                }}
+              >
+                저장 / 내보내기
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  safeReset();
+                  collapseActions();
+                }}
+              >
+                새 MAP 만들기
+              </Button>
+              {session.isDemo ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    onRealStart();
+                    collapseActions();
+                  }}
+                >
+                  직접 해보기
+                </Button>
+              ) : null}
+            </div>
           ) : null}
+          <Button onClick={onContinue}>더 이야기하기</Button>
+          <Button
+            variant="secondary"
+            aria-expanded={actionsExpanded}
+            onClick={() => setActionsExpanded((value) => !value)}
+          >
+            {actionsExpanded ? "접기" : "더 보기"}
+          </Button>
         </ResultActionBar>
       </section>
     </main>
