@@ -16,6 +16,14 @@ export const CARD_COLORS = {
   inkStrong: "#24314c",
   primarySoftFill: "rgba(21, 33, 59, 0.07)",
   primarySoftBorder: "rgba(21, 33, 59, 0.16)",
+  // 초대장 카드 태그 알약 배경 전용. primarySoftFill(투명 7% 오버레이)은
+  // 종이 질감 텍스처 위에 얹히면 텍스처 노이즈와 겹쳐 뭉개져 보이고
+  // (반투명 오버레이가 밑에 깔린 텍스처를 그대로 비치게 한다), 375px로
+  // 축소한 뒤엔 태그가 "회색 배경+회색 글자"로 읽힌다는 피드백을 받았다.
+  // 그래서 텍스처와 섞이지 않는 불투명 flat 색(background 95% + primary
+  // 5% 혼합, #f0ece6)으로 바꿔 텍스트(primary, 잉크 네이비)와의 대비를
+  // 항상 일정하게 유지한다.
+  invitationTagFill: "#f0ece6",
   foregroundSoft: "rgba(255, 255, 255, 0.7)",
   foregroundFaint: "rgba(255, 255, 255, 0.55)",
   // 아래 3개는 새로 만든 색이 아니라 design-tokens.css의 --color-value/

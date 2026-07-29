@@ -103,15 +103,26 @@ function HeroHeader({ result }: { result: IdealTypeResult }) {
 }
 
 type CriteriaTone = "strong" | "medium" | "light";
+// 라이브 결과 화면(IdealTypeCard.tsx)의 기본 톤 — value/feeling 파스텔로
+// 세 단계 위계를 표현한다.
 const CRITERIA_TIER_CLASS: Record<CriteriaTone, string> = {
   strong: "border-primary bg-value/70",
   medium: "border-border-strong bg-feeling/50",
   light: "border-dashed border-border bg-surface",
 };
+// /r/{id} 공유 화면(paperTone) 전용 — 크림 종이 배경 위에서 연보라
+// 파스텔이 이질적으로 뜬다는 피드백으로, 같은 위계를 잉크(primary)
+// 농도 차이로만 표현한다. 이 상수만 쓰고 CRITERIA_TIER_CLASS는 그대로
+// 둬서 라이브 결과 화면은 전혀 영향받지 않는다.
+const CRITERIA_TIER_CLASS_PAPER: Record<CriteriaTone, string> = {
+  strong: "border-primary bg-primary/10",
+  medium: "border-border-strong bg-primary/5",
+  light: "border-dashed border-border bg-surface",
+};
 
-function CriteriaTier({ label, items, tone }: { label: string; items: string[]; tone: CriteriaTone }) {
+function CriteriaTier({ label, items, tone, paperTone }: { label: string; items: string[]; tone: CriteriaTone; paperTone?: boolean }) {
   return (
-    <div className={cx("rounded-medium border p-3", CRITERIA_TIER_CLASS[tone])}>
+    <div className={cx("rounded-medium border p-3", (paperTone ? CRITERIA_TIER_CLASS_PAPER : CRITERIA_TIER_CLASS)[tone])}>
       <p className="text-xs font-black text-text-primary">{label}</p>
       <ul className="mt-1.5 space-y-1">
         {items.map((item, index) => (
@@ -124,14 +135,14 @@ function CriteriaTier({ label, items, tone }: { label: string; items: string[]; 
   );
 }
 
-function CriteriaSection({ criteria }: { criteria: IdealTypeResult["criteria"] }) {
+function CriteriaSection({ criteria, paperTone }: { criteria: IdealTypeResult["criteria"]; paperTone?: boolean }) {
   return (
     <Card id="criteria" className="scroll-mt-6 flex flex-col gap-4">
       <SectionHeader eyebrow="Criteria" title="이상형 기준" description="답변에서 우선순위를 세 단계로 나눠봤어요." />
       <div className="grid gap-3 sm:grid-cols-3">
-        <CriteriaTier label="필수" items={criteria.mustHave} tone="strong" />
-        <CriteriaTier label="선호" items={criteria.niceToHave} tone="medium" />
-        <CriteriaTier label="타협 가능" items={criteria.canCompromise} tone="light" />
+        <CriteriaTier label="필수" items={criteria.mustHave} tone="strong" paperTone={paperTone} />
+        <CriteriaTier label="선호" items={criteria.niceToHave} tone="medium" paperTone={paperTone} />
+        <CriteriaTier label="타협 가능" items={criteria.canCompromise} tone="light" paperTone={paperTone} />
       </div>
     </Card>
   );
@@ -188,9 +199,13 @@ function spreadMatrixPoints(points: IdealTypeMatrixPoint[]): PlottedMatrixPoint[
 // 리터럴 클래스 문자열로만 참조한다 — 동적으로 조합하면 Tailwind JIT
 // 스캐너가 소스에서 문자열을 못 찾아 클래스가 생성되지 않는다.
 const MATRIX_POINT_FILL_CLASS = ["fill-value", "fill-feeling", "fill-action", "fill-uncertainty"];
+// /r/{id} 공유 화면(paperTone) 전용 — 4가지 파스텔 대신 잉크(primary)
+// 농도 차이로 점을 구분한다(CriteriaTier의 paperTone과 같은 이유).
+const MATRIX_POINT_FILL_CLASS_PAPER = ["fill-primary", "fill-primary/70", "fill-primary/45", "fill-primary/25"];
 
-function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
+function MatrixChart({ matrix, paperTone }: { matrix: IdealTypeMatrix; paperTone?: boolean }) {
   const placed = spreadMatrixPoints(matrix.types);
+  const fillClasses = paperTone ? MATRIX_POINT_FILL_CLASS_PAPER : MATRIX_POINT_FILL_CLASS;
   return (
     <div className="mx-auto w-full max-w-xs">
       <p className="mb-1 text-center text-[11px] font-black text-text-muted">{matrix.yAxisLabel.high}</p>
@@ -208,7 +223,7 @@ function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
                   cx={point.plotX}
                   cy={point.plotY}
                   r="4.2"
-                  className={cx(MATRIX_POINT_FILL_CLASS[index % MATRIX_POINT_FILL_CLASS.length], "stroke-surface")}
+                  className={cx(fillClasses[index % fillClasses.length], "stroke-surface")}
                   strokeWidth="0.8"
                 />
                 <text x={point.plotX} y={point.plotY} textAnchor="middle" dominantBaseline="central" className="fill-text-primary font-black" style={{ fontSize: "4px" }}>
@@ -225,11 +240,11 @@ function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
   );
 }
 
-function MatrixSection({ matrix }: { matrix: IdealTypeMatrix }) {
+function MatrixSection({ matrix, paperTone }: { matrix: IdealTypeMatrix; paperTone?: boolean }) {
   return (
     <Card id="matrix" className="scroll-mt-6 flex flex-col gap-4">
       <SectionHeader eyebrow="Matrix" title="끌림 × 관계 적합도" description="답변에서 나온 4가지 상대 유형을 놓고 봤어요." />
-      <MatrixChart matrix={matrix} />
+      <MatrixChart matrix={matrix} paperTone={paperTone} />
       <ul className="flex flex-col gap-2">
         {matrix.types.map((point, index) => (
           <li key={index} className="flex items-start gap-2 text-sm font-semibold text-text-secondary">
@@ -370,19 +385,46 @@ function RoadmapSection({ roadmap }: { roadmap: IdealTypeRoadmap }) {
 
 // 라이브 결과 화면과 공유 읽기 전용 화면이 공통으로 쓰는 전체 블록
 // 묶음. 공유하기/다시 만들기 같은 버튼은 호출부가 각자 다르게 붙인다.
+//
+// afterHero: 이상형 카드(HeroHeader) 바로 아래, 탭 줄(SectionNav) 위에
+// 끼워 넣을 요소 — 지금은 라이브 결과 화면(IdealTypeCard.tsx)의 궁합
+// 배너만 이 자리를 쓴다. 친구 링크로 들어온 사람에게는 궁합 확인이
+// 방문 목적이라, 6블록을 다 지나야 나오던 예전 위치보다 여기가 맞다.
+//
 // afterReflection: 자기성찰 블록(가장 감정적으로 몰입되는 지점) 바로
 // 다음에 끼워 넣을 요소 — 지금은 공유 읽기 전용 화면(app/r/[id]/
-// page.tsx)의 중간 CTA만 이 자리를 쓴다. 라이브 결과 화면
-// (IdealTypeCard.tsx)은 이 prop을 넘기지 않아 undefined로 떨어지고,
-// 그러면 아무것도 렌더링되지 않아 기존 화면은 그대로다.
-export function IdealTypeResultBlocks({ result, afterReflection }: { result: IdealTypeResult; afterReflection?: ReactNode }) {
+// page.tsx)의 중간 CTA만 이 자리를 쓴다.
+//
+// showHero: /r/{id}의 "친구 결과 전체 보기" 접힌 영역에서는 타이틀·
+// 태그·한줄설명이 바로 위 card.png와 완전히 겹쳐서 false로 끈다.
+// 기본값 true라 다른 호출부는 그대로다.
+//
+// paperTone: /r/{id} 접힌 영역 전용 — 크림 종이 배경 위에서 기준·
+// 매트릭스 블록의 연보라 파스텔(value/feeling)이 이질적으로 뜬다는
+// 피드백으로, 그 두 블록만 잉크 농도 차이로 다시 그린다(자기성찰의
+// 다크 블록은 대상이 아니다 — 원래도 파스텔이 아니었다). 기본값
+// false라 라이브 결과 화면(IdealTypeCard.tsx)은 전혀 영향받지 않는다.
+export function IdealTypeResultBlocks({
+  result,
+  afterHero,
+  afterReflection,
+  showHero = true,
+  paperTone = false,
+}: {
+  result: IdealTypeResult;
+  afterHero?: ReactNode;
+  afterReflection?: ReactNode;
+  showHero?: boolean;
+  paperTone?: boolean;
+}) {
   return (
     <>
-      <HeroHeader result={result} />
+      {showHero ? <HeroHeader result={result} /> : null}
+      {afterHero}
       <SectionNav />
-      <CriteriaSection criteria={result.criteria} />
+      <CriteriaSection criteria={result.criteria} paperTone={paperTone} />
       <PatternsSection items={result.attractionPatterns} />
-      <MatrixSection matrix={result.matrix} />
+      <MatrixSection matrix={result.matrix} paperTone={paperTone} />
       <FlagsSection flags={result.flags} />
       <SelfReflectionSection selfReflection={result.selfReflection} />
       {afterReflection}

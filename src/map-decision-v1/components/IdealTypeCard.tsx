@@ -1,7 +1,7 @@
 "use client";
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { getIdealTypeTags } from "../engine/ideal-type-tags";
 import { now } from "../engine/session";
 import { resolveTopic } from "../engine/topics";
@@ -53,18 +53,72 @@ function DeepenResultBanner({ onDeepen }: { onDeepen: () => void }) {
 // 보낸다 — 이 화면(궁합 보기)은 아직 내가 공유하지 않은 결과로도 볼 수
 // 있어야 해서(공유 버튼을 먼저 누를 필요 없이), 태그를 URL에 직접
 // 담아 보내는 방식을 쓴다.
-function CompatibilityBanner({ withId, tags }: { withId: string; tags: string[] }) {
-  const params = new URLSearchParams();
-  for (const tag of tags) params.append("tag", tag);
+//
+// 궁합 화면 하단 CTA("내 결과 친구에게 보내기")가 내(B) 공유 링크를
+// 보내려면 그 링크가 미리 있어야 한다 — 그래서 버튼을 누르는 시점에
+// ensureShareUrl()로 내 링크를 먼저 만들고(이미 있으면 재사용, #106의
+// 패턴과 동일), 거기서 뽑은 id를 myId 쿼리로 같이 실어 보낸다. 링크
+// 생성이 실패해도(한도 초과 등) 궁합 보기 자체는 막지 않는다 — myId
+// 없이 이동하면 궁합 화면이 알아서 예전 CTA로 대체한다.
+//
+// 배너를 6블록 뒤에서 상단(이상형 카드 바로 아래)으로 옮기면서 문구도
+// 손봤다 — "공유 링크로 여기까지 왔다면"은 이미 그렇게 온 사람에게
+// 조건을 다시 확인시키는 어색한 표현이라 단정형으로 바꿨다. 친구(A)의
+// 타이틀은 /api/share/[id]로 따로 물어봐서(마운트 시 1회) 문구에
+// 넣는다 — A의 타이틀은 /r/{id}를 열면 누구나 이미 보는 정보라(card.png·
+// 본문 전부에 노출) 새로 유출되는 게 아니다. 요청이 실패하거나 아직
+// 응답 전이면 타이틀 없는 문구로 조용히 대체한다.
+function CompatibilityBanner({
+  withId,
+  tags,
+  ensureShareUrl,
+}: {
+  withId: string;
+  tags: string[];
+  ensureShareUrl: () => Promise<string | null>;
+}) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [friendTitle, setFriendTitle] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/share/${withId}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!cancelled && data && typeof data.title === "string") setFriendTitle(data.title);
+      })
+      .catch(() => {
+        // 실패해도 조용히 무시 — 타이틀 없는 문구로 대체된다.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [withId]);
+
+  const handleClick = async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    for (const tag of tags) params.append("tag", tag);
+    const myUrl = await ensureShareUrl();
+    const myId = myUrl ? new URL(myUrl).pathname.split("/r/")[1] : undefined;
+    if (myId) params.set("myId", myId);
+    router.push(`/r/${withId}/match?${params.toString()}`);
+  };
+
   return (
     <Card className="flex flex-col gap-3 text-sm">
-      <p className="font-extrabold text-text-primary">공유 링크로 여기까지 왔다면, 그 친구와 어디가 통하는지도 볼 수 있어요.</p>
-      <Link
-        href={`/r/${withId}/match?${params.toString()}`}
-        className="inline-flex min-h-11 items-center justify-center rounded-pill border border-primary bg-primary px-5 text-sm font-extrabold text-primary-foreground shadow-subtle transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-floating"
+      <p className="font-extrabold text-text-primary">
+        {friendTitle ? `"${friendTitle}"을 찾는 친구와의 궁합이에요.` : "친구 링크로 왔네요. 둘이 어디가 통하는지 볼까요?"}
+      </p>
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={loading}
+        className="inline-flex min-h-11 items-center justify-center rounded-pill border border-primary bg-primary px-5 text-sm font-extrabold text-primary-foreground shadow-subtle transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-floating disabled:opacity-60"
       >
-        친구와의 궁합 보기
-      </Link>
+        {loading ? "준비하는 중…" : "궁합 보기"}
+      </button>
     </Card>
   );
 }
@@ -123,13 +177,16 @@ function IdealTypeCardBody({
           심층 분석 포함
         </Badge>
       ) : null}
-      <IdealTypeResultBlocks result={result} />
+      <IdealTypeResultBlocks
+        result={result}
+        afterHero={
+          session.compareWithId && (result.tags ?? []).length > 0 ? (
+            <CompatibilityBanner withId={session.compareWithId} tags={result.tags!} ensureShareUrl={ensureShareUrl} />
+          ) : null
+        }
+      />
 
       {session.idealTypeQuizDepth === "quick" ? <DeepenResultBanner onDeepen={deepenAnswers} /> : null}
-
-      {session.compareWithId && (result.tags ?? []).length > 0 ? (
-        <CompatibilityBanner withId={session.compareWithId} tags={result.tags!} />
-      ) : null}
 
       <ShareStatusCard shareState={shareState} shareError={shareError} sharedUrl={sharedUrl} />
       <div className="flex gap-2">

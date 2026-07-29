@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Brand } from "../../../../src/map-decision-v1/components/Landing";
 import { TagRow } from "../../../../src/map-decision-v1/components/IdealTypeResultBlocks";
+import { SendMyResultCta } from "../../../../src/map-decision-v1/components/SendMyResultCta";
 import { Card } from "../../../../src/map-decision-v1/components/ui/primitives";
 import { getShare, SharedResultRecord } from "../../../../src/map-decision-v1/engine/share-store";
 import { buildAxisSentences, compareTags, TIER_DESCRIPTION, TIER_LABEL } from "../../../../src/map-decision-v1/engine/compatibility";
+import { IdealTypeResult } from "../../../../src/map-decision-v1/types";
 
 // 친구(A)의 공유 카드와 내(B) 태그를 코드로만 비교하는 화면. ★AI를
 // 호출하지 않는다 — engine/compatibility.ts의 compareTags()가 하는 일은
@@ -46,6 +48,21 @@ function parseFriendTags(raw: string | string[] | undefined): string[] {
   return Array.isArray(raw) ? raw : [raw];
 }
 
+// B가 이 화면에 오기 전(IdealTypeCard.tsx의 CompatibilityBanner)에 자기
+// 공유 링크를 이미 만들어뒀다면 그 id가 myId 쿼리로 실려온다 — 형식은
+// createShareId()가 만드는 base64url 12바이트(16자)와 같다
+// (MapDecisionProduct.tsx의 with 파라미터 검증과 동일한 정규식).
+function isValidShareId(value: string | string[] | undefined): value is string {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{16}$/.test(value);
+}
+
+function extractIdealTypeSummary(record: SharedResultRecord): { title: string; oneLiner: string } | null {
+  if (record.resultLayoutId !== "idealType") return null;
+  const result = record.result as Partial<IdealTypeResult> | null;
+  if (!result || typeof result.title !== "string" || typeof result.oneLiner !== "string") return null;
+  return { title: result.title, oneLiner: result.oneLiner };
+}
+
 function NotFoundCard({ message }: { message: string }) {
   return (
     <Card className="flex flex-col items-center gap-4 py-10 text-center">
@@ -57,7 +74,20 @@ function NotFoundCard({ message }: { message: string }) {
   );
 }
 
-function CompatibilityResult({ aTags, bTags, topicId }: { aTags: string[]; bTags: string[]; topicId?: string }) {
+function CompatibilityResult({
+  aTags,
+  bTags,
+  topicId,
+  myShare,
+}: {
+  aTags: string[];
+  bTags: string[];
+  topicId?: string;
+  // B 본인의 공유 링크가 이미 있으면(myId 쿼리 + 그 id로 실제 조회 성공)
+  // 그 링크를 다음 사람에게 보내는 CTA를 보여준다 — 없으면(오래된 링크,
+  // 검증 실패 등) 기존 "나도 MAP 만들어보기" CTA로 조용히 대체한다.
+  myShare: { id: string; title: string; oneLiner: string } | null;
+}) {
   const { overlapCount, tier, axes } = compareTags(aTags, bTags);
   const sentences = buildAxisSentences(axes);
   return (
@@ -89,9 +119,13 @@ function CompatibilityResult({ aTags, bTags, topicId }: { aTags: string[]; bTags
           ))}
         </Card>
       ) : null}
-      <Link href={ctaHref(topicId)} className={PRIMARY_CTA_CLASS}>
-        나도 MAP 만들어보기
-      </Link>
+      {myShare ? (
+        <SendMyResultCta myShareId={myShare.id} title={myShare.title} oneLiner={myShare.oneLiner} />
+      ) : (
+        <Link href={ctaHref(topicId)} className={PRIMARY_CTA_CLASS}>
+          나도 MAP 만들어보기
+        </Link>
+      )}
     </>
   );
 }
@@ -101,7 +135,7 @@ export default async function CompatibilityPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tag?: string | string[] }>;
+  searchParams: Promise<{ tag?: string | string[]; myId?: string | string[] }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -109,6 +143,13 @@ export default async function CompatibilityPage({
   const share = await getShare(id);
   const aTags = share.status === "ok" ? extractIdealTypeTags(share.record) : null;
   const topicId = share.status === "ok" ? share.record.topicId : undefined;
+
+  // B 본인의 공유 id가 있으면 그 레코드를 따로 조회해서(제목·한줄설명)
+  // 하단 CTA에 쓴다 — A의 레코드(share)와는 별개 조회다.
+  const myId = isValidShareId(query.myId) ? query.myId : null;
+  const myShareRecord = myId ? await getShare(myId) : null;
+  const mySummary = myShareRecord?.status === "ok" ? extractIdealTypeSummary(myShareRecord.record) : null;
+  const myShare = myId && mySummary ? { id: myId, ...mySummary } : null;
 
   return (
     <main className="min-h-dvh bg-background px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary">
@@ -127,7 +168,7 @@ export default async function CompatibilityPage({
         ) : bTags.length === 0 ? (
           <NotFoundCard message="궁합을 보려면 먼저 내 MAP을 만들어야 해요." />
         ) : (
-          <CompatibilityResult aTags={aTags} bTags={bTags} topicId={topicId} />
+          <CompatibilityResult aTags={aTags} bTags={bTags} topicId={topicId} myShare={myShare} />
         )}
       </div>
     </main>
