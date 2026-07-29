@@ -77,12 +77,14 @@ function AxisStep({
   onSubmit,
   onBack,
   showBack,
+  aboutSelf,
 }: {
   question: string;
   options: TopicOption[];
   onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
   onBack: () => void;
   showBack: boolean;
+  aboutSelf?: boolean;
 }) {
   const [selected, setSelected] = useState<TopicChoice[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -111,6 +113,7 @@ function AxisStep({
 
   return (
     <div className="flex w-full flex-col gap-5">
+      {aboutSelf ? <SelfQuestionLabel /> : null}
       <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
       <p className="text-xs font-black text-text-muted">
         최대 {MAX_SELECTIONS}개까지 고를 수 있어요 · 먼저 고른 게 더 중요해요 · {selected.length}/{MAX_SELECTIONS} 선택
@@ -498,6 +501,7 @@ function ReflectionStep({
   onBack,
   showBack,
   isFirst,
+  aboutSelf,
 }: {
   question: string;
   placeholder?: string;
@@ -508,11 +512,13 @@ function ReflectionStep({
   // 컴포넌트는 문항마다(경험형 뒤에 최대 8번) 반복해서 쓰이는데, 매번
   // 보여주면 방해가 되니 한 번만 짚어준다.
   isFirst: boolean;
+  aboutSelf?: boolean;
 }) {
   const [text, setText] = useState("");
   const speech = useWebSpeech((heard) => setText((current) => `${current}${current ? " " : ""}${heard}`));
   return (
     <div className="flex w-full flex-col gap-5">
+      {aboutSelf ? <SelfQuestionLabel /> : null}
       <h2 className="text-balance break-keep whitespace-pre-line text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
       {isFirst ? (
         <p className="-mt-2 text-xs font-semibold text-text-muted">
@@ -886,6 +892,7 @@ export function TopicQuiz({
             placeholder={currentAxis.placeholder}
             showBack={step > 0}
             isFirst={currentAxis.id === firstReflectionAxisId}
+            aboutSelf={currentAxis.aboutSelf}
             onBack={goBack}
             onSubmit={(answerText) => {
               const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
@@ -899,6 +906,7 @@ export function TopicQuiz({
             question={currentAxis.question}
             options={currentAxis.options}
             showBack={step > 0}
+            aboutSelf={currentAxis.aboutSelf}
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
