@@ -12,6 +12,14 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
+// 이상형이 아니라 지금 사용자 자신에 대해 묻는 문항(topics.ts의
+// axis.aboutSelf) 위에 붙이는 작은 라벨. "이 답이 자기성찰에 쓰인다"는
+// 설명은 일부러 넣지 않는다 — 그 반전 구조가 결과의 재미 포인트라,
+// 여기서 미리 알려주면 김이 샌다. 전환이 있다는 것만 표시한다.
+function SelfQuestionLabel() {
+  return <p className="text-[11px] font-black uppercase tracking-[0.08em] text-text-muted">나에 대해</p>;
+}
+
 const MAX_SELECTIONS = 3;
 
 // 세부 선택지(subOptions)를 골랐어도 태그 매핑(ideal-type-tags.ts)은
@@ -240,12 +248,14 @@ function QuickTapStep({
   onSubmit,
   onBack,
   showBack,
+  aboutSelf,
 }: {
   question: string;
   options: TopicOption[];
   onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
   onBack: () => void;
   showBack: boolean;
+  aboutSelf?: boolean;
 }) {
   const pick = (choice: TopicChoice) => {
     onSubmit(`${choice.label} — ${choice.description}`, [choice.label]);
@@ -253,6 +263,7 @@ function QuickTapStep({
 
   return (
     <div className="flex w-full flex-col gap-5">
+      {aboutSelf ? <SelfQuestionLabel /> : null}
       <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
       <div className="grid grid-cols-2 gap-3">
         {options.map((option) => (
@@ -288,12 +299,14 @@ function ScenarioStep({
   onSubmit,
   onBack,
   showBack,
+  aboutSelf,
 }: {
   question: string;
   options: TopicOption[];
   onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
   onBack: () => void;
   showBack: boolean;
+  aboutSelf?: boolean;
 }) {
   const pick = (choice: TopicChoice) => {
     onSubmit(`${choice.label} — ${choice.description}`, [choice.label]);
@@ -301,6 +314,7 @@ function ScenarioStep({
 
   return (
     <div className="flex w-full flex-col gap-5">
+      {aboutSelf ? <SelfQuestionLabel /> : null}
       <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
       <div className="flex flex-col gap-3">
         {options.map((option) => (
@@ -805,6 +819,7 @@ export function TopicQuiz({
             options={currentAxis.options}
             showBack={step > 0}
             onBack={goBack}
+            aboutSelf={currentAxis.aboutSelf}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
@@ -831,6 +846,7 @@ export function TopicQuiz({
             options={currentAxis.options}
             showBack={step > 0}
             onBack={goBack}
+            aboutSelf={currentAxis.aboutSelf}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               const isLastOptionalWhileResuming = session.idealTypeResuming && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);

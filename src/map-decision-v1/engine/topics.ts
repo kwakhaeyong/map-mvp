@@ -65,6 +65,13 @@ export type TopicAxis = {
   // 길이·구체성으로 쓰면 되는구나"를 느끼게 한다 — 빈 입력창만 있으면
   // 뭘 얼마나 써야 할지 몰라 한두 단어로 끝나기 쉽다.
   placeholder?: string;
+  // true면 이상형이 아니라 지금 사용자 자신에 대해 묻는 문항이다(테스터
+  // 피드백: 이 전환이 화면에 안 보여 헷갈림) — TopicQuiz.tsx가 이 값을
+  // 보고 문항 위에 작은 "나에 대해" 라벨만 붙인다. 어떤 축이 여기
+  // 해당하는지는 engine/ideal-type-generator.ts의 SYSTEM_PROMPT가 이미
+  // 문장으로 설명하고 있던 걸(요즘 마음 상태·관계에서 맡는 역할·조언
+  // 상황에서의 내 기분) 코드에서도 판단 가능하게 값으로 옮긴 것이다.
+  aboutSelf?: boolean;
 };
 
 export type TopicConfig = {
@@ -195,6 +202,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "currentMood",
         type: "quickTap",
         required: true,
+        aboutSelf: true,
         question: "요즘 마음 상태에 가장 가까운 건?",
         options: [
           { label: "새로운 인연에 열려있어", description: "누군가를 만나고 싶은 마음이 있는 상태" },
@@ -245,6 +253,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "scenarioAdvice",
         type: "scenario",
         required: true,
+        aboutSelf: true,
         question: "회사에서 힘든 일이 있었다고 얘기했어. 상대가 \"그래서 어떻게 됐는데, 이렇게 해보는 게 어때?\"라고 답해. 기분이 어때?",
         options: [
           { label: "해결책이 있어서 든든해", description: "문제를 같이 풀어주는 것 같아 안심되는 반응" },
@@ -1054,6 +1063,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "myRelationshipRole",
         type: "quickTap",
         required: true,
+        aboutSelf: true,
         question: "친구든 썸이든, 관계에서 나는 보통 어떤 역할이야?",
         options: [
           { label: "먼저 다가가고 챙기는 편", description: "적극적으로 먼저 움직이는 역할" },
