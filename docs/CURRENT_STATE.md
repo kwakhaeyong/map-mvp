@@ -61,8 +61,7 @@
 
 - `main`에 머지되면 Vercel이 자동으로 프로덕션에 배포합니다.
 - `.github/workflows/production-smoke.yml`("Production Smoke Check")이 (1) `main` 푸시 시, (2) Guarded Auto Merge 성공 직후, (3) 6시간마다(cron) `mapdecision.com`이 정상 응답하는지 확인하고, 실패하면 GitHub 이슈를 자동 생성합니다.
-- `.github/workflows/notify-n8n-on-merge.yml`이 머지될 때마다 n8n 웹훅으로 커밋 정보를 전달합니다. n8n 쪽에서 이 웹훅을 어떻게 처리하는지(알림 주기·채널 등)는 n8n 클라우드에 설정된 워크플로 내용이라 이 레포에서는 확인할 수 없습니다.
-- **n8n Cloud 무료 체험이 실행 횟수를 소진해 곧 종료됩니다** — 그동안 n8n이 하던 헬스체크·일일 생성 한도 알림을 `.github/workflows/health-check.yml`, `.github/workflows/daily-limit-alert.yml`(GitHub Actions)로 옮겼습니다. 위 머지 알림(notify-n8n-on-merge.yml)은 이번 이전 범위에 포함되지 않았습니다.
+- **n8n 머지 알림은 제거했습니다.** `.github/workflows/notify-n8n-on-merge.yml`이 머지될 때마다 n8n 웹훅으로 커밋 정보를 전달했지만, n8n Cloud 무료 체험이 끝나면서 실제로는 알림이 전달되지 않는데도 GitHub Actions 쪽 호출 자체는 항상 성공(초록불)으로 표시돼 오히려 "알림이 가고 있다"는 착각을 만들었습니다. 그동안 n8n이 하던 헬스체크·일일 생성 한도 알림은 이미 `.github/workflows/health-check.yml`, `.github/workflows/daily-limit-alert.yml`(GitHub Actions)로 옮겨져 있어 별도 이관 없이 제거만 하면 됐습니다. `N8N_MERGE_WEBHOOK` 시크릿은 더 이상 어떤 워크플로에서도 참조하지 않으며, 시크릿 자체 삭제는 오너가 GitHub 저장소 설정에서 직접 진행합니다.
 - 이 개발 샌드박스는 네트워크 프록시로 `mapdecision.com`에 직접 접근이 막혀 있어, 배포 확인은 위 GitHub Actions 결과(간접 증거)로만 합니다.
 
 ## AI / 안전장치 현황
