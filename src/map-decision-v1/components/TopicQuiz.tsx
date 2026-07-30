@@ -147,6 +147,7 @@ function AxisStep({
   onBack,
   showBack,
   aboutSelf,
+  requireConfirm,
 }: {
   question: string;
   options: TopicOption[];
@@ -154,6 +155,12 @@ function AxisStep({
   onBack: () => void;
   showBack: boolean;
   aboutSelf?: boolean;
+  // 심화 재방문의 마지막 문항일 때만 true — 다른 네 가지 단일 선택
+  // 컴포넌트의 같은 이름 prop과 동일한 뜻이다. idealType의 마지막
+  // 심화 축("socialCircle")이 하필 이 다중 선택(preference) 타입이라,
+  // 이 문항에서도 자동 넘김이 finishResumedDeepDive()(결과 재생성)를
+  // 곧장 트리거하지 않도록 반드시 필요하다.
+  requireConfirm: boolean;
 }) {
   const [selected, setSelected] = useState<TopicChoice[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -188,7 +195,7 @@ function AxisStep({
   // 넣어서 셋 중 무엇이 바뀌어도 다시 평가한다.
   useEffect(() => {
     const anyExpanded = Object.values(expanded).some(Boolean);
-    const shouldAutoAdvance = selected.length === MAX_SELECTIONS && customText.trim() === "" && !anyExpanded;
+    const shouldAutoAdvance = !requireConfirm && selected.length === MAX_SELECTIONS && customText.trim() === "" && !anyExpanded;
     if (!shouldAutoAdvance) return;
     const timeoutId = window.setTimeout(submit, MULTI_SELECT_AUTO_ADVANCE_DELAY_MS);
     return () => window.clearTimeout(timeoutId);
@@ -1078,6 +1085,7 @@ export function TopicQuiz({
             options={currentAxis.options}
             showBack={step > 0}
             aboutSelf={currentAxis.aboutSelf}
+            requireConfirm={isLastOptionalWhileResuming}
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
