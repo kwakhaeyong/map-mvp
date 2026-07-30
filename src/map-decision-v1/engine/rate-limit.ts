@@ -50,6 +50,18 @@ function secondsUntilNextKstMidnight(date: Date): number {
   return Math.max(1, Math.ceil((nextKstMidnightRealEpoch - date.getTime()) / 1000));
 }
 
+// 로그에 sessionKey(session.startedAt) 원본을 그대로 남기지 않기 위한 요약값.
+// 되돌릴 수 없는 암호학적 해시일 필요는 없다 — 민감정보 보호가 아니라, 같은
+// 세션이 남긴 여러 로그 줄을 서로 연관지어볼 수 있을 정도로만 뭉개는 것이
+// 목적이다.
+function shortSessionHash(sessionKey: string): string {
+  let hash = 0;
+  for (let i = 0; i < sessionKey.length; i++) {
+    hash = (hash * 31 + sessionKey.charCodeAt(i)) | 0;
+  }
+  return (hash >>> 0).toString(36);
+}
+
 // x-real-ip를 우선 신뢰한다 — Vercel의 공식 @vercel/functions 패키지가 제공하는
 // ipAddress() 헬퍼도 정확히 이 헤더(IP_HEADER_NAME = "x-real-ip")를 읽는다
 // (packages/functions/src/headers.ts, vercel/vercel 저장소). Vercel 엣지가
@@ -159,6 +171,7 @@ export async function reserveGenerationSlot(ip: string, sessionKey: string): Pro
     return { allowed: false, reason: "unavailable" };
   }
   if (failureCount >= MAX_FAILED_GENERATIONS_PER_SESSION) {
+    console.error(`[rate-limit] session ${shortSessionHash(sessionKey)} blocked by failure_limit (failureCount=${failureCount})`);
     return { allowed: false, reason: "failure_limit" };
   }
 
