@@ -29,6 +29,17 @@ jobs:
         env:
           UPSTASH_REST_URL: ${{ secrets.UPSTASH_REST_URL }}
           UPSTASH_READONLY_TOKEN: ${{ secrets.UPSTASH_READONLY_TOKEN }}
+          # ★Vercel에서 DAILY_GLOBAL_GENERATION_LIMIT 환경변수로 코드
+          # 기본값(300)을 오버라이드했다면, 이 저장소 Variable(Settings →
+          # Secrets and variables → Actions → Variables 탭, 이름은 앱의
+          # 환경변수와 똑같이 DAILY_GLOBAL_GENERATION_LIMIT)에 같은 숫자를
+          # 등록해두면 이 워크플로가 grep 대신 그 값을 우선 사용한다.
+          # 오버라이드가 없다면 등록하지 않아도 되고, 그러면 지금처럼
+          # 코드 기본값을 grep으로 읽는다. secret이 아니라 variable인
+          # 이유: 이 숫자는 비밀이 아니고, secret은 워크플로 로그에
+          # 출력하면 자동으로 마스킹돼(***) 로그를 봐도 뭘 쓰고 있는지
+          # 확인할 수 없기 때문이다.
+          DAILY_LIMIT_VAR: ${{ vars.DAILY_GLOBAL_GENERATION_LIMIT }}
         run: |
           set -e
           if [ -z "$UPSTASH_REST_URL" ] || [ -z "$UPSTASH_READONLY_TOKEN" ]; then
@@ -41,23 +52,32 @@ jobs:
           # 실제 코드 기본값은 300이라 70은 23% 지점에 불과했다(매일
           # 아침에 알림이 울려서 무시하게 되는 문제).
           #
-          # GLOBAL_LIMIT은 rate-limit.ts의 DEFAULT_DAILY_GLOBAL_GENERATION_LIMIT
-          # 상수를 grep으로 그대로 읽어온다 — 코드가 실제로 쓰는 기본값과
-          # 이 워크플로의 기준값이 항상 같은 숫자이게 하기 위해서다(상수
-          # 이름이 안 바뀌는 한 코드 쪽 숫자를 고치면 이 워크플로도 다음
-          # 실행부터 자동으로 따라간다).
-          #
-          # ★★단, Vercel에서만 DAILY_GLOBAL_GENERATION_LIMIT 환경변수로
-          # 이 기본값을 오버라이드했다면 이 워크플로는 그 사실을 알 방법이
-          # 없다 — GitHub Actions는 Vercel의 런타임 환경변수를 읽지 못한다.
-          # 그런 오버라이드를 했다면, 아래 GLOBAL_LIMIT 계산을 지우고 그
-          # 값을 GitHub 저장소 secret/variable로 똑같이 추가한 뒤 여기서
-          # 읽도록 바꿔야 한다 — 두 곳이 어긋나면 경고 시점이 실제 운영
-          # 상한과 안 맞게 된다.
-          GLOBAL_LIMIT=$(grep -oP 'DEFAULT_DAILY_GLOBAL_GENERATION_LIMIT = \K[0-9]+' src/map-decision-v1/engine/rate-limit.ts)
-          if [ -z "$GLOBAL_LIMIT" ]; then
-            echo "::error::rate-limit.ts에서 DEFAULT_DAILY_GLOBAL_GENERATION_LIMIT 상수를 못 찾았습니다 — 이름이 바뀌었으면 위 grep 패턴도 같이 고쳐야 합니다."
-            exit 1
+          # 상한 값의 출처는 두 곳 중 하나다 — 순서대로 확인한다:
+          # 1) DAILY_LIMIT_VAR(저장소 Variable) — Vercel 쪽 오버라이드와
+          #    반드시 같은 값으로 오너가 직접 맞춰둔 값. 있으면 이 값을
+          #    무조건 우선한다(코드 기본값보다 신뢰도가 높다 — 실제
+          #    운영 중인 값을 오너가 직접 확인해서 넣은 것이므로).
+          # 2) rate-limit.ts의 DEFAULT_DAILY_GLOBAL_GENERATION_LIMIT
+          #    상수를 grep으로 읽은 값 — Variable을 등록하지 않았다면
+          #    (=Vercel 오버라이드가 없다는 뜻) 이 기본값이 곧 실제
+          #    운영 상한과 같다.
+          # ★grep이 깨지면(상수 이름이 바뀌는 등) 조용히 넘어가지 않고
+          # 워크플로 자체를 실패시킨다 — 잘못된 임계값으로 계속 도는
+          # 것보다 "지금 확인이 안 된다"는 신호가 낫다.
+          if [ -n "$DAILY_LIMIT_VAR" ]; then
+            if ! [[ "$DAILY_LIMIT_VAR" =~ ^[0-9]+$ ]]; then
+              echo "::error::저장소 Variable DAILY_GLOBAL_GENERATION_LIMIT 값('${DAILY_LIMIT_VAR}')이 숫자가 아닙니다."
+              exit 1
+            fi
+            GLOBAL_LIMIT="$DAILY_LIMIT_VAR"
+            LIMIT_SOURCE="GitHub Variable(DAILY_GLOBAL_GENERATION_LIMIT)"
+          else
+            GLOBAL_LIMIT=$(grep -oP 'DEFAULT_DAILY_GLOBAL_GENERATION_LIMIT = \K[0-9]+' src/map-decision-v1/engine/rate-limit.ts)
+            if [ -z "$GLOBAL_LIMIT" ]; then
+              echo "::error::rate-limit.ts에서 DEFAULT_DAILY_GLOBAL_GENERATION_LIMIT 상수를 못 찾았습니다 — 이름이 바뀌었으면 위 grep 패턴도 같이 고쳐야 합니다. (저장소 Variable DAILY_GLOBAL_GENERATION_LIMIT을 등록해두면 이 grep 실패와 무관하게 계속 동작합니다.)"
+              exit 1
+            fi
+            LIMIT_SOURCE="rate-limit.ts 기본값(grep, Variable 미등록)"
           fi
           ALERT_THRESHOLD=$(( GLOBAL_LIMIT * 70 / 100 ))
 
@@ -73,9 +93,9 @@ jobs:
             exit 1
           fi
 
-          echo "오늘(KST ${KST_DATE}) 전체 생성 카운터: ${VALUE} / 경고 기준 ${ALERT_THRESHOLD}(상한 ${GLOBAL_LIMIT}의 70%) / 상한 ${GLOBAL_LIMIT}"
+          echo "오늘(KST ${KST_DATE}) 전체 생성 카운터: ${VALUE} / 경고 기준 ${ALERT_THRESHOLD}(상한 ${GLOBAL_LIMIT}의 70%) / 상한 ${GLOBAL_LIMIT} / 상한 출처: ${LIMIT_SOURCE}"
 
           if [ "$VALUE" -ge "$ALERT_THRESHOLD" ]; then
-            echo "::error::전체 생성 카운터(${VALUE})가 경고 기준(${ALERT_THRESHOLD}, 상한 ${GLOBAL_LIMIT}의 70%) 이상입니다."
+            echo "::error::전체 생성 카운터(${VALUE})가 경고 기준(${ALERT_THRESHOLD}, 상한 ${GLOBAL_LIMIT}의 70%, 출처: ${LIMIT_SOURCE}) 이상입니다."
             exit 1
           fi
