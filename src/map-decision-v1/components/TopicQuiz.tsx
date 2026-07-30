@@ -128,6 +128,18 @@ function OptionChip({
   );
 }
 
+// 3개를 다 고른 뒤 자동으로 넘긴다 — 단, 아래 조건을 모두 만족할 때만.
+// 하나라도 어긋나면 "다음"을 직접 눌러야 한다.
+//   1) 선택 개수가 MAX_SELECTIONS(3)에 도달했을 때
+//   2) "+ 더 자세히" 텍스트란이 비어있을 때 — 이미 뭔가 적은 사람은
+//      더 쓸 의도가 있으니 끊으면 안 된다
+//   3) "더보기" 하위 선택지가 펼쳐져 있지 않을 때 — 펼친 사람은 방금
+//      고른 걸 바꾸려는 중일 수 있다
+// 단일 선택(250ms)보다 지연을 길게(650ms, 500~800ms 권장 범위의
+// 중간) 뒀다 — 3개를 다 고른 직후는 "아 이거 아닌데" 하고 마음이
+// 바뀔 가능성이 단일 선택 한 번보다 높다고 판단했다.
+const MULTI_SELECT_AUTO_ADVANCE_DELAY_MS = 650;
+
 function AxisStep({
   question,
   options,
@@ -167,6 +179,21 @@ function AxisStep({
     const topLevelLabels = uniqueInOrder(selected.map((choice) => resolveTopLevelLabel(choice.label, options)));
     onSubmit(answer, topLevelLabels);
   };
+
+  // 매 렌더마다 세 조건을 다시 확인해서, 조건을 만족할 때만 예약하고
+  // 그렇지 않으면(effect의 cleanup이 이전 예약을 지운 채로) 아무것도
+  // 예약하지 않는다 — 그래서 "지연 중 취소"를 별도 취소 함수 없이,
+  // 조건이 깨지는 모든 경우(선택 해제·더보기 펼침·텍스트 입력)에
+  // 자동으로 처리된다. deps에 selected/customText/expanded 전부를
+  // 넣어서 셋 중 무엇이 바뀌어도 다시 평가한다.
+  useEffect(() => {
+    const anyExpanded = Object.values(expanded).some(Boolean);
+    const shouldAutoAdvance = selected.length === MAX_SELECTIONS && customText.trim() === "" && !anyExpanded;
+    if (!shouldAutoAdvance) return;
+    const timeoutId = window.setTimeout(submit, MULTI_SELECT_AUTO_ADVANCE_DELAY_MS);
+    return () => window.clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, customText, expanded]);
 
   return (
     <div className="flex w-full flex-col gap-5">
