@@ -352,13 +352,13 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
       className="scroll-mt-6 flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
     >
       <div>
-        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-primary-foreground/70">Self Reflection</p>
+        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-primary-foreground-soft">Self Reflection</p>
         <h2 className="mt-2 text-lg font-black tracking-[-0.02em] text-primary-foreground sm:text-xl">자기 성찰</h2>
-        <p className="mt-2 text-sm font-semibold leading-6 text-primary-foreground/70">이상형 답변을 뒤집어서 본 나의 모습이에요.</p>
+        <p className="mt-2 text-sm font-semibold leading-6 text-primary-foreground-soft">이상형 답변을 뒤집어서 본 나의 모습이에요.</p>
       </div>
       <div className="flex flex-col gap-3">
-        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground/70">내가 줄 수 있는 것</p>
-        <ul className="flex flex-col gap-4 rounded-medium border border-primary-foreground/15 bg-primary-foreground/15 p-4 sm:p-5">
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground-soft">내가 줄 수 있는 것</p>
+        <ul className="flex flex-col gap-4 rounded-medium border border-primary-foreground-wash bg-primary-foreground-wash p-4 sm:p-5">
           {selfReflection.whatYouOffer.map((item, index) => (
             <li key={index} className="text-base font-semibold leading-7 text-primary-foreground sm:text-lg sm:leading-8">
               {item}
@@ -367,10 +367,10 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
         </ul>
       </div>
       <div className="flex flex-col gap-3">
-        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground/70">내가 보완할 부분</p>
-        <ul className="flex flex-col gap-4 rounded-medium border border-primary-foreground/25 p-4 sm:p-5">
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground-soft">내가 보완할 부분</p>
+        <ul className="flex flex-col gap-4 rounded-medium border border-primary-foreground-wash-strong p-4 sm:p-5">
           {selfReflection.whatToImprove.map((item, index) => (
-            <li key={index} className="text-base font-semibold leading-7 text-primary-foreground/90 sm:text-lg sm:leading-8">
+            <li key={index} className="text-base font-semibold leading-7 text-primary-foreground-strong sm:text-lg sm:leading-8">
               {item}
             </li>
           ))}

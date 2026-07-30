@@ -32,6 +32,10 @@ const config: Config = {
         "ink-wash-border": "var(--color-ink-wash-border)",
         "tag-fill": "var(--color-tag-fill)",
         "primary-overlay": "var(--color-primary-overlay)",
+        "primary-foreground-soft": "var(--color-primary-foreground-soft)",
+        "primary-foreground-strong": "var(--color-primary-foreground-strong)",
+        "primary-foreground-wash": "var(--color-primary-foreground-wash)",
+        "primary-foreground-wash-strong": "var(--color-primary-foreground-wash-strong)",
       },
       borderRadius: {
         small: "var(--radius-small)",
