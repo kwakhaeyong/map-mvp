@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Brand } from "../../../src/map-decision-v1/components/Landing";
 import { IdealTypeResultBlocks, TagRow } from "../../../src/map-decision-v1/components/IdealTypeResultBlocks";
+import { SelfIntroResultBlocks, SelfIntroTagRow } from "../../../src/map-decision-v1/components/SelfIntroResultBlocks";
 import { FinalResultSectionReadOnly } from "../../../src/map-decision-v1/components/FinalResultBlocks";
 import { ShareCardImage } from "../../../src/map-decision-v1/components/ShareCardImage";
 import { CollapsibleFriendResult } from "../../../src/map-decision-v1/components/CollapsibleFriendResult";
 import { Badge, Card } from "../../../src/map-decision-v1/components/ui/primitives";
 import { GetShareResult, getShare } from "../../../src/map-decision-v1/engine/share-store";
-import { FinalResult, IdealTypeResult } from "../../../src/map-decision-v1/types";
+import { FinalResult, IdealTypeResult, SelfIntroResult } from "../../../src/map-decision-v1/types";
 
 // 링크를 아는 사람만 볼 수 있는 읽기 전용 공개 화면 — 검색엔진에는
 // 노출되지 않게 한다. 편집·재생성·공유 버튼은 없고, 바이럴 고리인
@@ -49,6 +50,11 @@ function isIdealTypeResult(value: unknown): value is IdealTypeResult {
   return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.criteria === "object";
 }
 
+function isSelfIntroResult(value: unknown): value is SelfIntroResult {
+  const r = value as Partial<SelfIntroResult> | undefined;
+  return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.coreValues === "object";
+}
+
 function isFinalResult(value: unknown): value is FinalResult {
   const r = value as Partial<FinalResult> | undefined;
   return (
@@ -66,6 +72,7 @@ function isFinalResult(value: unknown): value is FinalResult {
 // 읽힌다 — 별도 마이그레이션이 필요 없다.
 type RenderableShare =
   | { kind: "idealType"; result: IdealTypeResult }
+  | { kind: "selfIntro"; result: SelfIntroResult }
   | { kind: "career"; result: FinalResult }
   | { kind: "unsupported" }
   | null;
@@ -74,6 +81,7 @@ function resolveRenderableShare(share: GetShareResult): RenderableShare {
   if (share.status !== "ok") return null;
   const { resultLayoutId, result } = share.record;
   if (resultLayoutId === "idealType") return isIdealTypeResult(result) ? { kind: "idealType", result } : null;
+  if (resultLayoutId === "selfIntro") return isSelfIntroResult(result) ? { kind: "selfIntro", result } : null;
   if (resultLayoutId === "career") return isFinalResult(result) ? { kind: "career", result } : null;
   return { kind: "unsupported" };
 }
@@ -131,9 +139,9 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
   // 초대장 컨셉(card.png) 배경과 톤을 맞춘다 — 이 화면 전체를 앱의
   // 다른 화면(퀴즈·결과 화면)이 쓰는 컬러풀한 그라데이션 배경 대신
   // card.png와 같은 단색 크림(#fbf7ef, bg-background 토큰)으로 바꾼다.
-  // 이상형이 아닌 결과(진로 등)는 이번 범위 밖이라 기존 배경을 그대로
-  // 쓴다.
-  const isInvitationBackground = renderable?.kind === "idealType";
+  // 나 소개·성격도 같은 초대장 컨셉 card.png를 쓰므로 같이 포함한다.
+  // 진로 등 그 외 결과는 이번 범위 밖이라 기존 배경을 그대로 쓴다.
+  const isInvitationBackground = renderable?.kind === "idealType" || renderable?.kind === "selfIntro";
 
   return (
     <main
@@ -149,11 +157,20 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
         </div>
         {renderable?.kind === "idealType" ? (
           <>
-            {share.status === "ok" && share.record.quizDepth === "deep" ? (
-              <Badge tone="success" className="self-start">
-                심층 분석 포함
+            <div className="flex flex-wrap items-center gap-2">
+              {/* 이상형·나소개 카드가 태그 18개를 공유해(교차 궁합용) card.png
+                  겉모습이 같아진 것과 같은 이유로, 카드 이미지 밖 HTML
+                  영역에도 같은 배지를 둔다 — showHero=false라 HeroHeader의
+                  "이상형 카드" 배지가 이 화면엔 렌더되지 않기 때문이다. */}
+              <Badge tone="default" className="self-start">
+                내가 끌리는 사람
               </Badge>
-            ) : null}
+              {share.status === "ok" && share.record.quizDepth === "deep" ? (
+                <Badge tone="success" className="self-start">
+                  심층 분석 포함
+                </Badge>
+              ) : null}
+            </div>
             <ShareCardImage
               src={`/r/${id}/card.png`}
               alt={renderable.result.title}
@@ -175,6 +192,42 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
             <div className="h-px w-full bg-border" />
             <CollapsibleFriendResult>
               <IdealTypeResultBlocks
+                result={renderable.result}
+                showHero={false}
+                afterReflection={<MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />}
+              />
+            </CollapsibleFriendResult>
+          </>
+        ) : renderable?.kind === "selfIntro" ? (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="default" className="self-start">
+                나는 이런 사람
+              </Badge>
+              {share.status === "ok" && share.record.quizDepth === "deep" ? (
+                <Badge tone="success" className="self-start">
+                  심층 분석 포함
+                </Badge>
+              ) : null}
+            </div>
+            <ShareCardImage
+              src={`/r/${id}/card.png`}
+              alt={renderable.result.title}
+              title={renderable.result.title}
+              fallback={
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <h1 className="text-balance break-keep text-2xl font-black leading-8 tracking-[-0.03em] text-text-primary">
+                    {renderable.result.title}
+                  </h1>
+                  <p className="text-sm font-bold leading-6 text-text-secondary">{renderable.result.oneLiner}</p>
+                  <SelfIntroTagRow tags={renderable.result.tags ?? []} className="justify-center" />
+                </div>
+              }
+            />
+            <TryItCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />
+            <div className="h-px w-full bg-border" />
+            <CollapsibleFriendResult>
+              <SelfIntroResultBlocks
                 result={renderable.result}
                 showHero={false}
                 afterReflection={<MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />}

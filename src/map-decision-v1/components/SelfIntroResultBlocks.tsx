@@ -1,21 +1,17 @@
 import type { ReactNode } from "react";
-import { IdealTypeFlags, IdealTypeMatrix, IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmap, IdealTypeSelfReflection } from "../types";
+import { SelfIntroMatrix, SelfIntroMatrixPoint, SelfIntroResult, SelfIntroRoadmap, SelfIntroTraits, IdealTypeSelfReflection } from "../types";
 import { Card } from "./ui/primitives";
 
-// 이상형 결과를 "보여주기만" 하는 순수 프레젠테이션 컴포넌트 모음.
-// 생성 상태 관리(useState/useEffect)나 공유 버튼 같은 상호작용은 여기
-// 없다 — 그래서 이 파일은 "use client"가 필요 없고, 라이브 결과 화면
-// (IdealTypeCard.tsx)과 공유 링크 읽기 전용 화면(app/r/[id]/page.tsx)
-// 둘 다에서 그대로 재사용한다.
+// 나 소개·성격 결과를 "보여주기만" 하는 순수 프레젠테이션 컴포넌트
+// 모음. IdealTypeResultBlocks.tsx와 같은 원리(생성 상태·공유 버튼 없는
+// "use client" 불필요 파일)이지만, 이상형 코드를 건드리지 않기 위해
+// 별도 파일로 새로 작성했다 — 라이브 결과 화면(SelfIntroCard.tsx)과
+// 공유 읽기 전용 화면(app/r/[id]/page.tsx) 둘 다에서 재사용한다.
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-// 이모지 아이콘 대신 자기성찰 블록("Self Reflection")과 같은 방식의
-// 영문 eyebrow 라벨로 위계를 준다 — 기기마다 다르게 보이는 이모지를
-// 없애면서도 헤더가 허전해지지 않게. 모든 블록 헤더가 이 컴포넌트
-//하나로 통일되므로, 이모지를 넣거나 빼는 게 섞이지 않는다.
 function SectionHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   return (
     <div>
@@ -27,10 +23,10 @@ function SectionHeader({ eyebrow, title, description }: { eyebrow: string; title
 }
 
 const NAV_ITEMS: Array<{ id: string; label: string }> = [
-  { id: "criteria", label: "기준" },
+  { id: "values", label: "가치관" },
   { id: "patterns", label: "패턴" },
   { id: "matrix", label: "매트릭스" },
-  { id: "flags", label: "신호등" },
+  { id: "traits", label: "특징" },
   { id: "reflection", label: "성찰" },
   { id: "roadmap", label: "로드맵" },
 ];
@@ -51,40 +47,16 @@ function SectionNav() {
   );
 }
 
-// MBTI의 "ENFP"처럼 친구끼리 바로 비교할 수 있는 공용 태그 — 고유한
-// title/oneLiner 바로 아래, 폰 화면 스크롤 없이 첫 화면에서 보이는
-// 위치에 둔다. result.tags가 없는(이 기능 이전에 만들어진) 결과·공유
-// 링크는 그냥 이 줄만 생략되고 나머지는 그대로 보인다.
-//
-// 대기 화면(GenerationProgress.tsx)에서도 같은 칩 디자인을 그대로
-// 재사용한다 — 간격만 자리마다 다를 수 있어서 여백은 className으로
-// 호출부가 정하게 한다(이 컴포넌트 자체엔 여백을 박아넣지 않는다).
-export function TagRow({
-  tags,
-  className,
-  activeIndex,
-}: {
-  tags: string[];
-  className?: string;
-  // 대기 화면(GenerationProgress.tsx)의 정지 구간에서만 쓴다. 태그 하나를
-  // 순서대로 옅게 강조해 "화면이 살아있다"는 느낌을 주는 용도라, 넘기지
-  // 않으면(결과 화면 등 기본 사용) 색이 전혀 바뀌지 않는다.
-  activeIndex?: number;
-}) {
+// 이상형과 완전히 같은 4축·18개 태그 사전을 재사용하므로 시각적 표현도
+// TagRow(IdealTypeResultBlocks.tsx)와 동일하게 맞춘다 — 다만 그 컴포넌트는
+// export 돼 있지 않아(파일 내부용) 여기서 새로 작성했다. 클래스는
+// 그대로 복사했다(디자인 토큰만 참조하므로 이상형 파일을 건드리지 않는다).
+export function SelfIntroTagRow({ tags, className }: { tags: string[]; className?: string }) {
   if (tags.length === 0) return null;
   return (
     <div className={cx("flex flex-wrap gap-1.5", className)}>
-      {tags.map((tag, index) => (
-        <span
-          key={tag}
-          className={cx(
-            "inline-flex items-center rounded-pill px-2.5 py-1 text-xs font-extrabold text-text-primary transition-colors duration-700",
-            // #116: bg-primary/10 등 슬래시 투명도 클래스가 이 커스텀 색엔
-            // 생성되지 않는 버그라 tag-fill/ink-wash 토큰으로 대체한다 —
-            // 기본 상태는 card.png 태그와 같은 처리(테두리 없이 flat 배경).
-            index === activeIndex ? "border border-ink-wash-border bg-ink-wash" : "bg-tag-fill",
-          )}
-        >
+      {tags.map((tag) => (
+        <span key={tag} className="inline-flex items-center rounded-pill bg-tag-fill px-2.5 py-1 text-xs font-extrabold text-text-primary">
           {tag}
         </span>
       ))}
@@ -92,44 +64,29 @@ export function TagRow({
   );
 }
 
-// 초대장 컨셉(card.png·/r/{id})과 톤을 맞춘다 — 예전엔 연보라
-// 그라데이션(from-value via-feeling to-action)이었는데, 카드 이미지와
-// 공유 화면이 전부 크림 종이 톤으로 바뀐 뒤 이 화면만 남아 한 흐름
-// 안에서 브랜드가 두 개로 보였다. Card 기본값(bg-surface-elevated,
-// 흰색)을 그대로 쓰도록 배경 override만 지운다 — 다른 섹션(기준·패턴 등)
-// 과 동일한 흰 카드가 되어 새 색을 만들지 않는다.
-function HeroHeader({ result }: { result: IdealTypeResult }) {
+function HeroHeader({ result }: { result: SelfIntroResult }) {
   return (
     <Card id="summary" className="scroll-mt-6 p-5">
-      {/* #116: bg-surface-elevated/80가 흰 카드 위에서 사실상 안 보였다 — 태그
-          알약과 같은 tag-fill 톤으로 바꿔 카드 배경과 구분되게 한다. */}
       <span className="inline-flex items-center rounded-pill bg-tag-fill px-3 py-1 text-xs font-extrabold text-text-primary">
-        이상형 카드
+        나 소개 카드
       </span>
       <h1 className="mt-3 text-balance break-keep text-3xl font-black leading-9 tracking-[-0.03em] text-text-primary">{result.title}</h1>
       <p className="mt-2 text-sm font-bold leading-6 text-text-primary">{result.oneLiner}</p>
-      <TagRow tags={result.tags ?? []} className="mt-3" />
+      <SelfIntroTagRow tags={result.tags ?? []} className="mt-3" />
     </Card>
   );
 }
 
-type CriteriaTone = "strong" | "medium" | "light";
-// 크림 종이 배경 위에서는 연보라 파스텔(value/feeling)이 이질적으로
-// 뜬다는 피드백으로, 세 단계 위계를 잉크(primary) 농도 차이로 표현한다.
-// #116: bg-primary/10, bg-primary/5는 이 커스텀 색엔 슬래시 투명도
-// 클래스가 생성되지 않아 실제로는 항상 투명이었다(흰 박스만 나열되던
-// 원인). 두 단계 모두 같은 ink-wash 톤을 쓰고, 위계는 원래도 정상
-// 작동하던 테두리 색 차이(border-primary vs border-border-strong)로
-// 표현한다.
-const CRITERIA_TIER_CLASS: Record<CriteriaTone, string> = {
+type ValueTone = "strong" | "medium" | "light";
+const VALUE_TIER_CLASS: Record<ValueTone, string> = {
   strong: "border-primary bg-ink-wash",
   medium: "border-border-strong bg-ink-wash",
   light: "border-dashed border-border bg-surface",
 };
 
-function CriteriaTier({ label, items, tone }: { label: string; items: string[]; tone: CriteriaTone }) {
+function ValueTier({ label, items, tone }: { label: string; items: string[]; tone: ValueTone }) {
   return (
-    <div className={cx("rounded-medium border p-3", CRITERIA_TIER_CLASS[tone])}>
+    <div className={cx("rounded-medium border p-3", VALUE_TIER_CLASS[tone])}>
       <p className="text-xs font-black text-text-primary">{label}</p>
       <ul className="mt-1.5 space-y-1">
         {items.map((item, index) => (
@@ -142,14 +99,14 @@ function CriteriaTier({ label, items, tone }: { label: string; items: string[]; 
   );
 }
 
-function CriteriaSection({ criteria }: { criteria: IdealTypeResult["criteria"] }) {
+function CoreValuesSection({ coreValues }: { coreValues: SelfIntroResult["coreValues"] }) {
   return (
-    <Card id="criteria" className="scroll-mt-6 flex flex-col gap-4">
-      <SectionHeader eyebrow="Criteria" title="이상형 기준" description="답변에서 우선순위를 세 단계로 나눠봤어요." />
+    <Card id="values" className="scroll-mt-6 flex flex-col gap-4">
+      <SectionHeader eyebrow="Values" title="핵심 가치관" description="답변에서 추론한 우선순위를 세 단계로 나눠봤어요." />
       <div className="grid gap-3 sm:grid-cols-3">
-        <CriteriaTier label="필수" items={criteria.mustHave} tone="strong" />
-        <CriteriaTier label="선호" items={criteria.niceToHave} tone="medium" />
-        <CriteriaTier label="타협 가능" items={criteria.canCompromise} tone="light" />
+        <ValueTier label="꼭 지키는 것" items={coreValues.mustKeep} tone="strong" />
+        <ValueTier label="중요하게 여기는 것" items={coreValues.important} tone="medium" />
+        <ValueTier label="유연하게 넘어가는 것" items={coreValues.flexible} tone="light" />
       </div>
     </Card>
   );
@@ -158,7 +115,7 @@ function CriteriaSection({ criteria }: { criteria: IdealTypeResult["criteria"] }
 function PatternsSection({ items }: { items: string[] }) {
   return (
     <Card id="patterns" className="scroll-mt-6 flex flex-col gap-3">
-      <SectionHeader eyebrow="Patterns" title="끌림 패턴" description="답변을 가로질러 반복되는 경향이에요." />
+      <SectionHeader eyebrow="Patterns" title="반복되는 패턴" description="답변을 가로질러 반복되는 행동이에요." />
       <div className="flex flex-col gap-2">
         {items.map((item, index) => (
           <blockquote key={index} className="rounded-medium border border-border bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
@@ -170,14 +127,11 @@ function PatternsSection({ items }: { items: string[] }) {
   );
 }
 
-// 진로 결과 화면(FinalResultBlocks.tsx)의 2x2 매트릭스와 같은 방식 —
-// 점끼리 너무 가까우면 숫자가 겹치니 살짝 밀어내는 단순 반발 알고리즘.
-// (최대 4개뿐이라 O(n^2)이어도 비용 무시 가능한 수준.)
 const clampPercent = (value: number) => Math.min(96, Math.max(4, value));
 
-type PlottedMatrixPoint = IdealTypeMatrixPoint & { plotX: number; plotY: number };
+type PlottedMatrixPoint = SelfIntroMatrixPoint & { plotX: number; plotY: number };
 
-function spreadMatrixPoints(points: IdealTypeMatrixPoint[]): PlottedMatrixPoint[] {
+function spreadMatrixPoints(points: SelfIntroMatrixPoint[]): PlottedMatrixPoint[] {
   const minDistance = 14;
   const placed: PlottedMatrixPoint[] = points.map((point) => ({ ...point, plotX: point.x, plotY: 100 - point.y }));
 
@@ -203,29 +157,13 @@ function spreadMatrixPoints(points: IdealTypeMatrixPoint[]): PlottedMatrixPoint[
   return placed.map((point) => ({ ...point, plotX: clampPercent(point.plotX), plotY: clampPercent(point.plotY) }));
 }
 
-// ★버그 원인: Tailwind가 이 커스텀 색(CSS 변수 기반)에는 fill-primary/70
-// 같은 "슬래시 투명도" 유틸리티를 만들어주지 않는다(실제로 컴파일된
-// CSS를 확인해보면 .fill-primary\/70 규칙 자체가 없다) — 그래서 그
-// 클래스가 붙은 점들은 전부 SVG 기본값인 불투명 검정(#000)으로
-// 그려지고 있었다. 1번 점(fill-primary, 슬래시 없음)만 유효한
-// 클래스라 원래 의도한 잉크 네이비(#15213b)로 그려졌는데, 마침 숫자
-// 색도 같은 색이라 숫자가 사라져 보인 것 — 2~4번은 "검정 배경에
-// 짙은 네이비 숫자"라 우연히 읽혔을 뿐, 의도한 옅은 톤은 애초에
-// 적용된 적이 없었다.
-//
-// 그래서 투명도는 Tailwind 클래스가 아니라 SVG 표준 속성인
-// fillOpacity를 직접 준다(브라우저가 항상 지원하는 방식이라 이런
-// 클래스 생성 문제 자체가 생기지 않는다) — 색 자체는 fill-primary
-// 하나로 고정하고 투명도만 4단계로 바꿔 잉크 농도 위계를 표현한다.
+// 이상형의 MatrixChart와 동일한 이유로 fillOpacity를 쓴다(design-check
+// #116 — 커스텀 색엔 슬래시 투명도 클래스가 생성되지 않는다).
 const MATRIX_POINT_OPACITY = [1, 0.7, 0.45, 0.25];
-// 점 안 순번 숫자 색 — 1번(불투명 100%)은 배경이 진한 잉크 그대로라
-// 밝은 색(primary-foreground, 흰색)을 쓰고, 2~4번은 옅어진 배경이라
-// 어두운 색(text-primary)이 그대로 대비된다.
 const MATRIX_POINT_NUMBER_CLASS = ["fill-primary-foreground", "fill-text-primary", "fill-text-primary", "fill-text-primary"];
 
-function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
+function MatrixChart({ matrix }: { matrix: SelfIntroMatrix }) {
   const placed = spreadMatrixPoints(matrix.types);
-  const numberClasses = MATRIX_POINT_NUMBER_CLASS;
   return (
     <div className="mx-auto w-full max-w-xs">
       <p className="mb-1 text-center text-[11px] font-black text-text-muted">{matrix.yAxisLabel.high}</p>
@@ -252,7 +190,7 @@ function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
                   y={point.plotY}
                   textAnchor="middle"
                   dominantBaseline="central"
-                  className={cx(numberClasses[index % numberClasses.length], "font-black")}
+                  className={cx(MATRIX_POINT_NUMBER_CLASS[index % MATRIX_POINT_NUMBER_CLASS.length], "font-black")}
                   style={{ fontSize: "4px" }}
                 >
                   {index + 1}
@@ -268,10 +206,10 @@ function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
   );
 }
 
-function MatrixSection({ matrix }: { matrix: IdealTypeMatrix }) {
+function MatrixSection({ matrix }: { matrix: SelfIntroMatrix }) {
   return (
     <Card id="matrix" className="scroll-mt-6 flex flex-col gap-4">
-      <SectionHeader eyebrow="Matrix" title="끌림 × 관계 적합도" description="답변에서 나온 4가지 상대 유형을 놓고 봤어요." />
+      <SectionHeader eyebrow="Matrix" title="나의 여러 모습" description="답변에서 나온 4가지 내 모습을 놓고 봤어요." />
       <MatrixChart matrix={matrix} />
       <ul className="flex flex-col gap-2">
         {matrix.types.map((point, index) => (
@@ -289,21 +227,18 @@ function MatrixSection({ matrix }: { matrix: IdealTypeMatrix }) {
   );
 }
 
-function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
+function TraitsSection({ traits }: { traits: SelfIntroTraits }) {
   return (
-    <Card id="flags" className="scroll-mt-6 flex flex-col gap-4">
-      <SectionHeader eyebrow="Signals" title="신호등" description="실제로 만날 때 참고할 신호들이에요." />
-      {/* 박스 배경은 option/risk 파스텔 대신 다른 블록과 같은 잉크
-          중간 톤(border-border-strong bg-ink-wash, #116)으로 통일한다 —
-          좋다/주의 구분은 라벨의 success/error 색과 점만으로 충분하다. */}
+    <Card id="traits" className="scroll-mt-6 flex flex-col gap-4">
+      <SectionHeader eyebrow="Traits" title="특징" description="이 사람과 지낼 때 참고하면 좋을 점이에요." />
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
           <p className="flex items-center gap-1.5 text-xs font-black text-success">
             <span className="size-2 rounded-full bg-success" aria-hidden="true" />
-            좋은 신호
+            강점
           </p>
           <ul className="mt-1.5 space-y-1">
-            {flags.green.map((item, index) => (
+            {traits.strengths.map((item, index) => (
               <li key={index} className="text-xs font-bold leading-5 text-text-primary">
                 · {item}
               </li>
@@ -313,10 +248,10 @@ function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
         <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
           <p className="flex items-center gap-1.5 text-xs font-black text-error">
             <span className="size-2 rounded-full bg-error" aria-hidden="true" />
-            주의 신호
+            주의점
           </p>
           <ul className="mt-1.5 space-y-1">
-            {flags.red.map((item, index) => (
+            {traits.cautions.map((item, index) => (
               <li key={index} className="text-xs font-bold leading-5 text-text-primary">
                 · {item}
               </li>
@@ -328,23 +263,8 @@ function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
   );
 }
 
-// ★가장 강조하는 섹션★ — 이 제품의 유일한 차별점(교차 발견)이 여기 있다.
-// 다른 6개 블록은 전부 흰 카드 + 이모지라 묻히므로, 이 블록만 배경을
-// 반전(어두운 배경 + 밝은 글자)해서 캡처하고 싶어지는 지점으로 만든다.
-// 이모지 대신 영문 eyebrow 라벨 + 크기·굵기 차이로 위계를 준다(MAP OS
-// Bible: professional/premium/calm, 유치한 시각 언어 회피). "내가 줄 수
-// 있는 것"은 채워진 패널, "내가 보완할 부분"은 테두리만 있는 패널로 —
-// 색을 늘리지 않고 채움 유무만으로 두 그룹을 구분한다. 문장이 강하게
-// 읽히도록 항목 사이 간격과 줄간격을 다른 블록보다 넉넉하게 둔다.
-//
-// 다른 섹션처럼 <Card>를 그대로 쓰지 않는다 — Card/Surface가 이미
-// "bg-surface-elevated"(흰 배경)를 내부에서 고정으로 넣고 있어서,
-// className으로 bg-primary를 얹어도 실제 생성되는 CSS 순서상
-// bg-surface-elevated가 이겨서 카드가 계속 흰 배경으로 남는 문제가
-// 있었다(Tailwind는 JSX의 클래스 순서가 아니라 컴파일된 스타일시트
-// 순서로 우선순위가 정해진다). 그래서 이 섹션만 Card를 거치지 않고
-// Surface/Card와 같은 시각 속성(테두리·둥근 모서리·그림자·패딩)을
-// bg-primary가 유일한 배경색이 되도록 직접 조합한다.
+// 이상형의 SelfReflectionSection과 완전히 같은 발상(반전 배경으로 강조,
+// docs/NASOGAE_DESIGN.md 4번)이라 시각 스타일도 그대로 가져왔다.
 function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSelfReflection }) {
   return (
     <div
@@ -354,10 +274,10 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
       <div>
         <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-primary-foreground-soft">Self Reflection</p>
         <h2 className="mt-2 text-lg font-black tracking-[-0.02em] text-primary-foreground sm:text-xl">자기 성찰</h2>
-        <p className="mt-2 text-sm font-semibold leading-6 text-primary-foreground-soft">이상형 답변을 뒤집어서 본 나의 모습이에요.</p>
+        <p className="mt-2 text-sm font-semibold leading-6 text-primary-foreground-soft">행동 답변을 모아서 본 나의 모습이에요.</p>
       </div>
       <div className="flex flex-col gap-3">
-        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground-soft">내가 줄 수 있는 것</p>
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground-soft">내가 주고 있는 것</p>
         <ul className="flex flex-col gap-4 rounded-medium border border-primary-foreground-wash bg-primary-foreground-wash p-4 sm:p-5">
           {selfReflection.whatYouOffer.map((item, index) => (
             <li key={index} className="text-base font-semibold leading-7 text-primary-foreground sm:text-lg sm:leading-8">
@@ -367,7 +287,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
         </ul>
       </div>
       <div className="flex flex-col gap-3">
-        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground-soft">내가 보완할 부분</p>
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground-soft">보완할 부분</p>
         <ul className="flex flex-col gap-4 rounded-medium border border-primary-foreground-wash-strong p-4 sm:p-5">
           {selfReflection.whatToImprove.map((item, index) => (
             <li key={index} className="text-base font-semibold leading-7 text-primary-foreground-strong sm:text-lg sm:leading-8">
@@ -380,10 +300,10 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
   );
 }
 
-function RoadmapSection({ roadmap }: { roadmap: IdealTypeRoadmap }) {
+function RoadmapSection({ roadmap }: { roadmap: SelfIntroRoadmap }) {
   return (
     <Card id="roadmap" className="scroll-mt-6 flex flex-col gap-4">
-      <SectionHeader eyebrow="Roadmap" title="로드맵" description="바로 시작할 수 있는 것부터 30일 계획까지예요." />
+      <SectionHeader eyebrow="Roadmap" title="로드맵" description="바로 시도해볼 것부터 30일 계획까지예요." />
       <div className="rounded-medium border border-primary bg-surface p-3">
         <p className="text-xs font-black text-primary">24시간 안에</p>
         <p className="mt-1 text-sm font-bold leading-6 text-text-primary">{roadmap.firstAction}</p>
@@ -414,28 +334,13 @@ function RoadmapSection({ roadmap }: { roadmap: IdealTypeRoadmap }) {
   );
 }
 
-// 라이브 결과 화면과 공유 읽기 전용 화면이 공통으로 쓰는 전체 블록
-// 묶음. 공유하기/다시 만들기 같은 버튼은 호출부가 각자 다르게 붙인다.
-//
-// afterHero: 이상형 카드(HeroHeader) 바로 아래, 탭 줄(SectionNav) 위에
-// 끼워 넣을 요소 — 지금은 라이브 결과 화면(IdealTypeCard.tsx)의 궁합
-// 배너만 이 자리를 쓴다. 친구 링크로 들어온 사람에게는 궁합 확인이
-// 방문 목적이라, 6블록을 다 지나야 나오던 예전 위치보다 여기가 맞다.
-//
-// afterReflection: 자기성찰 블록(가장 감정적으로 몰입되는 지점) 바로
-// 다음에 끼워 넣을 요소 — 지금은 공유 읽기 전용 화면(app/r/[id]/
-// page.tsx)의 중간 CTA만 이 자리를 쓴다.
-//
-// showHero: /r/{id}의 "친구 결과 전체 보기" 접힌 영역에서는 타이틀·
-// 태그·한줄설명이 바로 위 card.png와 완전히 겹쳐서 false로 끈다.
-// 기본값 true라 다른 호출부는 그대로다.
-export function IdealTypeResultBlocks({
+export function SelfIntroResultBlocks({
   result,
   afterHero,
   afterReflection,
   showHero = true,
 }: {
-  result: IdealTypeResult;
+  result: SelfIntroResult;
   afterHero?: ReactNode;
   afterReflection?: ReactNode;
   showHero?: boolean;
@@ -445,10 +350,10 @@ export function IdealTypeResultBlocks({
       {showHero ? <HeroHeader result={result} /> : null}
       {afterHero}
       <SectionNav />
-      <CriteriaSection criteria={result.criteria} />
-      <PatternsSection items={result.attractionPatterns} />
+      <CoreValuesSection coreValues={result.coreValues} />
+      <PatternsSection items={result.patterns} />
       <MatrixSection matrix={result.matrix} />
-      <FlagsSection flags={result.flags} />
+      <TraitsSection traits={result.traits} />
       <SelfReflectionSection selfReflection={result.selfReflection} />
       {afterReflection}
       <RoadmapSection roadmap={result.roadmap} />

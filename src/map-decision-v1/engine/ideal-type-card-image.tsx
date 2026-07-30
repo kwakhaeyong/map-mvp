@@ -833,7 +833,12 @@ function buildNavyStoryCard(result: IdealTypeResult) {
 // 대신 카톡 공유에 더 맞는 4:5로 바꿨다(INVITATION_CARD_HEIGHT).
 // 남는 공간은 전부 타이틀·태그를 키우는 데 쓴다 — 태그 4개가
 // "줄어든 상태에서도" 또렷이 읽히는 게 기준이다.
-const INVITATION_ZONE = { topMargin: 60, title: 610, tags: 350, oneLiner: 200, footer: 70, bottomMargin: 60 } as const;
+// topicLabel(36)은 title에서 그만큼(610→574) 떼어와 마련했다 — topMargin/
+// bottomMargin은 InvitationFrame(테두리, top/bottom 40px 안쪽)과의 여백
+// 확보용이라 건드리면 내용이 테두리선과 겹칠 위험이 있어 그대로 뒀다.
+// title 574px는 실제 타이틀 최대 크기(130px, 2줄)*1.25 기준으로도 넉넉해
+// 줄어든 만큼의 손해가 없다.
+const INVITATION_ZONE = { topMargin: 60, topicLabel: 36, title: 574, tags: 350, oneLiner: 200, footer: 70, bottomMargin: 60 } as const;
 
 function invitationTitleFontSize(title: string): number {
   return pickBySteps(
@@ -919,6 +924,22 @@ function InvitationSeal() {
     >
       M
     </span>
+  );
+}
+
+// 이상형·나소개 두 카드가 태그 18개를 공유하면서(교차 궁합용) 겉모습이
+// 완전히 같아져, 카톡으로 받은 사람이 "이 친구가 좋아하는 타입"인지
+// "이 친구 자체"인지 구분할 수 없어졌다. 타이틀 위 작은 킥커 한 줄로
+// 주제를 밝힌다 — 타이틀(50px~)·태그(34px~)보다 항상 작은 고정 30px로
+// 잡아 위계를 침범하지 않는다. 색도 새로 만들지 않고 기존 잉크 네이비
+// 계열 중 가장 옅은 textSecondary를 재사용한다.
+function InvitationTopicLabel({ label, height }: { label: string; height: number }) {
+  return (
+    <InvitationZone height={height}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH }}>
+        <span style={{ fontSize: 30, fontWeight: 700, letterSpacing: "0.06em", color: CARD_COLORS.textSecondary }}>{label}</span>
+      </div>
+    </InvitationZone>
   );
 }
 
@@ -1071,6 +1092,7 @@ function buildInvitationCard(result: IdealTypeResult) {
       <InvitationFrame />
       <InvitationSeal />
       <div style={{ display: "flex", width: INVITATION_CARD_WIDTH, height: INVITATION_ZONE.topMargin, flexShrink: 0 }} />
+      <InvitationTopicLabel label="내가 끌리는 사람" height={INVITATION_ZONE.topicLabel} />
       <InvitationTitle title={title} height={INVITATION_ZONE.title} />
       <InvitationTags tags={tags} height={INVITATION_ZONE.tags} />
       <InvitationOneLiner oneLiner={oneLiner} />

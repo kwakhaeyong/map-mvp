@@ -59,6 +59,13 @@ export type MapSession = {
   // 보기" 배너를 띄울지 판단하는 데만 쓴다 — 이 값이 있어도 AI 호출이나
   // 결과 생성 로직에는 전혀 영향을 주지 않는다.
   compareWithId?: string;
+  // 나 소개·성격(selfIntro) 결과 — idealTypeResult와 완전히 같은 역할을
+  // 하는 별도 필드다. TopicQuiz.tsx가 topic.id에 따라 이 필드와
+  // idealTypeResult 중 하나를 골라 쓴다(같은 필드를 공유하면 두 주제를
+  // 오가며 진행할 때 결과가 서로 덮어써진다).
+  selfIntroResult?: SelfIntroResult;
+  selfIntroQuizDepth?: "quick" | "deep";
+  selfIntroResuming?: boolean;
 };
 
 export type FactorMatrixItem = { id: string; text: string; kind: NodeKind; x: number; y: number };
@@ -124,6 +131,43 @@ export type IdealTypeResult = {
   // quizAnswers)만 보고 고정 사전에서 코드로 결정적으로 골라 여기 얹는다.
   // 이 필드가 생기기 전에 만들어진 결과·공유 링크는 undefined로 읽히고,
   // 화면은 그 경우 태그 줄만 생략하고 나머지는 그대로 보여준다.
+  tags?: string[];
+};
+
+// 나 소개·성격(selfIntro) 결과 — 이상형과 태그 4축(relationship/
+// lifestyle/experienceStressResponse/binary1)을 공유하지만, 질문은
+// "상대에게 원하는 것"이 아니라 "나는 실제로 어떻게 행동하는지"를
+// 묻는다(docs/NASOGAE_DESIGN.md 참고). 필드 이름은 이상형과 다르게
+// 붙였지만(coreValues/patterns/traits), selfReflection만은 발상이
+// 완전히 같아 그대로 재사용한다. 배열에 개수 제한을 두지 않는 이유는
+// 이상형과 동일(Structured Outputs가 maxItems/minItems를 지원하지
+// 않음) — engine/self-intro-generator.ts에서 코드로 자른다.
+export type SelfIntroCoreValues = { mustKeep: string[]; important: string[]; flexible: string[] };
+export type SelfIntroMatrixPoint = { label: string; description: string; x: number; y: number };
+export type SelfIntroMatrix = {
+  xAxisLabel: { low: string; high: string };
+  yAxisLabel: { low: string; high: string };
+  types: SelfIntroMatrixPoint[];
+};
+export type SelfIntroTraits = { strengths: string[]; cautions: string[] };
+export type SelfIntroRoadmapPhase = { label: string; actions: string[] };
+export type SelfIntroRoadmap = { firstAction: string; phases: SelfIntroRoadmapPhase[] };
+
+export type SelfIntroResult = {
+  version: number;
+  generatedAt: string;
+  model: "claude-sonnet-5";
+  title: string;
+  oneLiner: string;
+  coreValues: SelfIntroCoreValues;
+  patterns: string[];
+  matrix: SelfIntroMatrix;
+  traits: SelfIntroTraits;
+  selfReflection: IdealTypeSelfReflection;
+  roadmap: SelfIntroRoadmap;
+  // 이상형과 같은 4축·18개 태그 사전(engine/ideal-type-tags.ts)을 그대로
+  // 재사용한다 — 나소개×이상형 교차 비교(engine/compatibility.ts)가
+  // 성립하려면 두 결과의 태그가 같은 문자열 체계여야 한다.
   tags?: string[];
 };
 

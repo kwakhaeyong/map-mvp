@@ -74,14 +74,6 @@ const opacityClass = new RegExp(`(?:bg|text|border|fill|stroke|ring|divide|outli
 // 해둔다 — 등록되지 않은 새 위반만 실패시킨다. 목록에서 항목을 지우는
 // 것 자체가 "이 부분도 고쳤다"는 뜻이 되게 한다.
 const KNOWN_OPACITY_DEBT = {
-  // #92 자기성찰 다크 블록 — 오너 지시로 이번 스코프에서 의도적으로 제외.
-  "src/map-decision-v1/components/IdealTypeResultBlocks.tsx": [
-    "text-primary-foreground/70",
-    "bg-primary-foreground/15",
-    "border-primary-foreground/15",
-    "border-primary-foreground/25",
-    "text-primary-foreground/90",
-  ],
   // 퀴즈 화면 — 테스트 세션 중 화면 변경 금지로 이번 스코프에서 제외.
   "src/map-decision-v1/components/TopicQuiz.tsx": ["text-primary-foreground/80", "bg-primary-foreground/20"],
   // 진로(career) 자유 대화 화면 — 이번 스코프(이상형)에서 제외.
