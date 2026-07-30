@@ -12,6 +12,12 @@ export function getRedisClient(): Redis | null {
   if (client !== undefined) return client;
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) {
+    // client가 undefined인 동안만 이 분기를 타므로(위 얼리 리턴), 이 로그는
+    // 요청마다가 아니라 프로세스(함수 인스턴스)당 한 번만 찍힌다 — 별도
+    // 플래그 없이 기존 메모이제이션 변수를 그대로 재사용한다.
+    console.error("[redis-client] UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN not set — Redis unavailable");
+  }
   // 자동 파이프라이닝(같은 틱 안의 여러 호출을 한 요청으로 묶는 기능)은
   // 끈다 — 호출마다 단순한 단일 명령 요청이 되어 동작을 예측하기 쉽다.
   client = url && token ? new Redis({ url, token, enableAutoPipelining: false }) : null;

@@ -290,7 +290,18 @@ async function attemptGeneration(client: Anthropic, session: MapSession, maxToke
     }
     responseText = response.content.find((block) => block.type === "text")?.text;
   } catch (error) {
-    console.error("[self-intro-generator] Claude API call failed", error);
+    // status를 별도 필드로 분리해 Vercel 로그 검색으로 원인(401/429/타임아웃 등)을
+    // 바로 구분할 수 있게 한다. error 객체를 통째로 넘기지 않는 이유는 Anthropic
+    // SDK의 APIError.error(응답 JSON 본문)에 어떤 내용이 실릴지 보장할 수 없어서다
+    // — status/type/message처럼 원인 구분에 필요한 안전한 필드만 남긴다.
+    const status = error instanceof Anthropic.APIError ? error.status : undefined;
+    const type = error instanceof Anthropic.APIError ? error.type : undefined;
+    console.error("[self-intro-generator] Claude API call failed", {
+      status,
+      type,
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+    });
     return { result: null, truncated };
   }
 
@@ -349,7 +360,10 @@ const MAX_GENERATION_ATTEMPTS = 2;
 // never be imported from client components. The API route is the only caller.
 export async function generateSelfIntroResult(session: MapSession): Promise<SelfIntroResult | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.error("[self-intro-generator] ANTHROPIC_API_KEY not set");
+    return null;
+  }
 
   const client = new Anthropic({ apiKey });
   let maxTokens = SELF_INTRO_MAX_TOKENS;
