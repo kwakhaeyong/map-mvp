@@ -65,6 +65,16 @@ export function compareTags(aTags: string[], bTags: string[]): CompatibilityResu
     axes.push({ categoryId: category.id, label: category.label, same: aTag === bTag, aTag, bTag });
   }
   if (missingCategoryIds.length > 0) {
+    // 반환 타입에는 어느 쪽이 빠졌는지 담지 않는다(계약을 늘리지 않음) —
+    // 대신 이 함수만 접근 가능한 aByCategory/bByCategory를 이용해 로그에만
+    // a/b 구분을 남긴다. 태그 문자열 원본은 남기지 않는다(사용자 데이터).
+    const missingSides = missingCategoryIds.map((id) => {
+      const missingA = !aByCategory.get(id);
+      const missingB = !bByCategory.get(id);
+      const side = missingA && missingB ? "both" : missingA ? "a" : "b";
+      return `${id}:${side}`;
+    });
+    console.error(`[compatibility] comparison incomplete — ${missingSides.join(", ")}`);
     return { status: "incomplete", missingCategoryIds };
   }
   const overlapCount = axes.filter((axis) => axis.same).length;

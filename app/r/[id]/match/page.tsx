@@ -90,13 +90,9 @@ function CompatibilityResult({
 }) {
   const comparison = compareTags(aTags, bTags);
   if (comparison.status === "incomplete") {
-    // 태그 문자열 원본은 남기지 않는다(사용자 데이터) — 어느 축(카테고리
-    // id)이 빠졌는지만 남겨서, 태그 체계 개편 이전 데이터인지 조작된
-    // 요청인지 나중에 코드로 원인을 좁힐 수 있게 한다.
-    console.error(`[compatibility] comparison incomplete, missing categories: ${comparison.missingCategoryIds.join(",")}`);
-    return (
-      <NotFoundCard message="친구 결과가 예전 버전으로 만들어져서 지금은 궁합을 비교할 수 없어요. 새로 만든 결과끼리는 비교할 수 있어요." />
-    );
+    // 로그는 compareTags 내부에서 남긴다(a/b 어느 쪽이 빠졌는지까지
+    // 구분해서) — 여기서는 화면에 원인을 특정하지 않는 중립 안내만 보여준다.
+    return <NotFoundCard message="지금은 두 결과를 비교할 수 없어요. 새로 만든 결과끼리는 비교할 수 있어요." />;
   }
   const { overlapCount, tier, axes } = comparison;
   const sentences = buildAxisSentences(axes);
