@@ -41,7 +41,7 @@ function SectionNav() {
           <a
             key={item.id}
             href={`#${item.id}`}
-            className="inline-flex min-h-8 shrink-0 items-center rounded-pill border border-border bg-surface-elevated px-3 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
+            className="inline-flex min-h-8 shrink-0 items-center rounded-pill border border-border bg-surface-elevated px-1.5 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
           >
             {item.label}
           </a>

@@ -41,10 +41,17 @@ const NAV_ITEMS: Array<{ id: string; label: string }> = [
 // "지금 어디로도 한 번에 갈 수 있다"는 감각만 항상 쥐여준다.
 // flex-wrap 대신 overflow-x-auto+shrink-0으로 바꿨다 — 줄바꿈되면
 // sticky 바 자체가 두 배로 두꺼워져 375px 화면을 많이 잠식하기
-// 때문이다. 375px 뷰포트(콘텐츠 폭 343px)에서 실측한 결과 이 6개
-// 라벨조차 이미 5px 정도 넘쳐서 가로 스크롤이 실제로 발동한다 — 처음
-// 예상과 달리 여유가 없는 상태였다. flex-wrap이었다면 이 5px 초과분
-// 때문에 곧바로 두 줄로 갈라졌을 것이다.
+// 때문이다.
+//
+// 알약 패딩(px-1.5)은 처음엔 px-3이었다 — 375px 뷰포트(콘텐츠 폭
+// 343px)에서 실측했더니 이 6개 라벨조차 약 5px 넘쳐서 가로 스크롤이
+// 발동했는데, 5px 정도는 사용자가 "스크롤 가능하다"고 알아채기엔
+// 너무 작아서 마지막 알약이 그냥 살짝 잘려 보이는 것처럼 느껴지는
+// 애매한 상태였다. px-1.5로 줄이자 375px에서 완전히 한 줄에
+// 들어가고(여유 약 43px), 320px(구형 기기 기준, 콘텐츠 폭 288px)에서도
+// 넘치지 않는 것까지 실측으로 확인했다 — 글자 크기(text-xs, 12px)는
+// 그대로 뒀다. overflow-x-auto 구조 자체는 남겨뒀다 — 나중에 라벨이
+// 길어지면 다시 필요해질 안전장치다.
 // bg-background는 커스텀 토큰이라 슬래시 투명도(bg-background/95 등)를
 // 쓰면 design:check(#116)에 걸린다 — 불투명 solid로 충분히 아래
 // 내용을 가린다.
@@ -56,7 +63,7 @@ function SectionNav() {
           <a
             key={item.id}
             href={`#${item.id}`}
-            className="inline-flex min-h-8 shrink-0 items-center rounded-pill border border-border bg-surface-elevated px-3 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
+            className="inline-flex min-h-8 shrink-0 items-center rounded-pill border border-border bg-surface-elevated px-1.5 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
           >
             {item.label}
           </a>
