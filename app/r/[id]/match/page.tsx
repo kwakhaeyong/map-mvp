@@ -88,7 +88,17 @@ function CompatibilityResult({
   // 검증 실패 등) 기존 "나도 MAP 만들어보기" CTA로 조용히 대체한다.
   myShare: { id: string; title: string; oneLiner: string } | null;
 }) {
-  const { overlapCount, tier, axes } = compareTags(aTags, bTags);
+  const comparison = compareTags(aTags, bTags);
+  if (comparison.status === "incomplete") {
+    // 태그 문자열 원본은 남기지 않는다(사용자 데이터) — 어느 축(카테고리
+    // id)이 빠졌는지만 남겨서, 태그 체계 개편 이전 데이터인지 조작된
+    // 요청인지 나중에 코드로 원인을 좁힐 수 있게 한다.
+    console.error(`[compatibility] comparison incomplete, missing categories: ${comparison.missingCategoryIds.join(",")}`);
+    return (
+      <NotFoundCard message="친구 결과가 예전 버전으로 만들어져서 지금은 궁합을 비교할 수 없어요. 새로 만든 결과끼리는 비교할 수 있어요." />
+    );
+  }
+  const { overlapCount, tier, axes } = comparison;
   const sentences = buildAxisSentences(axes);
   return (
     <>
