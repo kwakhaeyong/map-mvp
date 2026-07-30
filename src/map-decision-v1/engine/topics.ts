@@ -1776,7 +1776,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     resultFocus: "",
     entryQuestion: "요즘 나를 한마디로 표현하면 뭐예요?",
     entryChips: ["에너지가 넘쳐요", "차분한 편이에요", "잘 모르겠어요"],
-    implemented: false,
+    implemented: true,
   },
   loveStyle: {
     id: "loveStyle",
