@@ -12,7 +12,7 @@ const buttonVariants: Record<Variant, string> = {
   primary: "border border-primary bg-primary text-primary-foreground shadow-subtle hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-floating",
   secondary: "border border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:border-border-strong hover:bg-surface-elevated hover:shadow-floating",
   ghost: "border border-transparent bg-transparent text-text-secondary hover:bg-surface hover:text-text-primary",
-  danger: "border border-error/30 bg-risk text-text-primary hover:-translate-y-0.5 hover:border-error hover:shadow-floating",
+  danger: "border border-error-soft-border bg-risk text-text-primary hover:-translate-y-0.5 hover:border-error hover:shadow-floating",
   // 채우지 않고 테두리만 브랜드 색을 써서 "보조 기능"으로 톤을 낮추되
   // 완전히 존재감을 지우지는 않는다(VoiceButton이 건너뛰기의 대안임을
   // 알아차릴 수는 있어야 한다). primary처럼 꽉 찬 배경이 아니라서

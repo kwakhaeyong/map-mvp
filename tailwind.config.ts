@@ -36,6 +36,8 @@ const config: Config = {
         "primary-foreground-strong": "var(--color-primary-foreground-strong)",
         "primary-foreground-wash": "var(--color-primary-foreground-wash)",
         "primary-foreground-wash-strong": "var(--color-primary-foreground-wash-strong)",
+        "error-soft-border": "var(--color-error-soft-border)",
+        "primary-border-soft": "var(--color-primary-border-soft)",
       },
       borderRadius: {
         small: "var(--radius-small)",
