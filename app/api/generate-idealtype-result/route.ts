@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateIdealTypeResult } from "../../../src/map-decision-v1/engine/ideal-type-generator";
 import {
-  acquireGenerationLockOrWaitForCache,
   computeGenerationCacheKey,
   getCachedGeneration,
-  releaseGenerationLock,
   setCachedGeneration,
 } from "../../../src/map-decision-v1/engine/generation-cache";
 import {
@@ -92,15 +90,6 @@ export async function POST(request: NextRequest) {
     console.log("[generation-cache] hit, skip reservation");
     return NextResponse.json({ result: cachedBeforeReservation } satisfies SuccessResponse);
   }
-
-  // 같은 키로 생성이 이미 진행 중이면 그 결과가 캐시에 채워지길 짧게
-  // 기다린다 — 락을 못 잡거나 대기 중 캐시가 안 채워지면 이 요청이 직접
-  // 생성한다(best-effort, generation-cache.ts 주석 참고).
-  const lock = await acquireGenerationLockOrWaitForCache<IdealTypeResult>(cacheKey);
-  if (!lock.acquired && lock.cached) {
-    console.log("[generation-cache] hit after lock wait, skip reservation");
-    return NextResponse.json({ result: lock.cached } satisfies SuccessResponse);
-  }
   console.log("[generation-cache] miss, proceeding to generate");
 
   const ip = getClientIp(request);
@@ -112,7 +101,6 @@ export async function POST(request: NextRequest) {
   // releaseGenerationSlotOnFailure로 세션/IP 몫만 되돌린다.
   const reservation = await reserveGenerationSlot(ip, session.startedAt);
   if (!reservation.allowed) {
-    if (lock.acquired) await releaseGenerationLock(cacheKey);
     const message =
       reservation.reason === "session_limit"
         ? "이 카드에서 만들 수 있는 횟수를 모두 사용했어요. 새로 시작해 주세요."
@@ -142,7 +130,6 @@ export async function POST(request: NextRequest) {
   const result = await generateIdealTypeResult(session);
   if (!result) {
     await releaseGenerationSlotOnFailure(ip, session.startedAt);
-    if (lock.acquired) await releaseGenerationLock(cacheKey);
     return NextResponse.json(
       { blocked: true, reason: "generation_failed", message: "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
       { status: 502 },
@@ -150,7 +137,6 @@ export async function POST(request: NextRequest) {
   }
 
   await setCachedGeneration(cacheKey, result);
-  if (lock.acquired) await releaseGenerationLock(cacheKey);
 
   return NextResponse.json({ result } satisfies SuccessResponse);
 }
