@@ -815,6 +815,44 @@ function resolvePhase(step: number, requiredAxes: TopicAxis[], optionalAxes: Top
   return { kind: "closing" };
 }
 
+// 결과 화면 블록 이름을 그대로 옮긴 것 — AI가 만드는 문구가 아니라
+// IdealTypeResultBlocks.tsx/SelfIntroResultBlocks.tsx의 SectionHeader
+// title과 정확히 같은 문자열이다(둘 중 하나가 바뀌면 여기도 맞춰 바꿔야
+// 한다). 퀴즈 화면에 "완주하면 이런 걸 받는다"를 상시 노출해 완주
+// 동기를 준다 — 문항 자체를 늘리거나 바꾸지 않고 화면에만 추가하는
+// 정보라 topics.ts(문항·선택지)는 건드리지 않는다.
+const RESULT_BLOCK_PREVIEW: Record<string, string[]> = {
+  idealType: ["이상형 기준", "끌림 패턴", "끌림 × 관계 적합도", "신호등", "자기 성찰", "로드맵"],
+  selfIntro: ["핵심 가치관", "반복되는 패턴", "나의 여러 모습", "특징", "자기 성찰", "로드맵"],
+};
+
+// 기본은 접힌 한 줄 요약 — 문항을 밀어내지 않으면서 "완주하면 이만큼
+// 받는다"는 걸 계속 인지시킨다. 펼치면 블록 이름을 그대로 보여준다.
+function CompletionPreview({ blocks }: { blocks: string[] }) {
+  const [expanded, setExpanded] = useState(false);
+  if (blocks.length === 0) return null;
+  return (
+    <div className="mt-3 rounded-large border border-border bg-surface px-4 py-2.5">
+      <button
+        type="button"
+        onClick={() => setExpanded((current) => !current)}
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between gap-2 text-left text-xs font-extrabold text-text-secondary"
+      >
+        <span>완주하면 {blocks.length}가지를 받아요</span>
+        <span aria-hidden="true">{expanded ? "▲" : "▾"}</span>
+      </button>
+      {expanded ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {blocks.map((block) => (
+            <Badge key={block}>{block}</Badge>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function TopicQuiz({
   session,
   setSession,
@@ -927,13 +965,13 @@ export function TopicQuiz({
   let progressPercent: number;
   let progressHint: string | null = null;
   if (phase.kind === "required") {
-    progressLabel = `${phase.index + 1}/${requiredAxes.length}`;
+    progressLabel = `${phase.index + 1} / ${requiredAxes.length}`;
     progressPercent = ((phase.index + 1) / requiredAxes.length) * 100;
     if (phase.index === 0 && optionalAxes.length > 0) {
       progressHint = `${requiredAxes.length}개 질문에 답하면 결과가 나와요. 더 깊이 알고 싶으면 ${optionalAxes.length}개를 추가로 답할 수 있어요.`;
     }
   } else if (phase.kind === "optional") {
-    progressLabel = `심화 ${phase.index + 1}/${optionalAxes.length}`;
+    progressLabel = `심화 ${phase.index + 1} / ${optionalAxes.length}`;
     progressPercent = ((phase.index + 1) / optionalAxes.length) * 100;
   } else if (phase.kind === "decision") {
     progressLabel = "필수 질문 완료";
@@ -976,6 +1014,7 @@ export function TopicQuiz({
           {progressLabel} · {phase.kind === "optional" ? "여기서 나가도 지금까지 답한 건 저장돼요" : "자동 저장됨"}
         </p>
         {progressHint ? <p className="mt-0.5 text-xs font-semibold text-text-secondary">{progressHint}</p> : null}
+        <CompletionPreview blocks={RESULT_BLOCK_PREVIEW[topic.id] ?? []} />
       </section>
 
       <section className={cx("map-container flex flex-col gap-6 pb-10 pt-8")}>
