@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateSelfIntroResult } from "../../../src/map-decision-v1/engine/self-intro-generator";
 import {
+  acquireGenerationLockOrWaitForCache,
+  computeGenerationCacheKey,
+  getCachedGeneration,
+  releaseGenerationLock,
+  setCachedGeneration,
+} from "../../../src/map-decision-v1/engine/generation-cache";
+import {
   MAX_INPUT_LENGTH,
   getClientIp,
   isTrustedRequestOrigin,
@@ -61,11 +68,32 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 같은 답변으로 이미 만든 결과가 있으면 레이트리밋 예약(reserveGenerationSlot)
+  // 자체를 건드리지 않고 바로 돌려준다 — 백그라운드 전환 후 재요청처럼
+  // "같은 사람이 같은 답변으로 다시 요청"한 경우 슬롯을 소모하지 않는다.
+  const cacheKey = computeGenerationCacheKey("selfIntro", session);
+  const cachedBeforeReservation = await getCachedGeneration<SelfIntroResult>(cacheKey);
+  if (cachedBeforeReservation) {
+    console.log("[generation-cache] hit, skip reservation");
+    return NextResponse.json({ result: cachedBeforeReservation } satisfies SuccessResponse);
+  }
+
+  // 같은 키로 생성이 이미 진행 중이면 그 결과가 캐시에 채워지길 짧게
+  // 기다린다 — 락을 못 잡거나 대기 중 캐시가 안 채워지면 이 요청이 직접
+  // 생성한다(best-effort, generation-cache.ts 주석 참고).
+  const lock = await acquireGenerationLockOrWaitForCache<SelfIntroResult>(cacheKey);
+  if (!lock.acquired && lock.cached) {
+    console.log("[generation-cache] hit after lock wait, skip reservation");
+    return NextResponse.json({ result: lock.cached } satisfies SuccessResponse);
+  }
+  console.log("[generation-cache] miss, proceeding to generate");
+
   const ip = getClientIp(request);
   // 이상형·진로와 같은 레이트리밋 예산을 공유한다(엔드포인트만 분리,
   // 안전장치는 그대로 재사용 — engine/rate-limit.ts는 건드리지 않는다).
   const reservation = await reserveGenerationSlot(ip, session.startedAt);
   if (!reservation.allowed) {
+    if (lock.acquired) await releaseGenerationLock(cacheKey);
     const message =
       reservation.reason === "session_limit"
         ? "이 카드에서 만들 수 있는 횟수를 모두 사용했어요. 새로 시작해 주세요."
@@ -95,11 +123,15 @@ export async function POST(request: NextRequest) {
   const result = await generateSelfIntroResult(session);
   if (!result) {
     await releaseGenerationSlotOnFailure(ip, session.startedAt);
+    if (lock.acquired) await releaseGenerationLock(cacheKey);
     return NextResponse.json(
       { blocked: true, reason: "generation_failed", message: "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
       { status: 502 },
     );
   }
+
+  await setCachedGeneration(cacheKey, result);
+  if (lock.acquired) await releaseGenerationLock(cacheKey);
 
   return NextResponse.json({ result } satisfies SuccessResponse);
 }
