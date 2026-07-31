@@ -88,7 +88,13 @@ function CompatibilityResult({
   // 검증 실패 등) 기존 "나도 MAP 만들어보기" CTA로 조용히 대체한다.
   myShare: { id: string; title: string; oneLiner: string } | null;
 }) {
-  const { overlapCount, tier, axes } = compareTags(aTags, bTags);
+  const comparison = compareTags(aTags, bTags);
+  if (comparison.status === "incomplete") {
+    // 로그는 compareTags 내부에서 남긴다(a/b 어느 쪽이 빠졌는지까지
+    // 구분해서) — 여기서는 화면에 원인을 특정하지 않는 중립 안내만 보여준다.
+    return <NotFoundCard message="지금은 두 결과를 비교할 수 없어요. 새로 만든 결과끼리는 비교할 수 있어요." />;
+  }
+  const { overlapCount, tier, axes } = comparison;
   const sentences = buildAxisSentences(axes);
   return (
     <>
