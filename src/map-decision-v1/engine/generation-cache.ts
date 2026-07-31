@@ -15,9 +15,6 @@ import { getRedisClient } from "./redis-client";
 // 건드리지 않는다 — 서버가 그 재요청을 받아내는 쪽만 고친다.
 
 const GENERATION_CACHE_TTL_SECONDS = 30 * 60; // 30분 — 아래 computeGenerationCacheKey 주석 참고
-const GENERATION_LOCK_TTL_SECONDS = 60; // 아래 acquireGenerationLockOrWaitForCache 주석 참고
-const LOCK_WAIT_POLL_MS = 1500;
-const LOCK_WAIT_TIMEOUT_MS = 9000;
 
 export type GenerationTopic = "idealType" | "selfIntro";
 
@@ -60,10 +57,6 @@ export function computeGenerationCacheKey(topic: GenerationTopic, session: MapSe
   return `gen-cache:${topic}:${hash}`;
 }
 
-function lockKeyFor(cacheKey: string): string {
-  return `gen-lock:${cacheKey}`;
-}
-
 // Redis 연결이 없거나 명령이 실패하면 캐시를 조용히 건너뛰고 기존 경로
 // (레이트리밋 → 생성)로 그대로 진행한다. 레이트리밋의 fail-closed와는
 // 다른 성격이다 — 레이트리밋은 "확인 못 하면 막아야" 비용 방어가
@@ -101,51 +94,5 @@ export async function setCachedGeneration(cacheKey: string, result: unknown): Pr
     await redis.set(cacheKey, JSON.stringify(result), { ex: GENERATION_CACHE_TTL_SECONDS });
   } catch (error) {
     console.error("[generation-cache] write failed", error);
-  }
-}
-
-export type LockWaitResult<T> = { acquired: true } | { acquired: false; cached: T | null };
-
-// 같은 캐시 키로 생성이 이미 진행 중이면(리셋 직후 재요청과, 아직 끝나지
-// 않은 이전 요청이 겹치는 경우 등), 그 생성이 끝나 캐시가 채워지길 짧게
-// 기다렸다가 재사용한다 — Anthropic을 두 번 부르는 걸 줄인다.
-//
-// Redis SET NX EX로 락을 잡는다. 락을 못 잡으면(다른 요청이 이미 생성
-// 중) 캐시를 짧게 폴링하고, 그래도 안 나오면 포기하고 이 요청이 직접
-// 생성하게 한다 — 완벽한 상호 배제가 아니라 "흔한 경우만 줄이는"
-// best-effort다. ★락 TTL(60초)을 반드시 두는 이유: 락을 잡은 요청이
-// 죽거나(함수 크래시, 타임아웃) 응답을 못 받아 releaseGenerationLock을
-// 못 부르는 경우에도, 60초 뒤에는 락이 저절로 풀려서 다음 요청이 영원히
-// 막히지 않는다. 대기 자체도 9초로 상한을 둬서(LOCK_WAIT_TIMEOUT_MS),
-// 락을 못 잡은 요청이 무한정 기다리다 자기 자신이 타임아웃되는 일이
-// 없게 한다.
-export async function acquireGenerationLockOrWaitForCache<T>(cacheKey: string): Promise<LockWaitResult<T>> {
-  const redis = getRedisClient();
-  if (!redis) return { acquired: true }; // Redis 없으면 락도 스킵 — 매번 직접 생성(기존 동작)
-  const lockKey = lockKeyFor(cacheKey);
-  try {
-    const acquired = await redis.set(lockKey, "1", { ex: GENERATION_LOCK_TTL_SECONDS, nx: true });
-    if (acquired === "OK") return { acquired: true };
-  } catch (error) {
-    console.error("[generation-cache] lock acquire failed", error);
-    return { acquired: true }; // 락 확인 자체가 실패하면 직접 생성(안전한 기본값)
-  }
-
-  const deadline = Date.now() + LOCK_WAIT_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, LOCK_WAIT_POLL_MS));
-    const cached = await getCachedGeneration<T>(cacheKey);
-    if (cached) return { acquired: false, cached };
-  }
-  return { acquired: false, cached: null };
-}
-
-export async function releaseGenerationLock(cacheKey: string): Promise<void> {
-  const redis = getRedisClient();
-  if (!redis) return;
-  try {
-    await redis.del(lockKeyFor(cacheKey));
-  } catch (error) {
-    console.error("[generation-cache] lock release failed", error);
   }
 }
