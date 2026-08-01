@@ -828,16 +828,29 @@ const RESULT_BLOCK_PREVIEW: Record<string, string[]> = {
 
 // 기본은 접힌 한 줄 요약 — 문항을 밀어내지 않으면서 "완주하면 이만큼
 // 받는다"는 걸 계속 인지시킨다. 펼치면 블록 이름을 그대로 보여준다.
-function CompletionPreview({ blocks }: { blocks: string[] }) {
-  const [expanded, setExpanded] = useState(false);
+//
+// PR #137 배포 후 오너가 실제로 완주하면서 이 요소를 알아채지 못했다는
+// 피드백을 받아 두 가지를 조정했다: (1) 바로 위 진행률 줄(text-xs·
+// text-text-muted/text-text-secondary)과 글자 크기·색이 사실상
+// 같아서 "그냥 메타 텍스트 중 하나"로 묻혔다 — text-sm·text-text-primary·
+// bg-surface-elevated·shadow-subtle로 한 단계만 올려서 문항 제목
+// (text-xl)과 완전히 겹치지 않으면서도 주변 두 줄보다는 눈에 띄게
+// 했다. (2) 첫 문항에서만 펼친 채로 시작해서 "이게 뭔지" 한 번은
+// 확실히 보여주고, 두 번째 문항으로 넘어가면 자동으로 접는다 — 그
+// 뒤로는 기존처럼 탭해서 여닫는 한 줄 요약으로 돌아간다.
+function CompletionPreview({ blocks, autoExpandFirst }: { blocks: string[]; autoExpandFirst: boolean }) {
+  const [expanded, setExpanded] = useState(autoExpandFirst);
+  useEffect(() => {
+    if (!autoExpandFirst) setExpanded(false);
+  }, [autoExpandFirst]);
   if (blocks.length === 0) return null;
   return (
-    <div className="mt-3 rounded-large border border-border bg-surface px-4 py-2.5">
+    <div className="mt-3 rounded-large border border-border-strong bg-surface-elevated px-4 py-2.5 shadow-subtle">
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
         aria-expanded={expanded}
-        className="flex w-full items-center justify-between gap-2 text-left text-xs font-extrabold text-text-secondary"
+        className="flex w-full items-center justify-between gap-2 text-left text-sm font-extrabold text-text-primary"
       >
         <span>완주하면 {blocks.length}가지를 받아요</span>
         <span aria-hidden="true">{expanded ? "▲" : "▾"}</span>
@@ -1014,7 +1027,10 @@ export function TopicQuiz({
           {progressLabel} · {phase.kind === "optional" ? "여기서 나가도 지금까지 답한 건 저장돼요" : "자동 저장됨"}
         </p>
         {progressHint ? <p className="mt-0.5 text-xs font-semibold text-text-secondary">{progressHint}</p> : null}
-        <CompletionPreview blocks={RESULT_BLOCK_PREVIEW[topic.id] ?? []} />
+        <CompletionPreview
+          blocks={RESULT_BLOCK_PREVIEW[topic.id] ?? []}
+          autoExpandFirst={phase.kind === "required" && phase.index === 0}
+        />
       </section>
 
       <section className={cx("map-container flex flex-col gap-6 pb-10 pt-8")}>
