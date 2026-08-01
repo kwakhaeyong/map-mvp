@@ -123,7 +123,7 @@ function OptionChip({
       )}
     >
       <span className={cx("font-extrabold tracking-[-0.01em]", compact ? "text-sm" : "text-base")}>{choice.label}</span>
-      <span className={cx("text-xs font-medium", isSelected ? "text-primary-foreground/80" : "text-text-muted")}>{choice.description}</span>
+      <span className={cx("text-xs font-medium", isSelected ? "text-primary-foreground-soft" : "text-text-muted")}>{choice.description}</span>
     </button>
   );
 }
@@ -386,7 +386,7 @@ function QuickTapStep({
               <span
                 className={cx(
                   "text-[11px] font-medium transition-colors duration-normal ease-emphasized",
-                  isSelected ? "text-primary-foreground/80" : "text-text-muted group-hover:text-primary-foreground/80",
+                  isSelected ? "text-primary-foreground-soft" : "text-text-muted group-hover:text-primary-foreground-soft",
                 )}
               >
                 {option.description}
@@ -606,14 +606,14 @@ function RankingStep({
               <span
                 className={cx(
                   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black",
-                  rank ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background-subtle text-text-muted",
+                  rank ? "bg-primary-foreground-wash text-primary-foreground" : "bg-background-subtle text-text-muted",
                 )}
               >
                 {rank ?? ""}
               </span>
               <span className="flex flex-col gap-0.5">
                 <span className="font-extrabold tracking-[-0.01em]">{option.label}</span>
-                <span className={cx("text-xs font-medium", rank ? "text-primary-foreground/80" : "text-text-muted")}>{option.description}</span>
+                <span className={cx("text-xs font-medium", rank ? "text-primary-foreground-soft" : "text-text-muted")}>{option.description}</span>
               </span>
             </button>
           );

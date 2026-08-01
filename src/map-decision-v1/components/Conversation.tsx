@@ -276,7 +276,7 @@ export function Conversation({
             </p>
           ) : null}
           {!session.isDemo && isReadyForResult(session) ? (
-            <div className="border-t border-border bg-primary/5 px-3 py-3 sm:px-4">
+            <div className="border-t border-border bg-ink-wash px-3 py-3 sm:px-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-black text-text-primary">
                   지금까지 내용으로 결과를 만들 수 있어요

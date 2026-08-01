@@ -140,7 +140,7 @@ export function Landing({
         <button
           type="button"
           onClick={() => handleLocked(safetyNetTopic)}
-          className="flex w-full flex-col items-start gap-1 rounded-large border border-dashed border-border-strong bg-surface/60 p-4 text-left transition hover:border-primary/40"
+          className="flex w-full flex-col items-start gap-1 rounded-large border border-dashed border-border-strong bg-surface/60 p-4 text-left transition hover:border-primary-border-soft"
         >
           <span className="text-xs font-black text-text-muted">딱 맞는 게 없나요?</span>
           <span className="text-sm font-bold">
