@@ -9,13 +9,12 @@ import {
   releaseGenerationSlotOnFailure,
   reserveGenerationSlot,
 } from "../../../src/map-decision-v1/engine/rate-limit";
-import { FinalResult, MapSession, ResultBlockKey } from "../../../src/map-decision-v1/types";
-
-const RESULT_BLOCK_KEYS: ResultBlockKey[] = ["factorMatrix", "scenarios", "timeline", "insights"];
+import { careerBlockScope, signResult } from "../../../src/map-decision-v1/engine/result-signature";
+import { FinalResult, MapSession, RESULT_BLOCK_KEYS, ResultBlockKey } from "../../../src/map-decision-v1/types";
 
 type RequestBody = { session: MapSession; block?: ResultBlockKey };
-type SuccessResponse = { result: FinalResult };
-type BlockSuccessResponse = { block: ResultBlockKey; value: unknown };
+type SuccessResponse = { result: FinalResult; blockSignatures: Partial<Record<ResultBlockKey, string | null>> };
+type BlockSuccessResponse = { block: ResultBlockKey; value: unknown; signature: string | null };
 type BlockedResponse = { blocked: true; reason: string; message: string };
 
 function isResultBlockKey(value: unknown): value is ResultBlockKey {
@@ -109,7 +108,7 @@ export async function POST(request: NextRequest) {
         { status: 502 },
       );
     }
-    return NextResponse.json({ block, value } satisfies BlockSuccessResponse);
+    return NextResponse.json({ block, value, signature: signResult(careerBlockScope(block), value) } satisfies BlockSuccessResponse);
   }
 
   const result = await generateFinalResult(session);
@@ -121,5 +120,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ result } satisfies SuccessResponse);
+  const blockSignatures: Partial<Record<ResultBlockKey, string | null>> = {};
+  for (const key of RESULT_BLOCK_KEYS) {
+    blockSignatures[key] = signResult(careerBlockScope(key), result[key]);
+  }
+
+  return NextResponse.json({ result, blockSignatures } satisfies SuccessResponse);
 }

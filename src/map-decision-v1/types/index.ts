@@ -66,6 +66,16 @@ export type MapSession = {
   selfIntroResult?: SelfIntroResult;
   selfIntroQuizDepth?: "quick" | "deep";
   selfIntroResuming?: boolean;
+  // /api/share가 "이 서버가 실제로 만든 결과인가"를 검증할 때 쓰는 HMAC
+  // 서명(engine/result-signature.ts). 생성 라우트가 결과와 함께 내려주고,
+  // 공유 시에만 그대로 옆에 실어 보낸다 — 대화 원문처럼 민감한 값이
+  // 아니라 그냥 16진수 문자열이라 세션에 그대로 저장해도 된다.
+  idealTypeResultSignature?: string | null;
+  selfIntroResultSignature?: string | null;
+  // 진로 결과는 블록별로 따로 재생성할 수 있어(Result.tsx의
+  // regenerateBlock), 결과 전체가 아니라 블록마다 독립된 서명을 가진다 —
+  // 한 블록만 다시 만들어도 그 블록의 서명만 갱신되고 나머지는 그대로다.
+  resultBlockSignatures?: Partial<Record<ResultBlockKey, string | null>>;
 };
 
 export type FactorMatrixItem = { id: string; text: string; kind: NodeKind; x: number; y: number };
@@ -97,6 +107,10 @@ export type FinalResult = {
 };
 
 export type ResultBlockKey = "factorMatrix" | "scenarios" | "timeline" | "insights";
+// generate-result/route.ts(생성)와 share/route.ts(공유 저장 시 서명 검증)가
+// 같은 블록 목록을 써야 한다 — 한쪽만 목록을 바꾸면 새/삭제된 블록의
+// 서명이 조용히 검증되지 않거나 항상 실패하게 된다.
+export const RESULT_BLOCK_KEYS: ResultBlockKey[] = ["factorMatrix", "scenarios", "timeline", "insights"];
 
 // 이상형 결과는 "입력을 정리"하는 게 아니라 "입력을 재료로 발견을 주는"
 // 7요소 구조다. 배열은 전부 개수 제한 없이(Structured Outputs가
