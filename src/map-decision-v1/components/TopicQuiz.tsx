@@ -817,6 +817,52 @@ function resolvePhase(step: number, requiredAxes: TopicAxis[], optionalAxes: Top
   return { kind: "closing" };
 }
 
+// 마무리 질문(closing)은 topics.ts의 axis가 아니라 topic.closingPrompt
+// 고정 문자열이라 axisId가 없었다 — 그래서 "이전"으로 되돌아갔다가 다시
+// 답해도 옛 메시지가 안 지워지고 쌓였다. 다른 문항과 같은 방식으로
+// 정리할 수 있게 이 화면 안에서만 쓰는 고정 id를 하나 준다(topics.ts는
+// 건드리지 않는다 — 실제 axis가 아니라 이 컴포넌트 내부 부기용 값).
+const CLOSING_AXIS_ID = "closing";
+
+// step(포함) 이후에 위치한 필수·심화 문항의 axisId를 모은다 — "되돌아간
+// 지점부터 그 뒤 전부"를 지우기 위한 대상 목록. 필수·심화 문항이 전부
+// 이 하나의 함수로 처리된다(문항 종류마다 따로 분기하지 않는다). 요구
+// 인덱스로 직접 계산한다 — resolvePhase로 step을 하나씩 훑는 방식은
+// 시도했다가 버렸다: resolvePhase는 "빠른 경로"(requiredCount+1)와
+// "심화 경로"(requiredCount+2+심화개수) 두 서로 다른 step 번호를 똑같이
+// closing으로 해석해서, step을 그대로 훑으면 심화 쪽 closing 번호가
+// 얕은 목표 범위에도 우연히 걸려(심화 문항 하나로 돌아갔을 뿐인데 심화
+// 경로의 closing 번호가 그 뒤에 있어 같이 지워짐) 방금 빠른 경로로 막
+// 제출한 마무리 답변까지 지워버리는 걸 실제로 재현해서 확인했다.
+//
+// 그래서 마무리 질문(closing)은 이 목록에 아예 넣지 않는다 — 다시
+// 제출할 때 commitAnswer의 axisId 필터가 옛 것을 교체하는 것만으로
+// 충분하다(자유 서술 한 덩어리라, 옛 답이 잠깐 남아있어도 이상형 태그
+// 매핑처럼 실제 모순을 만들지 않는다).
+function collectAxisIdsFrom(step: number, requiredAxes: TopicAxis[], optionalAxes: TopicAxis[]): Set<string> {
+  const requiredCount = requiredAxes.length;
+  const ids = new Set<string>();
+  for (let i = Math.max(step, 0); i < requiredCount; i++) ids.add(requiredAxes[i].id);
+  optionalAxes.forEach((axis, index) => {
+    if (requiredCount + 2 + index >= step) ids.add(axis.id);
+  });
+  return ids;
+}
+
+// step 이후 axisId에 걸린 메시지·quizAnswers 항목을 지운 새 세션을
+// 돌려준다. 지울 게 없으면 원본 객체를 그대로 돌려줘 불필요한 리렌더를
+// 만들지 않는다.
+function pruneFromStep(current: MapSession, step: number, requiredAxes: TopicAxis[], optionalAxes: TopicAxis[]): MapSession {
+  const invalidIds = collectAxisIdsFrom(step, requiredAxes, optionalAxes);
+  if (invalidIds.size === 0) return current;
+  const nextMessages = current.messages.filter((message) => !message.axisId || !invalidIds.has(message.axisId));
+  const nextQuizAnswers = current.quizAnswers
+    ? Object.fromEntries(Object.entries(current.quizAnswers).filter(([axisId]) => !invalidIds.has(axisId)))
+    : current.quizAnswers;
+  if (nextMessages.length === current.messages.length && nextQuizAnswers === current.quizAnswers) return current;
+  return { ...current, messages: nextMessages, quizAnswers: nextQuizAnswers };
+}
+
 // 결과 화면 블록 이름을 그대로 옮긴 것 — AI가 만드는 문구가 아니라
 // IdealTypeResultBlocks.tsx/SelfIntroResultBlocks.tsx의 SectionHeader
 // title과 정확히 같은 문자열이다(둘 중 하나가 바뀌면 여기도 맞춰 바꿔야
@@ -946,16 +992,30 @@ export function TopicQuiz({
         axisId && selectedTopLevelLabels && selectedTopLevelLabels.length > 0
           ? { ...current.quizAnswers, [axisId]: selectedTopLevelLabels }
           : current.quizAnswers;
-      return { ...current, messages: nextMessages, quizAnswers: nextQuizAnswers, quizStep: (current.quizStep ?? 0) + 1, updatedAt: timestamp };
+      const nextStep = (current.quizStep ?? 0) + 1;
+      // 방금 답한 축(axisId) 자체는 위에서 이미 교체했지만, 이전에 이보다
+      // 더 깊이 진행했다가 되돌아온 경우(예: 심화 문항까지 답한 뒤 필수
+      // 문항으로 돌아가 다시 답하는 경우) 그보다 뒤에 남아있는 옛 메시지도
+      // 함께 정리한다 — 사용자가 다시 그 지점까지 걸어가길 기다리지
+      // 않고 즉시 정리한다.
+      const pruned = pruneFromStep({ ...current, messages: nextMessages, quizAnswers: nextQuizAnswers }, nextStep, requiredAxes, optionalAxes);
+      return { ...pruned, quizStep: nextStep, updatedAt: timestamp };
     });
   };
 
   const goBack = () => {
-    setSession((current) => ({ ...current, quizStep: Math.max(0, (current.quizStep ?? 0) - 1) }));
+    setSession((current) => {
+      const nextStep = Math.max(0, (current.quizStep ?? 0) - 1);
+      const pruned = pruneFromStep(current, nextStep, requiredAxes, optionalAxes);
+      return { ...pruned, quizStep: nextStep, updatedAt: now() };
+    });
   };
 
   const jumpTo = (nextStep: number) => {
-    setSession((current) => ({ ...current, quizStep: nextStep, updatedAt: now() }));
+    setSession((current) => {
+      const pruned = pruneFromStep(current, nextStep, requiredAxes, optionalAxes);
+      return { ...pruned, quizStep: nextStep, updatedAt: now() };
+    });
   };
 
   // 결과를 이미 본 뒤 "6개 더 답하기"로 돌아온 경우(session.idealTypeResuming)
@@ -1047,7 +1107,7 @@ export function TopicQuiz({
             prompt={topic.closingPrompt ?? "더 하고 싶은 말이 있나요?"}
             onBack={goBack}
             onSubmit={(answerText) => {
-              commitAnswer(topic.closingPrompt ?? "더 하고 싶은 말이 있나요?", answerText);
+              commitAnswer(topic.closingPrompt ?? "더 하고 싶은 말이 있나요?", answerText, CLOSING_AXIS_ID);
               if (optionalAxes.length > 0) {
                 const depth = step === requiredAxes.length + 1 ? "quick" : "deep";
                 setSession((current) => ({ ...current, [depthField]: depth }));
