@@ -86,6 +86,83 @@ export async function getShare(id: string): Promise<GetShareResult> {
   return { status: "ok", record: raw };
 }
 
+// 개인정보처리방침 6항("링크 주소를 보내면 확인 후 삭제") 대응 — 로그인이
+// 없어 본인 확인 수단이 공유 ID(96비트 랜덤) 소유뿐이므로, 별도 인증 없이
+// ID만으로 삭제한다. Redis에 이 링크가 쓰는 키는 shareKey(id) 하나뿐이라
+// (다른 레이트리밋 키는 IP·날짜로 묶이지 하나의 공유 ID에 묶이지 않는다)
+// DEL 한 번이면 충분하고 "일부만 지워지는" 상황 자체가 구조적으로 없다.
+export async function deleteShare(id: string): Promise<boolean> {
+  const redis = getRedisClient();
+  if (!redis) return false;
+  try {
+    // 키가 없어도 Upstash DEL은 에러 없이 0을 반환한다 — 존재하지 않는
+    // ID를 지우려는 요청도 여기서 똑같이 true(성공)로 끝나야, 존재
+    // 여부가 API 응답으로 새어나가지 않는다.
+    await redis.del(shareKey(id));
+    return true;
+  } catch (error) {
+    console.error("[share-store] deleteShare failed", error);
+    return false;
+  }
+}
+
+// 삭제 엔드포인트 전용 레이트리밋. registerShareAttempt와 같은 2단계
+// 원자적 예약 패턴을 그대로 따르되, 카운터는 별도 키 네임스페이스를 쓴다
+// (공유 생성 한도와 삭제 시도 한도를 같은 카운터로 섞으면 한쪽을 다
+// 쓰면 다른 쪽도 막히는 부작용이 생긴다).
+//
+// 공유 ID는 96비트 랜덤이라, 이 한도는 "무작위로 남의 링크를 맞혀서
+// 지우는 공격"을 막는 용도가 아니다(2^96 공간에서 하루 수십 번 시도로
+// 맞힐 확률은 사실상 0). 이 엔드포인트를 겨냥한 자동화 스팸/스캔
+// 트래픽이 Redis에 불필요한 부하를 주는 것만 막으면 된다.
+const DAILY_SHARE_DELETE_LIMIT = 20;
+const DEFAULT_DAILY_GLOBAL_SHARE_DELETE_LIMIT = 500;
+function readGlobalShareDeleteLimit(): number {
+  const raw = Number(process.env.DAILY_GLOBAL_SHARE_DELETE_LIMIT);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_DAILY_GLOBAL_SHARE_DELETE_LIMIT;
+}
+export const DAILY_GLOBAL_SHARE_DELETE_LIMIT = readGlobalShareDeleteLimit();
+
+export type ShareDeleteAttemptReason = "daily_limit" | "global_daily_limit" | "unavailable";
+
+export async function registerShareDeleteAttempt(ip: string): Promise<{ allowed: boolean; reason?: ShareDeleteAttemptReason }> {
+  const redis = getRedisClient();
+  if (!redis) return { allowed: false, reason: "unavailable" };
+
+  const now = new Date();
+  const day = kstDateKey(now);
+  const ttl = secondsUntilNextKstMidnight(now);
+  const ipKey = `share-delete-limit:${ip}:${day}`;
+  const globalKey = `share-delete-limit:global:${day}`;
+
+  let count: number;
+  try {
+    count = await incrWithExpire(redis, ipKey, ttl);
+  } catch (error) {
+    console.error("[share-store] registerShareDeleteAttempt failed", error);
+    return { allowed: false, reason: "unavailable" };
+  }
+  if (count > DAILY_SHARE_DELETE_LIMIT) {
+    await redis.decr(ipKey).catch(() => {});
+    return { allowed: false, reason: "daily_limit" };
+  }
+
+  let globalCount: number;
+  try {
+    globalCount = await incrWithExpire(redis, globalKey, ttl);
+  } catch (error) {
+    console.error("[share-store] global registerShareDeleteAttempt failed", error);
+    await redis.decr(ipKey).catch(() => {});
+    return { allowed: false, reason: "unavailable" };
+  }
+  if (globalCount > DAILY_GLOBAL_SHARE_DELETE_LIMIT) {
+    await Promise.all([redis.decr(ipKey), redis.decr(globalKey)]).catch(() => {});
+    return { allowed: false, reason: "global_daily_limit" };
+  }
+
+  return { allowed: true };
+}
+
 // 하루 공유 횟수 제한. 기존 rate-limit.ts의 세션 생성 제한과 별개로,
 // 이건 공유 저장소에 같이 기록해서 서버 재시작에도 초기화되지 않게
 // 한다(기존 generate-result 쪽 제한은 메모리 기반이라 콜드 스타트마다

@@ -155,13 +155,15 @@ export default function PrivacyPage() {
             내용이 함께 삭제됩니다.
           </p>
           <p className="break-keep leading-7 text-text-secondary">
-            공유 링크로 만든 결과 카드는 로그인이 없어 화면에서 직접 삭제할
-            수 있는 버튼을 제공하지 않습니다. 삭제를 원하시면 삭제하고 싶은
+            공유 링크로 만든 결과 카드는 로그인이 없어, 그 링크를 아는
+            사람이 곧 데이터의 주인이라는 전제로 별도 인증 없이 공유
+            페이지 하단의 삭제 버튼으로 직접 삭제할 수 있습니다(삭제하면
+            되돌릴 수 없습니다). 직접 삭제하기 어려운 경우 삭제하고 싶은
             공유 링크 주소를{" "}
             <a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} className="underline underline-offset-2 hover:text-text-primary">
               {PRIVACY_CONTACT_EMAIL}
             </a>
-            로 보내주세요. 확인 후 삭제해드립니다(별도 요청이 없어도 90일이
+            로 보내주시면 확인 후 삭제해드립니다(별도 요청이 없어도 90일이
             지나면 자동으로 삭제됩니다).
           </p>
         </section>
@@ -205,7 +207,7 @@ export default function PrivacyPage() {
         <p className="mt-10 text-xs font-semibold text-text-muted">
           시행일: 2026-08-03
           <br />
-          최근 개정일: 2026-08-03 (생성 결과 서버 임시 저장·생성 횟수 제한용 IP/세션 보관 관련 기재를 실제 동작에 맞게 수정)
+          최근 개정일: 2026-08-04 (공유 링크를 직접 삭제할 수 있는 기능이 추가되어 6항 삭제 안내를 실제 동작에 맞게 수정)
         </p>
       </article>
     </main>

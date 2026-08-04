@@ -6,6 +6,7 @@ import { SelfIntroResultBlocks, SelfIntroTagRow } from "../../../src/map-decisio
 import { FinalResultSectionReadOnly } from "../../../src/map-decision-v1/components/FinalResultBlocks";
 import { ShareCardImage } from "../../../src/map-decision-v1/components/ShareCardImage";
 import { CollapsibleFriendResult } from "../../../src/map-decision-v1/components/CollapsibleFriendResult";
+import { DeleteShareSection } from "../../../src/map-decision-v1/components/DeleteShareSection";
 import { Badge, Card } from "../../../src/map-decision-v1/components/ui/primitives";
 import { GetShareResult, getShare } from "../../../src/map-decision-v1/engine/share-store";
 import { FinalResult, IdealTypeResult, SelfIntroResult } from "../../../src/map-decision-v1/types";
@@ -143,18 +144,11 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
   // 진로 등 그 외 결과는 이번 범위 밖이라 기존 배경을 그대로 쓴다.
   const isInvitationBackground = renderable?.kind === "idealType" || renderable?.kind === "selfIntro";
 
-  return (
-    <main
-      className={
-        isInvitationBackground
-          ? "min-h-dvh bg-background px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary"
-          : "min-h-dvh px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary"
-      }
-    >
-      <div className="mx-auto flex w-full max-w-sm flex-col gap-3">
-        <div className="flex items-center px-1">
-          <Brand />
-        </div>
+  // 삭제 버튼(DeleteShareSection)은 실제로 지울 데이터가 있는 경우
+  // (share.status === "ok")에만 보여준다 — 이미 만료·삭제된 링크나
+  // 저장소 장애 화면에는 지울 대상 자체가 없다.
+  const cardContent = (
+    <>
         {renderable?.kind === "idealType" ? (
           <>
             <div className="flex flex-wrap items-center gap-2">
@@ -262,6 +256,22 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
             <TryItCta />
           </Card>
         )}
+    </>
+  );
+
+  return (
+    <main
+      className={
+        isInvitationBackground
+          ? "min-h-dvh bg-background px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary"
+          : "min-h-dvh px-4 py-4 pb-safe-bottom pt-safe-top text-text-primary"
+      }
+    >
+      <div className="mx-auto flex w-full max-w-sm flex-col gap-3">
+        <div className="flex items-center px-1">
+          <Brand />
+        </div>
+        {share.status === "ok" ? <DeleteShareSection id={id}>{cardContent}</DeleteShareSection> : cardContent}
       </div>
     </main>
   );
