@@ -25,11 +25,13 @@ const MAX_SELECTIONS = 3;
 // 세부 선택지(subOptions)를 골랐어도 태그 매핑(ideal-type-tags.ts)은
 // 그 부모 칩의 라벨만 안다 — 세부까지 사전에 다 넣으면 어휘가 너무
 // 커져서 "공용 언어" 역할을 못 한다. 그래서 여기서 항상 최상위 라벨로
-// 되돌려 session.quizAnswers에 기록한다.
+// 되돌려 session.quizAnswers에 기록한다. tagLabel이 있는 옵션(topics.ts
+// 참고 — 화면에 보여주는 label과 태그 매핑이 찾는 문자열이 다른 경우)은
+// label 대신 tagLabel을 기록해서 매핑이 계속 원래 값을 찾게 한다.
 function resolveTopLevelLabel(label: string, options: TopicOption[]): string {
   for (const option of options) {
-    if (option.label === label) return option.label;
-    if (option.subOptions?.some((sub) => sub.label === label)) return option.label;
+    if (option.label === label) return option.tagLabel ?? option.label;
+    if (option.subOptions?.some((sub) => sub.label === label)) return option.tagLabel ?? option.label;
   }
   return label;
 }
