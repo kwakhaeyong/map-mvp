@@ -100,7 +100,7 @@ export default function TermsPage() {
           </p>
         </section>
 
-        <p className="mt-10 text-xs font-semibold text-text-muted">시행일: 2026-07-29</p>
+        <p className="mt-10 text-xs font-semibold text-text-muted">시행일: 2026-08-04</p>
       </article>
     </main>
   );

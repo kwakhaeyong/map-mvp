@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
             ? "지금 이용자가 많아요. 잠시 후 다시 시도해 주세요."
             : reservation.reason === "unavailable"
               ? "지금은 결과를 만들 수 없어요. 잠시 후 다시 시도해 주세요."
-              : "이 결과는 반복해서 만들지 못했어요. 잠시 후 다시 시도하거나 새 MAP을 시작해 주세요.";
+              : "답변은 그대로 저장돼 있어요. 지금은 결과를 만들지 못했어요 — 잠시 후 다시 시도해 주세요.";
     const blockedReason =
       reservation.reason === "session_limit"
         ? "session_generation_limit"
