@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createLandingSession, createSession, now } from "../engine/session";
+import { createLandingSession, createSession, isSessionStale, now } from "../engine/session";
 import { resolveTopic } from "../engine/topics";
 import { clearSession, loadSession, saveSession } from "../storage/session-storage";
 import { MapOutputType, MapSession } from "../types";
@@ -63,14 +63,32 @@ export function MapDecisionProduct() {
   const [session, setSession] = useState<MapSession>(() => createLandingSession());
   const [hydrated, setHydrated] = useState(false);
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
+  // 복원한 세션이 30분 넘게 방치돼 stage를 landing으로 강제 전환한
+  // 경우에만, 그 stage가 원래 "result"였고 결과 데이터가 남아있으면
+  // true — Landing이 "이전 결과 보기" 버튼을 보여줄지 판단하는 데 쓴다.
+  // 세션을 새로 만드는 모든 지점(start/startDemo/reset/exitDemoToReal)
+  // 에서 반드시 false로 되돌려야 한다 — 안 그러면 그 새 세션에는
+  // idealTypeResult 등이 없는데도 이 버튼이 남아있다가, 눌렀을 때
+  // 존재하지 않는 결과로 이동하려 해서 깨진다.
+  const [hasStaleResult, setHasStaleResult] = useState(false);
   const [saveState, setSaveState] = useState<"loading" | "saved" | "saving">("loading");
   const routeReady = useRef(false);
 
   useEffect(() => {
     const saved = loadSession();
-    if (saved) {
-      setSession(saved);
-      setHasSavedDraft(saved.messages.length > 0 || saved.nodes.length > 0 || Boolean(saved.localDraft?.trim()));
+    // 30분 넘게 방치된 세션은 stage만 landing으로 되돌린다 — messages/
+    // nodes/quizAnswers/결과 데이터는 그대로 둔다(MAP_CONSTITUTION.md의
+    // "Back/cancel must never destroy the current session"). 30분 이내
+    // 새로고침은 이 분기를 타지 않아 결과 화면 새로고침이 그대로
+    // 유지된다.
+    const effective = saved && isSessionStale(saved) ? ({ ...saved, stage: "landing" } as MapSession) : saved;
+    if (effective) {
+      if (saved && effective !== saved) {
+        const hasResultData = Boolean(saved.idealTypeResult || saved.selfIntroResult || saved.result);
+        setHasStaleResult(saved.stage === "result" && hasResultData);
+      }
+      setSession(effective);
+      setHasSavedDraft(effective.messages.length > 0 || effective.nodes.length > 0 || Boolean(effective.localDraft?.trim()));
     }
     // 공유 화면(/r/{id})의 "너도 만들어봐"가 랜딩(종류 선택)을 한 번 더
     // 거치게 하면 그 사이에 이탈한다 — /?start=<topicId>로 오면 랜딩을
@@ -85,7 +103,11 @@ export function MapDecisionProduct() {
     // 그 상태에서 공유 링크로 들어와 CTA를 눌러도 이 조건이 "진행 중"
     // 이라고 오판해 오버라이드를 건너뛰어, 결국 랜딩(종류 선택 화면)
     // 그대로 보여지는 문제가 있었다 — 직접 재현해서 확인함.
-    const hasActiveSession = Boolean(saved && saved.stage !== "landing" && (saved.messages.length > 0 || saved.nodes.length > 0));
+    //
+    // ★여기서도 saved가 아니라 effective(30분 지나 landing으로 강제된
+    // 뒤)의 stage를 봐야 한다 — 방치된 세션은 더 이상 "진행 중"이
+    // 아니므로, ?start=로 들어온 새 시작을 막지 않아야 한다.
+    const hasActiveSession = Boolean(effective && effective.stage !== "landing" && (effective.messages.length > 0 || effective.nodes.length > 0));
     const searchParams = new URLSearchParams(window.location.search);
     const startTopic = searchParams.get("start");
     // 친구의 공유 카드(/r/{id})를 통해 들어온 경우, 그 친구의 공유 ID를
@@ -96,6 +118,7 @@ export function MapDecisionProduct() {
     const withParam = searchParams.get("with");
     const compareWithId = withParam && /^[A-Za-z0-9_-]{16}$/.test(withParam) ? withParam : undefined;
     if (startTopic && !hasActiveSession) {
+      setHasStaleResult(false);
       setSession(createSession(startTopic, compareWithId));
       window.history.replaceState({}, "", window.location.pathname);
     }
@@ -144,14 +167,18 @@ export function MapDecisionProduct() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  const start = (topicId?: string) => setSession(createSession(topicId));
-  const startDemo = () => setSession(createDemoSession());
-  const reset = () => { if (!session.isDemo) clearSession(); setHasSavedDraft(false); setSaveState("saved"); setSession(createLandingSession()); };
+  // 아래 네 곳 모두 세션을 통째로 새로 만든다 — 복원 시 계산해둔
+  // hasStaleResult는 그 예전 세션 얘기라 새 세션에는 더 이상 맞지
+  // 않으므로 같이 꺼준다(안 그러면 방금 만든, 결과가 없는 세션인데도
+  // "이전 결과 보기"가 남아있다가 눌렀을 때 깨진다).
+  const start = (topicId?: string) => { setHasStaleResult(false); setSession(createSession(topicId)); };
+  const startDemo = () => { setHasStaleResult(false); setSession(createDemoSession()); };
+  const reset = () => { if (!session.isDemo) clearSession(); setHasSavedDraft(false); setHasStaleResult(false); setSaveState("saved"); setSession(createLandingSession()); };
   const selectType = (type: MapOutputType) => setSession((current) => ({ ...current, preferredMapType: type }));
   // "직접 해보기"도 이제 종류 선택 화면을 거친다 — 데모를 벗어나는 것도
   // 하나의 진입이므로, 주제 없이 곧장 대화로 들어가던 예전 동작 대신
   // 랜딩(종류 선택 화면)으로 보낸다.
-  const exitDemoToReal = () => setSession(createLandingSession());
+  const exitDemoToReal = () => { setHasStaleResult(false); setSession(createLandingSession()); };
   const goConversation = useCallback(() => setSession((current) => ({ ...current, stage: "conversation" })), []);
   const goResult = useCallback(() => setSession((current) => ({ ...current, stage: "result" })), []);
 
@@ -175,7 +202,17 @@ export function MapDecisionProduct() {
   });
 
   if (session.stage === "landing" || (!session.messages.length && !session.nodes.length)) {
-    return <Landing hasDraft={hasSavedDraft} onStart={start} onResume={goConversation} onDemo={startDemo} saveState={saveState} />;
+    return (
+      <Landing
+        hasDraft={hasSavedDraft}
+        hasStaleResult={hasStaleResult}
+        onStart={start}
+        onResume={goConversation}
+        onViewResult={goResult}
+        onDemo={startDemo}
+        saveState={saveState}
+      />
+    );
   }
   if (session.stage === "result") {
     const resultTopic = resolveTopic(session.topicId);

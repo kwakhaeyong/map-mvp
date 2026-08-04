@@ -85,14 +85,25 @@ function TopicSection({
 
 export function Landing({
   hasDraft,
+  hasStaleResult,
   onStart,
   onResume,
+  onViewResult,
   onDemo,
   saveState = "saved",
 }: {
   hasDraft: boolean;
+  // 30분 넘게 방치돼 stage가 landing으로 강제 전환되기 직전, 원래
+  // "result"였고 결과 데이터가 남아있던 세션인지 — true면 "이전 결과
+  // 보기"를 보여준다. hasDraft(메시지·노드가 있으면 true)도 이 경우
+  // 함께 true가 되지만("result"에 도달했다는 건 이미 대화·퀴즈 내용이
+  // 있었다는 뜻이라 messages/nodes가 비어있을 수 없음), 완결된 결과가
+  // 있는 세션에는 "이어서 하기"(대화로 되돌아가기)보다 "이전 결과
+  // 보기"가 맞는 동작이라 hasStaleResult가 있으면 그쪽을 우선한다.
+  hasStaleResult: boolean;
   onStart: (topicId?: string) => void;
   onResume: () => void;
+  onViewResult: () => void;
   onDemo: () => void;
   saveState?: "loading" | "saved" | "saving";
 }) {
@@ -112,7 +123,11 @@ export function Landing({
         <Brand />
         <div className="flex items-center gap-2">
           <Badge tone={saveState === "saving" ? "default" : "success"}>{saveState === "loading" ? "불러오는 중" : saveState === "saving" ? "자동 저장 중" : "자동 저장됨"}</Badge>
-          {hasDraft ? <Button variant="secondary" onClick={onResume}>이어서 하기</Button> : null}
+          {hasStaleResult ? (
+            <Button variant="secondary" onClick={onViewResult}>이전 결과 보기</Button>
+          ) : hasDraft ? (
+            <Button variant="secondary" onClick={onResume}>이어서 하기</Button>
+          ) : null}
         </div>
       </header>
 

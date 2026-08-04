@@ -4,6 +4,22 @@ import { resolveTopic } from "./topics";
 export function now() { return new Date().toISOString(); }
 export function createId(prefix = "id") { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
 
+// 세션을 마지막으로 저장한 뒤(session.updatedAt) 이만큼 시간이 지나면,
+// 홈(/)에 다시 들어왔을 때 결과·대화 화면으로 곧장 돌아가지 않고 랜딩
+// (종류 선택 화면)부터 보여준다(MapDecisionProduct.tsx의 마운트 시
+// loadSession 복원 참고). messages/nodes/quizAnswers/결과 데이터는 전혀
+// 지우지 않는다 — stage만 landing으로 바꾼다. 짧은 새로고침(30분 이내)에는
+// 이 규칙이 전혀 개입하지 않아 결과 화면 새로고침이 그대로 유지되고,
+// MAP_CONSTITUTION.md의 "Back/cancel must never destroy the current
+// session" 원칙도 지켜진다(세션 내용은 그대로, 화면 진입점만 바뀐다).
+export const STALE_SESSION_MS = 30 * 60 * 1000;
+
+export function isSessionStale(session: MapSession, referenceTime: number = Date.now()): boolean {
+  const savedAt = Date.parse(session.updatedAt);
+  if (Number.isNaN(savedAt)) return false;
+  return referenceTime - savedAt > STALE_SESSION_MS;
+}
+
 // topicId comes from a topic-picker card (e.g. "career"). Left undefined,
 // this stays the original topicless path — nothing defaults to career here
 // (that default only applies inside resolveTopic for the AI prompt, once a
