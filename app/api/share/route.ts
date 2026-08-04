@@ -88,6 +88,14 @@ export async function POST(request: NextRequest) {
         { status: 503 },
       );
     }
+    // 생성 쪽 global_daily_limit("지금 이용자가 많아요...")과 같은 톤 —
+    // 개인의 잘못이 아니라 서비스 전체가 붐빈다는 뉘앙스를 전달한다.
+    if (attempt.reason === "global_daily_limit") {
+      return NextResponse.json(
+        { blocked: true, reason: "global_share_limit", message: "지금 이용자가 많아요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
+        { status: 429 },
+      );
+    }
     return NextResponse.json(
       { blocked: true, reason: "daily_share_limit", message: "오늘 만들 수 있는 공유 링크 수를 모두 사용했어요. 내일 다시 시도해 주세요." } satisfies BlockedResponse,
       { status: 429 },
