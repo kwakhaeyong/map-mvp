@@ -8,7 +8,7 @@ import { Card } from "./ui/primitives";
 // 로직이 두 번 이상 필요해졌다 — 그 부분만 여기로 뽑아 재사용한다.
 // 화면마다 버튼 배치/문구는 다를 수 있어서 버튼 자체는 각자 그리고,
 // 여기서는 상태(shareState)와 실행 함수(share/copyLink)만 내준다.
-export const SHARE_NOTICE = "🔗 링크를 아는 사람은 누구나 볼 수 있어요 · 90일 후 자동 삭제돼요";
+export const SHARE_NOTICE = "링크를 아는 사람은 누구나 볼 수 있어요 · 90일 후 자동 삭제돼요";
 
 export type ShareState = "idle" | "creating" | "copied" | "shared" | "error";
 

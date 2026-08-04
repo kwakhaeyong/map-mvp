@@ -229,9 +229,15 @@ function IdealTypeCardBody({
       <Button variant="primary" size="lg" onClick={onReset}>
         너도 만들어봐
       </Button>
-      <a href="/privacy" className="text-center text-xs font-semibold text-text-muted underline underline-offset-2 hover:text-text-primary">
-        개인정보처리방침
-      </a>
+      <p className="text-center text-xs font-semibold text-text-muted">
+        <a href="/privacy" className="underline underline-offset-2 hover:text-text-primary">
+          개인정보처리방침
+        </a>
+        <span className="mx-1.5">·</span>
+        <a href="/terms" className="underline underline-offset-2 hover:text-text-primary">
+          이용약관
+        </a>
+      </p>
       <ImageSaveModal open={modalOpen} previewUrl={previewUrl} onClose={closeModal} />
     </div>
   );

@@ -28,7 +28,10 @@ export default function PrivacyPage() {
           <p className="break-keep leading-7 text-text-secondary">
             &ldquo;공유하기&rdquo; 버튼을 직접 눌러 결과를 공유 링크로 만드는
             경우에만, 아래 항목을 추가로 서버에 저장합니다. 그냥 결과 화면을
-            보기만 하고 공유하지 않으면 서버에는 아무것도 남지 않습니다.
+            보기만 하고 공유하지 않으면 위 항목이 서버에 저장되지는
+            않습니다. 다만 이상형·나 소개 카드는 만들어진 결과를 서버에
+            최대 30분간 임시로 저장합니다 — 자세한 내용은 3번 항목을
+            참고하세요.
           </p>
           <ul className="ml-5 list-disc space-y-1 break-keep leading-7 text-text-secondary">
             <li>결과 카드 내용(제목, 요약, 기준, 매트릭스 등 화면에 보이는 내용)</li>
@@ -59,8 +62,18 @@ export default function PrivacyPage() {
             입력하신 내용은 원칙적으로 사용자의 브라우저(로컬 저장소)에만
             저장되며, 회사가 운영하는 서버 데이터베이스에 별도로 저장하지
             않습니다. 다만 결과 화면에서 &ldquo;공유하기&rdquo;를 직접 누른
-            경우에는 위 1번 항목의 내용이 예외적으로 서버에 저장됩니다. AI
-            분석 기능이 켜져 있는 경우, 입력 내용은 분석을 위해 일시적으로
+            경우에는 위 1번 항목의 내용이 예외적으로 서버에 저장됩니다.
+          </p>
+          <p className="break-keep leading-7 text-text-secondary">
+            그 밖에, 이상형·나 소개 카드는 결과를 만드는 동안 &ldquo;공유하기&rdquo;를
+            누르지 않아도 만들어진 결과를 서버에 최대 30분간 임시로
+            저장합니다. 결과를 만드는 중 화면을 벗어났다가 돌아왔을 때 같은
+            내용을 처음부터 다시 만들지 않기 위한 것이며, 30분이 지나면
+            자동으로 삭제됩니다. 이때도 대화하며 나눈 대화 원문은 저장되지
+            않으며, 만들어진 결과 내용만 임시로 저장됩니다.
+          </p>
+          <p className="break-keep leading-7 text-text-secondary">
+            AI 분석 기능이 켜져 있는 경우, 입력 내용은 분석을 위해 일시적으로
             처리될 뿐 처리 후 서버에 보관하지 않는 것을 원칙으로 합니다.
           </p>
           <p className="break-keep leading-7 text-text-secondary">
@@ -123,6 +136,14 @@ export default function PrivacyPage() {
             제한하기 위해 IP 주소를 24시간만 임시로 보관하며, 이 IP는 공유된
             결과 카드 내용과는 별도로 저장되어 서로 연결되지 않습니다.
           </p>
+          <p className="break-keep leading-7 text-text-secondary">
+            이상형·나 소개 카드의 생성 결과 임시 저장(3번 항목 참고)은
+            최대 30분간 보관된 뒤 자동으로 삭제됩니다. 이와 별도로, 하루 또는
+            한 세션에서 만들 수 있는 결과 생성 횟수를 제한하기 위해 IP
+            주소를 최대 24시간(한국 시간 자정 기준), 세션 식별값을 최대
+            48시간까지 임시로 보관하며, 이 값들은 생성된 결과 내용과는
+            무관하게 횟수 집계에만 쓰입니다.
+          </p>
         </section>
 
         <section className="mt-8 space-y-3">
@@ -182,9 +203,9 @@ export default function PrivacyPage() {
         </section>
 
         <p className="mt-10 text-xs font-semibold text-text-muted">
-          시행일: 2026-07-27
+          시행일: 2026-08-03
           <br />
-          최근 개정일: 2026-07-27 (AI 서버 전송 관련 기재를 실제 전송 범위에 맞게 수정)
+          최근 개정일: 2026-08-03 (생성 결과 서버 임시 저장·생성 횟수 제한용 IP/세션 보관 관련 기재를 실제 동작에 맞게 수정)
         </p>
       </article>
     </main>
