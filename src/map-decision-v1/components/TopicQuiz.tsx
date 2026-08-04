@@ -158,10 +158,11 @@ function AxisStep({
   showBack: boolean;
   aboutSelf?: boolean;
   // 심화 재방문의 마지막 문항일 때만 true — 다른 네 가지 단일 선택
-  // 컴포넌트의 같은 이름 prop과 동일한 뜻이다. idealType의 마지막
-  // 심화 축("socialCircle")이 하필 이 다중 선택(preference) 타입이라,
-  // 이 문항에서도 자동 넘김이 finishResumedDeepDive()(결과 재생성)를
-  // 곧장 트리거하지 않도록 반드시 필요하다.
+  // 컴포넌트의 같은 이름 prop과 동일한 뜻이다. 심화(선택) 경로를 가진
+  // 주제(나 소개)의 마지막 심화 축이 이 다중 선택(preference) 타입일
+  // 경우, 이 문항에서도 자동 넘김이 finishResumedDeepDive()(결과
+  // 재생성)를 곧장 트리거하지 않도록 필요하다. 이상형은 quizVersion 11
+  // 에서 심화 경로 자체를 없애 이 분기가 항상 false다.
   requireConfirm: boolean;
 }) {
   const [selected, setSelected] = useState<TopicChoice[]>([]);
@@ -810,6 +811,11 @@ function resolvePhase(step: number, requiredAxes: TopicAxis[], optionalAxes: Top
   const requiredCount = requiredAxes.length;
   const optionalCount = optionalAxes.length;
   if (step < requiredCount) return { kind: "required", axis: requiredAxes[step], index: step };
+  // 심화(선택) 문항이 아예 없는 주제(예: 이상형 — quizVersion 11에서
+  // 심화 경로를 없앴다)는 필수/심화 갈림길 자체가 의미가 없으므로
+  // "결정 화면"을 건너뛰고 곧장 마무리 질문으로 간다. 심화가 있는
+  // 주제(나 소개)는 이 조건이 항상 거짓이라 기존 동작 그대로다.
+  if (optionalCount === 0) return { kind: "closing" };
   if (step === requiredCount) return { kind: "decision" };
   if (step === requiredCount + 1) return { kind: "closing" };
   const optionalIndex = step - (requiredCount + 2);
@@ -1018,7 +1024,8 @@ export function TopicQuiz({
     });
   };
 
-  // 결과를 이미 본 뒤 "6개 더 답하기"로 돌아온 경우(session.idealTypeResuming)
+  // 결과를 이미 본 뒤 "6개 더 답하기"로 돌아온 경우(session.selfIntroResuming
+  // — 이상형은 quizVersion 11에서 심화 경로를 없애 이 흐름을 안 탄다)
   // 마지막 심화 문항을 답하면 마무리 질문을 또 묻지 않고 곧장 결과를
   // 다시 만든다 — 마무리 질문은 처음 퀴즈를 마칠 때 이미 한 번 답했다.
   const finishResumedDeepDive = () => {

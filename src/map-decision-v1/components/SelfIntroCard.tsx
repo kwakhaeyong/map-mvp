@@ -24,8 +24,8 @@ const SELF_INTRO_GENERATION_STAGES = [
   "마무리하고 있어요",
 ];
 
-// 이상형의 DeepenResultBanner와 같은 원리 — 필수 34문항만 답하고 결과를
-// 본 사람에게 "6개 더 답하기"를 안내한다.
+// 필수 34문항만 답하고 결과를 본 사람에게 "6개 더 답하기"를 안내한다.
+// 이상형은 quizVersion 11에서 심화 경로 자체를 없애 이 배너가 없다.
 function DeepenResultBanner({ onDeepen }: { onDeepen: () => void }) {
   return (
     <Card className="flex flex-col gap-3 text-sm">
@@ -50,9 +50,9 @@ function SelfIntroCardBody({
 }) {
   const result = session.selfIntroResult!;
 
-  // 이상형의 deepenAnswers와 같은 원리 — "6개 더 답하기"를 누르면 심화
-  // 문항 시작 지점으로 곧장 이동한다. 필드 이름만 selfIntro 전용이다
-  // (TopicQuiz.tsx가 topic.id로 이미 구분해서 쓴다).
+  // "6개 더 답하기"를 누르면 심화 문항 시작 지점으로 곧장 이동한다.
+  // 이상형은 quizVersion 11에서 심화 경로 자체를 없애 이 기능이 없다
+  // (TopicQuiz.tsx가 topic.id로 필드 이름만 구분해서 쓴다).
   const deepenAnswers = () => {
     const topic = resolveTopic(session.topicId);
     const requiredCount = (topic.axes ?? []).filter((axis) => axis.required).length;

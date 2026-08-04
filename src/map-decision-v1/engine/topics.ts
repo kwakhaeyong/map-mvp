@@ -206,7 +206,17 @@ export const TOPICS: Record<string, TopicConfig> = {
     // 1 : 부정 3"에서 "조언 긍정 2 : 공감 선호 2"로 다시 짰다 — 강도
     // 차이가 아니라 서로 다른 이유의 선택지 4개로, 어느 쪽도 정답처럼
     // 보이지 않게 했다.
-    quizVersion: 10,
+    // 11: 심화(선택) 경로를 없앴다 — 필수/심화 갈림길(결정 화면)이
+    // goBack/jumpTo 메시지 정리 버그의 원인이었고(#151), 심화를 누르지
+    // 않은 사용자는 자기성찰 블록의 일부 원료를 못 받는 문제도 있었다.
+    // 심화 6개 중 경험·행동형 2개(experienceCommitment·
+    // experienceSupport)는 자기성찰 원료라 필수로 승격했고, 유사성
+    // 축(binarySimilarity)은 필수 문항과 겹침이 가장 약해 같이
+    // 승격했다(교차 궁합 판단 재료로도 쓸 수 있다). 나머지 3개
+    // (binaryPlanning·idealDate·socialCircle)는 필수 lifestyle/
+    // personality 축의 하위 선택지가 이미 같은 주제를 다루고 있어
+    // 삭제했다. 필수 34→37문항.
+    quizVersion: 11,
     axes: [
       {
         id: "currentMood",
@@ -1124,6 +1134,20 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "무게감 있는 사람", description: "말수는 적어도 진중함이 느껴지는 사람" },
         ],
       },
+      // 심화(선택)에서 필수로 승격(quizVersion 11) — 다른 양자택일형
+      // 바로 뒤에 둬서 형식이 튀지 않게 한다. 필수 문항과 겹침이 가장
+      // 약해 편입 대상으로 골랐고, 교차 궁합 기능에서 "본인이 유사성을
+      // 원하는지 차이를 원하는지" 판단 재료로도 쓸 수 있다.
+      {
+        id: "binarySimilarity",
+        type: "binary",
+        required: true,
+        question: "나와 비슷한 사람 vs 나와 다른 사람, 더 끌리는 쪽은?",
+        options: [
+          { label: "나와 비슷한 사람", description: "취향과 성향이 잘 통하는 사람" },
+          { label: "나와 다른 사람", description: "나한테 없는 걸 채워주는 사람" },
+        ],
+      },
       {
         id: "myRelationshipRole",
         type: "quickTap",
@@ -1254,14 +1278,14 @@ export const TOPICS: Record<string, TopicConfig> = {
           },
         ],
       },
-      // ── 심화(선택) 6문항 ──────────────────────────────────────────
-      // experienceEarlyStyle·experienceApology는 quizVersion 7에서
-      // 필수로 승격돼 위쪽으로 옮겨갔다(firstMoveStyle·reconcileStyle
-      // 근처 참고) — 여기 있던 자리다.
+      // 심화(선택)에서 필수로 승격(quizVersion 11) — 자기성찰 블록의
+      // 원료라 사용자가 퀴즈를 완주하기만 하면 반드시 답하게 된다.
+      // 다른 경험·행동형 문항 바로 뒤에 둬서 같은 성격의 질문끼리
+      // 묶여 있게 한다.
       {
         id: "experienceCommitment",
         type: "experience",
-        required: false,
+        required: true,
         aboutSelf: true,
         question: "관계가 진지해지는 순간(사귀자고 말할 때 등), 나는 보통 어느 쪽이었어?",
         options: [
@@ -1274,7 +1298,7 @@ export const TOPICS: Record<string, TopicConfig> = {
       {
         id: "experienceSupport",
         type: "experience",
-        required: false,
+        required: true,
         aboutSelf: true,
         question: "가까운 사람이 잘될 때(성취·좋은 일), 나는 보통 어떤 반응이야?",
         options: [
@@ -1282,51 +1306,6 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "티는 안 내도 진심으로 응원하는 편", description: "겉으로 크게 표현은 안 하는 편이다" },
           { label: "약간의 부러움도 함께 느끼는 편", description: "축하하면서도 나를 돌아보게 되는 편이다" },
           { label: "축하부터 챙기는 행동파", description: "말보다 먼저 뭔가 해주는 편이다" },
-        ],
-      },
-      {
-        id: "binaryPlanning",
-        type: "binary",
-        required: false,
-        question: "계획적으로 움직이는 사람 vs 즉흥적으로 움직이는 사람, 더 끌리는 쪽은?",
-        options: [
-          { label: "계획적으로 움직이는 사람", description: "미리 정하고 움직이는 걸 편안해하는 사람" },
-          { label: "즉흥적으로 움직이는 사람", description: "그때그때 흐름을 즐기는 사람" },
-        ],
-      },
-      {
-        id: "binarySimilarity",
-        type: "binary",
-        required: false,
-        question: "나와 비슷한 사람 vs 나와 다른 사람, 더 끌리는 쪽은?",
-        options: [
-          { label: "나와 비슷한 사람", description: "취향과 성향이 잘 통하는 사람" },
-          { label: "나와 다른 사람", description: "나한테 없는 걸 채워주는 사람" },
-        ],
-      },
-      {
-        id: "idealDate",
-        type: "preference",
-        required: false,
-        question: "이상적인 데이트는 어떤 모습이야?",
-        options: [
-          { label: "카페에서 대화", description: "편하게 앉아서 얘기 나누는 시간" },
-          { label: "야외 활동·산책", description: "함께 걷거나 몸을 움직이는 시간" },
-          { label: "문화생활(전시·공연·영화)", description: "같이 보고 느끼는 시간" },
-          { label: "맛집 탐방", description: "맛있는 걸 같이 찾아다니는 시간" },
-          { label: "집에서 편안하게", description: "나가지 않고 편하게 보내는 시간" },
-        ],
-      },
-      {
-        id: "socialCircle",
-        type: "preference",
-        required: false,
-        question: "친구·지인들과의 관계는 어떤 게 좋아?",
-        options: [
-          { label: "내 친구들과도 잘 어울리는 사람", description: "내 사람들과 자연스럽게 섞이는 사람" },
-          { label: "우리 둘만의 시간을 더 중요하게 여기는 사람", description: "다른 관계보다 둘을 우선하는 사람" },
-          { label: "자연스럽게 어울리되 무리하지 않는 사람", description: "부담 없이 적당히 어울리는 사람" },
-          { label: "각자 친구 관계는 존중해주는 사람", description: "서로의 인간관계를 간섭하지 않는 사람" },
         ],
       },
     ],

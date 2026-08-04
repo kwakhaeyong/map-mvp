@@ -37,9 +37,11 @@ export function useShareResult({
   // 쓴다 — 화면마다 자기가 가진 것만 넘기면 된다.
   signature?: string | null;
   blockSignatures?: Record<string, string | null | undefined>;
-  // 이상형 퀴즈를 심화(선택 6문항)까지 답하고 만든 결과인지 — 공유
-  // 페이지에서 "🔍 심층 분석 포함" 배지를 보여줄지 판단하는 데 쓴다.
-  // 진로 결과 등 이 개념이 없는 화면에서는 그냥 생략하면 된다.
+  // 심화(선택) 경로가 있는 퀴즈(나 소개)에서 그 문항까지 답하고 만든
+  // 결과인지 — 공유 페이지에서 "🔍 심층 분석 포함" 배지를 보여줄지
+  // 판단하는 데 쓴다. 이상형은 quizVersion 11에서 심화 경로를 없애
+  // 이제 항상 undefined다. 진로 결과 등 이 개념이 없는 화면에서는
+  // 그냥 생략하면 된다.
   quizDepth?: "quick" | "deep";
   shareTitle?: string;
   buildShareText: (shareUrl: string) => string;
