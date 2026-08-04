@@ -51,15 +51,19 @@ export function Result({
   onRealStart: () => void;
   saveState?: "loading" | "saved" | "saving";
 }) {
+  // 빈 문자열이면 "아직 없다"는 뜻이다 — 예전엔 여기서 바로 "아직 더
+  // 이야기하면 선명해져요."로 치환했는데, "아직 확인할 내용"·"걸리는
+  // 부분" 카드처럼 다른 문구 없이 이 값 하나만 그대로 보여주는 곳에서는
+  // 결과 화면이 미완성으로 보였다(6개 카드 중 하나가 내용 없이 이
+  // 문구만 떠 있는 상태). direction·action처럼 더 친절한 대체 문구가
+  // 있는 곳은 여기서 빈 문자열을 받아 각자 대체하고, 대체 문구가 없는
+  // 카드는 아예 렌더링하지 않는다(아래 hasMissing/hasRisk).
   const byKind = (kind: NodeKind) =>
     session.nodes
       .filter((node) => node.kind === kind)
       .map((node) => node.text)
-      .join("\n") || "아직 더 이야기하면 선명해져요.";
-  const direction =
-    byKind("direction") !== "아직 더 이야기하면 선명해져요."
-      ? byKind("direction")
-      : "결론을 서두르기보다 확인할 내용을 채우며 움직이는 방향";
+      .join("\n");
+  const direction = byKind("direction") || "결론을 서두르기보다 확인할 내용을 채우며 움직이는 방향";
   const safeReset = () => {
     if (
       session.isDemo ||
@@ -291,17 +295,13 @@ export function Result({
             title="대화를 통해 정리된 내용"
             body={`지금 보이는 흐름은 ${session.preferredMapType === "decision" ? "선택지와 걸리는 부분" : "핵심과 마음의 기준"}을 중심으로 정리되어 있어요.\n\n현재 가까운 방향: ${shorten(direction)}`}
           />
-          <ResultCard title="아직 확인할 내용" body={byKind("missing")} />
+          {byKind("missing") ? <ResultCard title="아직 확인할 내용" body={byKind("missing")} /> : null}
           <ResultCard title="현재 가까운 방향" body={direction} />
           <ResultCard
             title="24시간 안에 할 첫 행동"
-            body={
-              byKind("action") !== "아직 더 이야기하면 선명해져요."
-                ? byKind("action")
-                : "오늘 안에 확인할 정보 하나를 적고, 믿을 만한 사람 한 명에게 지금 고민을 10분만 설명해보세요."
-            }
+            body={byKind("action") || "오늘 안에 확인할 정보 하나를 적고, 믿을 만한 사람 한 명에게 지금 고민을 10분만 설명해보세요."}
           />
-          <ResultCard title="걸리는 부분" body={byKind("risk")} />
+          {byKind("risk") ? <ResultCard title="걸리는 부분" body={byKind("risk")} /> : null}
         </section>
 
         {/* 공유 버튼은 이상형 카드(IdealTypeCard.tsx)와 같은 위치 규칙을

@@ -12,15 +12,17 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-// 이모지 아이콘 대신 자기성찰 블록("Self Reflection")과 같은 방식의
-// 영문 eyebrow 라벨로 위계를 준다 — 기기마다 다르게 보이는 이모지를
-// 없애면서도 헤더가 허전해지지 않게. 모든 블록 헤더가 이 컴포넌트
-//하나로 통일되므로, 이모지를 넣거나 빼는 게 섞이지 않는다.
-function SectionHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
+// 예전엔 이모지 아이콘 대신 "Criteria"·"Patterns" 같은 영문 eyebrow
+// 라벨로 헤더 위계를 줬는데, 바로 아래에 이미 한글 제목("이상형 기준"
+// 등)이 있어서 사용자에게는 정체 모를 영문 코드명이 겹쳐 보이는
+// 문제였다. 텍스트 라벨 대신 작은 색상 바로 "새 섹션이 시작된다"는
+// 신호만 남긴다 — 이모지를 안 쓰기로 한 원래 결정(기기마다 다르게
+// 보임)도, 위계 구분 역할도 그대로 유지된다.
+function SectionHeader({ title, description }: { title: string; description: string }) {
   return (
     <div>
-      <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-text-muted">{eyebrow}</p>
-      <h2 className="mt-1 text-base font-black tracking-[-0.02em] text-text-primary">{title}</h2>
+      <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary" />
+      <h2 className="text-base font-black tracking-[-0.02em] text-text-primary">{title}</h2>
       <p className="mt-0.5 text-xs font-semibold leading-5 text-text-secondary">{description}</p>
     </div>
   );
@@ -167,7 +169,7 @@ function CriteriaTier({ label, items, tone }: { label: string; items: string[]; 
 function CriteriaSection({ criteria }: { criteria: IdealTypeResult["criteria"] }) {
   return (
     <Card id="criteria" className="scroll-mt-16 flex flex-col gap-4">
-      <SectionHeader eyebrow="Criteria" title="이상형 기준" description="답변에서 우선순위를 세 단계로 나눠봤어요." />
+      <SectionHeader title="이상형 기준" description="답변에서 우선순위를 세 단계로 나눠봤어요." />
       <div className="grid gap-3 sm:grid-cols-3">
         <CriteriaTier label="필수" items={criteria.mustHave} tone="strong" />
         <CriteriaTier label="선호" items={criteria.niceToHave} tone="medium" />
@@ -180,7 +182,7 @@ function CriteriaSection({ criteria }: { criteria: IdealTypeResult["criteria"] }
 function PatternsSection({ items }: { items: string[] }) {
   return (
     <Card id="patterns" className="scroll-mt-16 flex flex-col gap-3">
-      <SectionHeader eyebrow="Patterns" title="끌림 패턴" description="답변을 가로질러 반복되는 경향이에요." />
+      <SectionHeader title="끌림 패턴" description="답변을 가로질러 반복되는 경향이에요." />
       <div className="flex flex-col gap-2">
         {items.map((item, index) => (
           <blockquote key={index} className="rounded-medium border border-border bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
@@ -293,7 +295,7 @@ function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
 function MatrixSection({ matrix }: { matrix: IdealTypeMatrix }) {
   return (
     <Card id="matrix" className="scroll-mt-16 flex flex-col gap-4">
-      <SectionHeader eyebrow="Matrix" title="끌림 × 관계 적합도" description="답변에서 나온 4가지 상대 유형을 놓고 봤어요." />
+      <SectionHeader title="끌림 × 관계 적합도" description="답변에서 나온 4가지 상대 유형을 놓고 봤어요." />
       <MatrixChart matrix={matrix} />
       <ul className="flex flex-col gap-2">
         {matrix.types.map((point, index) => (
@@ -314,7 +316,7 @@ function MatrixSection({ matrix }: { matrix: IdealTypeMatrix }) {
 function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
   return (
     <Card id="flags" className="scroll-mt-16 flex flex-col gap-4">
-      <SectionHeader eyebrow="Signals" title="신호등" description="실제로 만날 때 참고할 신호들이에요." />
+      <SectionHeader title="신호등" description="실제로 만날 때 참고할 신호들이에요." />
       {/* 박스 배경은 option/risk 파스텔 대신 다른 블록과 같은 잉크
           중간 톤(border-border-strong bg-ink-wash, #116)으로 통일한다 —
           좋다/주의 구분은 라벨의 success/error 색과 점만으로 충분하다. */}
@@ -353,7 +355,7 @@ function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
 // ★가장 강조하는 섹션★ — 이 제품의 유일한 차별점(교차 발견)이 여기 있다.
 // 다른 6개 블록은 전부 흰 카드 + 이모지라 묻히므로, 이 블록만 배경을
 // 반전(어두운 배경 + 밝은 글자)해서 캡처하고 싶어지는 지점으로 만든다.
-// 이모지 대신 영문 eyebrow 라벨 + 크기·굵기 차이로 위계를 준다(MAP OS
+// 이모지 대신 색상 바 + 크기·굵기 차이로 위계를 준다(MAP OS
 // Bible: professional/premium/calm, 유치한 시각 언어 회피). "내가 줄 수
 // 있는 것"은 채워진 패널, "내가 보완할 부분"은 테두리만 있는 패널로 —
 // 색을 늘리지 않고 채움 유무만으로 두 그룹을 구분한다. 문장이 강하게
@@ -374,8 +376,8 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
       className="scroll-mt-16 flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
     >
       <div>
-        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-primary-foreground-soft">Self Reflection</p>
-        <h2 className="mt-2 text-lg font-black tracking-[-0.02em] text-primary-foreground sm:text-xl">자기 성찰</h2>
+        <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary-foreground" />
+        <h2 className="text-lg font-black tracking-[-0.02em] text-primary-foreground sm:text-xl">자기 성찰</h2>
         <p className="mt-2 text-sm font-semibold leading-6 text-primary-foreground-soft">이상형 답변을 뒤집어서 본 나의 모습이에요.</p>
       </div>
       <div className="flex flex-col gap-3">
@@ -405,7 +407,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
 function RoadmapSection({ roadmap }: { roadmap: IdealTypeRoadmap }) {
   return (
     <Card id="roadmap" className="scroll-mt-16 flex flex-col gap-4">
-      <SectionHeader eyebrow="Roadmap" title="로드맵" description="바로 시작할 수 있는 것부터 30일 계획까지예요." />
+      <SectionHeader title="로드맵" description="바로 시작할 수 있는 것부터 30일 계획까지예요." />
       <div className="rounded-medium border border-primary bg-surface p-3">
         <p className="text-xs font-black text-primary">24시간 안에</p>
         <p className="mt-1 text-sm font-bold leading-6 text-text-primary">{roadmap.firstAction}</p>

@@ -122,9 +122,16 @@ function FactorMatrixChart({ block }: { block: FactorMatrixBlock }) {
   const placed = resolveOverlaps(block.factors);
   return (
     <div className="mx-auto w-full max-w-sm">
-      <p className="mb-1 text-center text-xs font-black text-text-muted">{block.yAxisLabel.high}</p>
+      <p className="mb-1 break-keep text-center text-xs font-black text-text-muted">{block.yAxisLabel.high}</p>
       <div className="flex items-center gap-2">
-        <p className="w-14 shrink-0 text-right text-xs font-black leading-tight text-text-muted">{block.xAxisLabel.low}</p>
+        {/* w-14(56px)는 "외부 요인(통제 어려움)"처럼 AI가 만든 긴 복합 라벨엔
+            너무 좁아서, 자연스러운 단어 경계가 아니라 음절 사이에서 줄이
+            끊겼다. break-keep(단어 중간에서 줄바꿈하지 않음)만으로는 이
+            너비에서 여전히 강제로 끊기는 경우가 있어, 너비도 w-20(80px)로
+            같이 넓혔다 — 정사각형 매트릭스(aspect-square flex-1)가 그만큼
+            조금 작아지지만, PR #53에서 만든 점 번호 매김·겹침 방지 로직
+            (resolveOverlaps, 점 위 숫자)은 건드리지 않았다. */}
+        <p className="w-20 shrink-0 break-keep text-right text-xs font-black leading-tight text-text-muted">{block.xAxisLabel.low}</p>
         <div className="relative aspect-square flex-1">
           <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
             <rect x="1" y="1" width="98" height="98" rx="4" className="fill-none stroke-border" strokeWidth="1" />
@@ -147,9 +154,9 @@ function FactorMatrixChart({ block }: { block: FactorMatrixBlock }) {
             ))}
           </svg>
         </div>
-        <p className="w-14 shrink-0 text-left text-xs font-black leading-tight text-text-muted">{block.xAxisLabel.high}</p>
+        <p className="w-20 shrink-0 break-keep text-left text-xs font-black leading-tight text-text-muted">{block.xAxisLabel.high}</p>
       </div>
-      <p className="mt-1 text-center text-xs font-black text-text-muted">{block.yAxisLabel.low}</p>
+      <p className="mt-1 break-keep text-center text-xs font-black text-text-muted">{block.yAxisLabel.low}</p>
     </div>
   );
 }
