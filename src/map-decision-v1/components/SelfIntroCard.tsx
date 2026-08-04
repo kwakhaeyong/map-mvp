@@ -68,6 +68,7 @@ function SelfIntroCardBody({
   const { shareState, shareError, sharedUrl, canNativeShare, share, copyLink, ensureShareUrl } = useShareResult({
     topicId: session.topicId ?? "selfIntro",
     result,
+    signature: session.selfIntroResultSignature,
     quizDepth: session.selfIntroQuizDepth,
     shareTitle: "내 소개 카드",
     buildShareText: (shareUrl) => `이거 완전 내 얘기래\n\n${shareUrl}`,
@@ -175,7 +176,7 @@ export function SelfIntroCard({
           setGenerationState("error");
           return;
         }
-        setSession((previous) => ({ ...previous, selfIntroResult: data.result, updatedAt: now() }));
+        setSession((previous) => ({ ...previous, selfIntroResult: data.result, selfIntroResultSignature: data.signature, updatedAt: now() }));
         setGenerationState("idle");
       })
       .catch((error) => {

@@ -12,11 +12,14 @@ import {
   releaseGenerationSlotOnFailure,
   reserveGenerationSlot,
 } from "../../../src/map-decision-v1/engine/rate-limit";
+import { signResult } from "../../../src/map-decision-v1/engine/result-signature";
 import { resolveTopic } from "../../../src/map-decision-v1/engine/topics";
 import { MapSession, SelfIntroResult } from "../../../src/map-decision-v1/types";
 
+const SIGNATURE_SCOPE = "selfIntro";
+
 type RequestBody = { session: MapSession };
-type SuccessResponse = { result: SelfIntroResult };
+type SuccessResponse = { result: SelfIntroResult; signature: string | null };
 type BlockedResponse = { blocked: true; reason: string; message: string };
 
 function isRequestBody(value: unknown): value is RequestBody {
@@ -73,7 +76,10 @@ export async function POST(request: NextRequest) {
   const cachedBeforeReservation = await getCachedGeneration<SelfIntroResult>(cacheKey);
   if (cachedBeforeReservation) {
     console.log("[generation-cache] hit, skip reservation");
-    return NextResponse.json({ result: cachedBeforeReservation } satisfies SuccessResponse);
+    return NextResponse.json({
+      result: cachedBeforeReservation,
+      signature: signResult(SIGNATURE_SCOPE, cachedBeforeReservation),
+    } satisfies SuccessResponse);
   }
   console.log("[generation-cache] miss, proceeding to generate");
 
@@ -119,5 +125,5 @@ export async function POST(request: NextRequest) {
 
   await setCachedGeneration(cacheKey, result);
 
-  return NextResponse.json({ result } satisfies SuccessResponse);
+  return NextResponse.json({ result, signature: signResult(SIGNATURE_SCOPE, result) } satisfies SuccessResponse);
 }

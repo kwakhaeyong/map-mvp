@@ -117,7 +117,7 @@ export function Result({
           setGenerationState("error");
           return;
         }
-        setSession((previous) => ({ ...previous, result: data.result, updatedAt: now() }));
+        setSession((previous) => ({ ...previous, result: data.result, resultBlockSignatures: data.blockSignatures, updatedAt: now() }));
         setGenerationState("idle");
       })
       .catch((error) => {
@@ -159,7 +159,12 @@ export function Result({
         }
         setSession((previous) =>
           previous.result
-            ? { ...previous, result: { ...previous.result, [block]: data.value, generatedAt: now() }, updatedAt: now() }
+            ? {
+                ...previous,
+                result: { ...previous.result, [block]: data.value, generatedAt: now() },
+                resultBlockSignatures: { ...previous.resultBlockSignatures, [block]: data.signature },
+                updatedAt: now(),
+              }
             : previous,
         );
       })
@@ -182,6 +187,7 @@ export function Result({
   const { shareState, shareError, sharedUrl, canNativeShare, share, copyLink } = useShareResult({
     topicId: session.topicId ?? "career",
     result: session.result,
+    blockSignatures: session.resultBlockSignatures,
     shareTitle: "내 MAP 결과",
     buildShareText: (shareUrl) =>
       `내 MAP 결과: ${session.preferredMapType === "decision" ? "Decision MAP" : "Thinking MAP"}\n현재 가까운 방향은 ${shorten(direction, 60)}입니다.\n\n${shareUrl}`,

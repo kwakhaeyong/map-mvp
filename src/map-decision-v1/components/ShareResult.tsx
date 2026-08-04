@@ -21,12 +21,22 @@ export type ShareState = "idle" | "creating" | "copied" | "shared" | "error";
 export function useShareResult({
   topicId,
   result,
+  signature,
+  blockSignatures,
   quizDepth,
   shareTitle = "MAP Decision",
   buildShareText,
 }: {
   topicId: string;
   result: unknown;
+  // /api/share가 "이 서버가 실제로 만든 결과인가"를 확인하는 데 쓰는
+  // 서명(engine/result-signature.ts) — 생성 라우트 응답에서 그대로
+  // 받아 세션에 저장해뒀다가, 공유할 때만 여기로 실어 보낸다.
+  // 이상형·나소개는 결과 전체에 대한 서명 하나(signature), 진로는
+  // 블록별 재생성이 가능해 블록마다 독립된 서명 묶음(blockSignatures)을
+  // 쓴다 — 화면마다 자기가 가진 것만 넘기면 된다.
+  signature?: string | null;
+  blockSignatures?: Record<string, string | null | undefined>;
   // 이상형 퀴즈를 심화(선택 6문항)까지 답하고 만든 결과인지 — 공유
   // 페이지에서 "🔍 심층 분석 포함" 배지를 보여줄지 판단하는 데 쓴다.
   // 진로 결과 등 이 개념이 없는 화면에서는 그냥 생략하면 된다.
@@ -52,7 +62,7 @@ export function useShareResult({
   const sharedUrlRef = useRef<string | null>(null);
 
   const ensureShareUrl = async (): Promise<string | null> => {
-    const key = JSON.stringify({ topicId, result, quizDepth });
+    const key = JSON.stringify({ topicId, result, quizDepth, signature, blockSignatures });
     if (sharedUrlRef.current && sharedForKeyRef.current === key) {
       return sharedUrlRef.current;
     }
@@ -62,7 +72,7 @@ export function useShareResult({
       const response = await fetch("/api/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topicId, result, quizDepth }),
+        body: JSON.stringify({ topicId, result, quizDepth, signature, blockSignatures }),
       });
       const data = await response.json();
       if (data.blocked) {

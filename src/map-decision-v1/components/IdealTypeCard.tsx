@@ -155,6 +155,7 @@ function IdealTypeCardBody({
   const { shareState, shareError, sharedUrl, canNativeShare, share, copyLink, ensureShareUrl } = useShareResult({
     topicId: session.topicId ?? "idealType",
     result,
+    signature: session.idealTypeResultSignature,
     quizDepth: session.idealTypeQuizDepth,
     shareTitle: "내 이상형 카드",
     // 결과 내용(제목·한줄설명)은 절대 넣지 않는다 — /r/[id]의 OG 문구와
@@ -296,7 +297,7 @@ export function IdealTypeCard({
           setGenerationState("error");
           return;
         }
-        setSession((previous) => ({ ...previous, idealTypeResult: data.result, updatedAt: now() }));
+        setSession((previous) => ({ ...previous, idealTypeResult: data.result, idealTypeResultSignature: data.signature, updatedAt: now() }));
         setGenerationState("idle");
       })
       .catch((error) => {
