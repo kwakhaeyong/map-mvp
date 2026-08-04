@@ -148,8 +148,14 @@ export function Landing({
         </button>
       </section>
 
-      <TopicSection kicker="차근차근, 깊이 있게" ids={DEPTH_TOPIC_IDS} onStart={onStart} onLocked={handleLocked} />
+      {/* 홍보 유입의 주 목적지(완성된 이상형·나소개)를 먼저 보여준다 —
+          "차근차근, 깊이 있게"는 3개 중 2개가 준비 중 잠금이라 아래로
+          내렸다. 순서는 이 두 줄의 렌더링 순서로만 정해진다(공유
+          배열이 아니라 각자 자기 ids 배열을 가진 별개의 TopicSection
+          호출) — 섹션 내부 카드 순서(DEPTH_TOPIC_IDS/VIRAL_TOPIC_IDS)는
+          그대로다. */}
       <TopicSection kicker="가볍게, 빠르게" ids={VIRAL_TOPIC_IDS} onStart={onStart} onLocked={handleLocked} />
+      <TopicSection kicker="차근차근, 깊이 있게" ids={DEPTH_TOPIC_IDS} onStart={onStart} onLocked={handleLocked} />
 
       <section className="map-container py-3">
         <button
