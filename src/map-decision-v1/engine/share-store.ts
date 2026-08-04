@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import { getRedisClient } from "./redis-client";
+import { incrWithExpire, kstDateKey, secondsUntilNextKstMidnight } from "./rate-limit";
 
 // 익명 공유 링크 저장소. Upstash Redis(Vercel Marketplace)를 쓴다 — 로그인
 // 없이 "ID로 저장하고 꺼내 쓰기"만 필요하고, 만료 기능이 기본 내장돼
@@ -100,20 +101,69 @@ export async function getShare(id: string): Promise<GetShareResult> {
 // 한도를 한 번만 소모한다.
 const DAILY_SHARE_LIMIT = 25;
 
-export type ShareAttemptReason = "daily_limit" | "unavailable";
+// 서비스 전체 하루 공유 생성 상한 — IP 단위 한도는 IP 로테이션이나 국내
+// CGNAT 환경(같은 IP를 여러 사용자가 나눠 쓰는 경우) 때문에 실질적인
+// 전체 방어선이 되지 못한다. 공유 1건의 실비용은 Redis 쓰기 1번뿐이라
+// 생성(Sonnet 호출)만큼 비싸진 않지만, 링크가 90일간 저장되는 구조라
+// 막지 않으면 저장량이 무한정 누적된다.
+// rate-limit.ts의 readGlobalLimit()과 같은 패턴: 재배포 없이 조절할 수
+// 있게 환경변수로 빼고, 값을 못 읽거나 이상하면(0 이하, 숫자가 아님)
+// 방어적으로 fallback을 쓴다.
+// 기본값 1000 산정 근거: IP 하루 상한(25)의 40배로, 생성 쪽 비율
+// (DAILY_GLOBAL_GENERATION_LIMIT 300 ÷ DAILY_GENERATION_LIMIT 10 = 30배)보다
+// 약간 더 여유를 뒀다 — 공유는 AI 호출 비용이 없어 남용 시 실질 피해가
+// "봇 대량 생성으로 인한 Redis 저장량 증가" 정도라 생성보다 조금 더
+// 관대해도 된다고 판단했다(확립된 트래픽 데이터에 근거한 값은 아니며,
+// 실사용량을 보고 조정이 필요할 수 있다).
+const DEFAULT_DAILY_GLOBAL_SHARE_LIMIT = 1000;
+function readGlobalShareLimit(): number {
+  const raw = Number(process.env.DAILY_GLOBAL_SHARE_LIMIT);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_DAILY_GLOBAL_SHARE_LIMIT;
+}
+export const DAILY_GLOBAL_SHARE_LIMIT = readGlobalShareLimit();
 
+export type ShareAttemptReason = "daily_limit" | "global_daily_limit" | "unavailable";
+
+// rate-limit.ts의 reserveGenerationSlot과 같은 2단계 원자적 예약 패턴이다 —
+// IP 카운터를 먼저 INCR로 예약하고 초과分 확인, 그다음 전체 카운터를
+// INCR로 예약하고 초과 확인한다. 나중 단계가 실패/초과하면 앞서 늘린
+// 카운터를 되돌린다. 날짜 키는 kstDateKey()로 생성 레이트리밋과 동일하게
+// KST 자정 기준으로 통일한다(이전엔 UTC 기준이라 생성과 9시간 어긋나
+// 있었다).
 export async function registerShareAttempt(ip: string): Promise<{ allowed: boolean; reason?: ShareAttemptReason }> {
   const redis = getRedisClient();
   if (!redis) return { allowed: false, reason: "unavailable" };
-  const day = new Date().toISOString().slice(0, 10);
-  const key = `share-limit:${ip}:${day}`;
+
+  const now = new Date();
+  const day = kstDateKey(now);
+  const ttl = secondsUntilNextKstMidnight(now);
+  const ipKey = `share-limit:${ip}:${day}`;
+  const globalKey = `share-limit:global:${day}`;
+
   let count: number;
   try {
-    count = await redis.incr(key);
-    if (count === 1) await redis.expire(key, 60 * 60 * 24);
+    count = await incrWithExpire(redis, ipKey, ttl);
   } catch (error) {
     console.error("[share-store] registerShareAttempt failed", error);
     return { allowed: false, reason: "unavailable" };
   }
-  return count <= DAILY_SHARE_LIMIT ? { allowed: true } : { allowed: false, reason: "daily_limit" };
+  if (count > DAILY_SHARE_LIMIT) {
+    await redis.decr(ipKey).catch(() => {});
+    return { allowed: false, reason: "daily_limit" };
+  }
+
+  let globalCount: number;
+  try {
+    globalCount = await incrWithExpire(redis, globalKey, ttl);
+  } catch (error) {
+    console.error("[share-store] global registerShareAttempt failed", error);
+    await redis.decr(ipKey).catch(() => {});
+    return { allowed: false, reason: "unavailable" };
+  }
+  if (globalCount > DAILY_GLOBAL_SHARE_LIMIT) {
+    await Promise.all([redis.decr(ipKey), redis.decr(globalKey)]).catch(() => {});
+    return { allowed: false, reason: "global_daily_limit" };
+  }
+
+  return { allowed: true };
 }

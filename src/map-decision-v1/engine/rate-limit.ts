@@ -37,13 +37,16 @@ const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 // 국내라 "오늘 한도가 언제 풀리는지"가 KST 자정과 맞아야 체감과 어긋나지
 // 않는다. Date.getTime()은 타임존과 무관한 절대 시각이라, 9시간을 더한 뒤
 // UTC 게터로 읽으면 그 값이 곧 "KST로 봤을 때의 연/월/일"이 된다.
-function kstDateKey(date: Date): string {
+// share-store.ts의 공유 레이트리밋도 이 함수를 그대로 가져다 쓴다 —
+// 생성 쪽과 자정 리셋 기준(KST)을 통일하기 위해서다(날짜 키 계산
+// 로직을 두 곳에 따로 두지 않는다).
+export function kstDateKey(date: Date): string {
   return new Date(date.getTime() + KST_OFFSET_MS).toISOString().slice(0, 10);
 }
 
 // Redis TTL은 실제 경과 초만 알면 되므로, "다음 KST 자정까지 남은 시간"을
 // UTC 연산으로 구해도 결과(초 단위 길이)는 동일하다.
-function secondsUntilNextKstMidnight(date: Date): number {
+export function secondsUntilNextKstMidnight(date: Date): number {
   const kst = new Date(date.getTime() + KST_OFFSET_MS);
   const nextKstMidnightAsUtc = Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate() + 1, 0, 0, 0);
   const nextKstMidnightRealEpoch = nextKstMidnightAsUtc - KST_OFFSET_MS;
@@ -128,7 +131,10 @@ export function registerSessionStart(ip: string): { allowed: boolean; count: num
 
 export type GenerationLimitReason = "session_limit" | "ip_daily_limit" | "global_daily_limit" | "failure_limit" | "unavailable";
 
-async function incrWithExpire(redis: NonNullable<ReturnType<typeof getRedisClient>>, key: string, ttlSeconds: number): Promise<number> {
+// share-store.ts도 이 원자적 INCR+EXPIRE 패턴을 그대로 재사용한다 — 다중
+// 인스턴스에서 동시 요청이 들어와도 Redis가 INCR을 순서대로 처리해주므로
+// 카운트가 어긋나지 않는다(reserveGenerationSlot 주석 참고).
+export async function incrWithExpire(redis: NonNullable<ReturnType<typeof getRedisClient>>, key: string, ttlSeconds: number): Promise<number> {
   const count = await redis.incr(key);
   if (count === 1) await redis.expire(key, ttlSeconds);
   return count;
