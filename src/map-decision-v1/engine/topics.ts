@@ -24,7 +24,17 @@ export type TopicInputMode = "chat" | "quiz";
 // 칩을 탭했을 때 펼쳐지는 세부 선택지 — 같은 축을 더 구체화할 뿐, 기본
 // 칩 없이 세부만 고를 수는 없다(TopicQuiz.tsx가 항상 기본 칩과 함께
 // 노출한다).
-export type TopicChoice = { label: string; description: string };
+export type TopicChoice = {
+  label: string;
+  description: string;
+  // label이 화면에 보여주는 문구(그리고 AI에게 보내는 답변 텍스트)와,
+  // ideal-type-tags.ts의 태그 매핑이 answer를 찾는 키가 항상 같은 값일
+  // 필요는 없다 — relationship 축처럼 label을 주어가 분명하게 다듬으면서도
+  // 태그 매핑 키(이상형·나 소개 두 퀴즈가 공유하는 고정 사전)는 그대로
+  // 둬야 할 때, 이 필드에 매핑이 실제로 찾는 원래 문자열을 넣는다.
+  // 없으면 label을 그대로 쓴다(대부분의 축이 이 경우).
+  tagLabel?: string;
+};
 export type TopicOption = TopicChoice & { subOptions?: TopicChoice[] };
 // preference: 지금까지의 칩 선택형(복수 선택, 최대 3개). binary: 둘 중
 // 하나만 강제로 고르는 양자택일형 — 우선순위를 가려내는 게 목적이라
@@ -347,12 +357,24 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "scenarioCancel",
         type: "scenario",
         required: true,
-        question: "약속 30분 전에 상대가 갑자기 취소했어. 어떤 반응이 더 편해?",
+        // 원래 "상대가 취소했어. 어떤 반응이 더 편해?"였는데, "반응"의
+        // 주체가 나(취소당한 사람)인지 상대(이상형)인지 문장만으로는
+        // 정해지지 않아 사용자 테스트에서 혼동이 보고됐다. 다른 상황
+        // 제시형 문항(scenarioMood/scenarioSilence)과 똑같이 "내가 X했어,
+        // 이상형이라면 어떻게 반응할까?" 틀로 맞춰 상황을 뒤집었다 —
+        // 이제 취소하는 쪽이 나이고, 그걸 겪은 이상형의 반응을 묻는다.
+        // 선택지는 "취소당한 쪽(상대)이 보이는 반응"에 맞게 다시 쓰고,
+        // 다른 6개 수정 문항과 통일되게 "~하는 사람"으로 닫았다. 원래
+        // 재려던 성향 축(쿨함/걱정/서운함을 안으로 삼킴/즉시 재조정)은
+        // 그대로 유지한다 — "무슨 일 있었는지 걱정하며 물어보는"은 내가
+        // 이미 이유를 말하고 취소한 상황에서 "물어본다"는 동작이 어색해,
+        // 이유를 캐묻지 않고도 내 상황을 걱정해주는 쪽으로 다듬었다.
+        question: "내가 약속을 30분 전에 갑자기 취소해야 했어. 이상형이라면 어떻게 반응할까?",
         options: [
-          { label: "괜찮다고 쿨하게 넘기는 반응", description: "이유를 캐묻지 않고 다음을 기약하는" },
-          { label: "무슨 일 있었는지 걱정하며 물어보는 반응", description: "괜찮은지부터 확인하는" },
-          { label: "살짝 서운하지만 티 안 내는 반응", description: "속으로 아쉬워도 내색 않는" },
-          { label: "바로 다른 약속을 다시 잡자고 하는 반응", description: "미루지 않고 바로 재조정하는" },
+          { label: "괜찮다고 쿨하게 넘기는 사람", description: "이유를 캐묻지 않고 다음을 기약하는" },
+          { label: "괜찮은지 걱정하며 챙기는 사람", description: "내 상황부터 걱정하며 살펴주는" },
+          { label: "살짝 서운해도 티 내지 않는 사람", description: "속으로 아쉬워도 내색 않는" },
+          { label: "바로 다른 약속을 다시 잡자고 하는 사람", description: "미루지 않고 바로 재조정하는" },
         ],
       },
       {
@@ -449,10 +471,20 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "relationship",
         type: "preference",
         required: true,
-        question: "연애할 때 원하는 건?",
+        // 원래 "연애할 때 원하는 건?"이었는데, 이게 "상대가 나에게 해주길
+        // 원하는 것"인지 "내가 스스로 하고 싶은 것"인지 문장만으로 정해지지
+        // 않았다. "상대가"를 지문에 넣어 주어를 명시한다.
+        question: "연애할 때, 상대가 해줬으면 하는 건?",
+        // ★이 축은 나 소개 퀴즈(selfIntro.relationship)와 label 문자열이
+        // 같아야 ideal-type-tags.ts의 태그 매핑이 두 퀴즈에서 똑같이
+        // 동작한다(파일 상단 TopicChoice 주석 참고). 나 소개 쪽 문항·
+        // 선택지는 이번에 손대지 않으므로, 여기 label만 "~하는 사람"으로
+        // 바꾸고 tagLabel에 매핑이 실제로 찾는 원래 문자열을 넣어서 태그가
+        // 계속 정상 동작하게 분리했다.
         options: [
           {
-            label: "표현 많이 해주기",
+            label: "표현을 많이 해주는 사람",
+            tagLabel: "표현 많이 해주기",
             description: "마음을 말과 행동으로 자주 드러내는 것",
             subOptions: [
               { label: "애정표현이 잦은", description: "\"좋아해\" 같은 말을 자주 하는" },
@@ -462,7 +494,8 @@ export const TOPICS: Record<string, TopicConfig> = {
             ],
           },
           {
-            label: "서로 존중하는 거리감",
+            label: "서로의 거리를 존중해주는 사람",
+            tagLabel: "서로 존중하는 거리감",
             description: "각자의 공간을 지켜주는 것",
             subOptions: [
               { label: "연락을 강요하지 않는", description: "답장이 늦어도 이해해주는" },
@@ -472,7 +505,8 @@ export const TOPICS: Record<string, TopicConfig> = {
             ],
           },
           {
-            label: "함께 많은 시간",
+            label: "함께하는 시간을 소중히 여기는 사람",
+            tagLabel: "함께 많은 시간",
             description: "붙어있는 시간 자체를 소중히 여기는 것",
             subOptions: [
               { label: "데이트를 자주 하고 싶은", description: "자주 만나는 걸 좋아하는" },
@@ -482,7 +516,8 @@ export const TOPICS: Record<string, TopicConfig> = {
             ],
           },
           {
-            label: "티키타카 잘 통하기",
+            label: "티키타카가 잘 통하는 사람",
+            tagLabel: "티키타카 잘 통하기",
             description: "대화가 막힘없이 이어지는 것",
             subOptions: [
               { label: "농담 코드가 맞는", description: "웃음 포인트가 비슷한" },
@@ -492,7 +527,8 @@ export const TOPICS: Record<string, TopicConfig> = {
             ],
           },
           {
-            label: "든든한 안정감",
+            label: "든든한 안정감을 주는 사람",
+            tagLabel: "든든한 안정감",
             description: "흔들림 없이 믿고 기댈 수 있는 것",
             subOptions: [
               { label: "감정 기복이 적은", description: "변덕 없이 한결같은" },
@@ -502,7 +538,8 @@ export const TOPICS: Record<string, TopicConfig> = {
             ],
           },
           {
-            label: "빠른 갈등 해결",
+            label: "갈등을 빠르게 해결하는 사람",
+            tagLabel: "빠른 갈등 해결",
             description: "다퉈도 오래 끌지 않는 것",
             subOptions: [
               { label: "대화로 풀어가는", description: "싸워도 대화로 해결하려는" },
@@ -517,12 +554,17 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "decisionStyle",
         type: "quickTap",
         required: true,
+        // 지문에 "이상형은"이 있어도 선택지가 "빠르게 결정하는"처럼
+        // 명사 없이 끝나면 읽는 순간 주어가 다시 풀려서 "내 결정 방식을
+        // 묻는 건지, 상대에게 바라는 건지" 혼동이 사용자 테스트에서
+        // 보고됐다. 선택지를 전부 "~하는 사람"으로 닫아서 지문의 주어가
+        // 끝까지 유지되게 한다.
         question: "결정할 때 이상형은 어떤 쪽이 좋아?",
         options: [
-          { label: "빠르게 결정하는", description: "고민을 오래 안 하고 바로 정하는" },
-          { label: "신중하게 고민하는", description: "여러 번 따져보고 정하는" },
-          { label: "같이 의논하는", description: "혼자 정하지 않고 같이 얘기해서 정하는" },
-          { label: "직관을 믿는", description: "느낌 가는 대로 정하는" },
+          { label: "빠르게 결정하는 사람", description: "고민을 오래 안 하고 바로 정하는" },
+          { label: "신중하게 고민하는 사람", description: "여러 번 따져보고 정하는" },
+          { label: "같이 의논하는 사람", description: "혼자 정하지 않고 같이 얘기해서 정하는" },
+          { label: "직관을 믿는 사람", description: "느낌 가는 대로 정하는" },
         ],
       },
       // ── 상황 제시형 2 ─────────────────────────────────────────────
@@ -620,12 +662,17 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "reconcileStyle",
         type: "quickTap",
         required: true,
-        question: "다툰 뒤 화해는 어떤 방식이 좋아?",
+        // decisionStyle과 같은 문제 — "안아주며 사과하는"처럼 명사 없이
+        // 끝나면 "내가 화해하는 방식"인지 "이상형에게 바라는 화해 방식"인지
+        // 다시 헷갈린다. decisionStyle과 같은 틀("~할 때 이상형은 어떤
+        // 쪽이 좋아?")로 지문에 주어를 명시하고, 선택지도 "~하는 사람"으로
+        // 닫는다.
+        question: "다툰 뒤 화해할 때, 이상형은 어떤 쪽이 좋아?",
         options: [
-          { label: "바로 안아주며 사과하는", description: "스킨십으로 먼저 마음을 푸는" },
-          { label: "시간 두고 차분히 대화하는", description: "감정이 가라앉은 뒤 얘기하는" },
-          { label: "장난스럽게 풀어주는", description: "가볍게 농담으로 분위기를 푸는" },
-          { label: "메시지로 마음을 전하는", description: "글로 먼저 마음을 표현하는" },
+          { label: "바로 안아주며 사과하는 사람", description: "스킨십으로 먼저 마음을 푸는" },
+          { label: "시간을 두고 차분히 대화하는 사람", description: "감정이 가라앉은 뒤 얘기하는" },
+          { label: "장난스럽게 풀어주는 사람", description: "가볍게 농담으로 분위기를 푸는" },
+          { label: "메시지로 마음을 전하는 사람", description: "글로 먼저 마음을 표현하는" },
         ],
       },
       // ── 심화에서 필수로 승격(quizVersion 7) ───────────────────────
@@ -782,12 +829,16 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "firstMoveStyle",
         type: "quickTap",
         required: true,
+        // decisionStyle과 같은 이유로 선택지를 "~하는 사람"으로 닫는다.
+        // 세 번째 선택지는 원래 "내가 다가가면 잘 받아주는"이라 "내가"가
+        // 섞여 있었다 — 지문 주어(이상형)와 어긋나므로 "다가가면 편하게
+        // 받아주는 사람"으로 바꿔 이상형이 주어가 되게 정리했다.
         question: "썸 초반, 이상형은 어떤 쪽이 좋아?",
         options: [
-          { label: "적극적으로 먼저 다가오는", description: "마음을 숨기지 않고 먼저 다가오는" },
-          { label: "은근하게 티 내는", description: "직접 말은 안 해도 티가 나는" },
-          { label: "내가 다가가면 잘 받아주는", description: "먼저 다가가면 편하게 받아주는" },
-          { label: "자연스럽게 친구처럼 시작하는", description: "부담 없이 친구처럼 다가오는" },
+          { label: "적극적으로 먼저 다가오는 사람", description: "마음을 숨기지 않고 먼저 다가오는" },
+          { label: "은근하게 티를 내는 사람", description: "직접 말은 안 해도 티가 나는" },
+          { label: "다가가면 편하게 받아주는 사람", description: "먼저 다가가면 편하게 받아주는" },
+          { label: "자연스럽게 친구처럼 시작하는 사람", description: "부담 없이 친구처럼 다가오는" },
         ],
       },
       // ── 심화에서 필수로 승격(quizVersion 7) ───────────────────────
@@ -909,12 +960,15 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "energyLevel",
         type: "quickTap",
         required: true,
-        question: "사람 만날 때 에너지는 어떤 쪽이 좋아?",
+        // 지문에 주어가 없어 "내 에너지 스타일"인지 "이상형의 에너지
+        // 스타일"인지 정해지지 않았다 — "이상형은"을 지문에 넣고,
+        // decisionStyle과 같은 이유로 선택지도 "~하는 사람"으로 닫는다.
+        question: "사람 만날 때, 이상형은 어떤 쪽이 좋아?",
         options: [
-          { label: "사람 많은 자리를 즐기는", description: "여럿이 모이는 자리에서 에너지를 얻는" },
-          { label: "소수와 깊게 만나는 걸 좋아하는", description: "한두 명과 깊은 대화를 좋아하는" },
-          { label: "혼자만의 시간이 꼭 필요한", description: "충전을 위해 혼자 있는 시간이 필요한" },
-          { label: "상황에 따라 유연한", description: "때에 따라 다르게 맞추는" },
+          { label: "사람 많은 자리를 즐기는 사람", description: "여럿이 모이는 자리에서 에너지를 얻는" },
+          { label: "소수와 깊게 만나는 걸 좋아하는 사람", description: "한두 명과 깊은 대화를 좋아하는" },
+          { label: "혼자만의 시간이 꼭 필요한 사람", description: "충전을 위해 혼자 있는 시간이 필요한" },
+          { label: "상황에 따라 유연한 사람", description: "때에 따라 다르게 맞추는" },
         ],
       },
       // ── 상황 제시형 3 ─────────────────────────────────────────────
@@ -993,10 +1047,13 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "communication",
         type: "preference",
         required: true,
-        question: "연락할 때 어떤 모습이 좋아?",
+        // 지문에 주어가 없어 "내 연락 습관"인지 "이상형에게 바라는 연락
+        // 스타일"인지 정해지지 않았다 — "이상형은"을 지문에 넣고,
+        // decisionStyle과 같은 이유로 선택지도 "~하는 사람"으로 닫는다.
+        question: "연락할 때, 이상형은 어떤 모습이면 좋아?",
         options: [
           {
-            label: "자주 연락하는",
+            label: "자주 연락하는 사람",
             description: "하루 중 틈틈이 연락을 주고받는 걸 좋아하는",
             subOptions: [
               { label: "답장이 빠른", description: "연락을 오래 기다리게 안 하는" },
@@ -1006,7 +1063,7 @@ export const TOPICS: Record<string, TopicConfig> = {
             ],
           },
           {
-            label: "필요할 때 연락하는",
+            label: "필요할 때 연락하는 사람",
             description: "연락 빈도보다 내용을 더 중요하게 여기는",
             subOptions: [
               { label: "용건 위주로 연락하는", description: "짧고 명확하게 소통하는" },
@@ -1016,7 +1073,7 @@ export const TOPICS: Record<string, TopicConfig> = {
             ],
           },
           {
-            label: "텍스트로 표현 잘하는",
+            label: "텍스트로 표현을 잘하는 사람",
             description: "메시지로 마음을 잘 전달하는",
             subOptions: [
               { label: "장문 메시지를 보내는", description: "생각을 길게 적어 보내는" },
@@ -1026,7 +1083,7 @@ export const TOPICS: Record<string, TopicConfig> = {
             ],
           },
           {
-            label: "통화를 편하게 여기는",
+            label: "통화를 편하게 여기는 사람",
             description: "목소리로 대화하는 걸 자연스러워하는",
             subOptions: [
               { label: "자기 전 통화를 좋아하는", description: "하루를 마무리하며 통화하는" },
@@ -1036,7 +1093,7 @@ export const TOPICS: Record<string, TopicConfig> = {
             ],
           },
           {
-            label: "만나서 얘기하는 걸 선호하는",
+            label: "만나서 얘기하는 걸 선호하는 사람",
             description: "연락보다 직접 만나는 걸 우선하는",
             subOptions: [
               { label: "자주 만나고 싶어하는", description: "얼굴 보는 걸 더 중요하게 여기는" },
@@ -1046,7 +1103,7 @@ export const TOPICS: Record<string, TopicConfig> = {
             ],
           },
           {
-            label: "연락에 유연한",
+            label: "연락에 유연한 사람",
             description: "상황에 따라 자연스럽게 맞춰주는",
             subOptions: [
               { label: "바쁠 땐 이해해주는", description: "답장이 늦어도 서운해하지 않는" },
