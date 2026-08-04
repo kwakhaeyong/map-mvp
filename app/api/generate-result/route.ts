@@ -100,9 +100,9 @@ export async function POST(request: NextRequest) {
   }
 
   if (block) {
-    const value = await generateResultBlock(session, block);
+    const { value, countsAsFailure } = await generateResultBlock(session, block);
     if (!value) {
-      await releaseGenerationSlotOnFailure(ip, session.startedAt);
+      await releaseGenerationSlotOnFailure(ip, session.startedAt, countsAsFailure);
       return NextResponse.json(
         { blocked: true, reason: "generation_failed", message: "이 부분을 다시 만들지 못했어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
         { status: 502 },
@@ -111,9 +111,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ block, value, signature: signResult(careerBlockScope(block), value) } satisfies BlockSuccessResponse);
   }
 
-  const result = await generateFinalResult(session);
+  const { result, countsAsFailure } = await generateFinalResult(session);
   if (!result) {
-    await releaseGenerationSlotOnFailure(ip, session.startedAt);
+    await releaseGenerationSlotOnFailure(ip, session.startedAt, countsAsFailure);
     return NextResponse.json(
       { blocked: true, reason: "generation_failed", message: "지금은 결과를 생성할 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
       { status: 502 },

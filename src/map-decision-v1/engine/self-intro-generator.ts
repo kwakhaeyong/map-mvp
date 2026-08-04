@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { MapSession, SelfIntroMatrixPoint, SelfIntroResult, SelfIntroRoadmapPhase } from "../types";
 import { getGenerationEffort } from "./generation-config";
+import { isServerSideGenerationError } from "./generation-error";
 import { getIdealTypeTags } from "./ideal-type-tags";
 import { now } from "./session";
 
@@ -261,7 +262,10 @@ function capRoadmapPhases(phases: RawRoadmap["phases"]): SelfIntroRoadmapPhase[]
 const SELF_INTRO_MAX_TOKENS = 16384;
 const SELF_INTRO_MAX_TOKENS_RETRY = 16384;
 
-async function attemptGeneration(client: Anthropic, session: MapSession, maxTokens: number): Promise<{ result: SelfIntroResult | null; truncated: boolean }> {
+// countsAsFailure: 이 실패를 rate-limit.ts의 세션당 실패 상한에 넣을지.
+// 서버 쪽 원인(engine/generation-error.ts)은 false, 빈 응답·스키마
+// 검증 실패는 항상 true — ideal-type-generator.ts와 같은 원칙이다.
+async function attemptGeneration(client: Anthropic, session: MapSession, maxTokens: number): Promise<{ result: SelfIntroResult | null; truncated: boolean; countsAsFailure: boolean }> {
   let responseText: string | undefined;
   let truncated = false;
   try {
@@ -296,24 +300,26 @@ async function attemptGeneration(client: Anthropic, session: MapSession, maxToke
     // — status/type/message처럼 원인 구분에 필요한 안전한 필드만 남긴다.
     const status = error instanceof Anthropic.APIError ? error.status : undefined;
     const type = error instanceof Anthropic.APIError ? error.type : undefined;
+    const serverSide = isServerSideGenerationError(error);
     console.error("[self-intro-generator] Claude API call failed", {
       status,
       type,
       name: error instanceof Error ? error.name : typeof error,
       message: error instanceof Error ? error.message : String(error),
+      countsAsFailure: !serverSide,
     });
-    return { result: null, truncated };
+    return { result: null, truncated, countsAsFailure: !serverSide };
   }
 
   if (!responseText) {
     console.error("[self-intro-generator] empty response from Claude");
-    return { result: null, truncated };
+    return { result: null, truncated, countsAsFailure: true };
   }
 
   const parsed = parseAndValidate(responseText);
   if (!parsed.ok) {
     console.error("[self-intro-generator] response failed schema validation", { reason: parsed.reason, truncated });
-    return { result: null, truncated };
+    return { result: null, truncated, countsAsFailure: true };
   }
 
   const data = parsed.data;
@@ -351,26 +357,34 @@ async function attemptGeneration(client: Anthropic, session: MapSession, maxToke
     // 두 결과의 태그가 같은 문자열 체계여야 한다(docs/NASOGAE_DESIGN.md).
     tags: getIdealTypeTags(session.quizAnswers),
   };
-  return { result, truncated };
+  return { result, truncated, countsAsFailure: false };
 }
 
 const MAX_GENERATION_ATTEMPTS = 2;
 
+export type SelfIntroGenerationOutcome = { result: SelfIntroResult | null; countsAsFailure: boolean };
+
 // Server-side only: reads ANTHROPIC_API_KEY from the environment and must
 // never be imported from client components. The API route is the only caller.
-export async function generateSelfIntroResult(session: MapSession): Promise<SelfIntroResult | null> {
+//
+// countsAsFailure(반환값): ideal-type-generator.ts의 같은 이름 값과
+// 같은 규칙 — 재시도 2회 중 하나라도 입력/출력 내용 때문에 실패했으면
+// 최종적으로도 카운트한다.
+export async function generateSelfIntroResult(session: MapSession): Promise<SelfIntroGenerationOutcome> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error("[self-intro-generator] ANTHROPIC_API_KEY not set");
-    return null;
+    return { result: null, countsAsFailure: false };
   }
 
   const client = new Anthropic({ apiKey });
   let maxTokens = SELF_INTRO_MAX_TOKENS;
+  let countsAsFailure = false;
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const { result, truncated } = await attemptGeneration(client, session, maxTokens);
-    if (result) return result;
-    if (truncated) maxTokens = SELF_INTRO_MAX_TOKENS_RETRY;
+    const outcome = await attemptGeneration(client, session, maxTokens);
+    if (outcome.result) return { result: outcome.result, countsAsFailure: false };
+    if (outcome.countsAsFailure) countsAsFailure = true;
+    if (outcome.truncated) maxTokens = SELF_INTRO_MAX_TOKENS_RETRY;
   }
-  return null;
+  return { result: null, countsAsFailure };
 }

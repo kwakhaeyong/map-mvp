@@ -3,6 +3,7 @@ import { FactorMatrixBlock, FinalResult, InsightBlock, MapSession, NodeKind, Res
 import { createId, now } from "./session";
 import { NODE_KINDS } from "./ai-node-extractor";
 import { getGenerationEffort } from "./generation-config";
+import { isServerSideGenerationError } from "./generation-error";
 
 const SYSTEM_PROMPT = `너는 MAP Decision의 최종 결과 생성 엔진이다. 지금까지 나눈 대화 전체를 바탕으로, 사용자가 스스로 정리하지 못했던 의사결정 구조를 4개 블록으로 만든다.
 
@@ -308,7 +309,11 @@ const FULL_GENERATION_MAX_TOKENS_RETRY = 16384;
 
 // One attempt: call Sonnet, parse, validate. Returns null on any failure so
 // generateFinalResult can retry it without duplicating this logic.
-async function attemptFullGeneration(client: Anthropic, session: MapSession, maxTokens: number): Promise<{ result: FinalResult | null; truncated: boolean }> {
+//
+// countsAsFailure: 이 실패를 rate-limit.ts의 세션당 실패 상한에 넣을지.
+// 서버 쪽 원인(engine/generation-error.ts)은 false, 빈 응답·스키마
+// 검증 실패는 항상 true — ideal-type-generator.ts와 같은 원칙이다.
+async function attemptFullGeneration(client: Anthropic, session: MapSession, maxTokens: number): Promise<{ result: FinalResult | null; truncated: boolean; countsAsFailure: boolean }> {
   let responseText: string | undefined;
   let truncated = false;
   try {
@@ -348,19 +353,32 @@ async function attemptFullGeneration(client: Anthropic, session: MapSession, max
     }
     responseText = response.content.find((block) => block.type === "text")?.text;
   } catch (error) {
-    console.error("[final-result-generator] Claude API call failed", error);
-    return { result: null, truncated };
+    // status를 별도 필드로 분리해 Vercel 로그 검색으로 원인(401/429/타임아웃 등)을
+    // 바로 구분할 수 있게 한다. error 객체를 통째로 넘기지 않는 이유는 Anthropic
+    // SDK의 APIError.error(응답 JSON 본문)에 어떤 내용이 실릴지 보장할 수 없어서다
+    // — status/type/message처럼 원인 구분에 필요한 안전한 필드만 남긴다(#132와 동일).
+    const status = error instanceof Anthropic.APIError ? error.status : undefined;
+    const type = error instanceof Anthropic.APIError ? error.type : undefined;
+    const serverSide = isServerSideGenerationError(error);
+    console.error("[final-result-generator] Claude API call failed", {
+      status,
+      type,
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+      countsAsFailure: !serverSide,
+    });
+    return { result: null, truncated, countsAsFailure: !serverSide };
   }
 
   if (!responseText) {
     console.error("[final-result-generator] empty response from Claude");
-    return { result: null, truncated };
+    return { result: null, truncated, countsAsFailure: true };
   }
 
   const parsed = parseAndValidate(responseText);
   if (!parsed.ok) {
     console.error("[final-result-generator] response failed schema validation", { reason: parsed.reason, truncated });
-    return { result: null, truncated };
+    return { result: null, truncated, countsAsFailure: true };
   }
 
   return {
@@ -374,6 +392,7 @@ async function attemptFullGeneration(client: Anthropic, session: MapSession, max
       insights: buildInsightBlock(parsed.data.insights),
     },
     truncated,
+    countsAsFailure: false,
   };
 }
 
@@ -388,18 +407,30 @@ const MAX_GENERATION_ATTEMPTS = 2;
 // this single call, so the API route's one rate-limit check per request
 // still only ever counts as one attempt against the user's budget, even
 // though up to two Claude calls may happen underneath it.
-export async function generateFinalResult(session: MapSession): Promise<FinalResult | null> {
+export type FinalResultGenerationOutcome = { result: FinalResult | null; countsAsFailure: boolean };
+
+// countsAsFailure(반환값): rate-limit.ts의 세션당 실패 상한에 넣을지 —
+// ideal-type-generator.ts의 같은 이름 값과 같은 규칙이다. API 키 미설정도
+// 여기서 로그를 남긴다(#132가 이상형·나소개에만 추가했던 걸 여기도
+// 맞춤 — 세 생성 경로가 gen-fail 카운터를 공유해서 진단 로그도 맞춰야
+// 원인 추적이 된다).
+export async function generateFinalResult(session: MapSession): Promise<FinalResultGenerationOutcome> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.error("[final-result-generator] ANTHROPIC_API_KEY not set");
+    return { result: null, countsAsFailure: false };
+  }
 
   const client = new Anthropic({ apiKey });
   let maxTokens = FULL_GENERATION_MAX_TOKENS;
+  let countsAsFailure = false;
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const { result, truncated } = await attemptFullGeneration(client, session, maxTokens);
-    if (result) return result;
-    if (truncated) maxTokens = FULL_GENERATION_MAX_TOKENS_RETRY;
+    const outcome = await attemptFullGeneration(client, session, maxTokens);
+    if (outcome.result) return { result: outcome.result, countsAsFailure: false };
+    if (outcome.countsAsFailure) countsAsFailure = true;
+    if (outcome.truncated) maxTokens = FULL_GENERATION_MAX_TOKENS_RETRY;
   }
-  return null;
+  return { result: null, countsAsFailure };
 }
 
 // --- Single-block regeneration ---
@@ -471,7 +502,10 @@ function buildBlockValue<K extends ResultBlockKey>(block: K, value: unknown): Bl
 const BLOCK_GENERATION_MAX_TOKENS = 6144;
 const BLOCK_GENERATION_MAX_TOKENS_RETRY = 9216;
 
-async function attemptBlockGeneration<K extends ResultBlockKey>(client: Anthropic, session: MapSession, block: K, maxTokens: number): Promise<{ value: BlockValueMap[K] | null; truncated: boolean }> {
+// countsAsFailure: attemptFullGeneration과 같은 원칙 — 서버 쪽 원인은
+// false, 응답 내용에 기인한 실패(빈 응답·JSON 파싱 실패·스키마 검증
+// 실패)는 항상 true.
+async function attemptBlockGeneration<K extends ResultBlockKey>(client: Anthropic, session: MapSession, block: K, maxTokens: number): Promise<{ value: BlockValueMap[K] | null; truncated: boolean; countsAsFailure: boolean }> {
   const jsonKey = BLOCK_JSON_KEY[block];
 
   let responseText: string | undefined;
@@ -510,13 +544,23 @@ async function attemptBlockGeneration<K extends ResultBlockKey>(client: Anthropi
     }
     responseText = response.content.find((part) => part.type === "text")?.text;
   } catch (error) {
-    console.error("[final-result-generator] block regeneration call failed", { block, error });
-    return { value: null, truncated };
+    const status = error instanceof Anthropic.APIError ? error.status : undefined;
+    const type = error instanceof Anthropic.APIError ? error.type : undefined;
+    const serverSide = isServerSideGenerationError(error);
+    console.error("[final-result-generator] block regeneration call failed", {
+      block,
+      status,
+      type,
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+      countsAsFailure: !serverSide,
+    });
+    return { value: null, truncated, countsAsFailure: !serverSide };
   }
 
   if (!responseText) {
     console.error("[final-result-generator] empty block response from Claude", { block });
-    return { value: null, truncated };
+    return { value: null, truncated, countsAsFailure: true };
   }
 
   let parsed: unknown;
@@ -524,31 +568,41 @@ async function attemptBlockGeneration<K extends ResultBlockKey>(client: Anthropi
     parsed = JSON.parse(responseText);
   } catch {
     console.error("[final-result-generator] block response was not valid JSON", { block, truncated });
-    return { value: null, truncated };
+    return { value: null, truncated, countsAsFailure: true };
   }
-  if (typeof parsed !== "object" || parsed === null) return { value: null, truncated };
+  if (typeof parsed !== "object" || parsed === null) {
+    console.error("[final-result-generator] block response was not a JSON object", { block, truncated });
+    return { value: null, truncated, countsAsFailure: true };
+  }
 
   const value = (parsed as Record<string, unknown>)[jsonKey];
   if (!isValidBlockValue(block, value)) {
     console.error("[final-result-generator] block response failed schema validation", { block, truncated });
-    return { value: null, truncated };
+    return { value: null, truncated, countsAsFailure: true };
   }
 
-  return { value: buildBlockValue(block, value), truncated };
+  return { value: buildBlockValue(block, value), truncated, countsAsFailure: false };
 }
+
+export type ResultBlockGenerationOutcome<K extends ResultBlockKey> = { value: BlockValueMap[K] | null; countsAsFailure: boolean };
 
 // Server-side only, same retry and rate-limit-counting behavior as
 // generateFinalResult above.
-export async function generateResultBlock<K extends ResultBlockKey>(session: MapSession, block: K): Promise<BlockValueMap[K] | null> {
+export async function generateResultBlock<K extends ResultBlockKey>(session: MapSession, block: K): Promise<ResultBlockGenerationOutcome<K>> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.error("[final-result-generator] ANTHROPIC_API_KEY not set");
+    return { value: null, countsAsFailure: false };
+  }
 
   const client = new Anthropic({ apiKey });
   let maxTokens = BLOCK_GENERATION_MAX_TOKENS;
+  let countsAsFailure = false;
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const { value, truncated } = await attemptBlockGeneration(client, session, block, maxTokens);
-    if (value) return value;
-    if (truncated) maxTokens = BLOCK_GENERATION_MAX_TOKENS_RETRY;
+    const outcome = await attemptBlockGeneration(client, session, block, maxTokens);
+    if (outcome.value) return { value: outcome.value, countsAsFailure: false };
+    if (outcome.countsAsFailure) countsAsFailure = true;
+    if (outcome.truncated) maxTokens = BLOCK_GENERATION_MAX_TOKENS_RETRY;
   }
-  return null;
+  return { value: null, countsAsFailure };
 }

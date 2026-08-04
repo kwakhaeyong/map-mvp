@@ -114,9 +114,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await generateSelfIntroResult(session);
+  const { result, countsAsFailure } = await generateSelfIntroResult(session);
   if (!result) {
-    await releaseGenerationSlotOnFailure(ip, session.startedAt);
+    await releaseGenerationSlotOnFailure(ip, session.startedAt, countsAsFailure);
     return NextResponse.json(
       { blocked: true, reason: "generation_failed", message: "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
       { status: 502 },
