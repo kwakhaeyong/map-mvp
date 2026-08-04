@@ -29,7 +29,18 @@ export const DAILY_GLOBAL_GENERATION_LIMIT = readGlobalLimit();
 // 참고) — 실패는 사용자 잘못이 아니기 때문이다. 하지만 그러면 "항상 실패하는
 // 입력"으로 반복 호출해도 한도에 걸리지 않아 AI 호출 비용이 무제한
 // 발생할 수 있으므로, 실패 시도 자체에는 세션당 이 낮은 별도 상한을 둔다.
-export const MAX_FAILED_GENERATIONS_PER_SESSION = 2;
+//
+// ★이 카운트는 releaseGenerationSlotOnFailure에 countsAsFailure=true로
+// 넘어온 실패만 올린다(engine/generation-error.ts 참고) — API 키
+// 미설정·Anthropic 5xx/과부하·네트워크·타임아웃 같은 서버 쪽 실패는
+// 카운트하지 않는다. 그래서 이 상한은 "입력·출력 내용 때문에 반복
+// 실패하는 경우"만 겨냥한다. 2였을 때 프리뷰 환경에서 API 키 미설정
+// 때문에 2번 실패한 사용자가(당시엔 원인 구분 없이 전부 카운트했다)
+// 3번째 시도에서 곧바로 차단된 사고가 있었다 — 지금은 그런 서버 쪽
+// 실패가 아예 안 세어지지만, 그래도 진짜 입력 문제로 반복 실패하는
+// 경우까지 너무 빡빡하게 막지 않도록(완주에 7~8분 걸리는 이 서비스
+// 특성상 한 번의 우연한 실패로 완주자를 잃으면 손실이 크다) 4로 올렸다.
+export const MAX_FAILED_GENERATIONS_PER_SESSION = 4;
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
@@ -226,19 +237,26 @@ export async function reserveGenerationSlot(ip: string, sessionKey: string): Pro
   return { allowed: true };
 }
 
-// 생성이 실패했을 때만 부른다 — 세션/IP-하루 예약은 되돌려 사용자 몫을
-// 지키고(생성 실패는 사용자 잘못이 아니므로), 별도의 낮은 실패 상한만
-// 올린다. 전체 하루 상한(global)은 되돌리지 않는다(reserveGenerationSlot
-// 주석 참고).
-export async function releaseGenerationSlotOnFailure(ip: string, sessionKey: string): Promise<void> {
+// 생성이 실패했을 때만 부른다 — 세션/IP-하루 예약은 원인과 무관하게 항상
+// 되돌려 사용자 몫을 지킨다(생성 실패는 사용자 잘못이 아니므로). 별도의
+// 낮은 실패 상한(gen-fail)은 countsAsFailure가 true일 때만 올린다 —
+// API 키 미설정·Anthropic 5xx/과부하·네트워크·타임아웃처럼 사용자가
+// 무엇을 입력했든 똑같이 났을 서버 쪽 실패까지 이 상한에 포함되면,
+// 완주한 사용자가 서버 사정으로 두어 번 실패한 것만으로 다음 시도가
+// 막힌다(engine/generation-error.ts의 isServerSideGenerationError 참고).
+// 전체 하루 상한(global)은 원인과 무관하게 되돌리지 않는다
+// (reserveGenerationSlot 주석 참고).
+export async function releaseGenerationSlotOnFailure(ip: string, sessionKey: string, countsAsFailure: boolean): Promise<void> {
   const redis = getRedisClient();
   if (!redis) return;
   const day = kstDateKey(new Date());
   const ipDailyKey = `gen-slot:ip:${ip}:${day}`;
   const sessionSlotKey = `gen-slot:session:${sessionKey}`;
   const failureKey = `gen-fail:session:${sessionKey}`;
+  const releases = [redis.decr(sessionSlotKey), redis.decr(ipDailyKey)];
+  if (countsAsFailure) releases.push(incrWithExpire(redis, failureKey, 60 * 60 * 48));
   try {
-    await Promise.all([redis.decr(sessionSlotKey), redis.decr(ipDailyKey), incrWithExpire(redis, failureKey, 60 * 60 * 48)]);
+    await Promise.all(releases);
   } catch (error) {
     console.error("[rate-limit] release on failure failed", error);
   }
