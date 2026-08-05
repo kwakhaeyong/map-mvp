@@ -32,7 +32,7 @@ export function Brand() {
 // 고민을 얘기해도 이미 그에 맞는 결과가 나온다(프로덕션에서 이직 고민
 // 완주로 실측 확인됨).
 const DEPTH_TOPIC_IDS = ["career"];
-const VIRAL_TOPIC_IDS = ["idealType", "selfIntro", "friendship", "workSelf", "taste", "travelStyle"];
+const VIRAL_TOPIC_IDS = ["idealType", "selfIntro", "friendship", "work", "taste", "travelStyle"];
 const SAFETY_NET_TOPIC_ID = "freeform";
 
 function TopicCard({

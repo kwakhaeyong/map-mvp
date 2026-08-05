@@ -14,6 +14,7 @@ export type ResultLayoutId =
   | "idealType" // 완성형 전용 틀
   | "selfIntro" // 완성형 전용 틀
   | "friendship" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
+  | "work" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
   | "viral-common" // 경량 공통 틀(바이럴 계열)
   | "depth-common"; // 경량 공통 틀(깊이 계열)
 
@@ -2202,18 +2203,402 @@ export const TOPICS: Record<string, TopicConfig> = {
     entryChips: ["먼저 다가가는 편이에요", "깊게 오래 가는 편이에요", "잘 모르겠어요"],
     implemented: true,
   },
-  workSelf: {
-    id: "workSelf",
+  work: {
+    id: "work",
     name: "일할 때의 나",
     icon: "💼",
-    oneLiner: "일할 때 나는 어떤 사람인지 정리해요.",
+    oneLiner: "일할 때 반복되는 내 패턴을 정리해요.",
+    // category/grade/fixedRatio/inputMode는 친구·인간관계(friendship)와
+    // 같은 값이다 — 문항 구조(전부 필수, 심화 없음)와 완성도 목표가
+    // 같은 완성형 퀴즈 주제라서다. implemented가 false인 동안은 이
+    // 값들이 랜딩 화면 동작에 영향을 주지 않는다(퀴즈 자체가 시작되지
+    // 않음). 이 항목은 원래 "workSelf"라는 id로 준비 중 껍데기만
+    // 있었는데, 이번에 문항을 채우면서 id를 "work"로 정리했다
+    // (Landing.tsx의 VIRAL_TOPIC_IDS도 함께 갱신했다).
     category: "viral",
-    grade: "light",
-    fixedRatio: 70,
-    resultLayoutId: "viral-common",
-    inputMode: "chat",
+    grade: "flagship",
+    fixedRatio: 75,
+    resultLayoutId: "work",
+    inputMode: "quiz",
+    quizVersion: 1,
+    axes: [
+      // ── 1구간: 지금의 나 ───────────────────────────────────────────
+      {
+        id: "workMood",
+        type: "quickTap",
+        required: true,
+        question: "요즘 일하는 게 어때?",
+        options: [
+          { label: "재밌고 잘 풀려", description: "몰입이 잘 되는 상태" },
+          { label: "그냥 무난해", description: "특별한 감흥 없이 하는 상태" },
+          { label: "좀 지쳐 있어", description: "에너지가 떨어진 상태" },
+          { label: "여기가 맞나 싶어", description: "방향에 의문이 드는 상태" },
+        ],
+      },
+      {
+        id: "workPace",
+        type: "quickTap",
+        required: true,
+        question: "일할 때 나는 어떤 쪽에 더 가까워?",
+        options: [
+          { label: "미리 끝내두는 사람", description: "여유를 두고 먼저 처리하는 편이다" },
+          { label: "몰아서 집중하는 사람", description: "마감 가까이에 힘을 쏟는 편이다" },
+          { label: "꾸준히 일정하게 하는 사람", description: "매일 비슷한 양을 쌓는 편이다" },
+          { label: "컨디션 따라 들쭉날쭉한 사람", description: "기복이 있는 편이다" },
+        ],
+      },
+      {
+        id: "workStart",
+        type: "scenario",
+        required: true,
+        question: "새 일을 처음 맡았던 상황, 그때 나는 어떻게 시작했어?",
+        options: [
+          { label: "전체 그림부터 그린 반응", description: "구조를 먼저 잡는 편이다" },
+          { label: "일단 손부터 댄 반응", description: "움직이면서 파악하는 편이다" },
+          { label: "비슷한 사례를 찾아본 반응", description: "참고할 것부터 보는 편이다" },
+          { label: "물어보고 시작한 반응", description: "확인부터 하는 편이다" },
+        ],
+      },
+      {
+        id: "workMotivation",
+        type: "preference",
+        required: true,
+        question: "일할 때 나를 움직이는 건?",
+        options: [
+          { label: "인정받는 것", description: "잘했다는 말을 들을 때 힘이 난다" },
+          { label: "성장하는 감각", description: "어제보다 나아진 게 느껴질 때 힘이 난다" },
+          { label: "돈과 조건", description: "보상이 분명할 때 힘이 난다" },
+          { label: "같이 하는 사람", description: "사람이 좋으면 일도 할 만하다" },
+          { label: "결과가 남는 것", description: "내 손으로 뭔가 완성될 때 힘이 난다" },
+          { label: "안정된 리듬", description: "예측 가능한 하루가 편하다" },
+        ],
+      },
+      // ── 2구간: 일을 대하는 태도 ────────────────────────────────────
+      {
+        id: "workRole",
+        type: "preference",
+        required: true,
+        question: "일이 굴러갈 때 나는 보통 어떤 쪽이야?",
+        options: [
+          { label: "판을 짜는 쪽", description: "방향과 구조를 만드는 편이다" },
+          { label: "끝까지 밀어붙이는 쪽", description: "완료시키는 데 집착하는 편이다" },
+          { label: "빈틈을 메우는 쪽", description: "남이 놓친 걸 챙기는 편이다" },
+          { label: "사람을 붙이는 쪽", description: "필요한 사람을 연결하는 편이다" },
+          { label: "기준을 지키는 쪽", description: "원칙과 품질을 따지는 편이다" },
+          { label: "흐름에 맞추는 쪽", description: "정해진 대로 따라가는 편이다" },
+        ],
+      },
+      {
+        id: "workStandard",
+        type: "binary",
+        required: true,
+        question: "일의 완성도는 어느 쪽에 가까워?",
+        options: [
+          { label: "완벽하게 하려는 편", description: "기준을 못 맞추면 못 넘기는 편이다" },
+          { label: "일단 내보내는 편", description: "완성도보다 속도를 택하는 편이다" },
+        ],
+      },
+      {
+        id: "workAlone",
+        type: "binary",
+        required: true,
+        question: "혼자 하는 일과 같이 하는 일, 실제로 어느 쪽이 잘 돼?",
+        options: [
+          { label: "혼자 할 때", description: "집중이 잘 되는 편이다" },
+          { label: "같이 할 때", description: "에너지가 생기는 편이다" },
+        ],
+      },
+      {
+        id: "workUnclear",
+        type: "scenario",
+        required: true,
+        question: "지시가 애매했던 상황, 그때 나는 어떻게 했어?",
+        options: [
+          { label: "바로 되물어본 반응", description: "확인부터 하는 편이다" },
+          { label: "내 판단대로 진행한 반응", description: "알아서 해석하는 편이다" },
+          { label: "초안을 만들어 보여준 반응", description: "보여주고 맞추는 편이다" },
+          { label: "다른 사람에게 물어본 반응", description: "주변에서 답을 찾는 편이다" },
+        ],
+      },
+      {
+        id: "workOvertime",
+        type: "quickTap",
+        required: true,
+        question: "일이 밀려서 시간이 부족할 때, 나는 어떤 편이야?",
+        options: [
+          { label: "시간을 더 써서 끝내는 편", description: "늦게까지 붙잡는 편이다" },
+          { label: "범위를 줄여서 맞추는 편", description: "덜어내서 기한을 지키는 편이다" },
+          { label: "도움을 요청하는 편", description: "혼자 안고 가지 않는 편이다" },
+          { label: "기한을 다시 협의하는 편", description: "일정을 조정하는 편이다" },
+        ],
+      },
+      // ── 3구간: 사람과 소통 ─────────────────────────────────────────
+      {
+        id: "workFeedbackGet",
+        type: "experience",
+        required: true,
+        question: "일에 대해 지적받았던 순간, 그때 나는 실제로 어땠어?",
+        options: [
+          { label: "바로 수긍하고 고친 편", description: "받아들이는 게 빠른 편이다" },
+          { label: "이유를 먼저 물어본 편", description: "납득이 필요한 편이다" },
+          { label: "겉으론 수긍하고 속으론 억울했던 편", description: "감정이 남는 편이다" },
+          { label: "반박하고 설명한 편", description: "내 근거를 말하는 편이다" },
+        ],
+      },
+      {
+        id: "workFeedbackGive",
+        type: "quickTap",
+        required: true,
+        question: "남의 일에서 문제를 발견했을 때, 나는 어떤 편이야?",
+        options: [
+          { label: "바로 말하는 편", description: "미루지 않는 편이다" },
+          { label: "좋은 점부터 말하고 꺼내는 편", description: "완충하는 편이다" },
+          { label: "물어볼 때만 말하는 편", description: "먼저 나서지 않는 편이다" },
+          { label: "그냥 넘기는 편", description: "굳이 말 안 하는 편이다" },
+        ],
+      },
+      {
+        id: "workDisagree",
+        type: "scenario",
+        required: true,
+        question: "상사나 선배와 의견이 갈렸던 상황, 그때 나는 어떻게 했어?",
+        options: [
+          { label: "내 의견을 끝까지 말한 반응", description: "물러서지 않는 편이다" },
+          { label: "일단 따르고 나중에 얘기한 반응", description: "그 자리에선 맞추는 편이다" },
+          { label: "근거를 모아 설득한 반응", description: "논리로 접근하는 편이다" },
+          { label: "바로 접은 반응", description: "갈등을 피하는 편이다" },
+        ],
+      },
+      {
+        id: "workCredit",
+        type: "experience",
+        required: true,
+        question: "내 기여가 제대로 안 알려졌던 순간, 나는 실제로 어떻게 했어?",
+        options: [
+          { label: "직접 말했다", description: "내 몫을 밝히는 편이다" },
+          { label: "티 안 내고 넘겼다", description: "굳이 말하지 않는 편이다" },
+          { label: "속으로 오래 남았다", description: "말은 안 했지만 마음에 걸렸다" },
+          { label: "신경 쓰지 않았다", description: "결과가 좋으면 됐다고 보는 편이다" },
+        ],
+      },
+      // lifestyle: 나 소개(selfIntro)의 같은 id 문항을 지문·선택지·설명
+      // 그대로 복사했다(한 글자도 바꾸지 않음) — 태그 매핑
+      // (ideal-type-tags.ts)이 label 문자열을 키로 쓰기 때문에, 태그
+      // 축을 공유하려면 문항 원문이 완전히 같아야 한다. 태그 연결 자체는
+      // 다음 작업 범위다.
+      {
+        id: "lifestyle",
+        type: "preference",
+        required: true,
+        question: "평소 생활에서, 나와 더 가까운 모습은?",
+        options: [
+          { label: "집순이·집돌이", description: "집에서 보내는 시간이 제일 편하다" },
+          { label: "액티브·야외파", description: "밖에서 몸을 움직이는 걸 좋아한다" },
+          { label: "취미 공유", description: "좋아하는 걸 남과 같이 하려는 편이다" },
+          { label: "각자 시간 존중", description: "따로 보내는 시간도 자연스럽다" },
+          { label: "여행 좋아하는", description: "떠나는 것 자체를 즐긴다" },
+          { label: "규칙적인 생활", description: "일상의 리듬이 안정적인 편이다" },
+        ],
+      },
+      // ── 4구간: 압박과 회복 ─────────────────────────────────────────
+      // experienceStressResponse: 나 소개(selfIntro)의 같은 id 문항을
+      // 지문·선택지·설명 그대로 복사했다(한 글자도 바꾸지 않음) — 위
+      // lifestyle과 같은 이유(태그 공유용 원문 일치). 태그 연결 자체는
+      // 다음 작업 범위다.
+      {
+        id: "experienceStressResponse",
+        type: "experience",
+        required: true,
+        question: "가까운 사람과 갈등이 있을 때, 스트레스를 어떻게 푸는 편이야?",
+        options: [
+          { label: "바로 이야기하는 편", description: "마음에 걸리면 바로 대화로 푸는 편이다" },
+          { label: "혼자 삭이는 편", description: "일단 혼자 정리한 뒤에 넘어가는 편이다" },
+          { label: "거리를 두는 편", description: "잠깐 떨어져서 감정을 가라앉히는 편이다" },
+          { label: "주변에 털어놓는 편", description: "다른 사람에게 얘기하며 정리하는 편이다" },
+        ],
+      },
+      {
+        id: "reflectionWorkStress",
+        type: "reflection",
+        required: true,
+        question: "최근에 일 때문에 그렇게 힘들었던 게 언제였어요?\n그때 어떤 상황이었어요?",
+        placeholder: "예: 지난달에 일정이 겹쳐서 며칠 야근했는데, 아무한테도 말 안 하고 혼자 끌고 갔어요",
+        options: [],
+      },
+      {
+        id: "workPressure",
+        type: "quickTap",
+        required: true,
+        question: "압박이 심할 때 나는 어떤 쪽이야?",
+        options: [
+          { label: "오히려 집중이 잘 되는", description: "긴장이 힘이 되는 편이다" },
+          { label: "평소만큼은 하는", description: "크게 흔들리지 않는 편이다" },
+          { label: "실수가 늘어나는", description: "조급해지는 편이다" },
+          { label: "손이 안 잡히는", description: "미루게 되는 편이다" },
+        ],
+      },
+      {
+        id: "workRecover",
+        type: "quickTap",
+        required: true,
+        question: "일이 끝나고 나면 나는 어떻게 회복해?",
+        options: [
+          { label: "완전히 끊고 쉬는 편", description: "일 생각을 안 하는 편이다" },
+          { label: "다음 일을 미리 보는 편", description: "계속 이어가는 편이다" },
+          { label: "사람 만나서 푸는 편", description: "밖에서 환기하는 편이다" },
+          { label: "잘 회복이 안 되는 편", description: "계속 남아 있는 편이다" },
+        ],
+      },
+      {
+        id: "workBoundary",
+        type: "binary",
+        required: true,
+        question: "퇴근 후 업무 연락, 나는 실제로 어느 쪽이었어?",
+        options: [
+          { label: "웬만하면 대응한 편", description: "그냥 확인하고 답하는 편이다" },
+          { label: "선을 지킨 편", description: "급한 게 아니면 미루는 편이다" },
+        ],
+      },
+      // ── 5구간: 실패와 배움 ─────────────────────────────────────────
+      {
+        id: "workFail",
+        type: "experience",
+        required: true,
+        question: "일이 잘 안 풀렸던 순간, 그때 나는 실제로 어떻게 했어?",
+        options: [
+          { label: "원인을 파고든 편", description: "왜 그랬는지 따져본 편이다" },
+          { label: "다음 걸로 빨리 넘어간 편", description: "붙잡지 않는 편이다" },
+          { label: "나를 탓한 편", description: "내 부족으로 돌린 편이다" },
+          { label: "상황이나 환경 탓이라고 본 편", description: "외부 요인으로 본 편이다" },
+        ],
+      },
+      {
+        id: "reflectionWorkFail",
+        type: "reflection",
+        required: true,
+        question: "가장 크게 아쉬웠던 일이 언제였어요?\n그때 실제로 어떻게 했어요?",
+        placeholder: "예: 제안서를 혼자 다 떠안고 하다가 기한을 놓쳤는데, 미리 도움을 요청했으면 됐을 일이었어요",
+        options: [],
+      },
+      {
+        id: "workLearn",
+        type: "quickTap",
+        required: true,
+        question: "새로 배워야 할 게 생기면 나는 어떤 편이야?",
+        options: [
+          { label: "일단 부딪히며 배우는 편", description: "하면서 익히는 편이다" },
+          { label: "자료부터 찾아보는 편", description: "알고 시작하는 편이다" },
+          { label: "아는 사람에게 묻는 편", description: "사람에게 배우는 편이다" },
+          { label: "미루다 급해져서 하는 편", description: "닥쳐야 하는 편이다" },
+        ],
+      },
+      {
+        id: "workGrowth",
+        type: "experience",
+        required: true,
+        question: "예전과 비교하면, 나는 일하는 방식이 어떻게 달라졌어?",
+        options: [
+          { label: "요령이 생겼다", description: "힘 빼는 법을 알게 됐다" },
+          { label: "기준이 높아졌다", description: "대충 넘기지 못하게 됐다" },
+          { label: "덜 애쓰게 됐다", description: "선을 긋게 됐다" },
+          { label: "크게 달라진 게 없다", description: "예전과 비슷한 편이다" },
+        ],
+      },
+      {
+        id: "reflectionWorkGrowth",
+        type: "reflection",
+        required: true,
+        question: "그렇게 달라진 계기가 있었다면, 언제였어요?\n그때 무슨 일이 있었는지 적어주세요",
+        placeholder: "예: 밤새워 했는데 결과가 별로였던 적이 있고, 그 뒤로는 시간보다 방향을 먼저 보게 됐어요",
+        options: [],
+      },
+      // ── 6구간: 조직과 환경 ─────────────────────────────────────────
+      {
+        id: "workEnvironment",
+        type: "preference",
+        required: true,
+        question: "나한테 잘 맞는 일하는 환경은?",
+        options: [
+          { label: "자율이 큰 곳", description: "알아서 하게 두는 환경" },
+          { label: "기준이 명확한 곳", description: "뭘 해야 하는지 분명한 환경" },
+          { label: "빠르게 바뀌는 곳", description: "변화가 잦아도 재밌는 환경" },
+          { label: "안정적인 곳", description: "예측 가능한 환경" },
+          { label: "사람이 좋은 곳", description: "동료와의 관계가 편한 환경" },
+          { label: "배울 게 많은 곳", description: "성장이 느껴지는 환경" },
+        ],
+      },
+      {
+        id: "workBadFit",
+        type: "quickTap",
+        required: true,
+        question: "일하면서 제일 못 견디는 건?",
+        options: [
+          { label: "일이 의미 없어 보일 때", description: "왜 하는지 모를 때" },
+          { label: "노력이 인정 안 될 때", description: "묻힐 때" },
+          { label: "사람이 힘들 때", description: "관계가 소모될 때" },
+          { label: "계속 바뀔 때", description: "기준이 흔들릴 때" },
+        ],
+      },
+      {
+        id: "workLeave",
+        type: "experience",
+        required: true,
+        question: "그만두거나 옮기고 싶었던 순간, 나는 실제로 어떻게 했어?",
+        options: [
+          { label: "바로 알아보기 시작했다", description: "움직이는 게 빠른 편이다" },
+          { label: "참고 버텼다", description: "일단 견디는 편이다" },
+          { label: "주변에 털어놨다", description: "얘기하며 정리하는 편이다" },
+          { label: "마음만 먹고 넘어갔다", description: "실행까진 안 간 편이다" },
+        ],
+      },
+      {
+        id: "workAmbition",
+        type: "binary",
+        required: true,
+        question: "앞으로 일에서 더 원하는 건 어느 쪽에 가까워?",
+        options: [
+          { label: "더 올라가는 것", description: "역할과 책임이 커지는 쪽" },
+          { label: "더 잘하는 것", description: "같은 자리에서 깊어지는 쪽" },
+        ],
+      },
+      // ── 7구간: 자기평가 ────────────────────────────────────────────
+      {
+        id: "workIdeal",
+        type: "preference",
+        required: true,
+        question: "같이 일하고 싶은 사람은 어떤 사람이야?",
+        options: [
+          { label: "말이 통하는 사람", description: "설명이 짧아도 되는 사람" },
+          { label: "약속을 지키는 사람", description: "기한과 품질을 맞추는 사람" },
+          { label: "먼저 나서는 사람", description: "빈틈을 알아서 메우는 사람" },
+          { label: "솔직한 사람", description: "문제를 숨기지 않는 사람" },
+          { label: "배울 게 있는 사람", description: "실력이 느껴지는 사람" },
+          { label: "편하게 대해주는 사람", description: "긴장하지 않아도 되는 사람" },
+        ],
+      },
+      {
+        id: "workSelfView",
+        type: "binary",
+        required: true,
+        question: "나는 일 잘하는 사람인 것 같아?",
+        options: [
+          { label: "그런 편인 것 같다", description: "스스로 괜찮게 하고 있다고 느낀다" },
+          { label: "잘 모르겠다", description: "확신이 안 서는 편이다" },
+        ],
+      },
+    ],
+    closingPrompt: "일하는 나에 대해 더 하고 싶은 말이 있나요?",
+    // conversationFocus/resultFocus는 friendship과 같은 이유로 빈
+    // 문자열이다 — 이 값들은 대화형(inputMode: "chat") 주제에서만
+    // 실제로 쓰인다(career의 conversationFocus가 ai-node-extractor.ts에
+    // 주입되는 것 참고). work는 퀴즈형이라 이 필드들을 읽는 코드 자체가
+    // 없다.
     conversationFocus: "",
     resultFocus: "",
+    // entryQuestion/entryChips는 기존 workSelf 껍데기에 이미 있던
+    // 값을 그대로 가져왔다 — "일할 때 나는 어떤 사람이에요?"라는
+    // 진단형 프레이밍이 이번 30문항의 성격과 정확히 일치해서 새로 쓸
+    // 이유가 없었다.
     entryQuestion: "일할 때 나는 어떤 사람이에요?",
     entryChips: ["계획적으로 움직이는 편이에요", "임기응변에 강한 편이에요", "잘 모르겠어요"],
     implemented: false,
