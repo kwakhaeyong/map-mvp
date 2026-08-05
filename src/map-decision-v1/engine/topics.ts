@@ -2200,7 +2200,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     resultFocus: "",
     entryQuestion: "친구 관계에서 나는 어떤 편이에요?",
     entryChips: ["먼저 다가가는 편이에요", "깊게 오래 가는 편이에요", "잘 모르겠어요"],
-    implemented: false,
+    implemented: true,
   },
   workSelf: {
     id: "workSelf",
