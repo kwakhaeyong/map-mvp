@@ -46,13 +46,13 @@ export type MapSession = {
   result?: FinalResult;
   idealTypeResult?: IdealTypeResult;
   // 이상형 퀴즈를 필수 34문항에서 끝냈는지("quick"), 선택 6문항까지
-  // 마쳤는지("deep") — 결과 화면의 "🔍 심층 분석 포함" 배지와, 결과를
-  // 이미 본 뒤 "6개 더 답하기"를 안내할지 판단하는 데 쓴다.
+  // 마쳤는지("deep") — quizVersion 11(심화 경로 제거)부터는 새로 값이
+  // 채워지지 않는다. 이미 "deep"으로 저장된 예전 결과의 공유 배지
+  // 표시(share-store.ts 참고)만 위해 필드를 남겨둔다.
   idealTypeQuizDepth?: "quick" | "deep";
-  // 결과를 이미 본 뒤 "6개 더 답하기"로 되돌아간 상태 — true인 동안
-  // TopicQuiz는 마지막 심화 문항을 답하면 마무리 질문을 다시 묻지 않고
-  // 곧장 결과를 다시 만든다(이미 한 번 답한 마무리 질문을 또 물으면
-  // 어색하다).
+  // 결과를 이미 본 뒤 "6개 더 답하기"로 되돌아간 상태였다 — 이상형은
+  // quizVersion 11에서 심화 경로 자체가 없어져 더 이상 값이 채워지지
+  // 않는다.
   idealTypeResuming?: boolean;
   // 친구가 공유한 이상형 카드(/r/{id})의 "너도 만들어봐"를 타고 들어와
   // 퀴즈를 시작했을 때, 그 친구의 공유 ID. 결과 화면에서 "친구와의 궁합
