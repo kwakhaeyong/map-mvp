@@ -146,6 +146,62 @@ function isValidSelfIntroResultShape(value: unknown): boolean {
   return true;
 }
 
+// 친구·인간관계 결과(FriendshipResult) 형태 검증. 이상형·나 소개와
+// 마찬가지로 배열 개수·문자열 길이 상한은 그대로 재사용한다 —
+// engine/friendship-generator.ts도 같은 capArray(4) 방식으로 자른다.
+// 필드 이름만 다르다(friendCriteria/friendTypes).
+function isValidFriendshipResultShape(value: unknown): boolean {
+  const r = value as Record<string, unknown> | undefined;
+  if (typeof r !== "object" || r === null) return false;
+  if (!isShortString(r.title) || !isShortString(r.oneLiner)) return false;
+
+  const friendCriteria = r.friendCriteria as Record<string, unknown> | undefined;
+  if (typeof friendCriteria !== "object" || friendCriteria === null) return false;
+  if (!isShortStringArray(friendCriteria.essential) || !isShortStringArray(friendCriteria.bonus) || !isShortStringArray(friendCriteria.flexible)) return false;
+
+  if (!isShortStringArray(r.patterns)) return false;
+
+  const matrix = r.matrix as Record<string, unknown> | undefined;
+  if (typeof matrix !== "object" || matrix === null) return false;
+  if (!isValidAxisLabel(matrix.xAxisLabel) || !isValidAxisLabel(matrix.yAxisLabel)) return false;
+  const types = matrix.types;
+  if (!Array.isArray(types) || types.length > MAX_ARRAY_LENGTH) return false;
+  const typesValid = types.every(
+    (point) =>
+      typeof point === "object" && point !== null &&
+      isShortString((point as Record<string, unknown>).label) &&
+      isShortString((point as Record<string, unknown>).description) &&
+      typeof (point as Record<string, unknown>).x === "number" &&
+      typeof (point as Record<string, unknown>).y === "number",
+  );
+  if (!typesValid) return false;
+
+  const friendTypes = r.friendTypes as Record<string, unknown> | undefined;
+  if (typeof friendTypes !== "object" || friendTypes === null) return false;
+  if (!isShortStringArray(friendTypes.wellMatched) || !isShortStringArray(friendTypes.friction)) return false;
+
+  const selfReflection = r.selfReflection as Record<string, unknown> | undefined;
+  if (typeof selfReflection !== "object" || selfReflection === null) return false;
+  if (!isShortStringArray(selfReflection.whatYouOffer) || !isShortStringArray(selfReflection.whatToImprove)) return false;
+
+  const roadmap = r.roadmap as Record<string, unknown> | undefined;
+  if (typeof roadmap !== "object" || roadmap === null) return false;
+  if (!isShortString(roadmap.firstAction)) return false;
+  const phases = roadmap.phases;
+  if (!Array.isArray(phases) || phases.length > MAX_ARRAY_LENGTH) return false;
+  const phasesValid = phases.every(
+    (phase) =>
+      typeof phase === "object" && phase !== null &&
+      isShortString((phase as Record<string, unknown>).label) &&
+      isShortStringArray((phase as Record<string, unknown>).actions),
+  );
+  if (!phasesValid) return false;
+
+  if (r.tags !== undefined && !isShortStringArray(r.tags)) return false;
+
+  return true;
+}
+
 // 진로 결과(FinalResult) 형태 검증. 요인 매트릭스·시나리오·타임라인·
 // 통찰 4블록 — final-result-generator.ts가 실제로 만들어내는 구조를
 // 그대로 옮겼다(그 파일 자체는 AI 응답 검증용이라 건드리지 않는다).
@@ -222,6 +278,7 @@ const SUPPORTED_SHARE_TOPICS: Record<string, (result: unknown) => boolean> = {
   idealType: isValidIdealTypeResultShape,
   career: isValidFinalResultShape,
   selfIntro: isValidSelfIntroResultShape,
+  friendship: isValidFriendshipResultShape,
 };
 
 export function validateSharePayload(topicId: unknown, result: unknown): ShareValidationResult {

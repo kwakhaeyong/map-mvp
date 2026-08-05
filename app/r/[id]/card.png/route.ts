@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getShare } from "../../../../src/map-decision-v1/engine/share-store";
-import { IdealTypeResult, SelfIntroResult } from "../../../../src/map-decision-v1/types";
+import { FriendshipResult, IdealTypeResult, SelfIntroResult } from "../../../../src/map-decision-v1/types";
 import {
   buildIdealTypeCardElement,
   CardTheme,
@@ -12,6 +12,7 @@ import {
   optimizeCardPng,
 } from "../../../../src/map-decision-v1/engine/ideal-type-card-image";
 import { buildSelfIntroCardElement } from "../../../../src/map-decision-v1/engine/self-intro-card-image";
+import { buildFriendshipCardElement } from "../../../../src/map-decision-v1/engine/friendship-card-image";
 
 // 인스타 스토리에 올릴 수 있는 "한 장 MAP" PNG. 어떤 metadata나
 // opengraph-image 규칙에도 연결하지 않은 독립 라우트다(그러면 카톡/
@@ -28,6 +29,11 @@ function isIdealTypeResult(value: unknown): value is IdealTypeResult {
 function isSelfIntroResult(value: unknown): value is SelfIntroResult {
   const r = value as Partial<SelfIntroResult> | undefined;
   return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.coreValues === "object";
+}
+
+function isFriendshipResult(value: unknown): value is FriendshipResult {
+  const r = value as Partial<FriendshipResult> | undefined;
+  return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.friendCriteria === "object";
 }
 
 function isCardTheme(value: string | null): value is CardTheme {
@@ -52,11 +58,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return new Response("Not found", { status: 404 });
   }
 
-  // 나 소개·성격은 초대장 컨셉 하나만 지원한다(테마 파라미터 없음) —
-  // 이상형처럼 여러 테마를 지원할 필요가 스테이지 2 스코프에 없었다.
+  // 나 소개·성격, 친구·인간관계는 초대장 컨셉 하나만 지원한다(테마
+  // 파라미터 없음) — 이상형처럼 여러 테마를 지원할 필요가 없었다.
   if (share.record.resultLayoutId === "selfIntro") {
     if (!isSelfIntroResult(share.record.result)) return new Response("Not found", { status: 404 });
     const response = new ImageResponse(buildSelfIntroCardElement(share.record.result), {
+      width: INVITATION_CARD_WIDTH,
+      height: INVITATION_CARD_HEIGHT,
+      fonts: loadInvitationFonts(),
+    });
+    const optimized = await optimizeCardPng(Buffer.from(await response.arrayBuffer()));
+    return new Response(optimized, { headers: IMAGE_CACHE_HEADERS });
+  }
+
+  if (share.record.resultLayoutId === "friendship") {
+    if (!isFriendshipResult(share.record.result)) return new Response("Not found", { status: 404 });
+    const response = new ImageResponse(buildFriendshipCardElement(share.record.result), {
       width: INVITATION_CARD_WIDTH,
       height: INVITATION_CARD_HEIGHT,
       fonts: loadInvitationFonts(),
