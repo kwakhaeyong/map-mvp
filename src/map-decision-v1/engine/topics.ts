@@ -13,6 +13,7 @@ export type ResultLayoutId =
   | "career" // 완성형 전용 틀
   | "idealType" // 완성형 전용 틀
   | "selfIntro" // 완성형 전용 틀
+  | "friendship" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
   | "viral-common" // 경량 공통 틀(바이럴 계열)
   | "depth-common"; // 경량 공통 틀(깊이 계열)
 
@@ -1820,11 +1821,381 @@ export const TOPICS: Record<string, TopicConfig> = {
     name: "친구·인간관계",
     icon: "🤝",
     oneLiner: "친구 관계에서 반복되는 내 패턴을 정리해요.",
+    // category/grade/fixedRatio/inputMode는 나 소개(selfIntro)와 같은 값이다
+    // — 문항 구조(전부 필수, 심화 없음)와 완성도 목표가 같은 완성형
+    // 퀴즈 주제라서다. implemented가 false인 동안은 이 값들이 랜딩 화면
+    // 동작에 영향을 주지 않는다(퀴즈 자체가 시작되지 않음).
     category: "viral",
-    grade: "light",
-    fixedRatio: 70,
-    resultLayoutId: "viral-common",
-    inputMode: "chat",
+    grade: "flagship",
+    fixedRatio: 75,
+    resultLayoutId: "friendship",
+    inputMode: "quiz",
+    quizVersion: 1,
+    axes: [
+      // ── 1구간: 관계 맺는 방식 ─────────────────────────────────────
+      {
+        id: "currentSocialMood",
+        type: "quickTap",
+        required: true,
+        question: "요즘 사람 만나는 게 어때?",
+        options: [
+          { label: "새로운 사람 만나고 싶어", description: "관계를 넓히고 싶은 상태" },
+          { label: "지금 사람들로 충분해", description: "있는 관계에 만족하는 상태" },
+          { label: "좀 지쳐 있어", description: "사람 만나는 게 부담스러운 상태" },
+          { label: "혼자가 편해", description: "지금은 나에게 집중하고 싶은 상태" },
+        ],
+      },
+      {
+        id: "friendDistance",
+        type: "quickTap",
+        required: true,
+        question: "나는 어떤 쪽에 더 가까워?",
+        options: [
+          { label: "몇 명과 깊게 지내는 사람", description: "소수와 오래 깊게 지내는 편이다" },
+          { label: "두루두루 넓게 지내는 사람", description: "여러 무리와 골고루 어울리는 편이다" },
+          { label: "상황에 따라 유연한 사람", description: "때에 따라 다르게 지내는 편이다" },
+          { label: "혼자 있는 시간이 더 많은 사람", description: "관계보다 나만의 시간이 중요한 편이다" },
+        ],
+      },
+      {
+        id: "friendMaking",
+        type: "scenario",
+        required: true,
+        question: "새로운 무리에 처음 들어갔던 상황, 그때 나는 어떻게 했어?",
+        options: [
+          { label: "먼저 말을 걸어본 반응", description: "적극적으로 다가가는 편이다" },
+          { label: "누가 말 걸어주길 기다린 반응", description: "먼저 나서지 않는 편이다" },
+          { label: "공통점을 찾아 대화를 튼 반응", description: "접점을 찾으려는 편이다" },
+          { label: "조용히 분위기부터 파악한 반응", description: "관찰이 먼저인 편이다" },
+        ],
+      },
+      {
+        id: "friendDepth",
+        type: "binary",
+        required: true,
+        question: "친해지는 속도는 어느 쪽에 가까워?",
+        options: [
+          { label: "빨리 가까워지는 편", description: "금방 편해지는 편이다" },
+          { label: "천천히 가까워지는 편", description: "시간이 걸리는 편이다" },
+        ],
+      },
+      {
+        id: "friendCircle",
+        type: "preference",
+        required: true,
+        question: "지금 내 인간관계는 어떤 편이야?",
+        options: [
+          { label: "오래된 친구가 많은", description: "몇 년씩 이어온 관계가 중심이다" },
+          { label: "최근에 만난 사람이 많은", description: "요즘 만든 관계가 활발하다" },
+          { label: "무리별로 나뉘어 있는", description: "모임마다 다른 사람들과 지낸다" },
+          { label: "서로 다 아는 사이인", description: "내 사람들끼리도 친하다" },
+          { label: "일대일이 편한", description: "여럿보다 단둘이 편하다" },
+          { label: "온라인에서 만난 사람도 있는", description: "직접 안 봐도 가까운 관계가 있다" },
+        ],
+      },
+      // ── 2구간: 무리에서의 역할 ────────────────────────────────────
+      {
+        id: "friendRole",
+        type: "preference",
+        required: true,
+        question: "모임에서 나는 보통 어떤 역할이야?",
+        options: [
+          { label: "판을 벌이는 사람", description: "모임을 만들고 사람을 부르는 편이다" },
+          { label: "분위기를 띄우는 사람", description: "웃기고 텐션을 올리는 편이다" },
+          { label: "중간에서 조율하는 사람", description: "의견을 모으고 정리하는 편이다" },
+          { label: "조용히 챙기는 사람", description: "티 안 나게 살피는 편이다" },
+          { label: "흐름을 따라가는 사람", description: "남이 정한 대로 편하게 가는 편이다" },
+          { label: "관찰하는 사람", description: "한 발 물러나 지켜보는 편이다" },
+        ],
+      },
+      {
+        id: "friendPlan",
+        type: "quickTap",
+        required: true,
+        question: "모임 약속을 잡을 때, 나는 어떤 편이야?",
+        options: [
+          { label: "내가 먼저 제안하는 편", description: "연락을 먼저 돌리는 편이다" },
+          { label: "누가 잡아주면 나가는 편", description: "초대받는 쪽이 편한 편이다" },
+          { label: "날짜만 정해지면 맞추는 편", description: "일정을 맞춰주는 편이다" },
+          { label: "자주 빠지게 되는 편", description: "가기로 해놓고 못 가는 일이 있는 편이다" },
+        ],
+      },
+      {
+        id: "friendNewcomer",
+        type: "scenario",
+        required: true,
+        question: "모임에 처음 온 사람이 어색해하던 상황, 그때 나는 어떻게 했어?",
+        options: [
+          { label: "먼저 말 걸어 챙긴 반응", description: "직접 다가가는 편이다" },
+          { label: "다른 사람이 챙기길 지켜본 반응", description: "먼저 나서지는 않는 편이다" },
+          { label: "대화에 자연스럽게 끼워준 반응", description: "흐름으로 끌어들이는 편이다" },
+          { label: "딱히 신경 쓰지 않은 반응", description: "알아서 적응하길 두는 편이다" },
+        ],
+      },
+      {
+        id: "friendGroupConflict",
+        type: "quickTap",
+        required: true,
+        question: "무리 안에서 둘이 틀어졌을 때, 나는 어떤 쪽이야?",
+        options: [
+          { label: "중재하려고 나서는", description: "양쪽을 풀어보려는 편이다" },
+          { label: "한쪽 편을 확실히 드는", description: "입장을 분명히 하는 편이다" },
+          { label: "양쪽 다 그냥 들어주는", description: "판단은 안 하고 듣는 편이다" },
+          { label: "끼어들지 않는", description: "거리를 두는 편이다" },
+        ],
+      },
+      // ── 3구간: 연락과 거리 ────────────────────────────────────────
+      {
+        id: "friendContact",
+        type: "quickTap",
+        required: true,
+        question: "친구랑 연락은 어떤 편이야?",
+        options: [
+          { label: "자주 주고받는 편", description: "틈틈이 안부를 나누는 편이다" },
+          { label: "용건 있을 때만 하는 편", description: "평소엔 각자 지내는 편이다" },
+          { label: "내가 먼저 하는 편이 많은", description: "연락을 먼저 거는 쪽이다" },
+          { label: "받으면 답하는 편", description: "먼저 걸지는 않는 편이다" },
+        ],
+      },
+      {
+        id: "friendGap",
+        type: "binary",
+        required: true,
+        question: "오래 연락 안 하다 만나도 괜찮아?",
+        options: [
+          { label: "괜찮은 편", description: "공백이 있어도 어색하지 않은 편이다" },
+          { label: "어색해지는 편", description: "자주 봐야 편한 편이다" },
+        ],
+      },
+      {
+        id: "friendRequest",
+        type: "scenario",
+        required: true,
+        question: "친구가 부담스러운 부탁을 했던 상황, 그때 나는 어떻게 했어?",
+        options: [
+          { label: "그냥 들어준 반응", description: "거절을 잘 못하는 편이다" },
+          { label: "솔직하게 어렵다고 말한 반응", description: "선을 분명히 하는 편이다" },
+          { label: "다른 방법을 제안한 반응", description: "절충안을 찾는 편이다" },
+          { label: "답을 미루다 흐지부지된 반응", description: "직접 말하기 어려운 편이다" },
+        ],
+      },
+      // lifestyle: 나 소개(selfIntro)의 같은 id 문항을 지문·선택지·설명
+      // 그대로 복사했다(한 글자도 바꾸지 않음) — 태그 매핑
+      // (ideal-type-tags.ts)이 label 문자열을 키로 쓰기 때문에, 태그
+      // 축을 공유하려면 문항 원문이 완전히 같아야 한다. 태그 연결 자체는
+      // 다음 작업 범위다.
+      {
+        id: "lifestyle",
+        type: "preference",
+        required: true,
+        question: "평소 생활에서, 나와 더 가까운 모습은?",
+        options: [
+          { label: "집순이·집돌이", description: "집에서 보내는 시간이 제일 편하다" },
+          { label: "액티브·야외파", description: "밖에서 몸을 움직이는 걸 좋아한다" },
+          { label: "취미 공유", description: "좋아하는 걸 남과 같이 하려는 편이다" },
+          { label: "각자 시간 존중", description: "따로 보내는 시간도 자연스럽다" },
+          { label: "여행 좋아하는", description: "떠나는 것 자체를 즐긴다" },
+          { label: "규칙적인 생활", description: "일상의 리듬이 안정적인 편이다" },
+        ],
+      },
+      // ── 4구간: 주고받음 ───────────────────────────────────────────
+      {
+        id: "friendGive",
+        type: "experience",
+        required: true,
+        question: "친구가 힘들어했던 상황, 그때 나는 실제로 어떻게 했어?",
+        options: [
+          { label: "계속 옆에서 챙긴 편", description: "곁을 지킨 편이다" },
+          { label: "필요할 때만 도운 편", description: "선을 지키며 도운 편이다" },
+          { label: "해결책을 찾아준 편", description: "행동으로 도운 편이다" },
+          { label: "말없이 같이 있어준 편", description: "그냥 함께 있어준 편이다" },
+        ],
+      },
+      {
+        id: "friendReceive",
+        type: "experience",
+        required: true,
+        question: "내가 힘들었을 때, 나는 실제로 어떻게 했어?",
+        options: [
+          { label: "친구에게 바로 털어놨다", description: "혼자 담아두지 않는 편이다" },
+          { label: "가까운 한두 명에게만 말했다", description: "아무한테나 말하지 않는 편이다" },
+          { label: "혼자 삭이고 나중에 말했다", description: "정리한 뒤에 꺼내는 편이다" },
+          { label: "결국 말하지 않았다", description: "부담 주기 싫어 참는 편이다" },
+        ],
+      },
+      {
+        id: "friendBalance",
+        type: "binary",
+        required: true,
+        question: "주고받는 게 한쪽으로 기울 때, 나는 어느 쪽이 많았어?",
+        options: [
+          { label: "내가 더 챙기는 쪽", description: "주는 게 많았던 편이다" },
+          { label: "내가 더 받는 쪽", description: "받는 게 많았던 편이다" },
+        ],
+      },
+      // experienceStressResponse: 나 소개(selfIntro)의 같은 id 문항을
+      // 지문·선택지·설명 그대로 복사했다(한 글자도 바꾸지 않음) — 위
+      // lifestyle과 같은 이유(태그 공유용 원문 일치). 태그 연결 자체는
+      // 다음 작업 범위다.
+      {
+        id: "experienceStressResponse",
+        type: "experience",
+        required: true,
+        question: "가까운 사람과 갈등이 있을 때, 스트레스를 어떻게 푸는 편이야?",
+        options: [
+          { label: "바로 이야기하는 편", description: "마음에 걸리면 바로 대화로 푸는 편이다" },
+          { label: "혼자 삭이는 편", description: "일단 혼자 정리한 뒤에 넘어가는 편이다" },
+          { label: "거리를 두는 편", description: "잠깐 떨어져서 감정을 가라앉히는 편이다" },
+          { label: "주변에 털어놓는 편", description: "다른 사람에게 얘기하며 정리하는 편이다" },
+        ],
+      },
+      {
+        id: "reflectionStress",
+        type: "reflection",
+        required: true,
+        question: "최근에 친구와 그런 일이 있었던 게 언제였어요?\n그때 어떤 상황이었어요?",
+        placeholder: "예: 지난달에 친구가 약속을 계속 미뤄서 서운했는데, 말은 못 하고 며칠 연락을 안 했어요",
+        options: [],
+      },
+      // ── 5구간: 갈등과 거리 ────────────────────────────────────────
+      {
+        id: "friendSecret",
+        type: "quickTap",
+        required: true,
+        question: "친구의 비밀이나 고민을 들었을 때, 나는 어떤 편이야?",
+        options: [
+          { label: "끝까지 혼자 안고 가는 편", description: "누구에게도 말하지 않는 편이다" },
+          { label: "가까운 사람에겐 흘리게 되는 편", description: "무심코 말이 새는 편이다" },
+          { label: "조언을 구하려 다른 사람에게 묻는 편", description: "도움을 받으려 상의하는 편이다" },
+          { label: "애초에 깊은 얘기를 잘 안 듣는 편", description: "무거운 얘기는 피하는 편이다" },
+        ],
+      },
+      {
+        id: "friendHurt",
+        type: "scenario",
+        required: true,
+        question: "친구가 무심코 한 말에 상처받았던 상황, 그때 나는 어떻게 했어?",
+        options: [
+          { label: "바로 말한 반응", description: "그 자리에서 표현하는 편이다" },
+          { label: "나중에 따로 얘기한 반응", description: "시간을 두고 꺼내는 편이다" },
+          { label: "그냥 넘긴 반응", description: "굳이 말 안 하는 편이다" },
+          { label: "마음속에 남겨둔 반응", description: "말은 안 했지만 계속 남는 편이다" },
+        ],
+      },
+      {
+        id: "friendForgive",
+        type: "binary",
+        required: true,
+        question: "한 번 크게 실망한 친구, 나는 어느 쪽이었어?",
+        options: [
+          { label: "다시 회복한 편", description: "시간이 지나면 풀리는 편이다" },
+          { label: "예전 같지 않았던 편", description: "한 번 금이 가면 돌아가기 어려운 편이다" },
+        ],
+      },
+      {
+        id: "friendCompare",
+        type: "experience",
+        required: true,
+        question: "친구와 나를 비교하게 됐던 순간, 나는 실제로 어땠어?",
+        options: [
+          { label: "자극이 돼서 나도 움직인 편", description: "동기부여로 삼은 편이다" },
+          { label: "겉으론 축하하고 속으론 복잡했던 편", description: "감정이 섞였던 편이다" },
+          { label: "비교 자체를 잘 안 하는 편", description: "신경 쓰지 않는 편이다" },
+          { label: "거리를 두게 된 편", description: "마주하기 불편해진 편이다" },
+        ],
+      },
+      // ── 6구간: 멀어짐 ─────────────────────────────────────────────
+      {
+        id: "friendEnding",
+        type: "experience",
+        required: true,
+        question: "가까웠던 친구와 멀어질 때, 보통 어느 쪽이었어?",
+        options: [
+          { label: "내가 먼저 지쳤다", description: "마음이 먼저 식은 경우가 많았다" },
+          { label: "상대가 멀어졌다", description: "상대 쪽에서 먼저 뜸해진 경우가 많았다" },
+          { label: "서서히 흐지부지됐다", description: "누가 먼저랄 것 없이 자연스럽게 멀어졌다" },
+          { label: "크게 틀어져서 끝났다", description: "사건이 있어서 끊어진 경우가 많았다" },
+        ],
+      },
+      {
+        id: "reflectionEnding",
+        type: "reflection",
+        required: true,
+        question: "가장 최근에 그렇게 멀어진 친구, 언제였어요?\n무슨 일이 있었는지 적어주세요",
+        placeholder: "예: 대학 때 제일 친했는데 취업하고 서로 바빠지면서 연락이 끊겼어요",
+        options: [],
+      },
+      {
+        id: "friendRegret",
+        type: "experience",
+        required: true,
+        question: "돌아보면, 친구 관계에서 뭘 더 하고 싶었어?",
+        options: [
+          { label: "표현을 더 할걸", description: "고맙다는 말을 아꼈던 게 아쉽다" },
+          { label: "먼저 연락할걸", description: "기다리기만 했던 게 아쉽다" },
+          { label: "솔직하게 말할걸", description: "참기만 했던 게 아쉽다" },
+          { label: "선을 지킬걸", description: "너무 가까워져서 부담이 됐던 게 아쉽다" },
+        ],
+      },
+      {
+        id: "friendKeep",
+        type: "quickTap",
+        required: true,
+        question: "멀어진 친구에게 다시 연락해본 적 있어?",
+        options: [
+          { label: "있고, 다시 가까워졌다", description: "먼저 연락해서 회복한 적이 있다" },
+          { label: "있지만 예전 같지 않았다", description: "연락은 했지만 어색했다" },
+          { label: "하고 싶었지만 못 했다", description: "마음만 있고 실행은 못 했다" },
+          { label: "굳이 안 했다", description: "자연스럽게 두는 편이다" },
+        ],
+      },
+      // ── 7구간: 변화와 지금 ────────────────────────────────────────
+      {
+        id: "friendChange",
+        type: "experience",
+        required: true,
+        question: "예전과 비교하면, 나는 사람 사귀는 방식이 어떻게 달라졌어?",
+        options: [
+          { label: "더 신중해졌다", description: "쉽게 마음을 안 여는 편이 됐다" },
+          { label: "더 솔직해졌다", description: "참기보다 말하게 됐다" },
+          { label: "더 좁아졌다", description: "관계를 줄이고 깊게 가는 편이 됐다" },
+          { label: "크게 달라진 게 없다", description: "예전과 비슷한 편이다" },
+        ],
+      },
+      {
+        id: "reflectionChange",
+        type: "reflection",
+        required: true,
+        question: "그렇게 달라진 계기가 있었다면, 언제였어요?\n그때 무슨 일이 있었는지 적어주세요",
+        placeholder: "예: 믿었던 친구한테 크게 실망한 뒤로, 사람을 좀 천천히 보게 됐어요",
+        options: [],
+      },
+      {
+        id: "friendIdeal",
+        type: "preference",
+        required: true,
+        question: "나한테 좋은 친구는 어떤 사람이야?",
+        options: [
+          { label: "오래 봐도 편한 사람", description: "시간이 지나도 어색하지 않은 사람" },
+          { label: "솔직하게 말해주는 사람", description: "듣기 싫은 말도 해주는 사람" },
+          { label: "필요할 때 나타나는 사람", description: "결정적일 때 곁에 있는 사람" },
+          { label: "같이 있으면 재밌는 사람", description: "만나면 즐거운 사람" },
+          { label: "각자 삶을 존중하는 사람", description: "서로 간섭하지 않는 사람" },
+          { label: "내 편이 되어주는 사람", description: "무조건 내 쪽에 서주는 사람" },
+        ],
+      },
+      {
+        id: "friendSelfView",
+        type: "binary",
+        required: true,
+        question: "나는 좋은 친구인 것 같아?",
+        options: [
+          { label: "그런 편인 것 같다", description: "스스로 잘하고 있다고 느낀다" },
+          { label: "잘 모르겠다", description: "확신이 안 서는 편이다" },
+        ],
+      },
+    ],
+    closingPrompt: "친구 관계에 대해 더 하고 싶은 말이 있나요?",
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "친구 관계에서 나는 어떤 편이에요?",
