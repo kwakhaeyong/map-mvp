@@ -216,7 +216,11 @@ export const TOPICS: Record<string, TopicConfig> = {
     // (binaryPlanning·idealDate·socialCircle)는 필수 lifestyle/
     // personality 축의 하위 선택지가 이미 같은 주제를 다루고 있어
     // 삭제했다. 필수 34→37문항.
-    quizVersion: 11,
+    // 12: idealStressResponse 신설(conflictPattern 태그 전용, 위 axes
+    // 배열의 decisionStyle 뒤 참고). experienceStressResponse는 그대로
+    // 남아 자기 성찰 재료로만 쓰이고, 태그 매핑만 새 축으로 옮겨간다
+    // (engine/ideal-type-tags.ts). 필수 37→38문항.
+    quizVersion: 12,
     axes: [
       {
         id: "currentMood",
@@ -575,6 +579,30 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "신중하게 고민하는 사람", description: "여러 번 따져보고 정하는" },
           { label: "같이 의논하는 사람", description: "혼자 정하지 않고 같이 얘기해서 정하는" },
           { label: "직관을 믿는 사람", description: "느낌 가는 대로 정하는" },
+        ],
+      },
+      // idealStressResponse: conflictPattern 태그 전용 축(quizVersion 12
+      // 신설). 기존 experienceStressResponse는 "내가 실제로 어떻게
+      // 스트레스를 푸는지"를 묻는 자기 성찰용 문항이라, 이상형에게도
+      // 똑같이 물으면(원문이 동일했다) 같은 사람의 답이 항상 같아서
+      // 태그가 매번 겹치고 궁합 비교가 무의미해진다. 그래서 "이상형이
+      // 갈등 상황에서 스트레스를 어떻게 풀면 좋겠는지"를 새로 묻는
+      // 축을 따로 둔다 — experienceStressResponse는 삭제하지 않고
+      // 자기 성찰 재료로 그대로 남긴다(engine/ideal-type-tags.ts 참고).
+      // decisionStyle 바로 뒤에 둔 이유: 같은 quickTap·"~하는 사람"
+      // 형식에 "이상형은 어떤 쪽이 좋아?" 톤까지 자연스럽게 이어지고,
+      // experienceStressResponse(문항 다수 뒤쪽)와는 거리가 있어 두
+      // 문항이 연달아 보이며 중복으로 느껴지는 걸 피한다.
+      {
+        id: "idealStressResponse",
+        type: "quickTap",
+        required: true,
+        question: "갈등이 있을 때, 이상형은 스트레스를 어떻게 풀면 좋겠어?",
+        options: [
+          { label: "바로 이야기해서 푸는 사람", description: "마음에 걸리면 참지 않고 바로 대화로 푸는" },
+          { label: "혼자 정리하고 넘어가는 사람", description: "일단 혼자 생각을 정리한 뒤 넘어가는" },
+          { label: "잠깐 거리를 두는 사람", description: "떨어져서 감정을 가라앉히는" },
+          { label: "주변에 털어놓는 사람", description: "다른 사람에게 얘기하며 정리하는" },
         ],
       },
       // ── 상황 제시형 2 ─────────────────────────────────────────────

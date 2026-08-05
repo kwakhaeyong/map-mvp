@@ -353,7 +353,7 @@ async function attemptGeneration(client: Anthropic, session: MapSession, maxToke
     // 이상형과 완전히 같은 4축·18개 태그 사전을 그대로 재사용한다 —
     // 나소개×이상형 교차 비교(engine/compatibility.ts)가 성립하려면
     // 두 결과의 태그가 같은 문자열 체계여야 한다(docs/NASOGAE_DESIGN.md).
-    tags: getIdealTypeTags(session.quizAnswers),
+    tags: getIdealTypeTags(session.quizAnswers, "selfIntro"),
   };
   return { result, truncated, countsAsFailure: false };
 }

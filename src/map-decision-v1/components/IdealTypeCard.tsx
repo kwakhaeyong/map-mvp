@@ -293,7 +293,7 @@ export function IdealTypeCard({
             key={attempt}
             stages={IDEAL_TYPE_GENERATION_STAGES}
             onRetry={generate}
-            tags={getIdealTypeTags(session.quizAnswers)}
+            tags={getIdealTypeTags(session.quizAnswers, "idealType")}
             answeredCount={answeredCount}
           />
         ) : generationState === "fallback" ? (
