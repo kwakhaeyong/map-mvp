@@ -26,7 +26,20 @@ jobs:
           PR=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[0].number // empty')
           test -n "$PR"
           echo "number=$PR" >> "$GITHUB_OUTPUT"
+      - name: Skip merge for Draft pull requests
+        id: draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.pr.outputs.number }}
+        run: |
+          IS_DRAFT=$(gh api "repos/$REPO/pulls/$PR" --jq '.draft')
+          echo "is_draft=$IS_DRAFT" >> "$GITHUB_OUTPUT"
+          if [ "$IS_DRAFT" = "true" ]; then
+            echo "::notice title=Auto-merge skipped::PR #$PR is still a Draft — Quality Gate passed, but auto-merge is skipped until it's marked Ready for review."
+          fi
       - name: Merge after Quality Gate success
+        if: steps.draft.outputs.is_draft != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
