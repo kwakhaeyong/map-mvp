@@ -44,10 +44,11 @@ function uniqueInOrder(values: string[]): string[] {
 // 바로 다음으로" 동작. 선택 즉시 넘기면 방금 고른 항목이 눈에 보일
 // 틈도 없이 화면이 바뀌어 "내가 뭘 눌렀는지" 확인할 수가 없다 —
 // 200~300ms(여기서는 250ms, 그 사이 값) 동안 선택된 상태를 먼저
-// 보여준 뒤에 넘어간다. requireConfirm이 true인 동안(심화 재방문의
-// 마지막 문항 — 결과 재생성을 곧장 트리거하는 유일한 경로라 명시적
-// 확인이 필요하다)은 자동으로 넘어가지 않고 pending만 갱신한다 —
-// 선택을 자유롭게 바꾼 뒤 별도 "다음" 버튼을 눌러야 한다.
+// 보여준 뒤에 넘어간다. requireConfirm이 true인 동안은 자동으로
+// 넘어가지 않고 pending만 갱신한다 — 선택을 자유롭게 바꾼 뒤 별도
+// "다음" 버튼을 눌러야 한다. 지금은 모든 문항 흐름이 항상 false를
+// 넘겨 이 분기가 실행되지 않지만(예전엔 심화 재방문 마지막 문항에서
+// true였다 — 그 흐름 자체가 제거됨), prop은 재사용 가능하게 남겨둔다.
 const AUTO_ADVANCE_DELAY_MS = 250;
 
 function useAutoAdvance(onAdvance: (choice: TopicChoice) => void, requireConfirm: boolean) {
@@ -157,13 +158,11 @@ function AxisStep({
   onBack: () => void;
   showBack: boolean;
   aboutSelf?: boolean;
-  // 심화 재방문의 마지막 문항일 때만 true — 다른 네 가지 단일 선택
-  // 컴포넌트의 같은 이름 prop과 동일한 뜻이다. 이 다중 선택(preference)
-  // 타입이 심화(선택) 경로의 마지막 축일 경우, 이 문항에서도 자동
-  // 넘김이 finishResumedDeepDive()(결과 재생성)를 곧장 트리거하지
-  // 않도록 필요한 장치다. 이상형(quizVersion 11)과 나 소개(quizVersion 2)
-  // 둘 다 심화 경로 자체를 없애 지금은 이 분기가 항상 false지만,
-  // 앞으로 심화(선택) 구간을 쓰는 주제가 다시 생기면 그대로 재사용된다.
+  // 다른 네 가지 단일 선택 컴포넌트의 같은 이름 prop과 동일한 뜻이다.
+  // 지금은 호출부가 항상 false만 넘겨 이 분기가 실행되지 않지만
+  // (심화 재방문 시 결과 재생성을 곧장 트리거하던 흐름이 있었으나
+  // 이상형·나 소개 둘 다 심화 경로 자체를 없애며 그 흐름이 제거됨),
+  // prop 자체는 재사용 가능하게 남겨둔다.
   requireConfirm: boolean;
 }) {
   const [selected, setSelected] = useState<TopicChoice[]>([]);
@@ -297,8 +296,8 @@ function BinaryStep({
   onSubmit: (answerText: string, selectedTopLevelLabels: string[]) => void;
   onBack: () => void;
   showBack: boolean;
-  // 심화 재방문의 마지막 문항일 때만 true — 결과 재생성을 곧장
-  // 트리거하는 유일한 경로라 자동으로 넘기지 않고 명시적 확인을 받는다.
+  // 지금은 호출부가 항상 false만 넘긴다 — AxisStep의 같은 이름 prop
+  // 주석 참고.
   requireConfirm: boolean;
 }) {
   const { pending, pick, confirm } = useAutoAdvance(
@@ -883,6 +882,20 @@ const RESULT_BLOCK_PREVIEW: Record<string, string[]> = {
   selfIntro: ["핵심 가치관", "반복되는 패턴", "나의 여러 모습", "특징", "자기 성찰", "로드맵"],
 };
 
+// 필수 문항을 마친 뒤 "지금 결과 보기"(quick)로 끝냈는지 "6개 더"(deep)로
+// 심화까지 마쳤는지 — /r/{id} 공유 화면의 "심층 분석 포함" 배지 표시용
+// (MapSession.idealTypeQuizDepth/selfIntroQuizDepth, IdealTypeCard.tsx·
+// SelfIntroCard.tsx가 공유 시 그대로 읽어 보낸다). 새 주제를 추가해도
+// 이 맵에 등록하기 전까지는 존재하지 않는 topic.id로 조회되어 undefined가
+// 나오고, 아래 호출부가 그 경우 아무 필드도 쓰지 않는다 — RESULT_BLOCK_
+// PREVIEW와 같은 "모르는 topic.id는 안전하게 아무 일도 안 한다" 패턴이다.
+// (예전엔 "selfIntro가 아니면 idealType"으로 가정하는 3항 연산자였는데,
+// 그러면 3번째 주제가 idealType의 필드를 잘못 덮어썼다 — 이 맵으로 대체.)
+const DEPTH_FIELD_BY_TOPIC: Partial<Record<string, "selfIntroQuizDepth" | "idealTypeQuizDepth">> = {
+  idealType: "idealTypeQuizDepth",
+  selfIntro: "selfIntroQuizDepth",
+};
+
 // 기본은 접힌 한 줄 요약 — 문항을 밀어내지 않으면서 "완주하면 이만큼
 // 받는다"는 걸 계속 인지시킨다. 펼치면 블록 이름을 그대로 보여준다.
 //
@@ -941,16 +954,6 @@ export function TopicQuiz({
   const requiredAxes = axes.filter((axis) => axis.required);
   const optionalAxes = axes.filter((axis) => !axis.required);
 
-  // topics.ts의 "quiz" inputMode 주제는 지금 이상형(idealType)과 나
-  // 소개·성격(selfIntro) 둘이다 — 결과·진행도를 서로 다른 session
-  // 필드에 저장해야 두 주제를 오가며 진행해도 결과가 서로 안 덮어써진다.
-  // topic.id별로 필드 이름만 바꾸고 그 외 로직은 완전히 동일하다 —
-  // 이상형은 지금까지와 정확히 같은 필드 이름(idealTypeResult 등)을
-  // 그대로 쓰므로 이 분기가 생겨도 이상형 쪽 동작은 바뀌지 않는다.
-  const resultField: "selfIntroResult" | "idealTypeResult" = topic.id === "selfIntro" ? "selfIntroResult" : "idealTypeResult";
-  const depthField: "selfIntroQuizDepth" | "idealTypeQuizDepth" = topic.id === "selfIntro" ? "selfIntroQuizDepth" : "idealTypeQuizDepth";
-  const resumingField: "selfIntroResuming" | "idealTypeResuming" = topic.id === "selfIntro" ? "selfIntroResuming" : "idealTypeResuming";
-
   // 축 구성이 개편되면(topics.ts의 quizVersion 참고) 예전에 저장된
   // quizStep은 완전히 다른 문항을 가리키게 된다 — 진행 중이던 세션이
   // 그 상태 그대로 화면에 뜨면 몇 번째인지도, 무슨 질문인지도 안 맞게
@@ -968,7 +971,6 @@ export function TopicQuiz({
       quizStep: 0,
       quizVersion: topic.quizVersion,
       quizAnswers: {},
-      [resumingField]: false,
       updatedAt: now(),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1027,22 +1029,6 @@ export function TopicQuiz({
     });
   };
 
-  // 결과를 이미 본 뒤 "6개 더 답하기"로 돌아온 경우 마지막 심화 문항을
-  // 답하면 마무리 질문을 또 묻지 않고 곧장 결과를 다시 만든다 — 마무리
-  // 질문은 처음 퀴즈를 마칠 때 이미 한 번 답했다. 이상형(quizVersion 11)
-  // ·나 소개(quizVersion 2) 둘 다 심화 경로를 없애 지금은 이 흐름을
-  // 아무 주제도 타지 않는다.
-  const finishResumedDeepDive = () => {
-    setSession((current) => ({
-      ...current,
-      [depthField]: "deep",
-      [resumingField]: false,
-      [resultField]: undefined,
-      updatedAt: now(),
-    }));
-    onFinish();
-  };
-
   const handleExit = () => {
     if (window.confirm("나가면 지금까지 답변이 사라져요. 나갈까요?")) onReset();
   };
@@ -1071,14 +1057,6 @@ export function TopicQuiz({
   // 자유 서술형(reflection) 문항 중 실제로 맨 처음 나오는 것 하나의 id만
   // 기억해서, TopicQuiz.tsx 전체에서 전송 안내를 딱 한 번만 보여준다.
   const firstReflectionAxisId = axes.find((axis) => axis.type === "reflection")?.id;
-  // 심화 재방문(6개 더 답하기로 돌아온 상태)의 마지막 문항 — 이 문항의
-  // 답을 확정하면 finishResumedDeepDive()가 곧바로 결과 재생성을
-  // 트리거한다(마무리 질문 화면을 거치지 않는 유일한 경로). 단일 선택
-  // 문항(binary/quickTap/scenario/slider)의 자동 다음 넘김이 이 지점에서는
-  // 꺼지고 명시적 "다음" 확인으로 바뀌는 기준이 된다 — 예전엔 각 분기마다
-  // onSubmit 안에서 따로 계산했는데, 렌더링 시점에도 필요해져서(requireConfirm
-  // prop) 한 곳으로 모았다.
-  const isLastOptionalWhileResuming = Boolean(session[resumingField]) && phase.kind === "optional" && phase.index === optionalAxes.length - 1;
 
   return (
     <main className="min-h-screen px-4 py-4 text-text-primary sm:px-6 lg:px-8">
@@ -1119,7 +1097,8 @@ export function TopicQuiz({
             onBack={goBack}
             onSubmit={(answerText) => {
               commitAnswer(topic.closingPrompt ?? "더 하고 싶은 말이 있나요?", answerText, CLOSING_AXIS_ID);
-              if (optionalAxes.length > 0) {
+              const depthField = DEPTH_FIELD_BY_TOPIC[topic.id];
+              if (optionalAxes.length > 0 && depthField) {
                 const depth = step === requiredAxes.length + 1 ? "quick" : "deep";
                 setSession((current) => ({ ...current, [depthField]: depth }));
               }
@@ -1134,10 +1113,9 @@ export function TopicQuiz({
             showBack={step > 0}
             onBack={goBack}
             aboutSelf={currentAxis.aboutSelf}
-            requireConfirm={isLastOptionalWhileResuming}
+            requireConfirm={false}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
-              if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
           />
         ) : currentAxis?.type === "binary" ? (
@@ -1147,10 +1125,9 @@ export function TopicQuiz({
             options={currentAxis.options}
             showBack={step > 0}
             onBack={goBack}
-            requireConfirm={isLastOptionalWhileResuming}
+            requireConfirm={false}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
-              if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
           />
         ) : currentAxis?.type === "scenario" ? (
@@ -1161,10 +1138,9 @@ export function TopicQuiz({
             showBack={step > 0}
             onBack={goBack}
             aboutSelf={currentAxis.aboutSelf}
-            requireConfirm={isLastOptionalWhileResuming}
+            requireConfirm={false}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
-              if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
           />
         ) : currentAxis?.type === "slider" ? (
@@ -1174,10 +1150,9 @@ export function TopicQuiz({
             options={currentAxis.options}
             showBack={step > 0}
             onBack={goBack}
-            requireConfirm={isLastOptionalWhileResuming}
+            requireConfirm={false}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
-              if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
           />
         ) : currentAxis?.type === "ranking" ? (
@@ -1189,7 +1164,6 @@ export function TopicQuiz({
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
-              if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
           />
         ) : currentAxis?.type === "reflection" ? (
@@ -1203,7 +1177,6 @@ export function TopicQuiz({
             onBack={goBack}
             onSubmit={(answerText) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id);
-              if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
           />
         ) : currentAxis ? (
@@ -1213,11 +1186,10 @@ export function TopicQuiz({
             options={currentAxis.options}
             showBack={step > 0}
             aboutSelf={currentAxis.aboutSelf}
-            requireConfirm={isLastOptionalWhileResuming}
+            requireConfirm={false}
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
-              if (isLastOptionalWhileResuming) finishResumedDeepDive();
             }}
           />
         ) : null}

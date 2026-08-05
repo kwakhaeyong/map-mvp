@@ -50,10 +50,6 @@ export type MapSession = {
   // 채워지지 않는다. 이미 "deep"으로 저장된 예전 결과의 공유 배지
   // 표시(share-store.ts 참고)만 위해 필드를 남겨둔다.
   idealTypeQuizDepth?: "quick" | "deep";
-  // 결과를 이미 본 뒤 "6개 더 답하기"로 되돌아간 상태였다 — 이상형은
-  // quizVersion 11에서 심화 경로 자체가 없어져 더 이상 값이 채워지지
-  // 않는다.
-  idealTypeResuming?: boolean;
   // 친구가 공유한 이상형 카드(/r/{id})의 "너도 만들어봐"를 타고 들어와
   // 퀴즈를 시작했을 때, 그 친구의 공유 ID. 결과 화면에서 "친구와의 궁합
   // 보기" 배너를 띄울지 판단하는 데만 쓴다 — 이 값이 있어도 AI 호출이나
@@ -69,10 +65,6 @@ export type MapSession = {
   // 채워지지 않는다. 이미 "deep"으로 저장된 예전 결과의 공유 배지
   // 표시(share-store.ts 참고)만 위해 필드를 남겨둔다.
   selfIntroQuizDepth?: "quick" | "deep";
-  // 결과를 이미 본 뒤 "6개 더 답하기"로 되돌아간 상태였다 — 나 소개는
-  // quizVersion 2에서 심화 경로 자체가 없어져 더 이상 값이 채워지지
-  // 않는다.
-  selfIntroResuming?: boolean;
   // /api/share가 "이 서버가 실제로 만든 결과인가"를 검증할 때 쓰는 HMAC
   // 서명(engine/result-signature.ts). 생성 라우트가 결과와 함께 내려주고,
   // 공유 시에만 그대로 옆에 실어 보낸다 — 대화 원문처럼 민감한 값이
