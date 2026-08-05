@@ -1346,7 +1346,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "relationship",
         type: "preference",
         required: true,
-        question: "가까운 사람과의 관계에서, 나는 실제로 무엇을 더 자주 해주는 편이야?",
+        question: "가까운 사람과의 관계에서, 나는 무엇을 더 자주 해주는 편이야?",
         options: [
           { label: "표현 많이 해주기", description: "마음을 말과 행동으로 자주 드러내는 편이다" },
           { label: "서로 존중하는 거리감", description: "상대의 공간을 침범하지 않으려는 편이다" },
@@ -1360,7 +1360,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "lifestyle",
         type: "preference",
         required: true,
-        question: "실제 생활에서, 나와 더 가까운 모습은?",
+        question: "평소 생활에서, 나와 더 가까운 모습은?",
         options: [
           { label: "집순이·집돌이", description: "집에서 보내는 시간이 제일 편하다" },
           { label: "액티브·야외파", description: "밖에서 몸을 움직이는 걸 좋아한다" },
@@ -1374,7 +1374,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "binary1",
         type: "binary",
         required: true,
-        question: "가까운 관계가 오래될수록, 실제로 나는 어느 쪽에 더 가까웠어?",
+        question: "가까운 관계가 오래될수록, 나는 어느 쪽에 더 가까웠어?",
         options: [
           { label: "오래 편안한 사람", description: "시간이 지날수록 편안해지는 쪽에 가깝다" },
           { label: "매일 설레는 사람", description: "시간이 지나도 설렘을 유지하려는 쪽에 가깝다" },
@@ -1414,7 +1414,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "workDeadline",
         type: "quickTap",
         required: true,
-        question: "마감이 촉박했던 실제 상황에서, 나는 보통 어떻게 움직였어?",
+        question: "마감이 촉박했던 상황에서, 나는 보통 어떻게 움직였어?",
         options: [
           { label: "일정을 쪼개서 바로 시작하는", description: "계획부터 세우고 바로 착수하는 편이다" },
           { label: "몰아서 집중해서 끝내는", description: "마감 직전에 몰입해서 해치우는 편이다" },
@@ -1426,7 +1426,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "workMistake",
         type: "experience",
         required: true,
-        question: "일하다가 실수했던 실제 순간, 그때 나는 어떻게 했어?",
+        question: "일하다가 실수했던 순간, 그때 나는 어떻게 했어?",
         options: [
           { label: "바로 알리고 수습부터 하는 편", description: "숨기지 않고 먼저 말하는 편이다" },
           { label: "혼자 조용히 고치려 하는 편", description: "일단 스스로 해결해보려는 편이다" },
@@ -1444,7 +1444,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "reflectionWorkMistake",
         type: "reflection",
         required: true,
-        question: "일하다 실수했던 그 순간 이후로, 실제로 뭐가 달라졌어요?",
+        question: "일하다 실수했던 그 순간 이후로, 뭐가 달라졌어요?",
         placeholder: "예: 그 뒤로는 마감 전에 한 번 더 확인하는 습관이 생겼어요",
         options: [],
       },
@@ -1452,7 +1452,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "workTeam",
         type: "preference",
         required: true,
-        question: "같이 일할 때, 나는 실제로 어떤 역할을 더 자주 맡아?",
+        question: "같이 일할 때, 나는 어떤 역할을 더 자주 맡아?",
         options: [
           { label: "방향을 정하는 쪽", description: "전체 흐름을 짜는 역할을 자주 한다" },
           { label: "꼼꼼히 챙기는 쪽", description: "디테일을 놓치지 않는 역할을 자주 한다" },
@@ -1465,7 +1465,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "conflictFriend",
         type: "scenario",
         required: true,
-        question: "친구와 의견이 갈렸던 실제 상황에서, 그때 나는 어떻게 했어?",
+        question: "친구와 의견이 갈렸던 상황에서, 그때 나는 어떻게 했어?",
         options: [
           { label: "내 생각을 분명히 말한 반응", description: "물러서지 않고 의견을 낸다" },
           { label: "일단 상대 말을 더 들어본 반응", description: "듣는 걸 먼저 하는 편이다" },
@@ -1477,7 +1477,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "conflictOpinion",
         type: "scenario",
         required: true,
-        question: "모두가 나와 다른 의견일 때, 실제로 나는 어떻게 반응했어?",
+        question: "모두가 나와 다른 의견일 때, 나는 어떻게 반응했어?",
         options: [
           { label: "그래도 내 의견을 밀어붙인 반응", description: "소수여도 굽히지 않는 편이다" },
           { label: "일단 맞춰주고 나중에 얘기한 반응", description: "그 자리에서는 맞추는 편이다" },
@@ -1502,7 +1502,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "decisionRecent",
         type: "quickTap",
         required: true,
-        question: "최근 뭔가를 정할 때, 실제로 어떤 순서로 정했어?",
+        question: "최근 뭔가를 정할 때, 어떤 순서로 정했어?",
         options: [
           { label: "정보를 다 모아보고 정하는", description: "따져보고 나서 정하는 편이다" },
           { label: "일단 마음 가는 대로 정하는", description: "직관으로 정하는 편이다" },
@@ -1514,7 +1514,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "decisionRisk",
         type: "binary",
         required: true,
-        question: "실제로 선택해야 했을 때, 나는 어느 쪽에 더 가까웠어?",
+        question: "선택해야 했을 때, 나는 어느 쪽에 더 가까웠어?",
         options: [
           { label: "확실한 걸 고르는 편", description: "안전한 쪽을 택하는 편이다" },
           { label: "가능성 큰 걸 고르는 편", description: "리스크를 감수하는 편이다" },
@@ -1524,7 +1524,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "decisionAdvice",
         type: "scenario",
         required: true,
-        question: "친구가 급하게 조언을 구했던 실제 상황에서, 나는 어떻게 답했어?",
+        question: "친구가 급하게 조언을 구했던 상황에서, 나는 어떻게 답했어?",
         options: [
           { label: "내 생각을 바로 말해준 반응", description: "직접적으로 답을 주는 편이다" },
           { label: "질문을 던지며 스스로 찾게 한 반응", description: "답을 주기보다 묻는 편이다" },
@@ -1537,7 +1537,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "emotionJoy",
         type: "experience",
         required: true,
-        question: "정말 기뻤던 순간, 그걸 실제로 어떻게 표현했어?",
+        question: "정말 기뻤던 순간, 그걸 어떻게 표현했어?",
         options: [
           { label: "바로 티 내며 표현하는 편", description: "숨기지 않고 드러내는 편이다" },
           { label: "가까운 사람에게만 말하는 편", description: "아무한테나 말하지 않는 편이다" },
@@ -1549,7 +1549,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "emotionSad",
         type: "experience",
         required: true,
-        question: "많이 속상했던 실제 순간, 그때 나는 어떻게 했어?",
+        question: "많이 속상했던 순간, 그때 나는 어떻게 했어?",
         options: [
           { label: "누군가에게 바로 털어놓는 편", description: "혼자 담아두지 않는 편이다" },
           { label: "혼자 시간을 갖고 삭이는 편", description: "정리할 시간이 필요한 편이다" },
@@ -1561,7 +1561,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "emotionAngry",
         type: "quickTap",
         required: true,
-        question: "화가 났던 실제 순간, 나는 보통 어떻게 반응해?",
+        question: "화가 났던 순간, 나는 보통 어떻게 반응해?",
         options: [
           { label: "그 자리에서 바로 표현하는", description: "즉시 반응하는 편이다" },
           { label: "일단 참았다가 나중에 말하는", description: "시간을 두고 말하는 편이다" },
@@ -1574,7 +1574,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "roleGroup",
         type: "scenario",
         required: true,
-        question: "모임에서 누군가 힘들어 보였던 실제 상황에서, 나는 어떻게 했어?",
+        question: "모임에서 누군가 힘들어 보였던 상황에서, 나는 어떻게 했어?",
         options: [
           { label: "먼저 다가가 물어본 반응", description: "먼저 챙기는 편이다" },
           { label: "다른 사람이 나설 때까지 지켜본 반응", description: "먼저 나서지는 않는 편이다" },
@@ -1598,7 +1598,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "roleNewcomer",
         type: "quickTap",
         required: true,
-        question: "새로 들어온 사람이 있는 모임에서, 나는 실제로 어떤 쪽이야?",
+        question: "새로 들어온 사람이 있는 모임에서, 나는 보통 어떤 쪽이야?",
         options: [
           { label: "먼저 말 걸고 챙기는", description: "적극적으로 다가가는 편이다" },
           { label: "자연스럽게 섞이길 기다리는", description: "시간을 두고 지켜보는 편이다" },
@@ -1611,7 +1611,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "experienceRegretGeneral",
         type: "experience",
         required: true,
-        question: "돌아보면 아쉬웠던 선택이 있다면, 그때 실제로 어떻게 했어?",
+        question: "돌아보면 아쉬웠던 선택이 있다면, 그때 어떻게 했어?",
         options: [
           { label: "너무 빨리 결정해버렸던 편", description: "충분히 안 재고 정했던 편이다" },
           { label: "너무 오래 미뤘던 편", description: "결정을 늦게까지 끌었던 편이다" },
@@ -1623,7 +1623,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "reflectionRegretGeneral",
         type: "reflection",
         required: true,
-        question: "그 아쉬움이 가장 크게 남았던 순간이 언제였어요?\n그때 실제로 어떻게 했어요?",
+        question: "그 아쉬움이 가장 크게 남았던 순간이 언제였어요?\n그때 어떻게 했어요?",
         placeholder: "예: 이직을 고민만 하다가 1년을 넘겼는데, 그때 더 알아보지 않고 그냥 다니던 곳에 남았어요",
         options: [],
       },
@@ -1631,7 +1631,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "experienceApologyFriend",
         type: "experience",
         required: true,
-        question: "친구 사이에서 내가 잘못했을 때, 실제로 사과는 어떻게 하는 편이야?",
+        question: "친구 사이에서 내가 잘못했을 때, 사과는 어떻게 하는 편이야?",
         options: [
           { label: "바로 인정하고 사과하는 편", description: "잘못을 깨달으면 바로 말하는 편이다" },
           { label: "시간이 좀 지나야 사과하는 편", description: "마음을 정리한 뒤에 사과하는 편이다" },
@@ -1644,7 +1644,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "restTired",
         type: "quickTap",
         required: true,
-        question: "정말 피곤했던 날, 실제로 뭘 하며 쉬었어?",
+        question: "정말 피곤했던 날, 뭘 하며 쉬었어?",
         options: [
           { label: "아무것도 안 하고 누워있는", description: "완전히 멈추는 편이다" },
           { label: "가벼운 취미로 전환하는", description: "다른 걸 하며 푸는 편이다" },
@@ -1656,7 +1656,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "restWeekend",
         type: "preference",
         required: true,
-        question: "실제 주말에, 나는 어떤 모습에 더 가까워?",
+        question: "주말에, 나는 어떤 모습에 더 가까워?",
         options: [
           { label: "집에서 밀린 걸 하는", description: "집안일·정리를 하며 보낸다" },
           { label: "밖으로 나가 활동하는", description: "약속이나 나들이로 채운다" },
@@ -1668,7 +1668,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "restAlone",
         type: "binary",
         required: true,
-        question: "실제로 재충전이 더 잘 되는 쪽은 어디였어?",
+        question: "재충전이 더 잘 되는 쪽은 어디였어?",
         options: [
           { label: "혼자 있는 시간", description: "혼자 있을 때 회복되는 편이다" },
           { label: "사람들과 있는 시간", description: "사람들과 있을 때 회복되는 편이다" },
@@ -1679,7 +1679,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "commMisunderstanding",
         type: "experience",
         required: true,
-        question: "오해가 생겼던 실제 대화 이후, 나는 그 다음에 뭘 했어?",
+        question: "오해가 생겼던 대화 이후, 나는 그 다음에 뭘 했어?",
         options: [
           { label: "바로 풀려고 다시 얘기 꺼낸 편", description: "먼저 다가가 푸는 편이다" },
           { label: "시간을 두고 자연스레 풀리길 기다린 편", description: "굳이 서두르지 않는 편이다" },
@@ -1691,7 +1691,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "commDisagree",
         type: "scenario",
         required: true,
-        question: "듣기 불편한 말을 실제로 들었을 때, 나는 어떻게 반응했어?",
+        question: "듣기 불편한 말을 들었을 때, 나는 어떻게 반응했어?",
         options: [
           { label: "그 자리에서 반박한 반응", description: "바로 되받는 편이다" },
           { label: "일단 듣고 나중에 생각한 반응", description: "즉각 반응은 안 하는 편이다" },
@@ -1715,7 +1715,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "commPraise",
         type: "binary",
         required: true,
-        question: "칭찬을 실제로 받았을 때, 나는 어느 쪽에 가까워?",
+        question: "칭찬을 받았을 때, 나는 어느 쪽에 가까워?",
         options: [
           { label: "솔직하게 좋아하는 편", description: "티 내며 좋아하는 편이다" },
           { label: "어색해하며 넘기는 편", description: "쑥스러워하는 편이다" },
@@ -1726,7 +1726,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "experienceChangeGeneral",
         type: "experience",
         required: true,
-        question: "예전과 비교하면, 나는 사람 대하는 방식이 실제로 어떻게 달라졌어?",
+        question: "예전과 비교하면, 나는 사람 대하는 방식이 어떻게 달라졌어?",
         options: [
           { label: "더 솔직하게 말하게 됐다", description: "감정을 더 드러내게 된 편이다" },
           { label: "더 거리를 두게 됐다", description: "선을 더 지키게 된 편이다" },
@@ -1738,7 +1738,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "reflectionGrowth",
         type: "reflection",
         required: true,
-        question: "그렇게 달라진 실제 계기가 있었다면, 언제였어요?\n그때 무슨 일이 있었는지 적어주세요",
+        question: "그렇게 달라진 계기가 있었다면, 언제였어요?\n그때 무슨 일이 있었는지 적어주세요",
         placeholder: "예: 예전 관계에서 계속 참기만 하다 크게 틀어진 뒤로, 그다음부터는 서운한 걸 바로 말하게 됐어요",
         options: [],
       },
@@ -1747,7 +1747,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "strangerFirst",
         type: "scenario",
         required: true,
-        question: "처음 보는 사람과 있었던 실제 상황에서, 나는 어떻게 행동했어?",
+        question: "처음 보는 사람과 있었던 상황에서, 나는 어떻게 행동했어?",
         options: [
           { label: "먼저 말을 걸어본 반응", description: "적극적으로 다가가는 편이다" },
           { label: "상대가 말 걸기를 기다린 반응", description: "먼저 나서지 않는 편이다" },
@@ -1759,7 +1759,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         id: "strangerHelp",
         type: "experience",
         required: true,
-        question: "낯선 사람이 도움이 필요해 보였던 실제 상황에서, 나는 어떻게 했어?",
+        question: "낯선 사람이 도움이 필요해 보였던 상황에서, 나는 어떻게 했어?",
         options: [
           { label: "먼저 나서서 도운 편", description: "바로 나서는 편이다" },
           { label: "필요하다고 하면 도운 편", description: "요청이 있어야 나서는 편이다" },
