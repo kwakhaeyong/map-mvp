@@ -19,15 +19,19 @@ export function Brand() {
   );
 }
 
-// 진로·이상형·나소개만 실제로 연결돼 있다(engine/topics.ts의 implemented
-// 참고). 나머지는 완성되는 대로 이 목록 구성을 바꿀 필요 없이 topics.ts의
-// implemented만 true로 바꾸면 된다. "연애 스타일"은 이상형·나소개와
-// 내용이 겹쳐 만들지 않기로 확정해 목록·topics.ts 양쪽에서 제거했다.
-// "궁합"은 독립 주제가 아니라 이상형 결과를 비교하는 기능(#107,
+// 진로·이상형·나소개·친구·인간관계만 실제로 연결돼 있다(engine/topics.ts의
+// implemented 참고). 나머지는 완성되는 대로 이 목록 구성을 바꿀 필요 없이
+// topics.ts의 implemented만 true로 바꾸면 된다. "연애 스타일"은 이상형·
+// 나소개와 내용이 겹쳐 만들지 않기로 확정해 목록·topics.ts 양쪽에서
+// 제거했다. "궁합"은 독립 주제가 아니라 이상형 결과를 비교하는 기능(#107,
 // engine/compatibility.ts)이라 랜딩 카드 목록에서 뺐다 — 이 카드가
 // 그 기능과 이름만 같고 실제로는 무관한 별개의 빈 자리라 헷갈림의
-// 원인이었다(docs/CURRENT_STATE.md 참고).
-const DEPTH_TOPIC_IDS = ["career", "jobChange", "bigDecision"];
+// 원인이었다(docs/CURRENT_STATE.md 참고). "이직"·"큰 결정·소비/재무"는
+// 별도 주제로 만들지 않고 career(진로)에 흡수하기로 확정해 목록·
+// topics.ts 양쪽에서 제거했다 — career가 자유 대화형이라 이직·재무
+// 고민을 얘기해도 이미 그에 맞는 결과가 나온다(프로덕션에서 이직 고민
+// 완주로 실측 확인됨).
+const DEPTH_TOPIC_IDS = ["career"];
 const VIRAL_TOPIC_IDS = ["idealType", "selfIntro", "friendship", "workSelf", "taste", "travelStyle"];
 const SAFETY_NET_TOPIC_ID = "freeform";
 
