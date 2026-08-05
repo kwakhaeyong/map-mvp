@@ -65,12 +65,17 @@ export type MapSession = {
   // 채워지지 않는다. 이미 "deep"으로 저장된 예전 결과의 공유 배지
   // 표시(share-store.ts 참고)만 위해 필드를 남겨둔다.
   selfIntroQuizDepth?: "quick" | "deep";
+  // 친구·인간관계(friendship) 결과 — idealTypeResult/selfIntroResult와
+  // 완전히 같은 역할을 하는 별도 필드다. 심화(선택) 경로 자체가 없는
+  // 주제라 quizDepth/resuming류 필드는 없다.
+  friendshipResult?: FriendshipResult;
   // /api/share가 "이 서버가 실제로 만든 결과인가"를 검증할 때 쓰는 HMAC
   // 서명(engine/result-signature.ts). 생성 라우트가 결과와 함께 내려주고,
   // 공유 시에만 그대로 옆에 실어 보낸다 — 대화 원문처럼 민감한 값이
   // 아니라 그냥 16진수 문자열이라 세션에 그대로 저장해도 된다.
   idealTypeResultSignature?: string | null;
   selfIntroResultSignature?: string | null;
+  friendshipResultSignature?: string | null;
   // 진로 결과는 블록별로 따로 재생성할 수 있어(Result.tsx의
   // regenerateBlock), 결과 전체가 아니라 블록마다 독립된 서명을 가진다 —
   // 한 블록만 다시 만들어도 그 블록의 서명만 갱신되고 나머지는 그대로다.
@@ -181,6 +186,44 @@ export type SelfIntroResult = {
   // 이상형과 같은 4축·18개 태그 사전(engine/ideal-type-tags.ts)을 그대로
   // 재사용한다 — 나소개×이상형 교차 비교(engine/compatibility.ts)가
   // 성립하려면 두 결과의 태그가 같은 문자열 체계여야 한다.
+  tags?: string[];
+};
+
+// 친구·인간관계(friendship) 결과 — 이상형·나 소개와 태그 축 일부를
+// 공유하지만(engine/ideal-type-tags.ts, 태그 시스템을 세 번째 주제까지
+// 확장한 PR 참고), 질문은 "연애 상대"가 아니라 "내가 관계를 맺고
+// 유지하는 방식"을 묻는다. 필드 이름은 이상형·나 소개 둘 다와
+// 다르게 붙였다(friendCriteria/friendTypes) — "상대"라는 개념이 없는
+// 주제라 그대로 재사용하면 어색해서다. selfReflection만은 발상이
+// 완전히 같아 그대로 재사용한다. 배열에 개수 제한을 두지 않는 이유는
+// 이상형·나 소개와 동일(Structured Outputs가 maxItems/minItems를
+// 지원하지 않음) — engine/friendship-generator.ts에서 코드로 자른다.
+export type FriendshipCriteria = { essential: string[]; bonus: string[]; flexible: string[] };
+export type FriendshipMatrixPoint = { label: string; description: string; x: number; y: number };
+export type FriendshipMatrix = {
+  xAxisLabel: { low: string; high: string };
+  yAxisLabel: { low: string; high: string };
+  types: FriendshipMatrixPoint[];
+};
+export type FriendshipTypes = { wellMatched: string[]; friction: string[] };
+export type FriendshipRoadmapPhase = { label: string; actions: string[] };
+export type FriendshipRoadmap = { firstAction: string; phases: FriendshipRoadmapPhase[] };
+
+export type FriendshipResult = {
+  version: number;
+  generatedAt: string;
+  model: "claude-sonnet-5";
+  title: string;
+  oneLiner: string;
+  friendCriteria: FriendshipCriteria;
+  patterns: string[];
+  matrix: FriendshipMatrix;
+  friendTypes: FriendshipTypes;
+  selfReflection: IdealTypeSelfReflection;
+  roadmap: FriendshipRoadmap;
+  // 이상형·나 소개와 일부 축을 공유하는 태그 사전(engine/ideal-type-tags.ts)을
+  // 재사용한다 — 세 주제 사이 교차 비교(engine/compatibility.ts)가
+  // 성립하려면 결과의 태그가 같은 문자열 체계여야 한다.
   tags?: string[];
 };
 

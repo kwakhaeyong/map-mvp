@@ -16,7 +16,7 @@ import { getRedisClient } from "./redis-client";
 
 const GENERATION_CACHE_TTL_SECONDS = 30 * 60; // 30분 — 아래 computeGenerationCacheKey 주석 참고
 
-export type GenerationTopic = "idealType" | "selfIntro";
+export type GenerationTopic = "idealType" | "selfIntro" | "friendship";
 
 // 객체 키 순서에 관계없이 항상 같은 문자열이 나오게 하는 정규화 —
 // session.quizAnswers는 JS 객체라 키 순서가 원칙적으로 보장되지 않는다.
@@ -43,10 +43,10 @@ function stableStringify(value: unknown): string {
 // 통째로 맞히는 건 사실상 불가능하다(축마다 선택지 4~6개, 다중 선택
 // 축은 순서까지 있어 조합이 기하급수적으로 늘어난다) — 그 사람이 실제로
 // 고른 답을 이미 알고 있는 게 아니라면 같은 해시를 만들 수 없다.
-// topic을 해시에도, 캐시 키 접두어에도 넣어 이상형/나소개 결과가 서로
-// 섞이지 않게 한다(요청대로 이중으로 넣었다 — 접두어만으로 실질적으로
-// 충분하지만, 해시 자체도 주제별로 달라지게 해서 우연히 같은 로직으로
-// 두 캐시 조회 함수를 섞어 써도 안전하게 한다).
+// topic을 해시에도, 캐시 키 접두어에도 넣어 이상형/나소개/친구·인간관계
+// 결과가 서로 섞이지 않게 한다(요청대로 이중으로 넣었다 — 접두어만으로
+// 실질적으로 충분하지만, 해시 자체도 주제별로 달라지게 해서 우연히 같은
+// 로직으로 여러 캐시 조회 함수를 섞어 써도 안전하게 한다).
 export function computeGenerationCacheKey(topic: GenerationTopic, session: MapSession): string {
   const canonicalInput = stableStringify({
     topic,

@@ -6,6 +6,7 @@ import { resolveTopic } from "../engine/topics";
 import { clearSession, loadSession, saveSession } from "../storage/session-storage";
 import { MapOutputType, MapSession } from "../types";
 import { Conversation } from "./Conversation";
+import { FriendshipCard } from "./FriendshipCard";
 import { IdealTypeCard } from "./IdealTypeCard";
 import { Landing } from "./Landing";
 import { Result } from "./Result";
@@ -84,7 +85,7 @@ export function MapDecisionProduct() {
     const effective = saved && isSessionStale(saved) ? ({ ...saved, stage: "landing" } as MapSession) : saved;
     if (effective) {
       if (saved && effective !== saved) {
-        const hasResultData = Boolean(saved.idealTypeResult || saved.selfIntroResult || saved.result);
+        const hasResultData = Boolean(saved.idealTypeResult || saved.selfIntroResult || saved.friendshipResult || saved.result);
         setHasStaleResult(saved.stage === "result" && hasResultData);
       }
       setSession(effective);
@@ -221,6 +222,9 @@ export function MapDecisionProduct() {
     }
     if (resultTopic.resultLayoutId === "selfIntro") {
       return <SelfIntroCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
+    }
+    if (resultTopic.resultLayoutId === "friendship") {
+      return <FriendshipCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
     }
     return <Result session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onSelectType={selectType} onRealStart={exitDemoToReal} saveState={saveState} />;
   }
