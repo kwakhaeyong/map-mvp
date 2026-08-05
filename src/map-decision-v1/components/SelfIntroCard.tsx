@@ -10,7 +10,7 @@ import { GenerationWaitCard } from "./GenerationProgress";
 import { SelfIntroResultBlocks } from "./SelfIntroResultBlocks";
 import { ShareStatusCard, useShareResult } from "./ShareResult";
 import { ImageSaveModal, useImageShare } from "./ImageShare";
-import { Badge, Button, Card } from "./ui/primitives";
+import { Button, Card } from "./ui/primitives";
 
 // 나 소개·성격 결과의 실제 구성 순서(자기 발견 엔진 프롬프트 기준:
 // 패턴 → 매트릭스 배치 → 자기성찰 → 나머지 필드 정리)와 대응하는 대기
@@ -24,21 +24,6 @@ const SELF_INTRO_GENERATION_STAGES = [
   "마무리하고 있어요",
 ];
 
-// 필수 34문항만 답하고 결과를 본 사람에게 "6개 더 답하기"를 안내한다.
-// 이상형은 quizVersion 11에서 심화 경로 자체를 없애 이 배너가 없다.
-function DeepenResultBanner({ onDeepen }: { onDeepen: () => void }) {
-  return (
-    <Card className="flex flex-col gap-3 text-sm">
-      <p className="font-extrabold text-text-primary">
-        이 결과는 34개 답변으로 만들었어요. 6개를 더 답하면 앞으로 어떤 상황에서 어떻게 행동할지 전망하거나, 예전과 달라진 점을 짚어주는 통찰이 추가돼요.
-      </p>
-      <Button type="button" variant="secondary" onClick={onDeepen}>
-        6개 더 답하기
-      </Button>
-    </Card>
-  );
-}
-
 function SelfIntroCardBody({
   session,
   setSession,
@@ -49,21 +34,6 @@ function SelfIntroCardBody({
   onReset: () => void;
 }) {
   const result = session.selfIntroResult!;
-
-  // "6개 더 답하기"를 누르면 심화 문항 시작 지점으로 곧장 이동한다.
-  // 이상형은 quizVersion 11에서 심화 경로 자체를 없애 이 기능이 없다
-  // (TopicQuiz.tsx가 topic.id로 필드 이름만 구분해서 쓴다).
-  const deepenAnswers = () => {
-    const topic = resolveTopic(session.topicId);
-    const requiredCount = (topic.axes ?? []).filter((axis) => axis.required).length;
-    setSession((current) => ({
-      ...current,
-      stage: "conversation",
-      quizStep: requiredCount + 2,
-      selfIntroResuming: true,
-      updatedAt: now(),
-    }));
-  };
 
   const { shareState, shareError, sharedUrl, canNativeShare, share, copyLink, ensureShareUrl } = useShareResult({
     topicId: session.topicId ?? "selfIntro",
@@ -82,14 +52,7 @@ function SelfIntroCardBody({
 
   return (
     <div className="flex flex-col gap-3">
-      {session.selfIntroQuizDepth === "deep" ? (
-        <Badge tone="success" className="self-start">
-          심층 분석 포함
-        </Badge>
-      ) : null}
       <SelfIntroResultBlocks result={result} />
-
-      {session.selfIntroQuizDepth === "quick" ? <DeepenResultBanner onDeepen={deepenAnswers} /> : null}
 
       <ShareStatusCard shareState={shareState} shareError={shareError} sharedUrl={sharedUrl} />
       <div className="flex gap-2">
@@ -154,9 +117,9 @@ export function SelfIntroCard({
   const attemptedRef = useRef(false);
   const controllerRef = useRef<AbortController | null>(null);
 
-  const topicAxes = resolveTopic(session.topicId).axes ?? [];
-  const requiredAxisCount = topicAxes.filter((axis) => axis.required).length;
-  const answeredCount = session.selfIntroQuizDepth === "deep" ? topicAxes.length : requiredAxisCount;
+  // 대기 화면에 "몇 개 답했는지" 보여줄 때 36을 하드코딩하지 않고
+  // topics.ts의 실제 축 구성(전부 필수)에서 계산한다.
+  const answeredCount = resolveTopic(session.topicId).axes?.filter((axis) => axis.required).length ?? 0;
 
   const generate = () => {
     controllerRef.current?.abort();

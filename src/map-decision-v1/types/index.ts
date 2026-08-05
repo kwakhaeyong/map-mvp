@@ -64,7 +64,14 @@ export type MapSession = {
   // idealTypeResult 중 하나를 골라 쓴다(같은 필드를 공유하면 두 주제를
   // 오가며 진행할 때 결과가 서로 덮어써진다).
   selfIntroResult?: SelfIntroResult;
+  // 나 소개 퀴즈를 필수 34문항에서 끝냈는지("quick"), 선택 6문항까지
+  // 마쳤는지("deep") — quizVersion 2(심화 경로 제거)부터는 새로 값이
+  // 채워지지 않는다. 이미 "deep"으로 저장된 예전 결과의 공유 배지
+  // 표시(share-store.ts 참고)만 위해 필드를 남겨둔다.
   selfIntroQuizDepth?: "quick" | "deep";
+  // 결과를 이미 본 뒤 "6개 더 답하기"로 되돌아간 상태였다 — 나 소개는
+  // quizVersion 2에서 심화 경로 자체가 없어져 더 이상 값이 채워지지
+  // 않는다.
   selfIntroResuming?: boolean;
   // /api/share가 "이 서버가 실제로 만든 결과인가"를 검증할 때 쓰는 HMAC
   // 서명(engine/result-signature.ts). 생성 라우트가 결과와 함께 내려주고,
