@@ -1331,7 +1331,16 @@ export const TOPICS: Record<string, TopicConfig> = {
     // experienceStressResponse/binary1)은 이상형과 label 문자열이
     // 완전히 동일해야 engine/ideal-type-tags.ts의 매핑이 그대로
     // 재사용된다 — 질문 프레임(누구 얘기인지)만 자기 쪽으로 뒤집었다.
-    quizVersion: 1,
+    // 2: 심화(선택) 경로를 없앴다 — 이상형(quizVersion 11, PR #152)과
+    // 같은 이유다. 심화 6개 중 reflectionWorkMistake는 필수 workMistake의
+    // 후속 자유 서술인데 짝의 절반만 심화에 있어 심화를 건너뛴 사용자는
+    // 그 쌍이 미완성으로 남았고, experienceCommitmentGeneral은 필수
+    // 문항과 겹치는 축이 없는 유일한 심화 문항이라 필수로 승격했다.
+    // 나머지 4개(experienceSupportGiven·decisionBig·restSocial·
+    // scenarioCompliment)는 필수 roleSupport/decisionRecent/restTired/
+    // commPraise와 주제가 겹치거나 방향만 반대인 대칭 축이라 삭제했다.
+    // 필수 34→36문항.
+    quizVersion: 2,
     axes: [
       {
         id: "relationship",
@@ -1383,6 +1392,23 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "주변에 털어놓는 편", description: "다른 사람에게 얘기하며 정리하는 편이다" },
         ],
       },
+      // 심화(선택)에서 필수로 승격(quizVersion 2) — 조사에서 필수 문항과
+      // 겹치는 축이 없다고 확인된 유일한 심화 문항이다. 바로 위 4개(관계·
+      // 생활·관계 리듬·갈등 스트레스)와 같은 "가까운 관계" 주제라 그
+      // 묶음 끝에 이어 붙이고, "일할 때 실제 모습" 섹션이 시작되기 전에
+      // 배치했다.
+      {
+        id: "experienceCommitmentGeneral",
+        type: "experience",
+        required: true,
+        question: "관계가 더 깊어지는 순간(마음을 정하는 때 등), 나는 실제로 어떻게 행동해?",
+        options: [
+          { label: "먼저 마음을 표현하는 편", description: "먼저 움직이는 편이다" },
+          { label: "상대가 확실해질 때까지 기다리는 편", description: "확신이 생겨야 움직이는 편이다" },
+          { label: "천천히 스며들듯 가까워지는 편", description: "자연스럽게 흘러가는 편이다" },
+          { label: "확실히 선을 정하고 가는 편", description: "명확하게 정리하고 가는 편이다" },
+        ],
+      },
       // ── 일할 때 실제 모습 ─────────────────────────────────────────
       {
         id: "workDeadline",
@@ -1407,6 +1433,20 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "왜 그랬는지부터 따져보는 편", description: "원인을 먼저 분석하는 편이다" },
           { label: "다음부터 안 그러려고 기록해두는 편", description: "재발 방지에 신경 쓰는 편이다" },
         ],
+      },
+      // 심화(선택)에서 필수로 승격(quizVersion 2) — workMistake의 후속
+      // 자유 서술이다. experienceRegretGeneral→reflectionRegretGeneral,
+      // experienceChangeGeneral→reflectionGrowth와 같은 방식으로 짝이 되는
+      // 경험형 바로 뒤에 둔다. 심화에 있을 때는 이 쌍의 절반만 존재해서
+      // 심화를 건너뛴 사용자는 workMistake만 답하고 그 후속 서술은 받지
+      // 못했다.
+      {
+        id: "reflectionWorkMistake",
+        type: "reflection",
+        required: true,
+        question: "일하다 실수했던 그 순간 이후로, 실제로 뭐가 달라졌어요?",
+        placeholder: "예: 그 뒤로는 마감 전에 한 번 더 확인하는 습관이 생겼어요",
+        options: [],
       },
       {
         id: "workTeam",
@@ -1737,73 +1777,6 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "필요한 정보만 주고받는", description: "실용적인 관계를 맺는 편이다" },
           { label: "몇 명하고만 깊게 얘기하는", description: "소수와 깊이 있게 대화하는 편이다" },
           { label: "조용히 관찰만 하는", description: "지켜보는 게 편한 편이다" },
-        ],
-      },
-      // ── 심화(선택) 6문항 ─────────────────────────────────────────
-      {
-        id: "experienceCommitmentGeneral",
-        type: "experience",
-        required: false,
-        question: "관계가 더 깊어지는 순간(마음을 정하는 때 등), 나는 실제로 어떻게 행동해?",
-        options: [
-          { label: "먼저 마음을 표현하는 편", description: "먼저 움직이는 편이다" },
-          { label: "상대가 확실해질 때까지 기다리는 편", description: "확신이 생겨야 움직이는 편이다" },
-          { label: "천천히 스며들듯 가까워지는 편", description: "자연스럽게 흘러가는 편이다" },
-          { label: "확실히 선을 정하고 가는 편", description: "명확하게 정리하고 가는 편이다" },
-        ],
-      },
-      {
-        id: "experienceSupportGiven",
-        type: "experience",
-        required: false,
-        question: "가까운 사람이 잘될 때(성취·좋은 일), 나는 실제로 어떤 반응이야?",
-        options: [
-          { label: "누구보다 크게 기뻐해주는 편", description: "적극적으로 축하하는 편이다" },
-          { label: "담담하게 축하해주는 편", description: "조용히 축하하는 편이다" },
-          { label: "질투가 살짝 섞이는 편", description: "솔직히 복잡한 마음도 드는 편이다" },
-          { label: "더 잘되라고 챙겨주는 편", description: "실질적으로 도우려는 편이다" },
-        ],
-      },
-      {
-        id: "decisionBig",
-        type: "binary",
-        required: false,
-        question: "인생에서 중요한 결정을 실제로 할 때, 나는 어느 쪽에 가까워?",
-        options: [
-          { label: "혼자 정리해서 결정하는 편", description: "혼자 판단하고 정하는 편이다" },
-          { label: "가까운 사람과 상의해서 정하는 편", description: "같이 얘기하고 정하는 편이다" },
-        ],
-      },
-      {
-        id: "restSocial",
-        type: "quickTap",
-        required: false,
-        question: "실제로 스트레스가 심하게 쌓였을 때, 나는 뭘 가장 먼저 해?",
-        options: [
-          { label: "혼자만의 공간을 찾는", description: "혼자 있을 곳부터 찾는 편이다" },
-          { label: "가까운 사람에게 연락하는", description: "사람부터 찾는 편이다" },
-          { label: "몸을 움직여 발산하는", description: "운동 등으로 푸는 편이다" },
-          { label: "아예 다른 일에 몰두하는", description: "다른 것으로 전환하는 편이다" },
-        ],
-      },
-      {
-        id: "reflectionWorkMistake",
-        type: "reflection",
-        required: false,
-        question: "일하다 실수했던 그 순간 이후로, 실제로 뭐가 달라졌어요?",
-        placeholder: "예: 그 뒤로는 마감 전에 한 번 더 확인하는 습관이 생겼어요",
-        options: [],
-      },
-      {
-        id: "scenarioCompliment",
-        type: "scenario",
-        required: false,
-        question: "예상 못 한 칭찬을 실제로 받았던 상황에서, 그때 나는 어떻게 반응했어?",
-        options: [
-          { label: "고맙다고 바로 받아들인 반응", description: "솔직하게 받는 편이다" },
-          { label: "별거 아니라며 넘긴 반응", description: "겸손하게 넘기는 편이다" },
-          { label: "농담으로 받아친 반응", description: "가볍게 웃어넘기는 편이다" },
-          { label: "괜히 어색해서 화제를 돌린 반응", description: "쑥스러워 피하는 편이다" },
         ],
       },
     ],
