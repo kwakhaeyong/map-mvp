@@ -51,6 +51,7 @@
 8. `src/map-decision-v1/engine/share-validation.ts` — `SUPPORTED_SHARE_TOPICS`에 형태 검증 추가
 9. `app/r/[id]/page.tsx`, `app/r/[id]/card.png/route.ts` — 새 주제 렌더 분기 추가
 10. `src/map-decision-v1/types/index.ts` — 결과 타입, `MapSession` 필드 추가
+11. `app/privacy/page.tsx` — §1·§3·§5의 주제 나열 문장에 새 주제 이름 추가(§4는 "카드형 MAP" 범주 서술로 통일해 두어 원칙적으로 갱신 불필요, PR #162)
 
 ## 이상형·나소개 MAP + 공유 링크 + 궁합 (완료된 트랙)
 

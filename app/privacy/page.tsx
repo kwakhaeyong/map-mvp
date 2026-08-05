@@ -86,15 +86,16 @@ export default function PrivacyPage() {
         <section className="mt-8 space-y-3">
           <h2 className="text-xl font-black tracking-[-0.02em]">4. 제3자 제공 및 국외 이전</h2>
           <p className="break-keep leading-7 text-text-secondary">
-            입력하신 텍스트는 이상형 카드나 진로 결과를 만들 때, 그리고 진로
-            대화 중 AI 분석 기능이 켜져 있을 때 의사결정 구조화 분석과 결과
-            생성을 위해 미국에 소재한 Anthropic, PBC(&ldquo;Anthropic&rdquo;)의
-            서버로 전송됩니다. 이상형 카드는 규칙 기반 대체 결과가 없어, 이
-            전송 없이는 만들어지지 않습니다.
+            입력하신 텍스트는 이상형·나 소개·친구·인간관계 등 규칙 기반
+            대체 결과가 없는 카드형 MAP을 만들 때, 그리고 진로 대화 중 AI
+            분석 기능이 켜져 있을 때 의사결정 구조화 분석과 결과 생성을
+            위해 미국에 소재한 Anthropic, PBC(&ldquo;Anthropic&rdquo;)의
+            서버로 전송됩니다. 카드형 MAP은 이 전송 없이는 만들어지지
+            않습니다.
           </p>
           <ul className="ml-5 list-disc space-y-1 break-keep leading-7 text-text-secondary">
             <li>이전받는 자: Anthropic, PBC (미국)</li>
-            <li>이전 목적: 이상형 카드·진로 결과 생성, 대화 중 의사결정 구조화 분석(노드 추출·되묻기)</li>
+            <li>이전 목적: 카드형 MAP(이상형·나 소개·친구·인간관계 등)·진로 결과 생성, 대화 중 의사결정 구조화 분석(노드 추출·되묻기)</li>
             <li>이전 항목: 사용자가 입력한 텍스트(퀴즈의 자유 서술형 답변 포함)</li>
             <li>
               이전받는 자의 보유·이용 기간: Anthropic의 자체 정책에 따르며,
@@ -105,7 +106,7 @@ export default function PrivacyPage() {
             진로 대화 중 AI 분석 기능이 꺼져 있는 동안에는 노드 추출 관련
             전송이 발생하지 않고, 그 입력 내용은 사용자 기기 안에서만
             처리됩니다(이 경우 진로 결과도 저장된 대화 내용만으로 만든 간단한
-            요약으로 대신 제공됩니다). 이상형 카드 생성에는 이 조건이
+            요약으로 대신 제공됩니다). 카드형 MAP 생성에는 이 조건이
             적용되지 않습니다.
           </p>
           <p className="break-keep leading-7 text-text-secondary">
@@ -207,7 +208,7 @@ export default function PrivacyPage() {
         <p className="mt-10 text-xs font-semibold text-text-muted">
           시행일: 2026-08-03
           <br />
-          최근 개정일: 2026-08-05 (친구·인간관계 카드가 추가되어 1·3·5항의 주제 나열 문장에 반영)
+          최근 개정일: 2026-08-05 (4항에서 누락됐던 나 소개·친구·인간관계를 반영하고, 앞으로 카드형 MAP이 추가돼도 다시 고치지 않도록 4항 서술을 주제 나열 대신 &ldquo;카드형 MAP&rdquo; 범주 기준으로 정리)
         </p>
       </article>
     </main>
