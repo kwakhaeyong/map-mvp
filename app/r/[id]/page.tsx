@@ -122,11 +122,12 @@ function TryItCta({ topicId, withId }: { topicId?: string; withId?: string }) {
   );
 }
 
-// 친구·인간관계 전용 하단 정책 링크. 이 화면의 이상형·나 소개 분기에는
-// 아직 이 링크가 없다(기존 두 분기는 이번 작업 범위 밖이라 손대지
-// 않는다) — components/IdealTypeCard.tsx·SelfIntroCard.tsx·FriendshipCard.tsx처럼
-// "본인이 결과를 만드는 화면"에는 이미 있는 링크를, 친구·인간관계가
-// 새로 추가되는 김에 이 읽기 전용 공유 화면에도 넣는다.
+// 모든 분기(이상형·나 소개·친구·인간관계·진로) 공통 하단 정책 링크.
+// components/IdealTypeCard.tsx·SelfIntroCard.tsx·FriendshipCard.tsx처럼
+// "본인이 결과를 만드는 화면"에는 이미 있던 링크(같은 문구·같은
+// 가운뎃점 구분자)를, 이 읽기 전용 공유 화면에도 통일해서 넣는다.
+// (PR #161에서 friendship 분기에만 넣었다가 나머지 세 분기와 비대칭이
+// 생겨 이번에 전부 통일한다.)
 function PolicyFooterLinks() {
   return (
     <p className="text-center text-xs font-semibold text-text-muted">
@@ -219,6 +220,7 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                 afterReflection={<MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />}
               />
             </CollapsibleFriendResult>
+            <PolicyFooterLinks />
           </>
         ) : renderable?.kind === "selfIntro" ? (
           <>
@@ -255,6 +257,7 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                 afterReflection={<MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />}
               />
             </CollapsibleFriendResult>
+            <PolicyFooterLinks />
           </>
         ) : renderable?.kind === "friendship" ? (
           <>
@@ -295,6 +298,7 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
           <>
             <FinalResultSectionReadOnly result={renderable.result} />
             <TryItCta topicId={share.status === "ok" ? share.record.topicId : undefined} />
+            <PolicyFooterLinks />
           </>
         ) : renderable?.kind === "unsupported" ? (
           // 알 수 없는(또는 아직 지원하지 않는) 레이아웃 — 데이터가
