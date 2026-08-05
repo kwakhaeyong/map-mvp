@@ -177,7 +177,7 @@ export function SelfIntroCard({
             key={attempt}
             stages={SELF_INTRO_GENERATION_STAGES}
             onRetry={generate}
-            tags={getIdealTypeTags(session.quizAnswers)}
+            tags={getIdealTypeTags(session.quizAnswers, "selfIntro")}
             answeredCount={answeredCount}
           />
         ) : generationState === "fallback" ? (
