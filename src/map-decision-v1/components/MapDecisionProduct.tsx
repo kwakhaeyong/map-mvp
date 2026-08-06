@@ -11,6 +11,7 @@ import { IdealTypeCard } from "./IdealTypeCard";
 import { Landing } from "./Landing";
 import { Result } from "./Result";
 import { SelfIntroCard } from "./SelfIntroCard";
+import { TasteCard } from "./TasteCard";
 import { TopicQuiz } from "./TopicQuiz";
 import { WorkCard } from "./WorkCard";
 
@@ -86,7 +87,7 @@ export function MapDecisionProduct() {
     const effective = saved && isSessionStale(saved) ? ({ ...saved, stage: "landing" } as MapSession) : saved;
     if (effective) {
       if (saved && effective !== saved) {
-        const hasResultData = Boolean(saved.idealTypeResult || saved.selfIntroResult || saved.friendshipResult || saved.workResult || saved.result);
+        const hasResultData = Boolean(saved.idealTypeResult || saved.selfIntroResult || saved.friendshipResult || saved.workResult || saved.tasteResult || saved.result);
         setHasStaleResult(saved.stage === "result" && hasResultData);
       }
       setSession(effective);
@@ -229,6 +230,9 @@ export function MapDecisionProduct() {
     }
     if (resultTopic.resultLayoutId === "work") {
       return <WorkCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
+    }
+    if (resultTopic.resultLayoutId === "taste") {
+      return <TasteCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
     }
     return <Result session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onSelectType={selectType} onRealStart={exitDemoToReal} saveState={saveState} />;
   }
