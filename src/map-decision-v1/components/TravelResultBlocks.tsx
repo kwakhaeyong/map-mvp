@@ -1,6 +1,13 @@
 import type { ReactNode } from "react";
-import { TravelFit, TravelMatrix, TravelMatrixPoint, TravelResult, TravelRoadmap, TravelSelfReflection } from "../types";
+import { TravelFit, TravelMatrix, TravelMatrixPoint, TravelResult, TravelRoadmap } from "../types";
 import { Card } from "./ui/primitives";
+
+// 6블록(travelCriteria/patterns/matrix/travelFit/selfReflection/roadmap)에서
+// 4블록(discovery/matrix/fit/roadmap)으로 재설계된 타입에 맞춰 컴파일만
+// 되도록 최소한으로 맞췄다 — 이 파일의 레이아웃 재설계는 다음 작업이다
+// (engine/travel-generator.ts 상단 주석 참고). TravelCriteriaSection과
+// SelfReflectionSection은 대응하는 필드가 사라져 제거했고, PatternsSection은
+// 그대로 재사용하되 이제 result.discovery를 받는다.
 
 // 여행 스타일 결과를 "보여주기만" 하는 순수 프레젠테이션 컴포넌트
 // 모음. TasteResultBlocks.tsx와 같은 원리(생성 상태·공유 버튼 없는
@@ -26,11 +33,9 @@ function SectionHeader({ title, description }: { title: string; description: str
 }
 
 const NAV_ITEMS: Array<{ id: string; label: string }> = [
-  { id: "criteria", label: "기준" },
-  { id: "patterns", label: "패턴" },
+  { id: "patterns", label: "발견" },
   { id: "matrix", label: "매트릭스" },
   { id: "fit", label: "적합" },
-  { id: "reflection", label: "성찰" },
   { id: "roadmap", label: "로드맵" },
 ];
 
@@ -83,45 +88,10 @@ function HeroHeader({ result }: { result: TravelResult }) {
   );
 }
 
-type CriteriaTone = "strong" | "medium" | "light";
-const CRITERIA_TIER_CLASS: Record<CriteriaTone, string> = {
-  strong: "border-primary bg-ink-wash",
-  medium: "border-border-strong bg-ink-wash",
-  light: "border-dashed border-border bg-surface",
-};
-
-function CriteriaTier({ label, items, tone }: { label: string; items: string[]; tone: CriteriaTone }) {
-  return (
-    <div className={cx("rounded-medium border p-3", CRITERIA_TIER_CLASS[tone])}>
-      <p className="text-xs font-black text-text-primary">{label}</p>
-      <ul className="mt-1.5 space-y-1">
-        {items.map((item, index) => (
-          <li key={index} className="text-xs font-bold leading-5 text-text-primary">
-            · {item}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function TravelCriteriaSection({ travelCriteria }: { travelCriteria: TravelResult["travelCriteria"] }) {
-  return (
-    <Card id="criteria" className="scroll-mt-16 flex flex-col gap-4">
-      <SectionHeader title="여행에서 포기 못 하는 것" description="답변에서 드러난 우선순위를 세 단계로 나눠봤어요." />
-      <div className="grid gap-3 sm:grid-cols-3">
-        <CriteriaTier label="포기 못 하는 것" items={travelCriteria.mustHave} tone="strong" />
-        <CriteriaTier label="있으면 좋은 것" items={travelCriteria.niceToHave} tone="medium" />
-        <CriteriaTier label="없어도 되는 것" items={travelCriteria.optional} tone="light" />
-      </div>
-    </Card>
-  );
-}
-
 function PatternsSection({ items }: { items: string[] }) {
   return (
     <Card id="patterns" className="scroll-mt-16 flex flex-col gap-3">
-      <SectionHeader title="반복되는 여행 패턴" description="답변을 가로질러 반복되는 방식이에요." />
+      <SectionHeader title="여행에서 발견한 것" description="자기인식과 실제 행동 사이 간극이에요." />
       <div className="flex flex-col gap-2">
         {items.map((item, index) => (
           <blockquote key={index} className="rounded-medium border border-border border-l-4 border-l-primary bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
@@ -234,7 +204,7 @@ function MatrixSection({ matrix }: { matrix: TravelMatrix }) {
   );
 }
 
-function TravelFitSection({ travelFit }: { travelFit: TravelFit }) {
+function TravelFitSection({ fit }: { fit: TravelFit }) {
   return (
     <Card id="fit" className="scroll-mt-16 flex flex-col gap-4">
       <SectionHeader title="잘 맞는 방식, 안 맞는 방식" description="답변 패턴을 근거로 짚어본 여행 방식이에요." />
@@ -245,7 +215,7 @@ function TravelFitSection({ travelFit }: { travelFit: TravelFit }) {
             잘 맞는 방식
           </p>
           <ul className="mt-1.5 space-y-1">
-            {travelFit.goodFit.map((item, index) => (
+            {fit.goodFit.map((item, index) => (
               <li key={index} className="text-xs font-bold leading-5 text-text-primary">
                 · {item}
               </li>
@@ -258,7 +228,7 @@ function TravelFitSection({ travelFit }: { travelFit: TravelFit }) {
             안 맞는 방식
           </p>
           <ul className="mt-1.5 space-y-1">
-            {travelFit.poorFit.map((item, index) => (
+            {fit.poorFit.map((item, index) => (
               <li key={index} className="text-xs font-bold leading-5 text-text-primary">
                 · {item}
               </li>
@@ -267,43 +237,6 @@ function TravelFitSection({ travelFit }: { travelFit: TravelFit }) {
         </div>
       </div>
     </Card>
-  );
-}
-
-// 다른 다섯 주제의 SelfReflectionSection과 완전히 같은 발상(반전 배경으로
-// 강조)이라 시각 스타일도 그대로 가져왔다.
-function SelfReflectionSection({ selfReflection }: { selfReflection: TravelSelfReflection }) {
-  return (
-    <div
-      id="reflection"
-      className="scroll-mt-16 flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
-    >
-      <div>
-        <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary-foreground" />
-        <h2 className="text-lg font-black tracking-[-0.02em] text-primary-foreground sm:text-xl">자기 성찰</h2>
-        <p className="mt-2 text-sm font-semibold leading-6 text-primary-foreground-soft">답변을 모아서 본 나의 여행 방식이에요.</p>
-      </div>
-      <div className="flex flex-col gap-3">
-        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground-soft">내가 알아채고 있는 것</p>
-        <ul className="flex flex-col gap-4 rounded-medium border border-primary-foreground-wash bg-primary-foreground-wash p-4 sm:p-5">
-          {selfReflection.awareness.map((item, index) => (
-            <li key={index} className="text-base font-semibold leading-7 text-primary-foreground sm:text-lg sm:leading-8">
-              {item}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="flex flex-col gap-3">
-        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground-soft">잘 안 보이는 부분</p>
-        <ul className="flex flex-col gap-4 rounded-medium border border-primary-foreground-wash-strong p-4 sm:p-5">
-          {selfReflection.blindSpots.map((item, index) => (
-            <li key={index} className="text-base font-semibold leading-7 text-primary-foreground-strong sm:text-lg sm:leading-8">
-              {item}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
   );
 }
 
@@ -357,12 +290,10 @@ export function TravelResultBlocks({
       {showHero ? <HeroHeader result={result} /> : null}
       {afterHero}
       <SectionNav />
-      <TravelCriteriaSection travelCriteria={result.travelCriteria} />
-      <PatternsSection items={result.patterns} />
+      <PatternsSection items={result.discovery} />
       <MatrixSection matrix={result.matrix} />
-      <TravelFitSection travelFit={result.travelFit} />
-      <SelfReflectionSection selfReflection={result.selfReflection} />
       {afterReflection}
+      <TravelFitSection fit={result.fit} />
       <RoadmapSection roadmap={result.roadmap} />
     </>
   );

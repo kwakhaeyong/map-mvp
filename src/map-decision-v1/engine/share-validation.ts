@@ -316,22 +316,18 @@ function isValidTasteResultShape(value: unknown): boolean {
   return true;
 }
 
-// 여행 스타일 결과(TravelResult) 형태 검증. 이상형·나 소개·친구·일할
-// 때의 나·취향과 마찬가지로 배열 개수·문자열 길이 상한은 그대로
-// 재사용한다 — engine/travel-generator.ts도 같은 capArray(4) 방식으로
-// 자른다. 필드 이름만 다르다(travelCriteria의 mustHave/niceToHave/
-// optional, travelFit의 goodFit/poorFit, selfReflection의 awareness/
-// blindSpots).
+// 여행 스타일 결과(TravelResult) 형태 검증. 6블록(travelCriteria/
+// patterns/matrix/travelFit/selfReflection/roadmap)에서 4블록
+// (discovery/matrix/fit/roadmap)으로 재설계된 구조를 그대로 옮겼다 —
+// engine/travel-generator.ts 참고. 배열 개수·문자열 길이 상한은 다른
+// 다섯 주제와 마찬가지로 그대로 재사용한다 — engine/travel-generator.ts도
+// 같은 capArray(4) 방식으로 자른다.
 function isValidTravelResultShape(value: unknown): boolean {
   const r = value as Record<string, unknown> | undefined;
   if (typeof r !== "object" || r === null) return false;
   if (!isShortString(r.title) || !isShortString(r.oneLiner)) return false;
 
-  const travelCriteria = r.travelCriteria as Record<string, unknown> | undefined;
-  if (typeof travelCriteria !== "object" || travelCriteria === null) return false;
-  if (!isShortStringArray(travelCriteria.mustHave) || !isShortStringArray(travelCriteria.niceToHave) || !isShortStringArray(travelCriteria.optional)) return false;
-
-  if (!isShortStringArray(r.patterns)) return false;
+  if (!isShortStringArray(r.discovery)) return false;
 
   const matrix = r.matrix as Record<string, unknown> | undefined;
   if (typeof matrix !== "object" || matrix === null) return false;
@@ -348,13 +344,9 @@ function isValidTravelResultShape(value: unknown): boolean {
   );
   if (!typesValid) return false;
 
-  const travelFit = r.travelFit as Record<string, unknown> | undefined;
-  if (typeof travelFit !== "object" || travelFit === null) return false;
-  if (!isShortStringArray(travelFit.goodFit) || !isShortStringArray(travelFit.poorFit)) return false;
-
-  const selfReflection = r.selfReflection as Record<string, unknown> | undefined;
-  if (typeof selfReflection !== "object" || selfReflection === null) return false;
-  if (!isShortStringArray(selfReflection.awareness) || !isShortStringArray(selfReflection.blindSpots)) return false;
+  const fit = r.fit as Record<string, unknown> | undefined;
+  if (typeof fit !== "object" || fit === null) return false;
+  if (!isShortStringArray(fit.goodFit) || !isShortStringArray(fit.poorFit)) return false;
 
   const roadmap = r.roadmap as Record<string, unknown> | undefined;
   if (typeof roadmap !== "object" || roadmap === null) return false;
