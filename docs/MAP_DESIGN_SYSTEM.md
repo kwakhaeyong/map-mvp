@@ -112,7 +112,9 @@ Use shared primitives for Button, IconButton, Card, Surface, Badge, Input, Texta
 - Allowed patterns: MessageBubble, VoiceButton, Textarea, ResponseChip, CheckpointCard, MapNode, MapLegend, BottomSheet.
 - Mobile: MAP can open full-screen; composer remains usable with keyboard.
 - Empty/loading/error: unsupported microphone falls back to text; permission denial never blocks progress.
-- Must never appear: question counters, dead microphone success states, repeated requests for supplied info.
+- Must never appear: a counter or percentage that does not reflect the real remaining steps (fabricated or inflated progress), dead microphone success states, repeated requests for supplied info.
+
+**Updated 2026-08-06 (owner decision):** this line originally banned any visible question counter, full stop. That's narrowed now — quiz-format topics (idealType, selfIntro, friendship, work, taste, travelStyle) show a truthful step counter (e.g. "3 / 20") while the quiz is in progress, and the question count/expected duration before starting (e.g. "38문항 · 약 9분" on landing cards, shipped in PR #190). This golden screen predates those quiz-format topics and was written for the conversational flow; the rule against *fake* progress carries over to them unchanged — only a counter that lies about progress is still banned.
 
 ### Result MAP
 - Purpose: turn the conversation into a user-owned structure and realistic first action.
