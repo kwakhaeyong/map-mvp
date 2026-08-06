@@ -16,6 +16,7 @@ export type ResultLayoutId =
   | "friendship" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
   | "work" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
   | "taste" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
+  | "travelStyle" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
   | "viral-common" // 경량 공통 틀(바이럴 계열)
   | "depth-common"; // 경량 공통 틀(깊이 계열)
 
@@ -2892,14 +2893,281 @@ export const TOPICS: Record<string, TopicConfig> = {
     id: "travelStyle",
     name: "여행 스타일",
     icon: "✈️",
-    oneLiner: "나에게 맞는 여행 방식을 정리해요.",
+    oneLiner: "나에게 맞는 여행 방식을 한 장으로 정리해요.",
+    // category/grade/fixedRatio/inputMode는 지시대로 taste와 같은 값을
+    // 쓴다 — 문항 구조(전부 필수, 심화 없음)와 완성도 목표가 같은
+    // 완성형 퀴즈 주제라서다. 기존 travelStyle 껍데기는 grade: "light"/
+    // fixedRatio: 70/inputMode: "chat"(경량 대화형)이었는데, 이번에
+    // 문항을 채우면서 이 값들을 taste와 동일하게 바꿨다 — id 자체는
+    // 원래부터 "travelStyle"이었어서(work 때의 workSelf/work id
+    // 불일치 같은 문제는 없었다) 그대로 유지했다.
     category: "viral",
-    grade: "light",
-    fixedRatio: 70,
-    resultLayoutId: "viral-common",
-    inputMode: "chat",
+    grade: "flagship",
+    fixedRatio: 75,
+    resultLayoutId: "travelStyle",
+    inputMode: "quiz",
+    quizVersion: 1,
+    axes: [
+      // ── 1구간: 여행을 대하는 방식 ──────────────────────────────────
+      {
+        id: "travelWhy",
+        type: "preference",
+        required: true,
+        question: "여행을 가는 이유는?",
+        options: [
+          { label: "쉬려고", description: "일상에서 벗어나 쉬고 싶어서" },
+          { label: "새로운 걸 보려고", description: "안 본 풍경과 도시를 보고 싶어서" },
+          { label: "먹으려고", description: "그곳 음식이 목적일 때가 있어서" },
+          { label: "사람과 시간을 보내려고", description: "같이 가는 사람이 중요해서" },
+          { label: "나를 정리하려고", description: "혼자 생각할 시간이 필요해서" },
+          { label: "기록을 남기려고", description: "사진과 기억을 모으고 싶어서" },
+        ],
+      },
+      {
+        id: "travelPlan",
+        type: "quickTap",
+        required: true,
+        question: "여행 준비, 나는 어떤 쪽에 더 가까워?",
+        options: [
+          { label: "미리 다 짜두는 사람", description: "동선과 예약을 정해두는 편이다" },
+          { label: "큰 틀만 정하는 사람", description: "숙소만 잡고 나머진 열어두는 편이다" },
+          { label: "거의 즉흥으로 가는 사람", description: "가서 정하는 편이다" },
+          { label: "같이 가는 사람에게 맡기는 사람", description: "따라가는 편이다" },
+        ],
+      },
+      {
+        id: "travelLastTrip",
+        type: "experience",
+        required: true,
+        question: "가장 최근 여행, 실제로 어떻게 준비했어?",
+        options: [
+          { label: "몇 주 전부터 짰다", description: "여유 있게 준비한 편이다" },
+          { label: "며칠 전에 급하게 정했다", description: "임박해서 준비한 편이다" },
+          { label: "남이 짠 대로 따라갔다", description: "준비에 관여 안 한 편이다" },
+          { label: "거의 안 짜고 그냥 갔다", description: "준비 없이 간 편이다" },
+        ],
+      },
+      {
+        id: "travelPace",
+        type: "quickTap",
+        required: true,
+        question: "여행지에서 하루는 어떤 쪽이 좋아?",
+        options: [
+          { label: "아침부터 부지런히 도는 사람", description: "많이 보고 싶은 편이다" },
+          { label: "두세 곳만 여유롭게 보는 사람", description: "깊게 보고 싶은 편이다" },
+          { label: "숙소에서 쉬는 시간이 긴 사람", description: "쉬러 온 편이다" },
+          { label: "그날 컨디션 따라 정하는 사람", description: "유연한 편이다" },
+        ],
+      },
+      {
+        id: "travelWith",
+        type: "quickTap",
+        required: true,
+        question: "여행은 누구와 갈 때가 제일 좋아?",
+        options: [
+          { label: "혼자", description: "내 속도대로 다니는 게 편하다" },
+          { label: "둘이", description: "한 명과 깊게 다니는 게 좋다" },
+          { label: "소수 무리", description: "서너 명이 적당하다" },
+          { label: "많을수록 재밌다", description: "북적이는 게 좋다" },
+        ],
+      },
+      // ── 2구간: 실제로 하는 것 ──────────────────────────────────────
+      {
+        id: "travelSpend",
+        type: "quickTap",
+        required: true,
+        question: "여행에서 돈을 더 쓰게 되는 쪽은?",
+        options: [
+          { label: "숙소", description: "잘 자는 게 중요한 편이다" },
+          { label: "먹는 것", description: "음식에 아끼지 않는 편이다" },
+          { label: "체험과 액티비티", description: "해보는 데 쓰는 편이다" },
+          { label: "쇼핑", description: "기념품이나 물건을 사는 편이다" },
+        ],
+      },
+      {
+        id: "travelStay",
+        type: "preference",
+        required: true,
+        question: "숙소는 어떤 쪽이 좋아?",
+        options: [
+          { label: "깨끗하고 편한 곳", description: "기본이 잘 갖춰진 곳" },
+          { label: "위치가 좋은 곳", description: "다니기 편한 곳" },
+          { label: "분위기 있는 곳", description: "사진 찍고 싶은 곳" },
+          { label: "저렴한 곳", description: "돈을 아끼고 다른 데 쓰는 편" },
+          { label: "조용한 곳", description: "사람이 적은 곳" },
+          { label: "사람을 만날 수 있는 곳", description: "교류가 생기는 곳" },
+        ],
+      },
+      {
+        id: "travelTrouble",
+        type: "scenario",
+        required: true,
+        question: "여행 중 계획이 틀어졌던 상황, 그때 나는 어떻게 했어?",
+        options: [
+          { label: "바로 대안을 찾은 반응", description: "빠르게 다시 짜는 편이다" },
+          { label: "그냥 흘러가는 대로 둔 반응", description: "오히려 편하게 받아들이는 편이다" },
+          { label: "스트레스를 크게 받은 반응", description: "계획이 어긋나면 힘든 편이다" },
+          { label: "같이 간 사람에게 맡긴 반응", description: "남이 해결하게 두는 편이다" },
+        ],
+      },
+      {
+        id: "travelRecord",
+        type: "quickTap",
+        required: true,
+        question: "여행에서 기록은 어떻게 남겨?",
+        options: [
+          { label: "사진을 많이 찍는 편", description: "계속 찍는 편이다" },
+          { label: "몇 장만 남기는 편", description: "필요한 것만 찍는 편이다" },
+          { label: "글이나 메모로 남기는 편", description: "적어두는 편이다" },
+          { label: "거의 안 남기는 편", description: "눈으로만 보는 편이다" },
+        ],
+      },
+      {
+        id: "travelUnknown",
+        type: "binary",
+        required: true,
+        question: "안 가본 곳과 좋았던 곳, 나는 실제로 어느 쪽을 더 많이 갔어?",
+        options: [
+          { label: "안 가본 곳", description: "새로운 데를 찾는 편이다" },
+          { label: "좋았던 곳", description: "다시 가는 편이다" },
+        ],
+      },
+      // lifestyle: 나 소개(selfIntro)의 같은 id 문항을 지문·선택지·설명
+      // 그대로 복사했다(한 글자도 바꾸지 않음) — 태그 매핑
+      // (ideal-type-tags.ts)이 label 문자열을 키로 쓰기 때문에, 태그
+      // 축을 공유하려면 문항 원문이 완전히 같아야 한다. 태그 연결 자체는
+      // 다음 작업 범위다.
+      {
+        id: "lifestyle",
+        type: "preference",
+        required: true,
+        question: "평소 생활에서, 나와 더 가까운 모습은?",
+        options: [
+          { label: "집순이·집돌이", description: "집에서 보내는 시간이 제일 편하다" },
+          { label: "액티브·야외파", description: "밖에서 몸을 움직이는 걸 좋아한다" },
+          { label: "취미 공유", description: "좋아하는 걸 남과 같이 하려는 편이다" },
+          { label: "각자 시간 존중", description: "따로 보내는 시간도 자연스럽다" },
+          { label: "여행 좋아하는", description: "떠나는 것 자체를 즐긴다" },
+          { label: "규칙적인 생활", description: "일상의 리듬이 안정적인 편이다" },
+        ],
+      },
+      // ── 3구간: 여행에서의 나 ───────────────────────────────────────
+      {
+        id: "travelLocal",
+        type: "quickTap",
+        required: true,
+        question: "여행지에서 현지 사람과의 접촉은?",
+        options: [
+          { label: "적극적으로 말을 거는 편", description: "대화하고 싶은 편이다" },
+          { label: "필요할 때만 하는 편", description: "실용적으로 대하는 편이다" },
+          { label: "부담스러워하는 편", description: "피하고 싶은 편이다" },
+          { label: "언어가 안 돼서 못 하는 편", description: "하고 싶어도 어려운 편이다" },
+        ],
+      },
+      {
+        id: "travelFood",
+        type: "quickTap",
+        required: true,
+        question: "여행지 음식 앞에서 나는?",
+        options: [
+          { label: "현지 음식만 먹는 편", description: "그 지역 것만 찾는 편이다" },
+          { label: "익숙한 것도 섞는 편", description: "가끔은 편한 걸 먹는 편이다" },
+          { label: "유명한 데를 찾아가는 편", description: "검색해서 가는 편이다" },
+          { label: "아무거나 편하게 먹는 편", description: "크게 안 따지는 편이다" },
+        ],
+      },
+      {
+        id: "travelAlone",
+        type: "experience",
+        required: true,
+        question: "혼자 여행해본 적 있어?",
+        options: [
+          { label: "있고, 좋았다", description: "또 가고 싶은 편이다" },
+          { label: "있지만 별로였다", description: "혼자는 안 맞았던 편이다" },
+          { label: "가보고 싶은데 못 해봤다", description: "해보고 싶은 편이다" },
+          { label: "생각해본 적 없다", description: "관심이 없는 편이다" },
+        ],
+      },
+      {
+        id: "travelReturn",
+        type: "quickTap",
+        required: true,
+        question: "여행에서 돌아온 뒤 나는?",
+        options: [
+          { label: "여운이 오래 가는 편", description: "한동안 계속 생각나는 편이다" },
+          { label: "금방 일상으로 돌아오는 편", description: "전환이 빠른 편이다" },
+          { label: "다음 여행을 바로 찾는 편", description: "계속 계획하는 편이다" },
+          { label: "오히려 지쳐서 쉬어야 하는 편", description: "회복이 필요한 편이다" },
+        ],
+      },
+      {
+        id: "reflectionTravel",
+        type: "reflection",
+        required: true,
+        question: "기억에 남는 여행이 언제였어요?\n어디였고 왜 기억에 남는지 적어주세요",
+        placeholder: "예: 재작년에 혼자 갔던 여행에서 계획이 다 틀어졌는데, 그날 우연히 들어간 카페가 제일 좋았어요",
+        options: [],
+      },
+      // ── 4구간: 원하는 것과 실제 ────────────────────────────────────
+      {
+        id: "travelDream",
+        type: "preference",
+        required: true,
+        question: "언젠가 해보고 싶은 여행은?",
+        options: [
+          { label: "오래 머무는 여행", description: "한 곳에 몇 주씩 있는 것" },
+          { label: "잘 안 알려진 곳", description: "사람이 적은 데 가는 것" },
+          { label: "고생스러운 여행", description: "트레킹이나 캠핑 같은 것" },
+          { label: "아주 편한 여행", description: "좋은 숙소에서 쉬기만 하는 것" },
+          { label: "목적이 있는 여행", description: "배우거나 만나러 가는 것" },
+          { label: "계획 없이 떠나는 여행", description: "그냥 나가는 것" },
+        ],
+      },
+      {
+        id: "travelBarrier",
+        type: "quickTap",
+        required: true,
+        question: "여행을 못 가게 만드는 건 주로?",
+        options: [
+          { label: "시간이 없어서", description: "일정이 안 나는 편이다" },
+          { label: "돈이 부담돼서", description: "비용이 걸리는 편이다" },
+          { label: "같이 갈 사람이 없어서", description: "혼자는 잘 안 가는 편이다" },
+          { label: "준비가 귀찮아서", description: "막상 짜려면 미루는 편이다" },
+        ],
+      },
+      {
+        id: "travelFrequency",
+        type: "quickTap",
+        required: true,
+        question: "실제로 여행은 얼마나 자주 가?",
+        options: [
+          { label: "자주 가는 편", description: "기회가 되면 나가는 편이다" },
+          { label: "일 년에 한두 번", description: "특별한 때만 가는 편이다" },
+          { label: "몇 년에 한 번", description: "드물게 가는 편이다" },
+          { label: "거의 안 간다", description: "여행 자체가 잦지 않은 편이다" },
+        ],
+      },
+      {
+        id: "travelSelfView",
+        type: "binary",
+        required: true,
+        question: "나는 여행을 잘 즐기는 사람인 것 같아?",
+        options: [
+          { label: "그런 편인 것 같다", description: "여행에서 만족을 잘 얻는다고 느낀다" },
+          { label: "잘 모르겠다", description: "확신이 안 서는 편이다" },
+        ],
+      },
+    ],
+    closingPrompt: "여행에 대해 더 하고 싶은 말이 있나요?",
+    // conversationFocus/resultFocus는 taste와 같은 이유로 빈 문자열이다 —
+    // 이 값들은 대화형(inputMode: "chat") 주제에서만 실제로 쓰인다.
+    // travelStyle은 퀴즈형이라 이 필드들을 읽는 코드 자체가 없다.
     conversationFocus: "",
     resultFocus: "",
+    // entryQuestion/entryChips는 기존 travelStyle 껍데기에 이미 있던
+    // 값을 그대로 가져왔다 — "여행 갈 때 뭘 제일 중요하게 봐요?"라는
+    // 가벼운 진입 질문이 이번 20문항의 성격과 잘 맞아서 새로 쓸 이유가
+    // 없었다.
     entryQuestion: "여행 갈 때 뭘 제일 중요하게 봐요?",
     entryChips: ["새로운 경험", "여유로운 휴식", "잘 모르겠어요"],
     implemented: false,
