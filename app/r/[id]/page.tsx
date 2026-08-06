@@ -6,13 +6,14 @@ import { SelfIntroResultBlocks, SelfIntroTagRow } from "../../../src/map-decisio
 import { FriendshipResultBlocks, FriendshipTagRow } from "../../../src/map-decision-v1/components/FriendshipResultBlocks";
 import { WorkResultBlocks, WorkTagRow } from "../../../src/map-decision-v1/components/WorkResultBlocks";
 import { TasteResultBlocks, TasteTagRow } from "../../../src/map-decision-v1/components/TasteResultBlocks";
+import { TravelResultBlocks, TravelTagRow } from "../../../src/map-decision-v1/components/TravelResultBlocks";
 import { FinalResultSectionReadOnly } from "../../../src/map-decision-v1/components/FinalResultBlocks";
 import { ShareCardImage } from "../../../src/map-decision-v1/components/ShareCardImage";
 import { CollapsibleFriendResult } from "../../../src/map-decision-v1/components/CollapsibleFriendResult";
 import { DeleteShareSection } from "../../../src/map-decision-v1/components/DeleteShareSection";
 import { Badge, Card } from "../../../src/map-decision-v1/components/ui/primitives";
 import { GetShareResult, getShare } from "../../../src/map-decision-v1/engine/share-store";
-import { FinalResult, FriendshipResult, IdealTypeResult, SelfIntroResult, TasteResult, WorkResult } from "../../../src/map-decision-v1/types";
+import { FinalResult, FriendshipResult, IdealTypeResult, SelfIntroResult, TasteResult, TravelResult, WorkResult } from "../../../src/map-decision-v1/types";
 
 // 링크를 아는 사람만 볼 수 있는 읽기 전용 공개 화면 — 검색엔진에는
 // 노출되지 않게 한다. 편집·재생성·공유 버튼은 없고, 바이럴 고리인
@@ -74,6 +75,11 @@ function isTasteResult(value: unknown): value is TasteResult {
   return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.tasteCore === "object";
 }
 
+function isTravelResult(value: unknown): value is TravelResult {
+  const r = value as Partial<TravelResult> | undefined;
+  return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.travelCriteria === "object";
+}
+
 function isFinalResult(value: unknown): value is FinalResult {
   const r = value as Partial<FinalResult> | undefined;
   return (
@@ -95,6 +101,7 @@ type RenderableShare =
   | { kind: "friendship"; result: FriendshipResult }
   | { kind: "work"; result: WorkResult }
   | { kind: "taste"; result: TasteResult }
+  | { kind: "travelStyle"; result: TravelResult }
   | { kind: "career"; result: FinalResult }
   | { kind: "unsupported" }
   | null;
@@ -107,6 +114,7 @@ function resolveRenderableShare(share: GetShareResult): RenderableShare {
   if (resultLayoutId === "friendship") return isFriendshipResult(result) ? { kind: "friendship", result } : null;
   if (resultLayoutId === "work") return isWorkResult(result) ? { kind: "work", result } : null;
   if (resultLayoutId === "taste") return isTasteResult(result) ? { kind: "taste", result } : null;
+  if (resultLayoutId === "travelStyle") return isTravelResult(result) ? { kind: "travelStyle", result } : null;
   if (resultLayoutId === "career") return isFinalResult(result) ? { kind: "career", result } : null;
   return { kind: "unsupported" };
 }
@@ -188,13 +196,15 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
   // 친구·인간관계도 같은 컨셉(engine/friendship-card-image.tsx)이라 포함한다.
   // 일할 때의 나도 같은 컨셉(engine/work-card-image.tsx)이라 포함한다.
   // 취향도 같은 컨셉(engine/taste-card-image.tsx)이라 포함한다.
+  // 여행 스타일도 같은 컨셉(engine/travel-card-image.tsx)이라 포함한다.
   // 진로 등 그 외 결과는 이번 범위 밖이라 기존 배경을 그대로 쓴다.
   const isInvitationBackground =
     renderable?.kind === "idealType" ||
     renderable?.kind === "selfIntro" ||
     renderable?.kind === "friendship" ||
     renderable?.kind === "work" ||
-    renderable?.kind === "taste";
+    renderable?.kind === "taste" ||
+    renderable?.kind === "travelStyle";
 
   // 삭제 버튼(DeleteShareSection)은 실제로 지울 데이터가 있는 경우
   // (share.status === "ok")에만 보여준다 — 이미 만료·삭제된 링크나
@@ -378,6 +388,41 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
             <div className="h-px w-full bg-border" />
             <CollapsibleFriendResult>
               <TasteResultBlocks
+                result={renderable.result}
+                showHero={false}
+                afterReflection={<MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />}
+              />
+            </CollapsibleFriendResult>
+            <PolicyFooterLinks />
+          </>
+        ) : renderable?.kind === "travelStyle" ? (
+          <>
+            {/* 여행 스타일도 친구·인간관계·일할 때의 나·취향과 같은 이유로
+                심화(선택) 경로가 없는 주제라 "심층 분석 포함" 배지를 넣지
+                않는다. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="default" className="self-start">
+                나는 이렇게 여행해
+              </Badge>
+            </div>
+            <ShareCardImage
+              src={`/r/${id}/card.png`}
+              alt={renderable.result.title}
+              title={renderable.result.title}
+              fallback={
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <h1 className="text-balance break-keep text-2xl font-black leading-8 tracking-[-0.03em] text-text-primary">
+                    {renderable.result.title}
+                  </h1>
+                  <p className="text-sm font-bold leading-6 text-text-secondary">{renderable.result.oneLiner}</p>
+                  <TravelTagRow tags={renderable.result.tags ?? []} className="justify-center" />
+                </div>
+              }
+            />
+            <TryItCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />
+            <div className="h-px w-full bg-border" />
+            <CollapsibleFriendResult>
+              <TravelResultBlocks
                 result={renderable.result}
                 showHero={false}
                 afterReflection={<MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />}
