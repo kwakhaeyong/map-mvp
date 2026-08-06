@@ -36,7 +36,9 @@ Primary users are university students, job seekers, and early-career workers, ma
 
 ## 5. Conversation principles
 
-Visible UX language should emphasize 이야기, 소통, 같이 정리하기, 이어서 말하기, 제가 이해한 내용, 지금 보이는 흐름, and 조금 더 살펴보기. Avoid visible wording such as 질문 1/8, 문항, 설문, 답변 제출, or other survey framing.
+Visible UX language should emphasize 이야기, 소통, 같이 정리하기, 이어서 말하기, 제가 이해한 내용, 지금 보이는 흐름, and 조금 더 살펴보기. Avoid visible wording such as 설문, 답변 제출, or other survey framing.
+
+**Updated 2026-08-06 (owner decision):** this line originally also banned 질문 1/8-style counters and the word 문항 outright. That ban is lifted for quiz-format topics (이상형·나 소개·친구·인간관계·일할 때의 나·취향·여행 스타일). Showing the question count and expected duration before starting (e.g. a landing card reading "38문항 · 약 9분", shipped in PR #190) and a truthful in-progress counter (e.g. "3 / 20") during the quiz are both allowed — competing products already signal duration up front, and withholding it makes users assume the wait is longer than it is. What is still banned is a counter or percentage that does not reflect the real remaining steps (fabricated or inflated progress) — see MAP_DESIGN_SYSTEM.md section 11's Golden Screens for that still-active rule.
 
 ## 6. MAP principles
 
