@@ -15,6 +15,7 @@ export type ResultLayoutId =
   | "selfIntro" // 완성형 전용 틀
   | "friendship" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
   | "work" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
+  | "taste" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
   | "viral-common" // 경량 공통 틀(바이럴 계열)
   | "depth-common"; // 경량 공통 틀(깊이 계열)
 
@@ -2608,13 +2609,281 @@ export const TOPICS: Record<string, TopicConfig> = {
     name: "취향",
     icon: "🎨",
     oneLiner: "내 취향의 결을 한 장으로 정리해요.",
+    // category/grade/fixedRatio/inputMode는 지시대로 work와 같은 값을
+    // 쓴다 — 문항 구조(전부 필수, 심화 없음)와 완성도 목표가 같은
+    // 완성형 퀴즈 주제라서다. 기존 taste 껍데기는 grade: "light"/
+    // fixedRatio: 70/inputMode: "chat"(경량 대화형)이었는데, 이번에
+    // 문항을 채우면서 이 값들을 work와 동일하게 바꿨다 — id 자체는
+    // 원래부터 "taste"였어서(work 때의 workSelf/work id 불일치 같은
+    // 문제는 없었다) 그대로 유지했다.
     category: "viral",
-    grade: "light",
-    fixedRatio: 70,
-    resultLayoutId: "viral-common",
-    inputMode: "chat",
+    grade: "flagship",
+    fixedRatio: 75,
+    resultLayoutId: "taste",
+    inputMode: "quiz",
+    quizVersion: 1,
+    axes: [
+      // ── 1구간: 시간을 쓰는 방식 ────────────────────────────────────
+      {
+        id: "tasteMode",
+        type: "quickTap",
+        required: true,
+        question: "혼자 있는 시간에 나는 주로 뭘 해?",
+        options: [
+          { label: "보는 편", description: "영상·이미지를 소비하는 편이다" },
+          { label: "듣는 편", description: "음악·팟캐스트를 켜두는 편이다" },
+          { label: "읽는 편", description: "글을 읽는 편이다" },
+          { label: "만드는 편", description: "직접 뭔가를 하는 편이다" },
+        ],
+      },
+      {
+        id: "tasteRecent",
+        type: "experience",
+        required: true,
+        question: "최근 일주일, 실제로 시간을 가장 많이 쓴 건?",
+        options: [
+          { label: "영상 보기", description: "드라마·짧은 영상·영화 등" },
+          { label: "음악 듣기", description: "플레이리스트를 켜두는 시간" },
+          { label: "게임하기", description: "모바일·PC·콘솔 등" },
+          { label: "SNS 보기", description: "피드를 넘기는 시간" },
+          { label: "책·글 읽기", description: "종이든 화면이든" },
+          { label: "직접 하는 취미", description: "운동·요리·그림·악기 등" },
+        ],
+      },
+      {
+        id: "tasteDepth",
+        type: "binary",
+        required: true,
+        question: "좋아하는 게 생기면 나는 어느 쪽이야?",
+        options: [
+          { label: "끝까지 파는 편", description: "하나를 깊게 파고드는 편이다" },
+          { label: "여러 개를 얕게 즐기는 편", description: "넓게 훑는 편이다" },
+        ],
+      },
+      {
+        id: "tasteDiscover",
+        type: "quickTap",
+        required: true,
+        question: "새로운 걸 알게 되는 경로는 주로 어디야?",
+        options: [
+          { label: "알고리즘 추천", description: "앱이 띄워주는 걸 따라가는 편이다" },
+          { label: "사람 추천", description: "친구나 아는 사람이 알려주는 편이다" },
+          { label: "직접 찾아보는 편", description: "검색하고 뒤져보는 편이다" },
+          { label: "우연히 마주치는 편", description: "딱히 찾지 않아도 걸리는 편이다" },
+        ],
+      },
+      {
+        id: "tasteMoney",
+        type: "quickTap",
+        required: true,
+        question: "여윳돈이 생기면 실제로 어디에 썼어?",
+        options: [
+          { label: "먹는 데", description: "맛있는 거 사 먹는 데 썼다" },
+          { label: "경험에", description: "공연·전시·여행 같은 데 썼다" },
+          { label: "물건에", description: "사고 싶던 걸 샀다" },
+          { label: "안 쓰고 남겼다", description: "모아두는 편이다" },
+        ],
+      },
+      // ── 2구간: 무엇에 끌리는가 ─────────────────────────────────────
+      {
+        id: "tasteMood",
+        type: "preference",
+        required: true,
+        question: "끌리는 분위기는?",
+        options: [
+          { label: "밝고 경쾌한", description: "기분이 올라가는 느낌" },
+          { label: "잔잔하고 차분한", description: "마음이 가라앉는 느낌" },
+          { label: "어둡고 깊은", description: "묵직하게 남는 느낌" },
+          { label: "낯설고 실험적인", description: "본 적 없는 느낌" },
+          { label: "따뜻하고 익숙한", description: "편안한 느낌" },
+          { label: "강렬하고 빠른", description: "몰아치는 느낌" },
+        ],
+      },
+      {
+        id: "tasteStory",
+        type: "quickTap",
+        required: true,
+        question: "이야기에서 제일 중요한 건?",
+        options: [
+          { label: "인물이 매력적인 것", description: "사람에 빠져드는 편이다" },
+          { label: "이야기가 잘 짜인 것", description: "구성이 중요한 편이다" },
+          { label: "분위기와 미장센", description: "느낌이 중요한 편이다" },
+          { label: "남기는 메시지", description: "생각할 거리가 중요한 편이다" },
+        ],
+      },
+      {
+        id: "tasteSpace",
+        type: "preference",
+        required: true,
+        question: "편하게 느껴지는 공간은?",
+        options: [
+          { label: "조용한 곳", description: "소리가 적은 곳" },
+          { label: "적당히 북적이는 곳", description: "사람 소리가 배경이 되는 곳" },
+          { label: "정돈된 곳", description: "깔끔하게 정리된 곳" },
+          { label: "물건이 많은 곳", description: "뭔가 가득한 곳" },
+          { label: "자연이 보이는 곳", description: "창밖에 초록이 있는 곳" },
+          { label: "익숙한 내 자리", description: "늘 가던 곳" },
+        ],
+      },
+      {
+        id: "tasteFood",
+        type: "quickTap",
+        required: true,
+        question: "음식 앞에서 나는 어떤 편이야?",
+        options: [
+          { label: "늘 먹던 걸 시키는 편", description: "실패하지 않는 선택을 하는 편이다" },
+          { label: "새로운 걸 시도하는 편", description: "안 먹어본 걸 고르는 편이다" },
+          { label: "남이 추천한 걸 따르는 편", description: "평이 좋은 걸 고르는 편이다" },
+          { label: "그때 기분 따라 정하는 편", description: "즉흥적인 편이다" },
+        ],
+      },
+      {
+        id: "tasteAesthetic",
+        type: "preference",
+        required: true,
+        question: "눈이 가는 스타일은?",
+        options: [
+          { label: "미니멀한", description: "덜어낸 것" },
+          { label: "화려한", description: "채워진 것" },
+          { label: "빈티지한", description: "오래된 것" },
+          { label: "자연스러운", description: "꾸미지 않은 것" },
+          { label: "정갈한", description: "반듯한 것" },
+          { label: "개성 강한", description: "튀는 것" },
+        ],
+      },
+      // lifestyle: 나 소개(selfIntro)의 같은 id 문항을 지문·선택지·설명
+      // 그대로 복사했다(한 글자도 바꾸지 않음) — 태그 매핑
+      // (ideal-type-tags.ts)이 label 문자열을 키로 쓰기 때문에, 태그
+      // 축을 공유하려면 문항 원문이 완전히 같아야 한다. 태그 연결 자체는
+      // 다음 작업 범위다.
+      {
+        id: "lifestyle",
+        type: "preference",
+        required: true,
+        question: "평소 생활에서, 나와 더 가까운 모습은?",
+        options: [
+          { label: "집순이·집돌이", description: "집에서 보내는 시간이 제일 편하다" },
+          { label: "액티브·야외파", description: "밖에서 몸을 움직이는 걸 좋아한다" },
+          { label: "취미 공유", description: "좋아하는 걸 남과 같이 하려는 편이다" },
+          { label: "각자 시간 존중", description: "따로 보내는 시간도 자연스럽다" },
+          { label: "여행 좋아하는", description: "떠나는 것 자체를 즐긴다" },
+          { label: "규칙적인 생활", description: "일상의 리듬이 안정적인 편이다" },
+        ],
+      },
+      // ── 3구간: 취향의 온도 ─────────────────────────────────────────
+      {
+        id: "tasteShare",
+        type: "quickTap",
+        required: true,
+        question: "좋아하는 걸 남한테 얘기하는 편이야?",
+        options: [
+          { label: "자주 추천하는 편", description: "알리고 싶은 편이다" },
+          { label: "물어보면 말하는 편", description: "먼저 꺼내진 않는 편이다" },
+          { label: "혼자 간직하는 편", description: "내 것으로 두고 싶은 편이다" },
+          { label: "알려지면 오히려 식는 편", description: "많이 알려지면 흥미가 떨어지는 편이다" },
+        ],
+      },
+      {
+        id: "tastePopular",
+        type: "binary",
+        required: true,
+        question: "남들이 다 좋아하는 것, 나는 어느 쪽이었어?",
+        options: [
+          { label: "나도 좋으면 같이 좋아한 편", description: "유행을 따라간 편이다" },
+          { label: "오히려 거리를 둔 편", description: "몰리면 빠지는 편이다" },
+        ],
+      },
+      {
+        id: "tasteRepeat",
+        type: "quickTap",
+        required: true,
+        question: "좋아하는 걸 다시 볼 때 나는 어떤 편이야?",
+        options: [
+          { label: "여러 번 반복하는 편", description: "같은 걸 계속 보는 편이다" },
+          { label: "한 번이면 충분한 편", description: "다시 안 보는 편이다" },
+          { label: "시간이 지나 다시 찾는 편", description: "한참 뒤에 돌아오는 편이다" },
+          { label: "애초에 끝까지 안 보는 편", description: "중간에 그만두는 편이다" },
+        ],
+      },
+      {
+        id: "tasteGuilty",
+        type: "experience",
+        required: true,
+        question: "남들에게 말하긴 좀 그런데 실제로 좋아하는 게 있어?",
+        options: [
+          { label: "있다, 대놓고 즐긴다", description: "숨기지 않는 편이다" },
+          { label: "있지만 티는 안 낸다", description: "혼자만 즐기는 편이다" },
+          { label: "딱히 없다", description: "숨길 만한 게 없는 편이다" },
+          { label: "예전엔 있었는데 이젠 아니다", description: "지금은 신경 안 쓰는 편이다" },
+        ],
+      },
+      {
+        id: "tasteChange",
+        type: "quickTap",
+        required: true,
+        question: "예전과 비교하면 내 취향은?",
+        options: [
+          { label: "거의 그대로인 편", description: "오래 좋아한 게 계속 간다" },
+          { label: "조금씩 넓어진 편", description: "예전 것에 더해지는 편이다" },
+          { label: "완전히 바뀐 편", description: "예전에 좋아하던 게 지금은 아니다" },
+          { label: "계속 바뀌는 편", description: "한 곳에 오래 머물지 않는 편이다" },
+        ],
+      },
+      // ── 4구간: 취향과 나 ───────────────────────────────────────────
+      {
+        id: "reflectionTaste",
+        type: "reflection",
+        required: true,
+        question: "최근에 뭔가에 푹 빠졌던 게 언제였어요?\n그게 뭐였고 왜 좋았는지 적어주세요",
+        placeholder: "예: 작년 겨울에 뜨개질에 빠져서 두 달 동안 계속했는데, 손으로 뭔가 남는 게 좋았어요",
+        options: [],
+      },
+      {
+        id: "tasteWhy",
+        type: "preference",
+        required: true,
+        question: "나한테 취향은 어떤 의미야?",
+        options: [
+          { label: "나를 설명하는 것", description: "내가 어떤 사람인지 보여준다" },
+          { label: "쉬는 방법", description: "숨 돌리는 시간이다" },
+          { label: "사람과 이어지는 통로", description: "같이 좋아할 사람을 만난다" },
+          { label: "계속 배우는 것", description: "알수록 재밌어진다" },
+          { label: "그냥 습관", description: "딱히 의미는 없다" },
+          { label: "스트레스를 푸는 법", description: "버티게 해주는 것이다" },
+        ],
+      },
+      {
+        id: "tasteIdeal",
+        type: "quickTap",
+        required: true,
+        question: "취향이 잘 맞는 사람과 만나면 어때?",
+        options: [
+          { label: "제일 편하다", description: "말이 통해서 좋다" },
+          { label: "좋긴 한데 필수는 아니다", description: "다른 게 더 중요하다" },
+          { label: "오히려 다른 게 재밌다", description: "새로운 걸 알게 돼서 좋다" },
+          { label: "취향 얘기를 잘 안 한다", description: "그런 대화를 잘 안 하는 편이다" },
+        ],
+      },
+      {
+        id: "tasteSelfView",
+        type: "binary",
+        required: true,
+        question: "나는 취향이 뚜렷한 사람인 것 같아?",
+        options: [
+          { label: "그런 편인 것 같다", description: "좋아하는 게 분명하다고 느낀다" },
+          { label: "잘 모르겠다", description: "딱히 뚜렷하지 않다고 느낀다" },
+        ],
+      },
+    ],
+    closingPrompt: "내 취향에 대해 더 하고 싶은 말이 있나요?",
+    // conversationFocus/resultFocus는 work와 같은 이유로 빈 문자열이다 —
+    // 이 값들은 대화형(inputMode: "chat") 주제에서만 실제로 쓰인다.
+    // taste는 퀴즈형이라 이 필드들을 읽는 코드 자체가 없다.
     conversationFocus: "",
     resultFocus: "",
+    // entryQuestion/entryChips는 기존 taste 껍데기에 이미 있던 값을
+    // 그대로 가져왔다 — "요즘 제일 끌리는 게 뭐예요?"라는 가벼운
+    // 진입 질문이 이번 20문항의 성격과 잘 맞아서 새로 쓸 이유가 없었다.
     entryQuestion: "요즘 제일 끌리는 게 뭐예요?",
     entryChips: ["분위기 있는 것", "실용적인 것", "잘 모르겠어요"],
     implemented: false,
