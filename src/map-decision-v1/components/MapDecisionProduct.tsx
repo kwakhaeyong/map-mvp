@@ -12,6 +12,7 @@ import { Landing } from "./Landing";
 import { Result } from "./Result";
 import { SelfIntroCard } from "./SelfIntroCard";
 import { TopicQuiz } from "./TopicQuiz";
+import { WorkCard } from "./WorkCard";
 
 function createDemoSession(): MapSession {
   const session = createSession("career");
@@ -85,7 +86,7 @@ export function MapDecisionProduct() {
     const effective = saved && isSessionStale(saved) ? ({ ...saved, stage: "landing" } as MapSession) : saved;
     if (effective) {
       if (saved && effective !== saved) {
-        const hasResultData = Boolean(saved.idealTypeResult || saved.selfIntroResult || saved.friendshipResult || saved.result);
+        const hasResultData = Boolean(saved.idealTypeResult || saved.selfIntroResult || saved.friendshipResult || saved.workResult || saved.result);
         setHasStaleResult(saved.stage === "result" && hasResultData);
       }
       setSession(effective);
@@ -225,6 +226,9 @@ export function MapDecisionProduct() {
     }
     if (resultTopic.resultLayoutId === "friendship") {
       return <FriendshipCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
+    }
+    if (resultTopic.resultLayoutId === "work") {
+      return <WorkCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
     }
     return <Result session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onSelectType={selectType} onRealStart={exitDemoToReal} saveState={saveState} />;
   }
