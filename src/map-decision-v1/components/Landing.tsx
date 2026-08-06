@@ -36,6 +36,62 @@ const DEPTH_TOPIC_IDS = ["career"];
 const VIRAL_TOPIC_IDS = ["idealType", "selfIntro", "friendship", "work", "taste", "travelStyle"];
 const SAFETY_NET_TOPIC_ID = "freeform";
 
+// topics.ts의 topic.oneLiner("~를 한 장으로 정리해요")를 그대로 쓰지 않고
+// 이 파일 안에서만 덮어쓴다 — topics.ts는 문항·타입 정의 파일이라 이번
+// 카피 개편 범위에서 건드리지 않기로 했다. 6개 전부 "정리해요"로
+// 끝나 서로 구분이 안 되고, 실제로 이 결과가 주는 건 "정리"가 아니라
+// "재해석"(답변 사이 간극·모순을 짚어주는 것)이라 약속과 실제가
+// 어긋나 있었다. 각 카피는 해당 생성기 SYSTEM_PROMPT에 명시된
+// 재해석 축을 그대로 질문으로 옮긴 것이다 — idealType은
+// ideal-type-generator.ts의 ★핵심 재해석★ 세 쌍(화해·구애·갈등 대처,
+// 바라는 것 vs 실제 행동), friendship·work·taste는 각 생성기의
+// "마지막 자기평가 vs 앞선 행동/답변" 축, selfIntro는 자기평가 문항이
+// 없어 "서로 다른 답변 사이의 모순·긴장" 축(whatToImprove), travelStyle은
+// travel-generator.ts의 세 겹 간극(자기인식·로망·자기평가 각각 vs 실제)을
+// 대표해서 한 문장으로 압축했다. career는 자유 대화형이라 재해석 축
+// 개념 자체가 다르므로 이번에 바꾸지 않는다(topic.oneLiner 그대로).
+const TOPIC_HOOK: Record<string, string> = {
+  // 이상형은 랜딩 첫 카드라 여기서 구체성이 없으면 다음 카드로 시선이
+  // 안 넘어간다 — "바라는 것"·"내가 하는 행동"이 각각 뭔지 이름을
+  // 붙이지 않은 첫 문구 대신, 재해석 축(화해 방식·구애 방식·갈등
+  // 대처)에서 실제 행동 두 가지를 가져와 뭘 보게 되는지 바로 알 수
+  // 있게 했다.
+  idealType: "화해도 연락도, 바라는 만큼 내가 하고 있을까요?",
+  // selfIntro는 자기평가 문항이 없어 다른 다섯 주제처럼 "확신 vs
+  // 답변" 구조를 쓸 수 없다. 질문형("앞뒤가 맞을까요?")으로 억지로
+  // 맞추면 "답변이 틀렸는지 검사한다"는 인상을 줘서, 뭘 알게 되는지가
+  // 아니라 답변 검증처럼 읽혔다. 서술형으로 바꿔 "겉으로 설명하는
+  // 나"와 "실제 행동" 사이를 담백하게 짚는다 — 6개 중 이 카드만
+  // 서술형이어도 무방하다(재해석 축 자체가 다른 다섯과 다르므로).
+  selfIntro: "남한테 설명하는 나와, 실제로 하는 행동",
+  friendship: "좋은 친구 같다는 느낌, 행동도 그럴까요?",
+  work: "일 잘한다는 확신, 어디서 왔을까요?",
+  // 이전 문구("취향이 뚜렷하다는 확신, 답변도 그럴까요?")는 friendship
+  // 카드와 골격이 사실상 동일해("~같다는 느낌/확신, ~도 그럴까요?")
+  // 두 카드가 구분되지 않았다. taste-generator.ts의 awareness 각도
+  // (그 취향이 채워주는 심리적·실용적 필요)를 그대로 옮겨 "왜"를
+  // 묻는 문장으로 바꿨다 — 나머지 다섯과 골격이 완전히 다르다.
+  taste: "왜 하필 그런 것에 끌릴까요?",
+  travelStyle: "즉흥적이라 답했는데, 실제로도 그랬을까요?",
+};
+
+// 문항 수는 topics.ts의 axes 배열 길이를 직접 세어 확인한 값이다(코드
+// 값을 그대로 읽어오지 않고 상수로 고정한 이유는, 이 표시가 "지금
+// 문항 구성 기준 대략 이 정도 걸린다"는 안내이지 매 렌더마다 재계산할
+// 실시간 값이 아니기 때문이다 — topics.ts의 axes가 나중에 바뀌면 이
+// 상수도 같이 갱신해야 한다). 소요 시간은 실측이 아니라 문항 수 기반
+// 추정치다 — 문항당 대략 14~15초로 잡고 반올림했다(실측 계측은 아직
+// 없다, docs/CURRENT_STATE.md·NASOGAE_DESIGN.md 조사 참고). career는
+// 자유 대화형이라 문항 수 개념이 없어 이 맵에 넣지 않는다.
+const TOPIC_META: Record<string, { questions: number; minutes: number }> = {
+  idealType: { questions: 38, minutes: 9 },
+  selfIntro: { questions: 36, minutes: 9 },
+  friendship: { questions: 30, minutes: 7 },
+  work: { questions: 30, minutes: 7 },
+  taste: { questions: 20, minutes: 5 },
+  travelStyle: { questions: 20, minutes: 5 },
+};
+
 // 아이콘 자리(이모지)를 없애고 제목·설명 타이포만 남긴다 — 시스템
 // 이모지가 기기·브라우저마다 다르게 렌더링돼 브랜드 자산이 될 수
 // 없다는 문제 때문이다(갤럭시·아이폰·카톡 인앱 브라우저에서 각각
@@ -53,6 +109,7 @@ function TopicCard({
   onLocked: (topic: TopicConfig) => void;
 }) {
   const disabled = !topic.implemented;
+  const meta = TOPIC_META[topic.id];
   return (
     <button
       type="button"
@@ -69,7 +126,12 @@ function TopicCard({
         </span>
       ) : null}
       <span className="break-keep text-base font-black tracking-[-0.02em]">{topic.name}</span>
-      <span className="break-keep text-xs font-semibold leading-5 text-text-secondary">{topic.oneLiner}</span>
+      <span className="break-keep text-xs font-semibold leading-5 text-text-secondary">{TOPIC_HOOK[topic.id] ?? topic.oneLiner}</span>
+      {meta ? (
+        <span className="break-keep text-[11px] font-semibold text-text-muted">
+          {meta.questions}문항 · 약 {meta.minutes}분
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -160,21 +222,25 @@ export function Landing({
         </div>
       </header>
 
+      {/* 헤드라인·서브카피 교체 배경: 기존 "말하면 정리되는 나의 MAP" +
+          6개 카드 설명이 전부 "~정리해요"로 끝나 "정리"라는 단어가
+          첫 화면에 반복됐는데, 실제로 이 결과가 주는 건 정리가 아니라
+          재해석(답변 사이 간극을 짚어주는 발견)이라 약속과 실제가
+          어긋나 있었다. 새 헤드라인은 MBTI 같은 기존 유형 분류를 정면
+          배제하는 포지셔닝이다 — MAP은 태그 조합이 매번 달라 애초에
+          "유형"이 존재하지 않으므로 사실에 근거한 주장이다. "로그인
+          없이"는 6개 주제·진로 전부에 공통으로 해당하는 사실이라
+          카드마다 반복하지 않고 이 자리에서 한 번만 말한다(로그인·
+          회원가입·이메일 요구 지점이 코드 전체에 없다는 건 별도
+          조사로 확인됨). */}
       <section className="map-container pb-2 pt-8 text-center sm:pt-14">
         <p className="kicker">MAP Decision</p>
         <h1 className="mt-3 text-balance break-keep text-[1.9rem] font-black leading-[1.18] tracking-[-0.04em] sm:text-4xl">
-          말하면 정리되는 나의 MAP
+          16개 유형에 넣지 않아요
         </h1>
         <p className="mx-auto mt-3 max-w-md break-keep text-sm font-semibold leading-6 text-text-secondary sm:text-base">
-          지금 궁금한 나를 골라보세요. 대화 몇 마디면 충분해요.
+          당신 답변에서만 나온 결과 · 로그인 없이
         </p>
-        <button
-          type="button"
-          onClick={onDemo}
-          className="mt-4 text-xs font-black text-text-muted underline underline-offset-2 hover:text-text-primary"
-        >
-          30초 체험 먼저 볼까요? →
-        </button>
       </section>
 
       {/* 홍보 유입의 주 목적지(완성된 이상형·나소개 등 6개)를 먼저
