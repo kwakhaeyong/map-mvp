@@ -76,6 +76,9 @@ export type MapSession = {
   // 취향(taste) 결과 — 위 네 결과 필드와 완전히 같은 역할이다. 심화
   // (선택) 경로가 없어 quizDepth류 필드는 없다.
   tasteResult?: TasteResult;
+  // 여행 스타일(travelStyle) 결과 — 위 다섯 결과 필드와 완전히 같은
+  // 역할이다. 심화(선택) 경로가 없어 quizDepth류 필드는 없다.
+  travelResult?: TravelResult;
   // /api/share가 "이 서버가 실제로 만든 결과인가"를 검증할 때 쓰는 HMAC
   // 서명(engine/result-signature.ts). 생성 라우트가 결과와 함께 내려주고,
   // 공유 시에만 그대로 옆에 실어 보낸다 — 대화 원문처럼 민감한 값이
@@ -85,6 +88,7 @@ export type MapSession = {
   friendshipResultSignature?: string | null;
   workResultSignature?: string | null;
   tasteResultSignature?: string | null;
+  travelResultSignature?: string | null;
   // 진로 결과는 블록별로 따로 재생성할 수 있어(Result.tsx의
   // regenerateBlock), 결과 전체가 아니라 블록마다 독립된 서명을 가진다 —
   // 한 블록만 다시 만들어도 그 블록의 서명만 갱신되고 나머지는 그대로다.
@@ -311,6 +315,44 @@ export type TasteResult = {
   roadmap: TasteRoadmap;
   // 이상형·나 소개·친구·일할 때의 나와 일부 축을 공유하는 태그 사전
   // (engine/ideal-type-tags.ts)을 재사용한다 — 다섯 주제 사이 교차
+  // 비교(engine/compatibility.ts)가 성립하려면 결과의 태그가 같은
+  // 문자열 체계여야 한다.
+  tags?: string[];
+};
+
+// taste(certain/conditional/indifferent)와 이름이 다른 이유: travelStyle은
+// 재해석 축이 "포기 못 하는 것/있으면 좋은 것/없어도 되는 것"
+// (travelCriteria)이라 taste의 "확실함의 정도" 발상과 달리 idealType의
+// criteria(mustHave/niceToHave/canCompromise) 쪽에 더 가깝다 —
+// engine/travel-generator.ts 참고. 배열에 개수 제한을 두지 않는 이유는
+// 다른 주제와 동일(Structured Outputs가 maxItems/minItems를 지원하지
+// 않음) — engine/travel-generator.ts에서 코드로 자른다.
+export type TravelCriteria = { mustHave: string[]; niceToHave: string[]; optional: string[] };
+export type TravelMatrixPoint = { label: string; description: string; x: number; y: number };
+export type TravelMatrix = {
+  xAxisLabel: { low: string; high: string };
+  yAxisLabel: { low: string; high: string };
+  types: TravelMatrixPoint[];
+};
+export type TravelFit = { goodFit: string[]; poorFit: string[] };
+export type TravelSelfReflection = { awareness: string[]; blindSpots: string[] };
+export type TravelRoadmapPhase = { label: string; actions: string[] };
+export type TravelRoadmap = { firstAction: string; phases: TravelRoadmapPhase[] };
+
+export type TravelResult = {
+  version: number;
+  generatedAt: string;
+  model: "claude-sonnet-5";
+  title: string;
+  oneLiner: string;
+  travelCriteria: TravelCriteria;
+  patterns: string[];
+  matrix: TravelMatrix;
+  travelFit: TravelFit;
+  selfReflection: TravelSelfReflection;
+  roadmap: TravelRoadmap;
+  // 이상형·나 소개·친구·일할 때의 나·취향과 일부 축을 공유하는 태그
+  // 사전(engine/ideal-type-tags.ts)을 재사용한다 — 여섯 주제 사이 교차
   // 비교(engine/compatibility.ts)가 성립하려면 결과의 태그가 같은
   // 문자열 체계여야 한다.
   tags?: string[];
