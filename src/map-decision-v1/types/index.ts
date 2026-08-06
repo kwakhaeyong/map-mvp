@@ -69,6 +69,10 @@ export type MapSession = {
   // 완전히 같은 역할을 하는 별도 필드다. 심화(선택) 경로 자체가 없는
   // 주제라 quizDepth/resuming류 필드는 없다.
   friendshipResult?: FriendshipResult;
+  // 일할 때의 나(work) 결과 — 위 세 결과 필드와 완전히 같은 역할이다.
+  // 친구·인간관계와 마찬가지로 심화(선택) 경로가 없어 quizDepth류
+  // 필드는 없다.
+  workResult?: WorkResult;
   // /api/share가 "이 서버가 실제로 만든 결과인가"를 검증할 때 쓰는 HMAC
   // 서명(engine/result-signature.ts). 생성 라우트가 결과와 함께 내려주고,
   // 공유 시에만 그대로 옆에 실어 보낸다 — 대화 원문처럼 민감한 값이
@@ -76,6 +80,7 @@ export type MapSession = {
   idealTypeResultSignature?: string | null;
   selfIntroResultSignature?: string | null;
   friendshipResultSignature?: string | null;
+  workResultSignature?: string | null;
   // 진로 결과는 블록별로 따로 재생성할 수 있어(Result.tsx의
   // regenerateBlock), 결과 전체가 아니라 블록마다 독립된 서명을 가진다 —
   // 한 블록만 다시 만들어도 그 블록의 서명만 갱신되고 나머지는 그대로다.
@@ -223,6 +228,49 @@ export type FriendshipResult = {
   roadmap: FriendshipRoadmap;
   // 이상형·나 소개와 일부 축을 공유하는 태그 사전(engine/ideal-type-tags.ts)을
   // 재사용한다 — 세 주제 사이 교차 비교(engine/compatibility.ts)가
+  // 성립하려면 결과의 태그가 같은 문자열 체계여야 한다.
+  tags?: string[];
+};
+
+// 일할 때의 나(work) 결과 — 이상형·나 소개·친구와 태그 축 일부를
+// 공유하지만(engine/ideal-type-tags.ts, 태그 시스템을 네 번째 주제까지
+// 확장한 PR 참고), career(진로·이직·큰 결정)와는 완전히 다른 성격이다 —
+// career는 "다음에 뭘 할까"를 정하는 자유 대화형 의사결정이고, work는
+// "나는 어떻게 일하는 사람인가"를 진단하는 퀴즈형 성향 결과다. 필드
+// 이름도 career(factorMatrix/scenarios/timeline/insights)와 다르게,
+// 다른 세 퀴즈형 주제(criteria/patterns/matrix/…selfReflection/roadmap)
+// 골격을 따른다. selfReflection만은 그 셋과 발상이 다르다 — 30번 문항
+// (자기평가)과 1~29번 행동 답변 사이의 간극을 짚는 게 핵심이라 필드
+// 이름을 strengths/blindSpots로 새로 지었다(engine/work-generator.ts
+// 참고). 배열에 개수 제한을 두지 않는 이유는 다른 주제와 동일
+// (Structured Outputs가 maxItems/minItems를 지원하지 않음) —
+// engine/work-generator.ts에서 코드로 자른다.
+export type WorkDrivers = { essential: string[]; boost: string[]; optional: string[] };
+export type WorkMatrixPoint = { label: string; description: string; x: number; y: number };
+export type WorkMatrix = {
+  xAxisLabel: { low: string; high: string };
+  yAxisLabel: { low: string; high: string };
+  types: WorkMatrixPoint[];
+};
+export type WorkFit = { thriving: string[]; draining: string[] };
+export type WorkSelfReflection = { strengths: string[]; blindSpots: string[] };
+export type WorkRoadmapPhase = { label: string; actions: string[] };
+export type WorkRoadmap = { firstAction: string; phases: WorkRoadmapPhase[] };
+
+export type WorkResult = {
+  version: number;
+  generatedAt: string;
+  model: "claude-sonnet-5";
+  title: string;
+  oneLiner: string;
+  workDrivers: WorkDrivers;
+  patterns: string[];
+  matrix: WorkMatrix;
+  workFit: WorkFit;
+  selfReflection: WorkSelfReflection;
+  roadmap: WorkRoadmap;
+  // 이상형·나 소개·친구와 일부 축을 공유하는 태그 사전(engine/ideal-type-tags.ts)을
+  // 재사용한다 — 네 주제 사이 교차 비교(engine/compatibility.ts)가
   // 성립하려면 결과의 태그가 같은 문자열 체계여야 한다.
   tags?: string[];
 };

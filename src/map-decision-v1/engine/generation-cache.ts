@@ -16,7 +16,7 @@ import { getRedisClient } from "./redis-client";
 
 const GENERATION_CACHE_TTL_SECONDS = 30 * 60; // 30분 — 아래 computeGenerationCacheKey 주석 참고
 
-export type GenerationTopic = "idealType" | "selfIntro" | "friendship";
+export type GenerationTopic = "idealType" | "selfIntro" | "friendship" | "work";
 
 // 객체 키 순서에 관계없이 항상 같은 문자열이 나오게 하는 정규화 —
 // session.quizAnswers는 JS 객체라 키 순서가 원칙적으로 보장되지 않는다.
