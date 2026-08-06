@@ -32,32 +32,11 @@ function SectionHeader({ title, description }: { title: string; description: str
   );
 }
 
-const NAV_ITEMS: Array<{ id: string; label: string }> = [
-  { id: "patterns", label: "발견" },
-  { id: "matrix", label: "매트릭스" },
-  { id: "fit", label: "적합" },
-  { id: "roadmap", label: "로드맵" },
-];
-
-// 이유·구현 방식은 TasteResultBlocks.tsx의 같은 이름 컴포넌트와
-// 동일하다(구조를 통일하기 위해 그대로 복제) — 주석은 그쪽에 적었다.
-function SectionNav() {
-  return (
-    <div className="sticky top-0 z-10 border-b border-border bg-background py-2">
-      <div className="flex gap-1.5 overflow-x-auto">
-        {NAV_ITEMS.map((item) => (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            className="inline-flex min-h-8 shrink-0 items-center rounded-pill border border-border bg-surface-elevated px-1.5 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
-          >
-            {item.label}
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
+// 목차 칩(SectionNav)을 없앴다 — 6블록일 때는 "탐색해야 할 문서"라는
+// 신호로 필요했지만, 4블록으로 줄면서 한 화면에서 스크롤 몇 번이면
+// 끝까지 보이는 분량이 됐다. 목차가 오히려 "더 많은 내용이 있다"는
+// 잘못된 기대를 준다. 진로(career) 결과 화면은 저장 후 재열람 용도라
+// 목차가 계속 맞는 선택이라 FinalResultBlocks.tsx는 그대로 뒀다.
 
 // 다른 다섯 주제와 태그 축 일부를 공유하는 사전을 재사용하므로 시각적
 // 표현도 TasteTagRow(TasteResultBlocks.tsx)와 동일하게 맞춘다 — 클래스는
@@ -77,7 +56,7 @@ export function TravelTagRow({ tags, className }: { tags: string[]; className?: 
 
 function HeroHeader({ result }: { result: TravelResult }) {
   return (
-    <Card id="summary" className="scroll-mt-6 p-5">
+    <Card className="p-5">
       <span className="inline-flex items-center rounded-pill bg-tag-fill px-3 py-1 text-xs font-extrabold text-text-primary">
         여행 스타일 카드
       </span>
@@ -88,17 +67,34 @@ function HeroHeader({ result }: { result: TravelResult }) {
   );
 }
 
+// discovery의 첫 항목은 생성기가 "가장 강한 발견"을 의도적으로 앞에
+// 두고, 그 문장이 그대로 공유되는 한 줄이 된다(travel-generator.ts의
+// SYSTEM_PROMPT 참고). 그런데 화면은 4개를 전부 같은 회색 인용 박스로
+// 그려 위계가 없었다. 첫 항목만 카드 안에 다시 카드를 넣는 대신,
+// primary 배경의 큰 블록으로 확실히 분리하고(제목 블록의 색상 바와
+// 같은 primary 토큰이라 새 색을 도입하지 않는다), 나머지는 기존
+// 회색 인용 스타일보다 한 단계 낮춘 담백한 리스트로 남긴다 — 완전히
+// 안 보이게 죽이면 안 되니 글자 크기는 유지하고 배경·테두리 강조만
+// 없앤다.
 function PatternsSection({ items }: { items: string[] }) {
+  const [headline, ...rest] = items;
   return (
-    <Card id="patterns" className="scroll-mt-16 flex flex-col gap-3">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="여행에서 발견한 것" description="자기인식과 실제 행동 사이 간극이에요." />
-      <div className="flex flex-col gap-2">
-        {items.map((item, index) => (
-          <blockquote key={index} className="rounded-medium border border-border border-l-4 border-l-primary bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
-            {item}
-          </blockquote>
-        ))}
-      </div>
+      {headline ? (
+        <blockquote className="rounded-large border-2 border-primary bg-primary p-5 text-lg font-black leading-8 text-primary-foreground sm:text-xl sm:leading-9">
+          {headline}
+        </blockquote>
+      ) : null}
+      {rest.length > 0 ? (
+        <ul className="flex flex-col divide-y divide-border">
+          {rest.map((item, index) => (
+            <li key={index} className="py-3 text-sm font-bold leading-6 text-text-primary first:pt-0 last:pb-0">
+              {item}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </Card>
   );
 }
@@ -139,63 +135,73 @@ function spreadMatrixPoints(points: TravelMatrixPoint[]): PlottedMatrixPoint[] {
 const MATRIX_POINT_OPACITY = [1, 0.7, 0.45, 0.25];
 const MATRIX_POINT_NUMBER_CLASS = ["fill-primary-foreground", "fill-text-primary", "fill-text-primary", "fill-text-primary"];
 
+// x축 저/고 라벨을 그림 좌우가 아니라 아래에 한 줄로 배치한다 —
+// 좌우에 고정 폭 라벨 칸을 두면 그만큼 정사각형 그림 자체가 좁아져
+// (모바일 폭 기준 실측 176px대) 점 위치가 잘 안 읽힌다는 문제가
+// 있었다. 라벨을 그림 아래로 내리면 그림이 카드 안쪽 너비를 거의
+// 그대로 쓸 수 있어(실측 280px대) 점과 번호가 뚜렷해진다.
 function MatrixChart({ matrix }: { matrix: TravelMatrix }) {
   const placed = spreadMatrixPoints(matrix.types);
   return (
-    <div className="mx-auto w-full max-w-xs">
+    <div className="mx-auto w-full max-w-sm">
       <p className="mb-1 text-center text-[11px] font-black text-text-muted">{matrix.yAxisLabel.high}</p>
-      <div className="flex items-center gap-2">
-        <p className="w-12 shrink-0 text-right text-[11px] font-black leading-tight text-text-muted">{matrix.xAxisLabel.low}</p>
-        <div className="relative aspect-square flex-1">
-          <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
-            <rect x="1" y="1" width="98" height="98" rx="4" className="fill-none stroke-border" strokeWidth="1" />
-            <line x1="50" y1="1" x2="50" y2="99" className="stroke-border" strokeWidth="0.6" strokeDasharray="2 2" />
-            <line x1="1" y1="50" x2="99" y2="50" className="stroke-border" strokeWidth="0.6" strokeDasharray="2 2" />
-            {placed.map((point, index) => (
-              <g key={index}>
-                <title>{point.label}</title>
-                <circle
-                  cx={point.plotX}
-                  cy={point.plotY}
-                  r="4.2"
-                  className="fill-primary stroke-surface"
-                  fillOpacity={MATRIX_POINT_OPACITY[index % MATRIX_POINT_OPACITY.length]}
-                  strokeWidth="0.8"
-                />
-                <text
-                  x={point.plotX}
-                  y={point.plotY}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  className={cx(MATRIX_POINT_NUMBER_CLASS[index % MATRIX_POINT_NUMBER_CLASS.length], "font-black")}
-                  style={{ fontSize: "4px" }}
-                >
-                  {index + 1}
-                </text>
-              </g>
-            ))}
-          </svg>
-        </div>
-        <p className="w-12 shrink-0 text-left text-[11px] font-black leading-tight text-text-muted">{matrix.xAxisLabel.high}</p>
+      <div className="relative aspect-square w-full">
+        <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
+          <rect x="1" y="1" width="98" height="98" rx="4" className="fill-none stroke-border" strokeWidth="1" />
+          <line x1="50" y1="1" x2="50" y2="99" className="stroke-border" strokeWidth="0.6" strokeDasharray="2 2" />
+          <line x1="1" y1="50" x2="99" y2="50" className="stroke-border" strokeWidth="0.6" strokeDasharray="2 2" />
+          {placed.map((point, index) => (
+            <g key={index}>
+              <title>{point.label}</title>
+              <circle
+                cx={point.plotX}
+                cy={point.plotY}
+                r="4.2"
+                className="fill-primary stroke-surface"
+                fillOpacity={MATRIX_POINT_OPACITY[index % MATRIX_POINT_OPACITY.length]}
+                strokeWidth="0.8"
+              />
+              <text
+                x={point.plotX}
+                y={point.plotY}
+                textAnchor="middle"
+                dominantBaseline="central"
+                className={cx(MATRIX_POINT_NUMBER_CLASS[index % MATRIX_POINT_NUMBER_CLASS.length], "font-black")}
+                style={{ fontSize: "4px" }}
+              >
+                {index + 1}
+              </text>
+            </g>
+          ))}
+        </svg>
       </div>
-      <p className="mt-1 text-center text-[11px] font-black text-text-muted">{matrix.yAxisLabel.low}</p>
+      <div className="mt-1.5 flex items-center justify-between text-[11px] font-black text-text-muted">
+        <span>{matrix.xAxisLabel.low}</span>
+        <span>{matrix.xAxisLabel.high}</span>
+      </div>
+      <p className="mt-1.5 text-center text-[11px] font-black text-text-muted">{matrix.yAxisLabel.low}</p>
     </div>
   );
 }
 
+// 설명이 15~25자로 짧아져서(기존엔 2~3문장) 그림 아래에 세로로 길게
+// 나열할 이유가 없어졌다 — 2열 그리드로 바꿔 그림과 한눈에 짝지어
+// 보이게 한다. 라벨과 설명도 한 줄로 붙이지 않고 줄을 나눠서, 짧은
+// 설명이 라벨 옆에 어색하게 매달리지 않게 한다.
 function MatrixSection({ matrix }: { matrix: TravelMatrix }) {
   return (
-    <Card id="matrix" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-5">
       <SectionHeader title="나의 여러 모습" description="답변에서 나온 4가지 여행 모습을 놓고 봤어요." />
       <MatrixChart matrix={matrix} />
-      <ul className="flex flex-col gap-2">
+      <ul className="grid grid-cols-2 gap-3">
         {matrix.types.map((point, index) => (
-          <li key={index} className="flex items-start gap-2 text-sm font-semibold text-text-secondary">
+          <li key={index} className="flex items-start gap-2">
             <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-pill border border-border bg-surface-elevated text-[11px] font-black text-text-primary">
               {index + 1}
             </span>
-            <span>
-              <span className="font-black text-text-primary">{point.label}</span> — {point.description}
+            <span className="flex flex-col">
+              <span className="text-sm font-black leading-5 text-text-primary">{point.label}</span>
+              <span className="text-xs font-semibold leading-5 text-text-secondary">{point.description}</span>
             </span>
           </li>
         ))}
@@ -206,7 +212,7 @@ function MatrixSection({ matrix }: { matrix: TravelMatrix }) {
 
 function TravelFitSection({ fit }: { fit: TravelFit }) {
   return (
-    <Card id="fit" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="잘 맞는 방식, 안 맞는 방식" description="답변 패턴을 근거로 짚어본 여행 방식이에요." />
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
@@ -242,7 +248,7 @@ function TravelFitSection({ fit }: { fit: TravelFit }) {
 
 function RoadmapSection({ roadmap }: { roadmap: TravelRoadmap }) {
   return (
-    <Card id="roadmap" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="로드맵" description="바로 시도해볼 것부터 30일 계획까지예요." />
       <div className="rounded-medium border border-primary bg-surface p-3">
         <p className="text-xs font-black text-primary">24시간 안에</p>
@@ -285,16 +291,22 @@ export function TravelResultBlocks({
   afterReflection?: ReactNode;
   showHero?: boolean;
 }) {
+  // 6블록 시절엔 TravelCard.tsx의 gap-3만으로도 블록이 촘촘히 붙어 보였다
+  // — 항목 수가 많아 한 화면에 밀도가 필요했기 때문이다. 4블록으로
+  // 줄면서 각 블록이 다루는 내용이 더 뚜렷해져, 블록 사이를 gap-3보다
+  // 넉넉한 gap-5로 띄워 "따로 읽는 네 덩어리"라는 인상을 준다. 이
+  // 간격은 이 컴포넌트 내부(블록 간)에만 적용되고, TravelCard.tsx가
+  // 감싼 바깥쪽 gap-3(이 컴포넌트 전체와 공유 버튼 영역 사이 간격)는
+  // 그대로라 하단 공유 버튼 위치는 바뀌지 않는다.
   return (
-    <>
+    <div className="flex flex-col gap-5">
       {showHero ? <HeroHeader result={result} /> : null}
       {afterHero}
-      <SectionNav />
       <PatternsSection items={result.discovery} />
       <MatrixSection matrix={result.matrix} />
       {afterReflection}
       <TravelFitSection fit={result.fit} />
       <RoadmapSection roadmap={result.roadmap} />
-    </>
+    </div>
   );
 }
