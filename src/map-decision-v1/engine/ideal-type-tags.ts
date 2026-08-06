@@ -9,7 +9,7 @@
 // (ideal-type-generator.ts의 IDEAL_TYPE_SCHEMA)는 건드리지 않는다;
 // 태그는 AI 응답을 파싱한 뒤 코드에서 별도로 붙인다.
 //
-// 정확히 4개 축, 총 52개 태그(카테고리별 매핑 항목 합) — 정의된 축은
+// 정확히 4개 축, 총 64개 태그(카테고리별 매핑 항목 합) — 정의된 축은
 // 전부 카드에 표시된다(카드에 안 쓰는 "죽은" 카테고리를 사전에 남겨두지
 // 않는다). 처음에는 6개 축을 만들고 그중 4개만 표시하는 구조였는데,
 // 실제로 5세트를 뽑아보니(모든 축이 선택지 4~6개짜리라) 서로 다른 두
@@ -76,7 +76,31 @@
 // 자체는 원래도 겹치지 않지만(TAG_TO_CATEGORY가 문자열 키라 겹치면
 // 안 됨), 사람이 읽었을 때도 서로 다른 개념으로 읽히게 하려는
 // 의도다.
-type TagTopicId = "idealType" | "selfIntro" | "friendship" | "work" | "taste";
+//
+// 여섯 번째 주제(여행 스타일, travelStyle)도 taste와 같은 방식으로
+// 연결한다. lifestyle만 travelStyle의 문항(11번, 나 소개 것을 원문
+// 그대로 복사)이 축 이름·질문 성격이 같아 그대로 공유하고, 나머지 세
+// 카테고리는 이름이 뜻하는 바와 실제로 travelStyle에 연결한 축의
+// 내용이 다르다:
+// - relationshipWants("관계에서 원하는 것") ← travelWith(여행을 누구와
+//   갈 때가 좋은지 — 관계에서 원하는 것이 아니라 동행 인원 선호)
+// - relationshipRhythm("관계 리듬") ← travelPlan(여행 준비를 얼마나
+//   미리 하는지 — 관계 리듬이 아니라 계획 성향에 대한 답)
+// - conflictPattern("갈등 대처 방식") ← travelPace(여행지에서 하루를
+//   어떻게 보내는지 — 갈등과 무관, 하루 동선의 속도감에 대한 답)
+// taste 때와 같은 이유로 감수한 어긋남이다 — 새 카테고리를 만들면
+// 기존 다섯 주제의 결과에는 그 축이 없어 항상 "비교 불가"로
+// 떨어지므로(PR #133), 카테고리는 4개로 유지하고 이름과 실제 축이
+// 안 맞는 상태를 여기 주석으로만 명시해둔다.
+//
+// travelPace의 "그날 컨디션 따라 정하는 사람" 태그(#컨디션형)는
+// taste(conflictPattern 카테고리)의 "계속 바뀌는 편"(#유동형)과 둘 다
+// "상황에 따라 달라진다"는 뉘앙스라 헷갈릴 수 있어, "유동"이라는
+// 표현을 아예 쓰지 않고 "그날그날의 몸 상태·기분에 맞춘다"는 의미가
+// 분명한 "컨디션"이라는 단어로 구분했다 — #유동형은 취향이 몇 달·몇 년
+// 단위로 바뀌는지를 다루고, #컨디션형은 여행 중 하루하루의 페이스
+// 조절을 다뤄 시간 단위 자체가 다르다.
+type TagTopicId = "idealType" | "selfIntro" | "friendship" | "work" | "taste" | "travelStyle";
 type TagCategory = {
   id: string;
   label: string;
@@ -103,7 +127,14 @@ export const TAG_CATEGORIES: TagCategory[] = [
     // 공유하지만, 친구·인간관계에는 "연애 상대"라는 개념이 없어 같은
     // 문항을 쓸 수 없다 — 대신 "모임에서 나는 어떤 역할인지"를 묻는
     // friendRole로 연결한다(위 파일 상단 주석 참고).
-    axisId: { idealType: "relationship", selfIntro: "relationship", friendship: "friendRole", work: "workRole", taste: "tasteMode" },
+    axisId: {
+      idealType: "relationship",
+      selfIntro: "relationship",
+      friendship: "friendRole",
+      work: "workRole",
+      taste: "tasteMode",
+      travelStyle: "travelWith",
+    },
     mapping: {
       // 이상형·나 소개 전용(기존 6개, 삭제하지 않음).
       "표현 많이 해주기": "#표현중시형",
@@ -133,6 +164,13 @@ export const TAG_CATEGORIES: TagCategory[] = [
       "듣는 편": "#청취형",
       "읽는 편": "#독서형",
       "만드는 편": "#창작형",
+      // 여행 스타일 전용(신규 4개) — 이 카테고리 이름("관계에서 원하는
+      // 것")과 무관하게, 여행을 누구와 갈 때가 좋은지에 대한 답(위 파일
+      // 상단 주석의 "어긋남" 설명 참고).
+      "혼자": "#나홀로형",
+      "둘이": "#단짝형",
+      "소수 무리": "#소그룹형",
+      "많을수록 재밌다": "#북적선호형",
     },
   },
   {
@@ -154,7 +192,14 @@ export const TAG_CATEGORIES: TagCategory[] = [
     // 이상형은 새 축(idealStressResponse, "상대가 이랬으면 좋겠다")을
     // 쓰고, 나 소개·친구·인간관계는 기존 축(experienceStressResponse,
     // "나는 실제로 이렇게 한다")을 그대로 쓴다 — 위 파일 상단 주석 참고.
-    axisId: { idealType: "idealStressResponse", selfIntro: "experienceStressResponse", friendship: "experienceStressResponse", work: "experienceStressResponse", taste: "tasteChange" },
+    axisId: {
+      idealType: "idealStressResponse",
+      selfIntro: "experienceStressResponse",
+      friendship: "experienceStressResponse",
+      work: "experienceStressResponse",
+      taste: "tasteChange",
+      travelStyle: "travelPace",
+    },
     mapping: {
       // 나 소개 전용(기존 4개, 삭제하지 않음) — "나는 실제로 어떻게
       // 하는지"에 대한 답.
@@ -177,6 +222,16 @@ export const TAG_CATEGORIES: TagCategory[] = [
       "조금씩 넓어진 편": "#확장형",
       "완전히 바뀐 편": "#전환형",
       "계속 바뀌는 편": "#유동형",
+      // 여행 스타일 전용(신규 4개) — 이 카테고리 이름("갈등 대처 방식")과
+      // 무관하게, 여행지에서 하루를 어떻게 보내는지에 대한 답(위 파일
+      // 상단 주석의 "어긋남" 설명 참고). "그날 컨디션 따라 정하는
+      // 사람"의 태그(#컨디션형)는 바로 위 taste의 "계속 바뀌는
+      // 편"(#유동형)과 뉘앙스가 헷갈릴 수 있어 "유동" 대신 "컨디션"이라는
+      // 명확히 다른 단어를 골랐다(위 파일 상단 주석 참고).
+      "아침부터 부지런히 도는 사람": "#부지런탐방형",
+      "두세 곳만 여유롭게 보는 사람": "#느긋탐방형",
+      "숙소에서 쉬는 시간이 긴 사람": "#휴식중심형",
+      "그날 컨디션 따라 정하는 사람": "#컨디션형",
     },
   },
   {
@@ -188,7 +243,14 @@ export const TAG_CATEGORIES: TagCategory[] = [
     // 확률도 가장 높다. 친구·인간관계는 binary1(연애 상대 개념 전제)
     // 대신 "혼자 지내는 게 편한지 vs 여럿과 어울리는지"를 묻는
     // friendDistance로 연결한다.
-    axisId: { idealType: "binary1", selfIntro: "binary1", friendship: "friendDistance", work: "workPace", taste: "tasteDepth" },
+    axisId: {
+      idealType: "binary1",
+      selfIntro: "binary1",
+      friendship: "friendDistance",
+      work: "workPace",
+      taste: "tasteDepth",
+      travelStyle: "travelPlan",
+    },
     mapping: {
       // 이상형·나 소개 전용(기존 2개, 삭제하지 않음).
       "오래 편안한 사람": "#편안함추구형",
@@ -210,6 +272,17 @@ export const TAG_CATEGORIES: TagCategory[] = [
       // 뜻이 비슷하게 들릴 수 있어 일부러 다른 단어를 골랐다.
       "끝까지 파는 편": "#외곬형",
       "여러 개를 얕게 즐기는 편": "#다방면형",
+      // 여행 스타일 전용(신규 4개) — 이 카테고리 이름("관계 리듬")과
+      // 무관하게, 여행 준비를 얼마나 미리 하는지에 대한 답(위 파일
+      // 상단 주석의 "어긋남" 설명 참고). "미리 다 짜두는 사람"의
+      // 태그(#사전계획형)는 바로 위 work의 "미리 끝내두는
+      // 사람"(#선행형)과 둘 다 "미리 함"을 다뤄 헷갈릴 수 있어, "일을
+      // 미리 끝내는 성향" 대신 "여행 일정을 사전에 계획하는 성향"이
+      // 분명하게 드러나는 다른 단어를 골랐다.
+      "미리 다 짜두는 사람": "#사전계획형",
+      "큰 틀만 정하는 사람": "#큰그림형",
+      "거의 즉흥으로 가는 사람": "#즉흥형",
+      "같이 가는 사람에게 맡기는 사람": "#위임형",
     },
   },
 ];
