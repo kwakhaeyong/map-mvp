@@ -73,6 +73,9 @@ export type MapSession = {
   // 친구·인간관계와 마찬가지로 심화(선택) 경로가 없어 quizDepth류
   // 필드는 없다.
   workResult?: WorkResult;
+  // 취향(taste) 결과 — 위 네 결과 필드와 완전히 같은 역할이다. 심화
+  // (선택) 경로가 없어 quizDepth류 필드는 없다.
+  tasteResult?: TasteResult;
   // /api/share가 "이 서버가 실제로 만든 결과인가"를 검증할 때 쓰는 HMAC
   // 서명(engine/result-signature.ts). 생성 라우트가 결과와 함께 내려주고,
   // 공유 시에만 그대로 옆에 실어 보낸다 — 대화 원문처럼 민감한 값이
@@ -81,6 +84,7 @@ export type MapSession = {
   selfIntroResultSignature?: string | null;
   friendshipResultSignature?: string | null;
   workResultSignature?: string | null;
+  tasteResultSignature?: string | null;
   // 진로 결과는 블록별로 따로 재생성할 수 있어(Result.tsx의
   // regenerateBlock), 결과 전체가 아니라 블록마다 독립된 서명을 가진다 —
   // 한 블록만 다시 만들어도 그 블록의 서명만 갱신되고 나머지는 그대로다.
@@ -272,6 +276,43 @@ export type WorkResult = {
   // 이상형·나 소개·친구와 일부 축을 공유하는 태그 사전(engine/ideal-type-tags.ts)을
   // 재사용한다 — 네 주제 사이 교차 비교(engine/compatibility.ts)가
   // 성립하려면 결과의 태그가 같은 문자열 체계여야 한다.
+  tags?: string[];
+};
+
+// work(strengths/blindSpots)와 이름이 다른 이유: taste는 재해석 축이
+// "확실한/상황따라/안 끌리는"(tasteCore) + "취향 인식 vs 실제 사용
+// 습관 간극"과 "자기평가 vs 답변 간극"(selfReflection)이라 발상이
+// 다르다 — engine/taste-generator.ts 참고. 배열에 개수 제한을 두지
+// 않는 이유는 다른 주제와 동일(Structured Outputs가 maxItems/minItems를
+// 지원하지 않음) — engine/taste-generator.ts에서 코드로 자른다.
+export type TasteCore = { certain: string[]; conditional: string[]; indifferent: string[] };
+export type TasteMatrixPoint = { label: string; description: string; x: number; y: number };
+export type TasteMatrix = {
+  xAxisLabel: { low: string; high: string };
+  yAxisLabel: { low: string; high: string };
+  types: TasteMatrixPoint[];
+};
+export type TasteMap = { expand: string[]; avoid: string[] };
+export type TasteSelfReflection = { awareness: string[]; blindSpots: string[] };
+export type TasteRoadmapPhase = { label: string; actions: string[] };
+export type TasteRoadmap = { firstAction: string; phases: TasteRoadmapPhase[] };
+
+export type TasteResult = {
+  version: number;
+  generatedAt: string;
+  model: "claude-sonnet-5";
+  title: string;
+  oneLiner: string;
+  tasteCore: TasteCore;
+  patterns: string[];
+  matrix: TasteMatrix;
+  tasteMap: TasteMap;
+  selfReflection: TasteSelfReflection;
+  roadmap: TasteRoadmap;
+  // 이상형·나 소개·친구·일할 때의 나와 일부 축을 공유하는 태그 사전
+  // (engine/ideal-type-tags.ts)을 재사용한다 — 다섯 주제 사이 교차
+  // 비교(engine/compatibility.ts)가 성립하려면 결과의 태그가 같은
+  // 문자열 체계여야 한다.
   tags?: string[];
 };
 
