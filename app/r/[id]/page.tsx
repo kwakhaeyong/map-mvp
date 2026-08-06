@@ -77,7 +77,7 @@ function isTasteResult(value: unknown): value is TasteResult {
 
 function isTravelResult(value: unknown): value is TravelResult {
   const r = value as Partial<TravelResult> | undefined;
-  return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.travelCriteria === "object";
+  return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.fit === "object";
 }
 
 function isFinalResult(value: unknown): value is FinalResult {

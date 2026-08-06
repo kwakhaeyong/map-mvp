@@ -320,14 +320,17 @@ export type TasteResult = {
   tags?: string[];
 };
 
-// taste(certain/conditional/indifferent)와 이름이 다른 이유: travelStyle은
-// 재해석 축이 "포기 못 하는 것/있으면 좋은 것/없어도 되는 것"
-// (travelCriteria)이라 taste의 "확실함의 정도" 발상과 달리 idealType의
-// criteria(mustHave/niceToHave/canCompromise) 쪽에 더 가깝다 —
-// engine/travel-generator.ts 참고. 배열에 개수 제한을 두지 않는 이유는
-// 다른 주제와 동일(Structured Outputs가 maxItems/minItems를 지원하지
-// 않음) — engine/travel-generator.ts에서 코드로 자른다.
-export type TravelCriteria = { mustHave: string[]; niceToHave: string[]; optional: string[] };
+// 6블록(travelCriteria/patterns/matrix/travelFit/selfReflection/roadmap)에서
+// 4블록(discovery/matrix/fit/roadmap)으로 재설계했다 — 프로덕션 결과
+// 분석에서 같은 발견이 patterns·matrix·selfReflection 세 곳에 반복되고,
+// travelCriteria/travelFit도 같은 세 가지를 명사형/문장형으로 두 번
+// 쓰는 것에 가까웠다. discovery는 기존 patterns(반복 패턴)와
+// selfReflection(자기인식-실제행동 간극)을 한 배열로 합친 것이고, fit은
+// 기존 travelCriteria(3단 분류)와 travelFit(잘맞음/안맞음)을 합치되
+// 3단 분류는 없애고 잘맞음/안맞음 두 갈래만 남겼다. engine/
+// travel-generator.ts 참고. 배열에 개수 제한을 두지 않는 이유는 다른
+// 주제와 동일(Structured Outputs가 maxItems/minItems를 지원하지 않음)
+// — engine/travel-generator.ts에서 코드로 자른다.
 export type TravelMatrixPoint = { label: string; description: string; x: number; y: number };
 export type TravelMatrix = {
   xAxisLabel: { low: string; high: string };
@@ -335,7 +338,6 @@ export type TravelMatrix = {
   types: TravelMatrixPoint[];
 };
 export type TravelFit = { goodFit: string[]; poorFit: string[] };
-export type TravelSelfReflection = { awareness: string[]; blindSpots: string[] };
 export type TravelRoadmapPhase = { label: string; actions: string[] };
 export type TravelRoadmap = { firstAction: string; phases: TravelRoadmapPhase[] };
 
@@ -345,11 +347,9 @@ export type TravelResult = {
   model: "claude-sonnet-5";
   title: string;
   oneLiner: string;
-  travelCriteria: TravelCriteria;
-  patterns: string[];
+  discovery: string[];
   matrix: TravelMatrix;
-  travelFit: TravelFit;
-  selfReflection: TravelSelfReflection;
+  fit: TravelFit;
   roadmap: TravelRoadmap;
   // 이상형·나 소개·친구·일할 때의 나·취향과 일부 축을 공유하는 태그
   // 사전(engine/ideal-type-tags.ts)을 재사용한다 — 여섯 주제 사이 교차
