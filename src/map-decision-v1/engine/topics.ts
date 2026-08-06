@@ -2886,7 +2886,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     // 진입 질문이 이번 20문항의 성격과 잘 맞아서 새로 쓸 이유가 없었다.
     entryQuestion: "요즘 제일 끌리는 게 뭐예요?",
     entryChips: ["분위기 있는 것", "실용적인 것", "잘 모르겠어요"],
-    implemented: false,
+    implemented: true,
   },
   travelStyle: {
     id: "travelStyle",
