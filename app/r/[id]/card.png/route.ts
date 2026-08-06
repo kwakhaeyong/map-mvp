@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getShare } from "../../../../src/map-decision-v1/engine/share-store";
-import { FriendshipResult, IdealTypeResult, SelfIntroResult, TasteResult, WorkResult } from "../../../../src/map-decision-v1/types";
+import { FriendshipResult, IdealTypeResult, SelfIntroResult, TasteResult, TravelResult, WorkResult } from "../../../../src/map-decision-v1/types";
 import {
   buildIdealTypeCardElement,
   CardTheme,
@@ -15,6 +15,7 @@ import { buildSelfIntroCardElement } from "../../../../src/map-decision-v1/engin
 import { buildFriendshipCardElement } from "../../../../src/map-decision-v1/engine/friendship-card-image";
 import { buildWorkCardElement } from "../../../../src/map-decision-v1/engine/work-card-image";
 import { buildTasteCardElement } from "../../../../src/map-decision-v1/engine/taste-card-image";
+import { buildTravelCardElement } from "../../../../src/map-decision-v1/engine/travel-card-image";
 
 // 인스타 스토리에 올릴 수 있는 "한 장 MAP" PNG. 어떤 metadata나
 // opengraph-image 규칙에도 연결하지 않은 독립 라우트다(그러면 카톡/
@@ -48,6 +49,11 @@ function isTasteResult(value: unknown): value is TasteResult {
   return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.tasteCore === "object";
 }
 
+function isTravelResult(value: unknown): value is TravelResult {
+  const r = value as Partial<TravelResult> | undefined;
+  return typeof r === "object" && r !== null && typeof r.title === "string" && typeof r.oneLiner === "string" && typeof r.travelCriteria === "object";
+}
+
 function isCardTheme(value: string | null): value is CardTheme {
   return value === "purple" || value === "navy" || value === "colorBlock" || value === "invitation";
 }
@@ -70,9 +76,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return new Response("Not found", { status: 404 });
   }
 
-  // 나 소개·성격, 친구·인간관계, 일할 때의 나, 취향은 초대장 컨셉
-  // 하나만 지원한다(테마 파라미터 없음) — 이상형처럼 여러 테마를 지원할
-  // 필요가 없었다.
+  // 나 소개·성격, 친구·인간관계, 일할 때의 나, 취향, 여행 스타일은
+  // 초대장 컨셉 하나만 지원한다(테마 파라미터 없음) — 이상형처럼 여러
+  // 테마를 지원할 필요가 없었다.
   if (share.record.resultLayoutId === "selfIntro") {
     if (!isSelfIntroResult(share.record.result)) return new Response("Not found", { status: 404 });
     const response = new ImageResponse(buildSelfIntroCardElement(share.record.result), {
@@ -109,6 +115,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (share.record.resultLayoutId === "taste") {
     if (!isTasteResult(share.record.result)) return new Response("Not found", { status: 404 });
     const response = new ImageResponse(buildTasteCardElement(share.record.result), {
+      width: INVITATION_CARD_WIDTH,
+      height: INVITATION_CARD_HEIGHT,
+      fonts: loadInvitationFonts(),
+    });
+    const optimized = await optimizeCardPng(Buffer.from(await response.arrayBuffer()));
+    return new Response(optimized, { headers: IMAGE_CACHE_HEADERS });
+  }
+
+  if (share.record.resultLayoutId === "travelStyle") {
+    if (!isTravelResult(share.record.result)) return new Response("Not found", { status: 404 });
+    const response = new ImageResponse(buildTravelCardElement(share.record.result), {
       width: INVITATION_CARD_WIDTH,
       height: INVITATION_CARD_HEIGHT,
       fonts: loadInvitationFonts(),
