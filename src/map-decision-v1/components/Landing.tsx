@@ -36,6 +36,13 @@ const DEPTH_TOPIC_IDS = ["career"];
 const VIRAL_TOPIC_IDS = ["idealType", "selfIntro", "friendship", "work", "taste", "travelStyle"];
 const SAFETY_NET_TOPIC_ID = "freeform";
 
+// 아이콘 자리(이모지)를 없애고 제목·설명 타이포만 남긴다 — 시스템
+// 이모지가 기기·브라우저마다 다르게 렌더링돼 브랜드 자산이 될 수
+// 없다는 문제 때문이다(갤럭시·아이폰·카톡 인앱 브라우저에서 각각
+// 다른 그림이 나온다). 대안으로 검토한 단색 선 아이콘은 프로젝트에
+// 아이콘 라이브러리가 전혀 없어(package.json 확인) 주제마다 SVG를
+// 새로 그려야 했는데, 렌더링 비교 결과 타이포만 남긴 쪽이 더
+// 담백하고 일관돼 이 안으로 확정했다.
 function TopicCard({
   topic,
   onStart,
@@ -52,7 +59,7 @@ function TopicCard({
       aria-disabled={disabled}
       onClick={() => (disabled ? onLocked(topic) : onStart(topic.id))}
       className={cx(
-        "group relative flex min-h-[132px] flex-col items-start gap-2 rounded-large border border-border bg-surface p-4 text-left shadow-subtle transition duration-normal ease-emphasized",
+        "group relative flex min-h-[112px] flex-col items-start justify-center gap-2 rounded-large border border-border bg-surface p-4 text-left shadow-subtle transition duration-normal ease-emphasized",
         disabled ? "opacity-60" : "hover:-translate-y-1 hover:border-border-strong hover:shadow-floating",
       )}
     >
@@ -61,11 +68,8 @@ function TopicCard({
           준비 중
         </span>
       ) : null}
-      <span className="grid size-11 place-items-center rounded-medium bg-background-subtle text-xl" aria-hidden="true">
-        {topic.icon}
-      </span>
-      <span className="text-base font-black tracking-[-0.02em]">{topic.name}</span>
-      <span className="text-xs font-semibold leading-5 text-text-secondary">{topic.oneLiner}</span>
+      <span className="break-keep text-base font-black tracking-[-0.02em]">{topic.name}</span>
+      <span className="break-keep text-xs font-semibold leading-5 text-text-secondary">{topic.oneLiner}</span>
     </button>
   );
 }
@@ -81,10 +85,14 @@ function TopicSection({
   onStart: (topicId: string) => void;
   onLocked: (topic: TopicConfig) => void;
 }) {
+  // 카드가 1개뿐이면(현재 "차근차근, 깊이 있게") 2~3열 그리드에 넣지
+  // 않고 전폭 1열로 그린다 — 그리드 칸이 남아 오른쪽이 비어 보이는
+  // 문제를 없앤다. 카드가 여러 개면 기존 2~3열 그대로다.
+  const isSingle = ids.length === 1;
   return (
-    <section className="map-container py-3">
-      <p className="mb-3 px-1 text-xs font-black uppercase tracking-[-0.01em] text-text-muted">{kicker}</p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <section className="map-container py-4">
+      <p className="mb-4 px-1 text-lg font-black tracking-[-0.02em] text-text-primary">{kicker}</p>
+      <div className={cx("grid gap-4", isSingle ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3")}>
         {ids.map((id) => (
           <TopicCard key={id} topic={TOPICS[id]} onStart={onStart} onLocked={onLocked} />
         ))}
@@ -132,7 +140,18 @@ export function Landing({
       <header className="map-container flex items-center justify-between rounded-pill border border-border bg-surface px-4 py-3 shadow-floating backdrop-blur-xl">
         <Brand />
         <div className="flex items-center gap-2">
-          <Badge tone={saveState === "saving" ? "default" : "success"}>{saveState === "loading" ? "불러오는 중" : saveState === "saving" ? "자동 저장 중" : "자동 저장됨"}</Badge>
+          {/* 이 배지는 저장할 진행 상태(대화·퀴즈 답변이나 완료된 결과)가
+              실제로 있을 때만 보여준다. 이전에는 조건 없이 항상 렌더링돼
+              첫 방문자에게도 "자동 저장됨"이 떴다 — 원인은 saveState 자체가
+              "자동저장 기능이 정상 동작 중"이라는 시스템 상태만 나타내고
+              "저장할 내용이 있는지"는 반영하지 않기 때문이다(MapDecisionProduct.tsx의
+              마운트 effect가 세션에 내용이 있든 없든 hydration만 끝나면
+              saveState를 "saved"로 바꾼다). 그래서 배지 노출 여부는 그
+              값을 그대로 따르지 않고, 이미 같은 목적으로 쓰이는
+              hasDraft/hasStaleResult로 따로 게이트한다. */}
+          {hasDraft || hasStaleResult ? (
+            <Badge tone={saveState === "saving" ? "default" : "success"}>{saveState === "loading" ? "불러오는 중" : saveState === "saving" ? "자동 저장 중" : "자동 저장됨"}</Badge>
+          ) : null}
           {hasStaleResult ? (
             <Button variant="secondary" onClick={onViewResult}>이전 결과 보기</Button>
           ) : hasDraft ? (
@@ -158,8 +177,8 @@ export function Landing({
         </button>
       </section>
 
-      {/* 홍보 유입의 주 목적지(완성된 이상형·나소개)를 먼저 보여준다 —
-          "차근차근, 깊이 있게"는 3개 중 2개가 준비 중 잠금이라 아래로
+      {/* 홍보 유입의 주 목적지(완성된 이상형·나소개 등 6개)를 먼저
+          보여준다 — "차근차근, 깊이 있게"(현재 career 1개뿐)는 아래로
           내렸다. 순서는 이 두 줄의 렌더링 순서로만 정해진다(공유
           배열이 아니라 각자 자기 ids 배열을 가진 별개의 TopicSection
           호출) — 섹션 내부 카드 순서(DEPTH_TOPIC_IDS/VIRAL_TOPIC_IDS)는
@@ -174,8 +193,8 @@ export function Landing({
           className="flex w-full flex-col items-start gap-1 rounded-large border border-dashed border-border-strong bg-surface/60 p-4 text-left transition hover:border-primary-border-soft"
         >
           <span className="text-xs font-black text-text-muted">딱 맞는 게 없나요?</span>
-          <span className="text-sm font-bold">
-            {safetyNetTopic.icon} 자유롭게 이야기해도 괜찮아요 — {safetyNetTopic.name}
+          <span className="break-keep text-sm font-bold">
+            자유롭게 이야기해도 괜찮아요 — {safetyNetTopic.name}
           </span>
           <Badge className="mt-1" tone="default">준비 중</Badge>
         </button>
