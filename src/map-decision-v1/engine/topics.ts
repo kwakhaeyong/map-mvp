@@ -1,11 +1,12 @@
 // MAP 종류(주제) 레지스트리.
 //
-// 지금은 career(진로·커리어, 대화형)와 idealType(이상형, 퀴즈형)만
-// 실제로 연결돼 있다. 나머지 8개는 종류 선택 화면(Landing.tsx)에
-// "준비 중"으로 노출되지만 implemented: false라 눌러도 대화가 시작되지
-// 않는다 — conversationFocus/resultFocus는 아직 비어 있고
-// entryQuestion/entryChips도 실제 대화 톤에 맞게 다듬어지기 전이다. 각
-// 주제가 완성되면 implemented를 true로 바꾸고 내용을 채운다.
+// 지금은 career(진로·커리어, 대화형)·idealType(이상형)·selfIntro(나 소개)·
+// friendship(친구·인간관계)·work(일할 때의 나)·taste(취향)·travelStyle
+// (여행 스타일)까지 7개가 실제로 연결돼 있다. freeform(자유 고민)만 종류
+// 선택 화면(Landing.tsx)에 "준비 중"으로 노출되고 implemented: false라
+// 눌러도 대화가 시작되지 않는다 — conversationFocus/resultFocus는 아직
+// 비어 있고 entryQuestion/entryChips도 실제 대화 톤에 맞게 다듬어지기
+// 전이다. 새 주제가 완성되면 implemented를 true로 바꾸고 내용을 채운다.
 
 export type TopicCategory = "viral" | "depth"; // 바이럴 / 깊이
 export type TopicGrade = "flagship" | "light"; // 완성형 / 경량
@@ -13,10 +14,10 @@ export type ResultLayoutId =
   | "career" // 완성형 전용 틀
   | "idealType" // 완성형 전용 틀
   | "selfIntro" // 완성형 전용 틀
-  | "friendship" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
-  | "work" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
-  | "taste" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
-  | "travelStyle" // 완성형 전용 틀(문항만 있고 결과 화면은 아직 없음 — implemented: false)
+  | "friendship" // 완성형 전용 틀
+  | "work" // 완성형 전용 틀
+  | "taste" // 완성형 전용 틀
+  | "travelStyle" // 완성형 전용 틀
   | "viral-common" // 경량 공통 틀(바이럴 계열)
   | "depth-common"; // 경량 공통 틀(깊이 계열)
 
@@ -3170,7 +3171,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     // 없었다.
     entryQuestion: "여행 갈 때 뭘 제일 중요하게 봐요?",
     entryChips: ["새로운 경험", "여유로운 휴식", "잘 모르겠어요"],
-    implemented: false,
+    implemented: true,
   },
   freeform: {
     id: "freeform",
