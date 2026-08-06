@@ -9,7 +9,7 @@
 // (ideal-type-generator.ts의 IDEAL_TYPE_SCHEMA)는 건드리지 않는다;
 // 태그는 AI 응답을 파싱한 뒤 코드에서 별도로 붙인다.
 //
-// 정확히 4개 축, 총 42개 태그(카테고리별 매핑 항목 합) — 정의된 축은
+// 정확히 4개 축, 총 52개 태그(카테고리별 매핑 항목 합) — 정의된 축은
 // 전부 카드에 표시된다(카드에 안 쓰는 "죽은" 카테고리를 사전에 남겨두지
 // 않는다). 처음에는 6개 축을 만들고 그중 4개만 표시하는 구조였는데,
 // 실제로 5세트를 뽑아보니(모든 축이 선택지 4~6개짜리라) 서로 다른 두
@@ -46,7 +46,37 @@
 // "관계"를 전제로 한 질문이라 일할 때의 나에는 맞지 않는다 — 대신 "일이
 // 굴러갈 때 내 역할"을 묻는 workRole, "일하는 속도 패턴"을 묻는
 // workPace로 연결하고, 태그도 새로 짓는다(기존 태그와 겹치지 않게).
-type TagTopicId = "idealType" | "selfIntro" | "friendship" | "work";
+//
+// 다섯 번째 주제(취향, taste)부터는 카테고리 "이름"과 실제로 연결한
+// 축의 "의미"가 눈에 띄게 어긋나기 시작한다. lifestyle만 taste의
+// 문항(taste의 11번, 나 소개 것을 원문 그대로 복사)이 축 이름·질문
+// 성격이 같아 그대로 공유하고, 나머지 세 카테고리는 이름이 뜻하는
+// 바와 실제로 taste에 연결한 축의 내용이 다르다:
+// - relationshipWants("관계에서 원하는 것") ← tasteMode(혼자 있는
+//   시간에 뭘 하는지 — 관계와 무관, 취향 소비 방식에 대한 답)
+// - relationshipRhythm("관계 리듬") ← tasteDepth(좋아하는 걸 얼마나
+//   깊게 파는지 — 관계가 아니라 몰입 정도에 대한 답)
+// - conflictPattern("갈등 대처 방식") ← tasteChange(취향이 시간에
+//   따라 얼마나 바뀌는지 — 갈등과 무관, 취향의 변화 양상에 대한 답)
+// 이 어긋남은 의도적으로 감수한 것이다: 카테고리 id·label은 이상형·
+// 관계 계열 주제에서 먼저 붙은 "내부 이름"일 뿐이고, 궁합
+// 비교(compatibility.ts의 compareTags)는 그 이름의 뜻이 아니라 같은
+// category.id끼리 태그가 같은지만 비교한다 — 그래서 이름이 안 맞아도
+// 기능은 그대로 성립한다. 다만 나중에 이 파일을 보는 사람이 "왜
+// relationshipRhythm에 취향 얘기가 들어있지?"라고 헷갈리지 않도록
+// 여기 명시해둔다. 새 카테고리를 만들지 않는 이유는 PR #133의 "4축
+// 전부 있어야 궁합이 성립한다" 조건 때문이다 — 카테고리를 늘리면
+// 기존 네 주제의 결과에는 그 다섯 번째 축이 없어 항상 "비교 불가"로
+// 떨어진다.
+//
+// tasteDepth의 "끝까지 파는 편" 태그(#외곬형)는 같은
+// relationshipRhythm 카테고리에 있는 friendDistance의 "몇 명과 깊게
+// 지내는 사람"(#소수깊음형)과 뜻이 비슷하게 들릴 수 있어(둘 다
+// "깊이"를 다룸) 일부러 겹치지 않는 다른 단어를 골랐다 — 문자열
+// 자체는 원래도 겹치지 않지만(TAG_TO_CATEGORY가 문자열 키라 겹치면
+// 안 됨), 사람이 읽었을 때도 서로 다른 개념으로 읽히게 하려는
+// 의도다.
+type TagTopicId = "idealType" | "selfIntro" | "friendship" | "work" | "taste";
 type TagCategory = {
   id: string;
   label: string;
@@ -73,7 +103,7 @@ export const TAG_CATEGORIES: TagCategory[] = [
     // 공유하지만, 친구·인간관계에는 "연애 상대"라는 개념이 없어 같은
     // 문항을 쓸 수 없다 — 대신 "모임에서 나는 어떤 역할인지"를 묻는
     // friendRole로 연결한다(위 파일 상단 주석 참고).
-    axisId: { idealType: "relationship", selfIntro: "relationship", friendship: "friendRole", work: "workRole" },
+    axisId: { idealType: "relationship", selfIntro: "relationship", friendship: "friendRole", work: "workRole", taste: "tasteMode" },
     mapping: {
       // 이상형·나 소개 전용(기존 6개, 삭제하지 않음).
       "표현 많이 해주기": "#표현중시형",
@@ -96,6 +126,13 @@ export const TAG_CATEGORIES: TagCategory[] = [
       "사람을 붙이는 쪽": "#연결형",
       "기준을 지키는 쪽": "#기준수호형",
       "흐름에 맞추는 쪽": "#흐름형",
+      // 취향 전용(신규 4개) — 이 카테고리 이름("관계에서 원하는 것")과
+      // 무관하게, 혼자 있는 시간에 뭘 하는지에 대한 답(위 파일 상단
+      // 주석의 "어긋남" 설명 참고).
+      "보는 편": "#감상형",
+      "듣는 편": "#청취형",
+      "읽는 편": "#독서형",
+      "만드는 편": "#창작형",
     },
   },
   {
@@ -117,7 +154,7 @@ export const TAG_CATEGORIES: TagCategory[] = [
     // 이상형은 새 축(idealStressResponse, "상대가 이랬으면 좋겠다")을
     // 쓰고, 나 소개·친구·인간관계는 기존 축(experienceStressResponse,
     // "나는 실제로 이렇게 한다")을 그대로 쓴다 — 위 파일 상단 주석 참고.
-    axisId: { idealType: "idealStressResponse", selfIntro: "experienceStressResponse", friendship: "experienceStressResponse", work: "experienceStressResponse" },
+    axisId: { idealType: "idealStressResponse", selfIntro: "experienceStressResponse", friendship: "experienceStressResponse", work: "experienceStressResponse", taste: "tasteChange" },
     mapping: {
       // 나 소개 전용(기존 4개, 삭제하지 않음) — "나는 실제로 어떻게
       // 하는지"에 대한 답.
@@ -133,6 +170,13 @@ export const TAG_CATEGORIES: TagCategory[] = [
       "혼자 정리하고 넘어가는 사람": "#혼자정리바람형",
       "잠깐 거리를 두는 사람": "#거리두기바람형",
       "주변에 털어놓는 사람": "#나눔바람형",
+      // 취향 전용(신규 4개) — 이 카테고리 이름("갈등 대처 방식")과
+      // 무관하게, 취향이 시간에 따라 얼마나 바뀌는지에 대한 답(위 파일
+      // 상단 주석의 "어긋남" 설명 참고).
+      "거의 그대로인 편": "#한결같은형",
+      "조금씩 넓어진 편": "#확장형",
+      "완전히 바뀐 편": "#전환형",
+      "계속 바뀌는 편": "#유동형",
     },
   },
   {
@@ -144,7 +188,7 @@ export const TAG_CATEGORIES: TagCategory[] = [
     // 확률도 가장 높다. 친구·인간관계는 binary1(연애 상대 개념 전제)
     // 대신 "혼자 지내는 게 편한지 vs 여럿과 어울리는지"를 묻는
     // friendDistance로 연결한다.
-    axisId: { idealType: "binary1", selfIntro: "binary1", friendship: "friendDistance", work: "workPace" },
+    axisId: { idealType: "binary1", selfIntro: "binary1", friendship: "friendDistance", work: "workPace", taste: "tasteDepth" },
     mapping: {
       // 이상형·나 소개 전용(기존 2개, 삭제하지 않음).
       "오래 편안한 사람": "#편안함추구형",
@@ -159,6 +203,13 @@ export const TAG_CATEGORIES: TagCategory[] = [
       "몰아서 집중하는 사람": "#몰입형",
       "꾸준히 일정하게 하는 사람": "#꾸준형",
       "컨디션 따라 들쭉날쭉한 사람": "#기복형",
+      // 취향 전용(신규 2개) — 이 카테고리 이름("관계 리듬")과 무관하게,
+      // 좋아하는 걸 얼마나 깊게 파는지에 대한 답(위 파일 상단 주석의
+      // "어긋남" 설명 참고). "끝까지 파는 편"의 태그(#외곬형)는 바로
+      // 위 friendDistance의 "몇 명과 깊게 지내는 사람"(#소수깊음형)과
+      // 뜻이 비슷하게 들릴 수 있어 일부러 다른 단어를 골랐다.
+      "끝까지 파는 편": "#외곬형",
+      "여러 개를 얕게 즐기는 편": "#다방면형",
     },
   },
 ];
@@ -173,9 +224,10 @@ function firstLabel(quizAnswers: Record<string, string[]> | undefined, axisId: s
 // 퀴즈별로 axisId가 다른 카테고리를 올바른 축으로 풀어내는 데만 쓰인다
 // (resolveAxisId) — axisId가 문자열 하나뿐인 카테고리는 topicId와
 // 무관하게 항상 같은 축을 본다. resolveAxisId가 undefined를 돌려주는
-// 경우(이론상 지금은 없다 — 4개 카테고리 전부 네 주제 모두에 axisId가
-// 등록돼 있다)는 그 카테고리만 조용히 건너뛴다, 존재하지 않는 축을
-// 조회해서 엉뚱한 답을 태그로 착각하는 사고를 막기 위해서다.
+// 경우(이론상 지금은 없다 — 4개 카테고리 전부 다섯 주제 모두에
+// axisId가 등록돼 있다)는 그 카테고리만 조용히 건너뛴다, 존재하지
+// 않는 축을 조회해서 엉뚱한 답을 태그로 착각하는 사고를 막기
+// 위해서다.
 export function getIdealTypeTags(quizAnswers: Record<string, string[]> | undefined, topicId: TagTopicId): string[] {
   if (!quizAnswers) return [];
   const tags: string[] = [];
