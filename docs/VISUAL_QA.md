@@ -33,4 +33,4 @@ Update baselines only after human review of all six golden captures. Baseline up
 
 ## Approval before merge
 
-A reviewer must inspect the screenshots or the running app at the required viewports before merge. Build success alone is insufficient.
+Non-draft PRs merge automatically once the Quality Gate passes (`.github/workflows/auto-merge.yml`), with no separate human approval step between Ready-for-review and merge. This means screenshot/running-app inspection at the required viewports must happen **before opening the PR as Ready** (or before the Quality Gate finishes) — that is the only human checkpoint left. Build success alone is insufficient; open the PR as Draft until this inspection is done.

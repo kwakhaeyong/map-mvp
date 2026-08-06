@@ -25,7 +25,7 @@
 - Preserve voice, conversation, storage, MAP, and result behavior.
 - One PR must have one clear purpose.
 - Do not reuse closed PRs.
-- Do not automatically merge.
+- Merging itself is automatic: `.github/workflows/auto-merge.yml` squash-merges any non-draft PR into `main` as soon as the Quality Gate passes, with no separate owner approval step. Do not add a manual merge step, and do not bypass or disable the Quality Gate to force a merge — open the PR as Draft instead if it is not ready to go live.
 - Avoid concurrent modification of the same core files.
 - Rebase/fetch latest main before major edits when a remote exists.
 - Resolve conflicts by preserving valid behavior from both sides.
