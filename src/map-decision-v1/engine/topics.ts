@@ -2601,7 +2601,7 @@ export const TOPICS: Record<string, TopicConfig> = {
     // 이유가 없었다.
     entryQuestion: "일할 때 나는 어떤 사람이에요?",
     entryChips: ["계획적으로 움직이는 편이에요", "임기응변에 강한 편이에요", "잘 모르겠어요"],
-    implemented: false,
+    implemented: true,
   },
   taste: {
     id: "taste",
