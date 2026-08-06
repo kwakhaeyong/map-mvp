@@ -69,31 +69,34 @@ function HeroHeader({ result }: { result: TravelResult }) {
 
 // discovery의 첫 항목은 생성기가 "가장 강한 발견"을 의도적으로 앞에
 // 두고, 그 문장이 그대로 공유되는 한 줄이 된다(travel-generator.ts의
-// SYSTEM_PROMPT 참고). 그런데 화면은 4개를 전부 같은 회색 인용 박스로
-// 그려 위계가 없었다. 첫 항목만 카드 안에 다시 카드를 넣는 대신,
-// primary 배경의 큰 블록으로 확실히 분리하고(제목 블록의 색상 바와
-// 같은 primary 토큰이라 새 색을 도입하지 않는다), 나머지는 기존
-// 회색 인용 스타일보다 한 단계 낮춘 담백한 리스트로 남긴다 — 완전히
-// 안 보이게 죽이면 안 되니 글자 크기는 유지하고 배경·테두리 강조만
-// 없앤다.
+// SYSTEM_PROMPT 참고). 처음엔 이 항목을 primary 배경으로 꽉 채워
+// 분리했는데, 그 조합(border-primary bg-primary text-primary-foreground)이
+// 하단 "너도 만들어봐" 버튼과 완전히 같아 "읽을 문장"이 아니라
+// "누를 것"처럼 보이는 문제가 있었다(공유 뷰에서는 바로 아래
+// MidResultCta와 같은 층으로 읽혀 더 심했다). 색 채우기는 버튼의
+// 몫으로 남기고, 대신 다른 다섯 주제의 발견 인용구가 이미 쓰는
+// border-l-4 border-l-primary 좌측 색선만 가져와 배경 없이 글씨
+// 크기만 키운다. 나머지 3개는 재설계 이전에 쓰던 카드 형태(테두리+
+// bg-surface-elevated)를 복원해 "서로 다른 발견 여러 개"라는 구조를
+// 되살리고, 글자 크기를 첫 항목보다 작게 둬 위계만 유지한다.
 function PatternsSection({ items }: { items: string[] }) {
   const [headline, ...rest] = items;
   return (
     <Card className="flex flex-col gap-4">
       <SectionHeader title="여행에서 발견한 것" description="자기인식과 실제 행동 사이 간극이에요." />
       {headline ? (
-        <blockquote className="rounded-large border-2 border-primary bg-primary p-5 text-lg font-black leading-8 text-primary-foreground sm:text-xl sm:leading-9">
+        <blockquote className="border-l-4 border-primary pl-4 text-base font-black leading-7 text-text-primary sm:text-lg sm:leading-8">
           {headline}
         </blockquote>
       ) : null}
       {rest.length > 0 ? (
-        <ul className="flex flex-col divide-y divide-border">
+        <div className="flex flex-col gap-2">
           {rest.map((item, index) => (
-            <li key={index} className="py-3 text-sm font-bold leading-6 text-text-primary first:pt-0 last:pb-0">
+            <blockquote key={index} className="rounded-medium border border-border border-l-4 border-l-primary bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
               {item}
-            </li>
+            </blockquote>
           ))}
-        </ul>
+        </div>
       ) : null}
     </Card>
   );
