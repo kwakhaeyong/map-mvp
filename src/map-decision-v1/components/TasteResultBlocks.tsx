@@ -124,8 +124,8 @@ function PatternsSection({ items }: { items: string[] }) {
       <SectionHeader title="반복되는 취향 패턴" description="답변을 가로질러 반복되는 결이에요." />
       <div className="flex flex-col gap-2">
         {items.map((item, index) => (
-          <blockquote key={index} className="rounded-medium border border-border bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
-            “{item}”
+          <blockquote key={index} className="rounded-medium border border-border border-l-4 border-l-primary bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
+            {item}
           </blockquote>
         ))}
       </div>
