@@ -1,12 +1,18 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useRef, type MutableRefObject, type ReactNode } from "react";
 import { SelfIntroMatrix, SelfIntroMatrixPoint, SelfIntroResult, SelfIntroRoadmap, SelfIntroTraits, IdealTypeSelfReflection } from "../types";
 import { Card } from "./ui/primitives";
 
 // 나 소개·성격 결과를 "보여주기만" 하는 순수 프레젠테이션 컴포넌트
-// 모음. IdealTypeResultBlocks.tsx와 같은 원리(생성 상태·공유 버튼 없는
-// "use client" 불필요 파일)이지만, 이상형 코드를 건드리지 않기 위해
-// 별도 파일로 새로 작성했다 — 라이브 결과 화면(SelfIntroCard.tsx)과
-// 공유 읽기 전용 화면(app/r/[id]/page.tsx) 둘 다에서 재사용한다.
+// 모음. IdealTypeResultBlocks.tsx와 같은 원리이지만, 이상형 코드를
+// 건드리지 않기 위해 별도 파일로 새로 작성했다 — 라이브 결과 화면
+// (SelfIntroCard.tsx)과 공유 읽기 전용 화면(app/r/[id]/page.tsx) 둘
+// 다에서 재사용한다.
+//
+// 예전엔 "use client"가 필요 없었는데, 아래 목차(ResultNav)가 useRef와
+// onClick을 쓰게 되면서 이 파일도 클라이언트 컴포넌트가 됐다(2026-08,
+// 이유는 IdealTypeResultBlocks.tsx의 같은 주석 참고).
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -22,6 +28,39 @@ function SectionHeader({ title, description }: { title: string; description: str
       <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary" />
       <h2 className="text-base font-black tracking-[-0.02em] text-text-primary">{title}</h2>
       <p className="mt-0.5 text-xs font-semibold leading-5 text-text-secondary">{description}</p>
+    </div>
+  );
+}
+
+// 이유·구현 방식은 IdealTypeResultBlocks.tsx의 같은 이름 컴포넌트와
+// 동일하다(구조를 통일하기 위해 그대로 복제) — 주석은 그쪽에 적었다.
+// 라벨만 이 주제의 실제 섹션 제목에 맞춰 골랐다: "모습"은
+// MatrixSection 제목("나의 여러 모습")에서, "다음 행동"은
+// RoadmapSection의 현재 제목과 그대로 맞췄다.
+const NAV_ITEMS: Array<{ key: string; label: string }> = [
+  { key: "values", label: "가치관" },
+  { key: "patterns", label: "패턴" },
+  { key: "matrix", label: "모습" },
+  { key: "traits", label: "특징" },
+  { key: "reflection", label: "성찰" },
+  { key: "roadmap", label: "다음 행동" },
+];
+
+function ResultNav({ sectionRefs }: { sectionRefs: MutableRefObject<Record<string, HTMLDivElement | null>> }) {
+  return (
+    <div className="sticky top-0 z-10 border-b border-border bg-background py-2">
+      <div className="flex gap-1.5 overflow-x-auto">
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => sectionRefs.current[item.key]?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="inline-flex min-h-8 shrink-0 items-center whitespace-nowrap rounded-pill border border-border bg-surface-elevated px-1.5 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -334,17 +373,31 @@ export function SelfIntroResultBlocks({
   afterReflection?: ReactNode;
   showHero?: boolean;
 }) {
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   return (
     <>
       {showHero ? <HeroHeader result={result} /> : null}
       {afterHero}
-      <CoreValuesSection coreValues={result.coreValues} />
-      <PatternsSection items={result.patterns} />
-      <MatrixSection matrix={result.matrix} />
-      <TraitsSection traits={result.traits} />
-      <SelfReflectionSection selfReflection={result.selfReflection} />
+      <ResultNav sectionRefs={sectionRefs} />
+      <div ref={(el) => { sectionRefs.current.values = el; }} className="scroll-mt-16">
+        <CoreValuesSection coreValues={result.coreValues} />
+      </div>
+      <div ref={(el) => { sectionRefs.current.patterns = el; }} className="scroll-mt-16">
+        <PatternsSection items={result.patterns} />
+      </div>
+      <div ref={(el) => { sectionRefs.current.matrix = el; }} className="scroll-mt-16">
+        <MatrixSection matrix={result.matrix} />
+      </div>
+      <div ref={(el) => { sectionRefs.current.traits = el; }} className="scroll-mt-16">
+        <TraitsSection traits={result.traits} />
+      </div>
+      <div ref={(el) => { sectionRefs.current.reflection = el; }} className="scroll-mt-16">
+        <SelfReflectionSection selfReflection={result.selfReflection} />
+      </div>
       {afterReflection}
-      <RoadmapSection roadmap={result.roadmap} />
+      <div ref={(el) => { sectionRefs.current.roadmap = el; }} className="scroll-mt-16">
+        <RoadmapSection roadmap={result.roadmap} />
+      </div>
     </>
   );
 }

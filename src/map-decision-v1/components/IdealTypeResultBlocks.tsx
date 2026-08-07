@@ -1,12 +1,20 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useRef, type MutableRefObject, type ReactNode } from "react";
 import { IdealTypeFlags, IdealTypeMatrix, IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmap, IdealTypeSelfReflection } from "../types";
 import { Card } from "./ui/primitives";
 
 // 이상형 결과를 "보여주기만" 하는 순수 프레젠테이션 컴포넌트 모음.
-// 생성 상태 관리(useState/useEffect)나 공유 버튼 같은 상호작용은 여기
-// 없다 — 그래서 이 파일은 "use client"가 필요 없고, 라이브 결과 화면
-// (IdealTypeCard.tsx)과 공유 링크 읽기 전용 화면(app/r/[id]/page.tsx)
-// 둘 다에서 그대로 재사용한다.
+// 라이브 결과 화면(IdealTypeCard.tsx)과 공유 링크 읽기 전용 화면
+// (app/r/[id]/page.tsx) 둘 다에서 그대로 재사용한다.
+//
+// 예전엔 useState/useEffect나 공유 버튼 같은 상호작용이 전혀 없어
+// "use client"가 필요 없었는데, 아래 목차(ResultNav)가 useRef와
+// onClick을 쓰게 되면서 이 파일도 클라이언트 컴포넌트가 됐다(2026-08).
+// app/r/[id]/page.tsx는 서버 컴포넌트라, 이 파일을 가져다 쓰는
+// 부분만 클라이언트 번들에 포함된다 — 같은 페이지의
+// CollapsibleFriendResult.tsx·DeleteShareSection.tsx도 이미 같은
+// 방식으로 "use client"를 쓰고 있다.
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -24,6 +32,45 @@ function SectionHeader({ title, description }: { title: string; description: str
       <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary" />
       <h2 className="text-base font-black tracking-[-0.02em] text-text-primary">{title}</h2>
       <p className="mt-0.5 text-xs font-semibold leading-5 text-text-secondary">{description}</p>
+    </div>
+  );
+}
+
+// 아래 6개 라벨은 각 섹션의 실제 제목(SectionHeader의 title)을 요약한
+// 것이다 — "다음 행동"은 RoadmapSection의 현재 제목과 그대로 맞췄고,
+// "적합도"는 MatrixSection 제목("끌림 × 관계 적합도")에서 가져왔다.
+const NAV_ITEMS: Array<{ key: string; label: string }> = [
+  { key: "criteria", label: "기준" },
+  { key: "patterns", label: "패턴" },
+  { key: "matrix", label: "적합도" },
+  { key: "flags", label: "신호등" },
+  { key: "reflection", label: "성찰" },
+  { key: "roadmap", label: "다음 행동" },
+];
+
+// 스크롤해도 화면에 붙어있게 만든다 — 테스터 지적("스크롤이 길다")에
+// 대한 대응으로, 예전엔 <a href="#id"> 네이티브 해시 이동으로 만들었다가
+// MapDecisionProduct.tsx의 popstate 핸들러가 그 이동을 "알 수 없는
+// 화면 전환"으로 오판해 결과 화면 밖으로 튕겨나가는 문제가 있었다
+// (2026-08, PR #194). 이번엔 URL/history를 전혀 건드리지 않도록
+// <button type="button">과 ref 기반 scrollIntoView로 다시 만든다 —
+// Conversation.tsx가 새 메시지마다 맨 아래로 스크롤하는 것과 같은
+// 방식이다. id 속성도 쓰지 않는다(해시가 생길 여지 자체를 없앤다).
+function ResultNav({ sectionRefs }: { sectionRefs: MutableRefObject<Record<string, HTMLDivElement | null>> }) {
+  return (
+    <div className="sticky top-0 z-10 border-b border-border bg-background py-2">
+      <div className="flex gap-1.5 overflow-x-auto">
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => sectionRefs.current[item.key]?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="inline-flex min-h-8 shrink-0 items-center whitespace-nowrap rounded-pill border border-border bg-surface-elevated px-1.5 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -409,11 +456,12 @@ function RoadmapSection({ roadmap }: { roadmap: IdealTypeRoadmap }) {
 // 쓴다. 친구 링크로 들어온 사람에게는 궁합 확인이 방문 목적이라,
 // 6블록을 다 지나야 나오던 예전 위치보다 여기가 맞다.
 //
-// 목차 칩(SectionNav)을 없앴다(2026-08) — 앵커 클릭이 결과 화면을
-// 이탈시켜 다른 화면(퀴즈)으로 돌려보내는 문제가 있었고(원인은
-// MapDecisionProduct.tsx의 popstate 핸들러 참고), 애초에 공유 맥락에서
-// "탐색해야 할 문서"라는 신호를 주는 것도 목적에 안 맞았다. travelStyle
-// (TravelResultBlocks.tsx)이 먼저 없앤 것과 같은 방향이다.
+// 목차 칩(ResultNav)을 <a href="#id"> 방식으로 만들었다가(2026-08
+// 이전) 앵커 클릭이 결과 화면을 이탈시켜 다른 화면(퀴즈)으로
+// 돌려보내는 문제로 한 번 없앴었다(원인은 MapDecisionProduct.tsx의
+// popstate 핸들러 참고). 이후 테스터가 "스크롤이 길다"고 다시 지적해,
+// URL/history를 전혀 건드리지 않는 버튼+ref 방식(위 ResultNav 참고)으로
+// 되살렸다(2026-08).
 //
 // afterReflection: 자기성찰 블록(가장 감정적으로 몰입되는 지점) 바로
 // 다음에 끼워 넣을 요소 — 지금은 공유 읽기 전용 화면(app/r/[id]/
@@ -433,17 +481,31 @@ export function IdealTypeResultBlocks({
   afterReflection?: ReactNode;
   showHero?: boolean;
 }) {
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   return (
     <>
       {showHero ? <HeroHeader result={result} /> : null}
       {afterHero}
-      <CriteriaSection criteria={result.criteria} />
-      <PatternsSection items={result.attractionPatterns} />
-      <MatrixSection matrix={result.matrix} />
-      <FlagsSection flags={result.flags} />
-      <SelfReflectionSection selfReflection={result.selfReflection} />
+      <ResultNav sectionRefs={sectionRefs} />
+      <div ref={(el) => { sectionRefs.current.criteria = el; }} className="scroll-mt-16">
+        <CriteriaSection criteria={result.criteria} />
+      </div>
+      <div ref={(el) => { sectionRefs.current.patterns = el; }} className="scroll-mt-16">
+        <PatternsSection items={result.attractionPatterns} />
+      </div>
+      <div ref={(el) => { sectionRefs.current.matrix = el; }} className="scroll-mt-16">
+        <MatrixSection matrix={result.matrix} />
+      </div>
+      <div ref={(el) => { sectionRefs.current.flags = el; }} className="scroll-mt-16">
+        <FlagsSection flags={result.flags} />
+      </div>
+      <div ref={(el) => { sectionRefs.current.reflection = el; }} className="scroll-mt-16">
+        <SelfReflectionSection selfReflection={result.selfReflection} />
+      </div>
       {afterReflection}
-      <RoadmapSection roadmap={result.roadmap} />
+      <div ref={(el) => { sectionRefs.current.roadmap = el; }} className="scroll-mt-16">
+        <RoadmapSection roadmap={result.roadmap} />
+      </div>
     </>
   );
 }

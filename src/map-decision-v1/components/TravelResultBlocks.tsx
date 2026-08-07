@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useRef, type MutableRefObject, type ReactNode } from "react";
 import { TravelFit, TravelMatrix, TravelMatrixPoint, TravelResult, TravelRoadmap } from "../types";
 import { Card } from "./ui/primitives";
 
@@ -10,11 +12,14 @@ import { Card } from "./ui/primitives";
 // 그대로 재사용하되 이제 result.discovery를 받는다.
 
 // 여행 스타일 결과를 "보여주기만" 하는 순수 프레젠테이션 컴포넌트
-// 모음. TasteResultBlocks.tsx와 같은 원리(생성 상태·공유 버튼 없는
-// "use client" 불필요 파일)이지만, 다른 여섯 주제 코드를 건드리지
-// 않기 위해 별도 파일로 새로 작성했다 — 라이브 결과 화면
-// (TravelCard.tsx)과 공유 읽기 전용 화면(app/r/[id]/page.tsx, 다음
-// 작업) 둘 다에서 재사용할 예정이다.
+// 모음. TasteResultBlocks.tsx와 같은 원리이지만, 다른 여섯 주제 코드를
+// 건드리지 않기 위해 별도 파일로 새로 작성했다 — 라이브 결과 화면
+// (TravelCard.tsx)과 공유 읽기 전용 화면(app/r/[id]/page.tsx) 둘 다에서
+// 재사용한다.
+//
+// 예전엔 "use client"가 필요 없었는데, 아래 목차(ResultNav)가 useRef와
+// onClick을 쓰게 되면서 이 파일도 클라이언트 컴포넌트가 됐다(2026-08,
+// 이유는 IdealTypeResultBlocks.tsx의 같은 주석 참고).
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -32,16 +37,40 @@ function SectionHeader({ title, description }: { title: string; description: str
   );
 }
 
-// 목차 칩(SectionNav)을 없앴다 — 6블록일 때는 "탐색해야 할 문서"라는
-// 신호로 필요했지만, 4블록으로 줄면서 한 화면에서 스크롤 몇 번이면
-// 끝까지 보이는 분량이 됐다. 목차가 오히려 "더 많은 내용이 있다"는
-// 잘못된 기대를 준다.
-//
-// (2026-08) 나머지 다섯 주제(이상형·나 소개·우정·일·취향)와 진로
-// (career, FinalResultBlocks.tsx)의 목차 칩도 함께 제거했다 — 전부
-// 클릭해도 앵커로 스크롤되지 않고 결과 화면 자체를 이탈시키는 문제가
-// 있었다(MapDecisionProduct.tsx의 popstate 핸들러가 원인). 이제 7개
-// 결과 화면 전부 목차가 없다.
+// 목차 칩(SectionNav)을 <a href="#id"> 방식으로 없앴다가(2026-08),
+// 4블록이 됐을 때도 여전히 스크롤이 길다는 테스터 피드백이 있어
+// URL/history를 건드리지 않는 버튼+ref 방식(ResultNav, 아래)으로
+// 되살렸다 — 이유·구현 방식은 IdealTypeResultBlocks.tsx의 같은 이름
+// 컴포넌트와 동일하다. 이 주제는 4블록뿐이라 항목도 4개다. 라벨은
+// 실제 섹션 제목에 맞췄다: "발견"은 PatternsSection 제목("여행에서
+// 발견한 것")에서, "모습"은 MatrixSection 제목("나의 여러 모습")에서,
+// "방식"은 TravelFitSection 제목("잘 맞는 방식, 안 맞는 방식")에서,
+// "다음 행동"은 RoadmapSection의 현재 제목과 그대로 맞췄다.
+const NAV_ITEMS: Array<{ key: string; label: string }> = [
+  { key: "patterns", label: "발견" },
+  { key: "matrix", label: "모습" },
+  { key: "fit", label: "방식" },
+  { key: "roadmap", label: "다음 행동" },
+];
+
+function ResultNav({ sectionRefs }: { sectionRefs: MutableRefObject<Record<string, HTMLDivElement | null>> }) {
+  return (
+    <div className="sticky top-0 z-10 border-b border-border bg-background py-2">
+      <div className="flex gap-1.5 overflow-x-auto">
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => sectionRefs.current[item.key]?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="inline-flex min-h-8 shrink-0 items-center whitespace-nowrap rounded-pill border border-border bg-surface-elevated px-1.5 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // 다른 다섯 주제와 태그 축 일부를 공유하는 사전을 재사용하므로 시각적
 // 표현도 TasteTagRow(TasteResultBlocks.tsx)와 동일하게 맞춘다 — 클래스는
@@ -317,15 +346,25 @@ export function TravelResultBlocks({
   // 간격은 이 컴포넌트 내부(블록 간)에만 적용되고, TravelCard.tsx가
   // 감싼 바깥쪽 gap-3(이 컴포넌트 전체와 공유 버튼 영역 사이 간격)는
   // 그대로라 하단 공유 버튼 위치는 바뀌지 않는다.
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   return (
     <div className="flex flex-col gap-5">
       {showHero ? <HeroHeader result={result} /> : null}
       {afterHero}
-      <PatternsSection items={result.discovery} />
-      <MatrixSection matrix={result.matrix} />
+      <ResultNav sectionRefs={sectionRefs} />
+      <div ref={(el) => { sectionRefs.current.patterns = el; }} className="scroll-mt-16">
+        <PatternsSection items={result.discovery} />
+      </div>
+      <div ref={(el) => { sectionRefs.current.matrix = el; }} className="scroll-mt-16">
+        <MatrixSection matrix={result.matrix} />
+      </div>
       {afterReflection}
-      <TravelFitSection fit={result.fit} />
-      <RoadmapSection roadmap={result.roadmap} />
+      <div ref={(el) => { sectionRefs.current.fit = el; }} className="scroll-mt-16">
+        <TravelFitSection fit={result.fit} />
+      </div>
+      <div ref={(el) => { sectionRefs.current.roadmap = el; }} className="scroll-mt-16">
+        <RoadmapSection roadmap={result.roadmap} />
+      </div>
     </div>
   );
 }
