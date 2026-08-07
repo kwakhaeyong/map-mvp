@@ -13,7 +13,6 @@
   --map-navy: var(--color-text-primary);
   --map-muted: var(--color-text-muted);
   --map-line: var(--color-border);
-  --map-indigo: #5b5bd6;
   --map-blue: var(--color-fact);
   --map-lavender: var(--color-feeling);
   --map-mint: var(--color-option);
@@ -32,11 +31,7 @@ body {
   margin: 0;
   min-height: 100vh;
   overflow-x: hidden;
-  background:
-    radial-gradient(circle at 10% 4%, rgba(91,91,214,.13), transparent 28rem),
-    radial-gradient(circle at 88% 12%, rgba(99,179,237,.12), transparent 24rem),
-    radial-gradient(circle at 55% 90%, rgba(92,211,167,.10), transparent 30rem),
-    linear-gradient(180deg, var(--map-ivory) 0%, #f8f1e7 45%, #fbf8f1 100%);
+  background: var(--map-ivory);
   /* "Pretendard Variable"을 맨 앞에 둔다 — -apple-system/BlinkMacSystemFont가
      먼저 오면 iOS/macOS는 라틴 문자만 그 폰트로 그리고 한글은 OS가 내부적으로
      자체 한글 폰트(Apple SD Gothic Neo 등)로 조용히 대체해버려서, 목록 뒤쪽에
@@ -52,29 +47,28 @@ button, textarea, input { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 textarea { letter-spacing: -0.01em; }
-::selection { background: rgba(91,91,214,.18); }
+::selection { background: rgba(62,107,112,.18); }
 
 .map-container { width: min(100%, 1280px); margin-inline: auto; }
 .map-card { border: 1px solid rgba(255,255,255,.9); border-radius: var(--map-radius); background: var(--map-surface); box-shadow: var(--map-shadow-md); backdrop-filter: blur(18px); }
 .btn { min-height: 46px; border-radius: 999px; padding: .75rem 1.15rem; font-weight: 750; transition: transform .2s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease; }
 .btn:hover { transform: translateY(-1px); }
 .btn:active { transform: translateY(0) scale(.985); }
-.btn-primary { background: var(--map-navy); color: white; box-shadow: 0 12px 28px rgba(21,33,59,.18); }
+.btn-primary { background: var(--map-navy); color: white; box-shadow: 0 12px 28px rgba(34,34,34,.18); }
 .btn-secondary { background: white; color: var(--map-navy); border: 1px solid var(--map-line); box-shadow: var(--map-shadow-sm); }
-.btn-ghost { background: rgba(255,255,255,.55); color: var(--map-muted); border: 1px solid rgba(21,33,59,.08); }
-.kicker { color: var(--map-indigo); font-size: .82rem; font-weight: 800; }
+.btn-ghost { background: rgba(255,255,255,.55); color: var(--map-muted); border: 1px solid rgba(34,34,34,.08); }
+.kicker { color: var(--color-primary); font-size: .82rem; font-weight: 800; }
 .text-balance { text-wrap: balance; }
-.thinking-map { background: radial-gradient(circle at 50% 45%, rgba(91,91,214,.09), transparent 17rem), linear-gradient(145deg, rgba(255,255,255,.96), rgba(244,247,251,.88)); }
-.map-line { stroke: rgba(91,91,214,.36); stroke-width: 1.7; stroke-linecap: round; }
+.thinking-map { background: radial-gradient(circle at 50% 45%, rgba(62,107,112,.09), transparent 17rem), linear-gradient(145deg, rgba(255,255,255,.96), rgba(244,247,251,.88)); }
 .map-line-dotted { stroke-dasharray: 5 7; stroke: rgba(180,126,34,.45); }
-.map-node { filter: drop-shadow(0 12px 18px rgba(21,33,59,.10)); }
+.map-node { filter: drop-shadow(0 12px 18px rgba(34,34,34,.10)); }
 .map-node-enter { animation: node-in var(--duration-slow) var(--easing-emphasized) both; }
 .map-edge { animation: edge-draw var(--duration-slow) var(--easing-standard) both; }
 .message-in { animation: message-in .24s ease both; }
 @keyframes node-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes edge-draw { from { opacity: 0; } to { opacity: 1; } }
 @keyframes message-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-button:focus-visible, textarea:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid rgba(91,91,214,.34); outline-offset: 3px; }
+button:focus-visible, textarea:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
 @media print { .print\:hidden { display: none !important; } main { background: white !important; padding: 0 !important; } .map-card, .shadow-xl, .shadow-2xl { box-shadow: none !important; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
 
