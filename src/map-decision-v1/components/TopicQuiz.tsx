@@ -878,8 +878,8 @@ function pruneFromStep(current: MapSession, step: number, requiredAxes: TopicAxi
 // 동기를 준다 — 문항 자체를 늘리거나 바꾸지 않고 화면에만 추가하는
 // 정보라 topics.ts(문항·선택지)는 건드리지 않는다.
 const RESULT_BLOCK_PREVIEW: Record<string, string[]> = {
-  idealType: ["이상형 기준", "끌림 패턴", "끌림 × 관계 적합도", "신호등", "자기 성찰", "로드맵"],
-  selfIntro: ["핵심 가치관", "반복되는 패턴", "나의 여러 모습", "특징", "자기 성찰", "로드맵"],
+  idealType: ["이상형 기준", "끌림 패턴", "끌림 × 관계 적합도", "신호등", "자기 성찰", "다음 행동"],
+  selfIntro: ["핵심 가치관", "반복되는 패턴", "나의 여러 모습", "특징", "자기 성찰", "다음 행동"],
 };
 
 // 필수 문항을 마친 뒤 "지금 결과 보기"(quick)로 끝냈는지 "6개 더"(deep)로

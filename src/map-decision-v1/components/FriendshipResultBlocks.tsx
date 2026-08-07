@@ -285,7 +285,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
 function RoadmapSection({ roadmap }: { roadmap: FriendshipRoadmap }) {
   return (
     <Card className="flex flex-col gap-4">
-      <SectionHeader title="이제 해볼 것" description="바로 시도해볼 것부터 30일 계획까지예요." />
+      <SectionHeader title="다음 행동" description="바로 시도해볼 것부터 30일 계획까지예요." />
       <div className="rounded-medium border border-primary bg-surface p-3">
         <p className="text-xs font-black text-primary">24시간 안에</p>
         <p className="mt-1 text-sm font-bold leading-6 text-text-primary">{roadmap.firstAction}</p>
