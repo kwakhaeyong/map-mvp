@@ -35,8 +35,13 @@ function SectionHeader({ title, description }: { title: string; description: str
 // 목차 칩(SectionNav)을 없앴다 — 6블록일 때는 "탐색해야 할 문서"라는
 // 신호로 필요했지만, 4블록으로 줄면서 한 화면에서 스크롤 몇 번이면
 // 끝까지 보이는 분량이 됐다. 목차가 오히려 "더 많은 내용이 있다"는
-// 잘못된 기대를 준다. 진로(career) 결과 화면은 저장 후 재열람 용도라
-// 목차가 계속 맞는 선택이라 FinalResultBlocks.tsx는 그대로 뒀다.
+// 잘못된 기대를 준다.
+//
+// (2026-08) 나머지 다섯 주제(이상형·나 소개·우정·일·취향)와 진로
+// (career, FinalResultBlocks.tsx)의 목차 칩도 함께 제거했다 — 전부
+// 클릭해도 앵커로 스크롤되지 않고 결과 화면 자체를 이탈시키는 문제가
+// 있었다(MapDecisionProduct.tsx의 popstate 핸들러가 원인). 이제 7개
+// 결과 화면 전부 목차가 없다.
 
 // 다른 다섯 주제와 태그 축 일부를 공유하는 사전을 재사용하므로 시각적
 // 표현도 TasteTagRow(TasteResultBlocks.tsx)와 동일하게 맞춘다 — 클래스는

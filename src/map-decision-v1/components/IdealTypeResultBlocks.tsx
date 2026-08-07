@@ -28,53 +28,6 @@ function SectionHeader({ title, description }: { title: string; description: str
   );
 }
 
-const NAV_ITEMS: Array<{ id: string; label: string }> = [
-  { id: "criteria", label: "기준" },
-  { id: "patterns", label: "패턴" },
-  { id: "matrix", label: "매트릭스" },
-  { id: "flags", label: "신호등" },
-  { id: "reflection", label: "성찰" },
-  { id: "roadmap", label: "로드맵" },
-];
-
-// 스크롤해도 화면에 붙어있게 만든다 — 테스터 지적("스크롤이 길다")에
-// 대한 대응으로, 6블록을 숨기거나 접지는 않고(자기성찰·신호등처럼
-// 중요한 블록이 4~5번째라 기본 접힘은 결과 품질 우선 원칙과 부딪힌다)
-// "지금 어디로도 한 번에 갈 수 있다"는 감각만 항상 쥐여준다.
-// flex-wrap 대신 overflow-x-auto+shrink-0으로 바꿨다 — 줄바꿈되면
-// sticky 바 자체가 두 배로 두꺼워져 375px 화면을 많이 잠식하기
-// 때문이다.
-//
-// 알약 패딩(px-1.5)은 처음엔 px-3이었다 — 375px 뷰포트(콘텐츠 폭
-// 343px)에서 실측했더니 이 6개 라벨조차 약 5px 넘쳐서 가로 스크롤이
-// 발동했는데, 5px 정도는 사용자가 "스크롤 가능하다"고 알아채기엔
-// 너무 작아서 마지막 알약이 그냥 살짝 잘려 보이는 것처럼 느껴지는
-// 애매한 상태였다. px-1.5로 줄이자 375px에서 완전히 한 줄에
-// 들어가고(여유 약 43px), 320px(구형 기기 기준, 콘텐츠 폭 288px)에서도
-// 넘치지 않는 것까지 실측으로 확인했다 — 글자 크기(text-xs, 12px)는
-// 그대로 뒀다. overflow-x-auto 구조 자체는 남겨뒀다 — 나중에 라벨이
-// 길어지면 다시 필요해질 안전장치다.
-// bg-background는 커스텀 토큰이라 슬래시 투명도(bg-background/95 등)를
-// 쓰면 design:check(#116)에 걸린다 — 불투명 solid로 충분히 아래
-// 내용을 가린다.
-function SectionNav() {
-  return (
-    <div className="sticky top-0 z-10 border-b border-border bg-background py-2">
-      <div className="flex gap-1.5 overflow-x-auto">
-        {NAV_ITEMS.map((item) => (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            className="inline-flex min-h-8 shrink-0 items-center rounded-pill border border-border bg-surface-elevated px-1.5 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
-          >
-            {item.label}
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // MBTI의 "ENFP"처럼 친구끼리 바로 비교할 수 있는 공용 태그 — 고유한
 // title/oneLiner 바로 아래, 폰 화면 스크롤 없이 첫 화면에서 보이는
 // 위치에 둔다. result.tags가 없는(이 기능 이전에 만들어진) 결과·공유
@@ -124,7 +77,7 @@ export function TagRow({
 // 과 동일한 흰 카드가 되어 새 색을 만들지 않는다.
 function HeroHeader({ result }: { result: IdealTypeResult }) {
   return (
-    <Card id="summary" className="scroll-mt-6 p-5">
+    <Card className="p-5">
       {/* #116: bg-surface-elevated/80가 흰 카드 위에서 사실상 안 보였다 — 태그
           알약과 같은 tag-fill 톤으로 바꿔 카드 배경과 구분되게 한다. */}
       <span className="inline-flex items-center rounded-pill bg-tag-fill px-3 py-1 text-xs font-extrabold text-text-primary">
@@ -168,7 +121,7 @@ function CriteriaTier({ label, items, tone }: { label: string; items: string[]; 
 
 function CriteriaSection({ criteria }: { criteria: IdealTypeResult["criteria"] }) {
   return (
-    <Card id="criteria" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="이상형 기준" description="답변에서 우선순위를 세 단계로 나눠봤어요." />
       <div className="grid gap-3 sm:grid-cols-3">
         <CriteriaTier label="필수" items={criteria.mustHave} tone="strong" />
@@ -181,7 +134,7 @@ function CriteriaSection({ criteria }: { criteria: IdealTypeResult["criteria"] }
 
 function PatternsSection({ items }: { items: string[] }) {
   return (
-    <Card id="patterns" className="scroll-mt-16 flex flex-col gap-3">
+    <Card className="flex flex-col gap-3">
       <SectionHeader title="끌림 패턴" description="답변을 가로질러 반복되는 경향이에요." />
       <div className="flex flex-col gap-2">
         {items.map((item, index) => (
@@ -294,7 +247,7 @@ function MatrixChart({ matrix }: { matrix: IdealTypeMatrix }) {
 
 function MatrixSection({ matrix }: { matrix: IdealTypeMatrix }) {
   return (
-    <Card id="matrix" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="끌림 × 관계 적합도" description="답변에서 나온 4가지 상대 유형을 놓고 봤어요." />
       <MatrixChart matrix={matrix} />
       <ul className="flex flex-col gap-2">
@@ -315,7 +268,7 @@ function MatrixSection({ matrix }: { matrix: IdealTypeMatrix }) {
 
 function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
   return (
-    <Card id="flags" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="신호등" description="실제로 만날 때 참고할 신호들이에요." />
       {/* 박스 배경은 option/risk 파스텔 대신 다른 블록과 같은 잉크
           중간 톤(border-border-strong bg-ink-wash, #116)으로 통일한다 —
@@ -372,8 +325,7 @@ function FlagsSection({ flags }: { flags: IdealTypeFlags }) {
 function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSelfReflection }) {
   return (
     <div
-      id="reflection"
-      className="scroll-mt-16 flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
+      className="flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
     >
       <div>
         <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary-foreground" />
@@ -406,7 +358,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
 
 function RoadmapSection({ roadmap }: { roadmap: IdealTypeRoadmap }) {
   return (
-    <Card id="roadmap" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="로드맵" description="바로 시작할 수 있는 것부터 30일 계획까지예요." />
       <div className="rounded-medium border border-primary bg-surface p-3">
         <p className="text-xs font-black text-primary">24시간 안에</p>
@@ -441,10 +393,16 @@ function RoadmapSection({ roadmap }: { roadmap: IdealTypeRoadmap }) {
 // 라이브 결과 화면과 공유 읽기 전용 화면이 공통으로 쓰는 전체 블록
 // 묶음. 공유하기/다시 만들기 같은 버튼은 호출부가 각자 다르게 붙인다.
 //
-// afterHero: 이상형 카드(HeroHeader) 바로 아래, 탭 줄(SectionNav) 위에
-// 끼워 넣을 요소 — 지금은 라이브 결과 화면(IdealTypeCard.tsx)의 궁합
-// 배너만 이 자리를 쓴다. 친구 링크로 들어온 사람에게는 궁합 확인이
-// 방문 목적이라, 6블록을 다 지나야 나오던 예전 위치보다 여기가 맞다.
+// afterHero: 이상형 카드(HeroHeader) 바로 아래에 끼워 넣을 요소 —
+// 지금은 라이브 결과 화면(IdealTypeCard.tsx)의 궁합 배너만 이 자리를
+// 쓴다. 친구 링크로 들어온 사람에게는 궁합 확인이 방문 목적이라,
+// 6블록을 다 지나야 나오던 예전 위치보다 여기가 맞다.
+//
+// 목차 칩(SectionNav)을 없앴다(2026-08) — 앵커 클릭이 결과 화면을
+// 이탈시켜 다른 화면(퀴즈)으로 돌려보내는 문제가 있었고(원인은
+// MapDecisionProduct.tsx의 popstate 핸들러 참고), 애초에 공유 맥락에서
+// "탐색해야 할 문서"라는 신호를 주는 것도 목적에 안 맞았다. travelStyle
+// (TravelResultBlocks.tsx)이 먼저 없앤 것과 같은 방향이다.
 //
 // afterReflection: 자기성찰 블록(가장 감정적으로 몰입되는 지점) 바로
 // 다음에 끼워 넣을 요소 — 지금은 공유 읽기 전용 화면(app/r/[id]/
@@ -468,7 +426,6 @@ export function IdealTypeResultBlocks({
     <>
       {showHero ? <HeroHeader result={result} /> : null}
       {afterHero}
-      <SectionNav />
       <CriteriaSection criteria={result.criteria} />
       <PatternsSection items={result.attractionPatterns} />
       <MatrixSection matrix={result.matrix} />

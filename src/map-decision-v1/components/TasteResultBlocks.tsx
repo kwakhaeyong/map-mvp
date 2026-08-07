@@ -25,34 +25,6 @@ function SectionHeader({ title, description }: { title: string; description: str
   );
 }
 
-const NAV_ITEMS: Array<{ id: string; label: string }> = [
-  { id: "core", label: "중심" },
-  { id: "patterns", label: "패턴" },
-  { id: "matrix", label: "매트릭스" },
-  { id: "map", label: "지도" },
-  { id: "reflection", label: "성찰" },
-  { id: "roadmap", label: "로드맵" },
-];
-
-// 이유·구현 방식은 WorkResultBlocks.tsx의 같은 이름 컴포넌트와
-// 동일하다(구조를 통일하기 위해 그대로 복제) — 주석은 그쪽에 적었다.
-function SectionNav() {
-  return (
-    <div className="sticky top-0 z-10 border-b border-border bg-background py-2">
-      <div className="flex gap-1.5 overflow-x-auto">
-        {NAV_ITEMS.map((item) => (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            className="inline-flex min-h-8 shrink-0 items-center rounded-pill border border-border bg-surface-elevated px-1.5 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
-          >
-            {item.label}
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // 다른 네 주제와 태그 축 일부를 공유하는 사전을 재사용하므로 시각적
 // 표현도 WorkTagRow(WorkResultBlocks.tsx)와 동일하게 맞춘다 — 클래스는
@@ -72,7 +44,7 @@ export function TasteTagRow({ tags, className }: { tags: string[]; className?: s
 
 function HeroHeader({ result }: { result: TasteResult }) {
   return (
-    <Card id="summary" className="scroll-mt-6 p-5">
+    <Card className="p-5">
       <span className="inline-flex items-center rounded-pill bg-tag-fill px-3 py-1 text-xs font-extrabold text-text-primary">
         취향 카드
       </span>
@@ -107,7 +79,7 @@ function CoreTier({ label, items, tone }: { label: string; items: string[]; tone
 
 function TasteCoreSection({ tasteCore }: { tasteCore: TasteResult["tasteCore"] }) {
   return (
-    <Card id="core" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="내 취향의 중심" description="답변에서 드러난 확실함의 정도를 세 단계로 나눠봤어요." />
       <div className="grid gap-3 sm:grid-cols-3">
         <CoreTier label="확실한 것" items={tasteCore.certain} tone="strong" />
@@ -120,7 +92,7 @@ function TasteCoreSection({ tasteCore }: { tasteCore: TasteResult["tasteCore"] }
 
 function PatternsSection({ items }: { items: string[] }) {
   return (
-    <Card id="patterns" className="scroll-mt-16 flex flex-col gap-3">
+    <Card className="flex flex-col gap-3">
       <SectionHeader title="반복되는 취향 패턴" description="답변을 가로질러 반복되는 결이에요." />
       <div className="flex flex-col gap-2">
         {items.map((item, index) => (
@@ -215,7 +187,7 @@ function MatrixChart({ matrix }: { matrix: TasteMatrix }) {
 
 function MatrixSection({ matrix }: { matrix: TasteMatrix }) {
   return (
-    <Card id="matrix" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="나의 여러 모습" description="답변에서 나온 4가지 취향 모습을 놓고 봤어요." />
       <MatrixChart matrix={matrix} />
       <ul className="flex flex-col gap-2">
@@ -236,7 +208,7 @@ function MatrixSection({ matrix }: { matrix: TasteMatrix }) {
 
 function TasteMapSection({ tasteMap }: { tasteMap: TasteMap }) {
   return (
-    <Card id="map" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="넓혀볼 방향, 안 맞을 방향" description="답변 패턴을 근거로 짚어본 방향이에요." />
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
@@ -275,8 +247,7 @@ function TasteMapSection({ tasteMap }: { tasteMap: TasteMap }) {
 function SelfReflectionSection({ selfReflection }: { selfReflection: TasteSelfReflection }) {
   return (
     <div
-      id="reflection"
-      className="scroll-mt-16 flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
+      className="flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
     >
       <div>
         <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary-foreground" />
@@ -309,7 +280,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: TasteSelfRe
 
 function RoadmapSection({ roadmap }: { roadmap: TasteRoadmap }) {
   return (
-    <Card id="roadmap" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="로드맵" description="바로 시도해볼 것부터 30일 계획까지예요." />
       <div className="rounded-medium border border-primary bg-surface p-3">
         <p className="text-xs font-black text-primary">24시간 안에</p>
@@ -356,7 +327,6 @@ export function TasteResultBlocks({
     <>
       {showHero ? <HeroHeader result={result} /> : null}
       {afterHero}
-      <SectionNav />
       <TasteCoreSection tasteCore={result.tasteCore} />
       <PatternsSection items={result.patterns} />
       <MatrixSection matrix={result.matrix} />

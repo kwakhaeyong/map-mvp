@@ -26,35 +26,6 @@ function SectionHeader({ title, description }: { title: string; description: str
   );
 }
 
-const NAV_ITEMS: Array<{ id: string; label: string }> = [
-  { id: "values", label: "가치관" },
-  { id: "patterns", label: "패턴" },
-  { id: "matrix", label: "매트릭스" },
-  { id: "traits", label: "특징" },
-  { id: "reflection", label: "성찰" },
-  { id: "roadmap", label: "로드맵" },
-];
-
-// 이유·구현 방식은 IdealTypeResultBlocks.tsx의 같은 이름 컴포넌트와
-// 동일하다(구조를 통일하기 위해 그대로 복제) — 주석은 그쪽에 적었다.
-function SectionNav() {
-  return (
-    <div className="sticky top-0 z-10 border-b border-border bg-background py-2">
-      <div className="flex gap-1.5 overflow-x-auto">
-        {NAV_ITEMS.map((item) => (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            className="inline-flex min-h-8 shrink-0 items-center rounded-pill border border-border bg-surface-elevated px-1.5 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
-          >
-            {item.label}
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // 이상형과 완전히 같은 4축·18개 태그 사전을 재사용하므로 시각적 표현도
 // TagRow(IdealTypeResultBlocks.tsx)와 동일하게 맞춘다 — 다만 그 컴포넌트는
 // export 돼 있지 않아(파일 내부용) 여기서 새로 작성했다. 클래스는
@@ -74,7 +45,7 @@ export function SelfIntroTagRow({ tags, className }: { tags: string[]; className
 
 function HeroHeader({ result }: { result: SelfIntroResult }) {
   return (
-    <Card id="summary" className="scroll-mt-6 p-5">
+    <Card className="p-5">
       <span className="inline-flex items-center rounded-pill bg-tag-fill px-3 py-1 text-xs font-extrabold text-text-primary">
         나 소개 카드
       </span>
@@ -109,7 +80,7 @@ function ValueTier({ label, items, tone }: { label: string; items: string[]; ton
 
 function CoreValuesSection({ coreValues }: { coreValues: SelfIntroResult["coreValues"] }) {
   return (
-    <Card id="values" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="핵심 가치관" description="답변에서 추론한 우선순위를 세 단계로 나눠봤어요." />
       <div className="grid gap-3 sm:grid-cols-3">
         <ValueTier label="꼭 지키는 것" items={coreValues.mustKeep} tone="strong" />
@@ -122,7 +93,7 @@ function CoreValuesSection({ coreValues }: { coreValues: SelfIntroResult["coreVa
 
 function PatternsSection({ items }: { items: string[] }) {
   return (
-    <Card id="patterns" className="scroll-mt-16 flex flex-col gap-3">
+    <Card className="flex flex-col gap-3">
       <SectionHeader title="반복되는 패턴" description="답변을 가로질러 반복되는 행동이에요." />
       <div className="flex flex-col gap-2">
         {items.map((item, index) => (
@@ -216,7 +187,7 @@ function MatrixChart({ matrix }: { matrix: SelfIntroMatrix }) {
 
 function MatrixSection({ matrix }: { matrix: SelfIntroMatrix }) {
   return (
-    <Card id="matrix" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="나의 여러 모습" description="답변에서 나온 4가지 내 모습을 놓고 봤어요." />
       <MatrixChart matrix={matrix} />
       <ul className="flex flex-col gap-2">
@@ -237,7 +208,7 @@ function MatrixSection({ matrix }: { matrix: SelfIntroMatrix }) {
 
 function TraitsSection({ traits }: { traits: SelfIntroTraits }) {
   return (
-    <Card id="traits" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="특징" description="이 사람과 지낼 때 참고하면 좋을 점이에요." />
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
@@ -276,8 +247,7 @@ function TraitsSection({ traits }: { traits: SelfIntroTraits }) {
 function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSelfReflection }) {
   return (
     <div
-      id="reflection"
-      className="scroll-mt-16 flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
+      className="flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
     >
       <div>
         <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary-foreground" />
@@ -310,7 +280,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
 
 function RoadmapSection({ roadmap }: { roadmap: SelfIntroRoadmap }) {
   return (
-    <Card id="roadmap" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="로드맵" description="바로 시도해볼 것부터 30일 계획까지예요." />
       <div className="rounded-medium border border-primary bg-surface p-3">
         <p className="text-xs font-black text-primary">24시간 안에</p>
@@ -357,7 +327,6 @@ export function SelfIntroResultBlocks({
     <>
       {showHero ? <HeroHeader result={result} /> : null}
       {afterHero}
-      <SectionNav />
       <CoreValuesSection coreValues={result.coreValues} />
       <PatternsSection items={result.patterns} />
       <MatrixSection matrix={result.matrix} />
