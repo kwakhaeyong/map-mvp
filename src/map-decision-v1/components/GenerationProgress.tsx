@@ -10,11 +10,28 @@ import { Button, Card } from "./ui/primitives";
 // 정해진 시간마다 다음 단계로 넘어가되(서버가 단계별 진행을 알려줄 방법이
 // 없으므로), 마지막 문구에 도달한 뒤에는 실제로 끝나거나 실패할 때까지
 // 그 문구를 그대로 유지한다 — 단계가 다 끝났는데 화면만 도는 상태를 피한다.
-const STAGE_INTERVAL_MS = 12_000;
-const DELAYED_AFTER_MS = 120_000; // 2분 경과
-const RETRY_AFTER_MS = 180_000; // 3분 경과
+//
+// 아래 세 상수는 프로덕션 로그로 실측한 생성 시간(취향 104초·133초,
+// 여행 101초 — 실제 범위는 100~135초)을 기준으로 잡았다(2026-08).
+//
+// STAGE_INTERVAL_MS: 5단계 × 27초 = 135초로, 실측한 가장 오래 걸린
+// 경우(133~135초)와 거의 같다. 그래서 대부분의 생성(100~135초)은
+// 5단계를 다 도는 동안 끝나거나, 마지막 단계에 막 들어선 지 몇십
+// 초 안에 끝난다 — 예전 12초(5단계=60초)처럼 남은 40~75초를 마지막
+// 문구에 멈춘 채 보내는 일이 크게 줄어든다.
+const STAGE_INTERVAL_MS = 27_000;
+// 정상 범위의 최대치(135초)를 넘어선 뒤에야 "조금 더 걸리고 있어요"
+// 안내가 뜨도록 3분(180초)으로 잡았다 — 예전 2분(120초)은 133초짜리
+// 정상 생성도 이상 상황으로 잘못 안내했다.
+const DELAYED_AFTER_MS = 180_000; // 3분 경과
+// DELAYED_AFTER_MS와의 1분 간격은 그대로 유지한다.
+const RETRY_AFTER_MS = 240_000; // 4분 경과
 
-export const GENERATION_ESTIMATE_TEXT = "보통 1~2분 정도 걸려요";
+// 실측 100~135초를 "2분"으로 뭉뚱그려 표현한다 — "1~2분"은 하한(100초는
+// 사실상 2분에 가깝다)을 실제보다 짧게 느끼게 하고, "2~3분"은 상한을
+// 과장한다. 초 단위까지 쪼개 보여주는 대신 가장 무난하게 실제 범위를
+// 덮는 표현을 쓴다.
+export const GENERATION_ESTIMATE_TEXT = "보통 2분 정도 걸려요";
 const DELAYED_TEXT = "조금 더 걸리고 있어요. 화면을 닫지 마세요.";
 const SAVED_REASSURANCE_TEXT = "답변은 이미 저장돼 있어요";
 // 태그 순차 강조가 다음 태그로 넘어가는 간격. 너무 빠르면 산만하고
@@ -57,10 +74,11 @@ export function GenerationWaitCard({
   const stageIndex = Math.min(stages.length - 1, Math.floor(elapsedMs / STAGE_INTERVAL_MS));
   const isDelayed = elapsedMs >= DELAYED_AFTER_MS;
   const canRetry = elapsedMs >= RETRY_AFTER_MS;
-  // 5단계 문구가 다 끝나 마지막 문구에 멈춰 있는 정지 구간(48초 이후,
-  // 실제 생성은 보통 그보다 오래 걸림). 이 구간에서만 태그를 하나씩
-  // 순서대로 옅게 강조해 "화면이 멈추지 않았다"를 보여준다 — 진행률이나
-  // 남은 시간을 아는 척하지 않는 순수 시각 신호다.
+  // 5단계 문구가 다 끝나 마지막 문구에 멈춰 있는 정지 구간(108초 이후 —
+  // 실측 최저치인 100~101초 근처라, 가장 빠른 생성은 이 구간에 거의
+  // 들어가지 않고 끝난다). 이 구간에서만 태그를 하나씩 순서대로 옅게
+  // 강조해 "화면이 멈추지 않았다"를 보여준다 — 진행률이나 남은 시간을
+  // 아는 척하지 않는 순수 시각 신호다.
   const isFrozenStage = stageIndex === stages.length - 1;
   const [activeTagIndex, setActiveTagIndex] = useState(0);
   useEffect(() => {

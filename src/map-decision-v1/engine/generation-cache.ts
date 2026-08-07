@@ -83,7 +83,7 @@ export async function getCachedGeneration<T>(cacheKey: string): Promise<T | null
 //
 // TTL 30분: 이 캐시의 목적은 "백그라운드 전환 → 페이지 리로드 → 재요청"을
 // 몇 분 안에 받아내는 것뿐이다. 앱 자체 문구(GENERATION_ESTIMATE_TEXT)가
-// "보통 1~2분"이라 하고, 재시도 버튼도 3분(RETRY_AFTER_MS)에 뜨는 걸 보면
+// "보통 2분"이라 하고, 재시도 버튼도 4분(RETRY_AFTER_MS)에 뜨는 걸 보면
 // 정상 시나리오의 대기는 길어야 수 분이다. 실측 사례(여러 번 리셋되며
 // 체감 5~10분)까지 여유 있게 덮으면서도, 개인 결과 데이터를 필요 이상
 // 오래 두지 않도록 1시간보다 짧게(30분) 잡았다.
