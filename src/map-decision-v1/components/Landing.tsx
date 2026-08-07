@@ -49,7 +49,9 @@ const SAFETY_NET_TOPIC_ID = "freeform";
 // 없어 "서로 다른 답변 사이의 모순·긴장" 축(whatToImprove), travelStyle은
 // travel-generator.ts의 세 겹 간극(자기인식·로망·자기평가 각각 vs 실제)을
 // 대표해서 한 문장으로 압축했다. career는 자유 대화형이라 재해석 축
-// 개념 자체가 다르므로 이번에 바꾸지 않는다(topic.oneLiner 그대로).
+// 개념 자체가 다른 여섯 주제와 다르므로 같은 골격을 억지로 맞추지
+// 않는다 — 대신 "무엇을 결정해야 할지" 섹션에 어울리는, 기준을 아직
+// 못 정한 상태를 짧게 짚는 질문형으로 만들었다.
 const TOPIC_HOOK: Record<string, string> = {
   // 이상형은 랜딩 첫 카드라 여기서 구체성이 없으면 다음 카드로 시선이
   // 안 넘어간다 — "바라는 것"·"내가 하는 행동"이 각각 뭔지 이름을
@@ -73,6 +75,13 @@ const TOPIC_HOOK: Record<string, string> = {
   // 묻는 문장으로 바꿨다 — 나머지 다섯과 골격이 완전히 다르다.
   taste: "왜 하필 그런 것에 끌릴까요?",
   travelStyle: "즉흥적이라 답했는데, 실제로도 그랬을까요?",
+  // 이 항목이 없던 동안은 topic.oneLiner(topics.ts)가 그대로 노출돼
+  // 위 6개 카드(전부 짧은 질문형)와 나란히 있을 때 혼자만 서술형 두
+  // 줄로 튀었다 — "무엇을 결정해야 할지" 섹션 라벨과도 대구가 안
+  // 맞았다. topics.ts의 oneLiner 자체는 다른 화면에서도 쓰일 수 있어
+  // 손대지 않고, 이 맵에만 추가해 주제 선택 화면에서만 우선 적용되게
+  // 한다(TopicCard의 TOPIC_HOOK[topic.id] ?? topic.oneLiner 폴백).
+  career: "정하긴 해야 하는데, 뭘 기준으로 정할까요?",
 };
 
 // 문항 수는 topics.ts의 axes 배열 길이를 직접 세어 확인한 값이다(코드
