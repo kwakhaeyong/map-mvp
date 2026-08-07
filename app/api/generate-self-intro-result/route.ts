@@ -20,6 +20,12 @@ import { signResult } from "../../../src/map-decision-v1/engine/result-signature
 import { resolveTopic } from "../../../src/map-decision-v1/engine/topics";
 import { MapSession, SelfIntroResult } from "../../../src/map-decision-v1/types";
 
+// 마커 대기(최대 45초) + 실제 생성(실측 100~135초)이 겹치는 최악의
+// 경우에도 Vercel 기본 함수 시간제한(플랜에 따라 10~60초)에 걸려 응답이
+// 끊기지 않도록 이 라우트만 명시적으로 넉넉하게 늘린다. 값 300은 그
+// 최악 경우(45+135=180초)에 여유를 더한 것이다.
+export const maxDuration = 300;
+
 const SIGNATURE_SCOPE = "selfIntro";
 
 type RequestBody = { session: MapSession };
@@ -117,7 +123,7 @@ export async function POST(request: NextRequest) {
         signature: signResult(SIGNATURE_SCOPE, cachedAfterWait),
       } satisfies SuccessResponse);
     }
-    // 최대 대기 시간(90초)을 넘겼다 — 계속 기다리게 두지 않고 이 요청이
+    // 최대 대기 시간(45초)을 넘겼다 — 계속 기다리게 두지 않고 이 요청이
     // 직접 생성한다. 마커를 얻은 적이 없으므로 아래 finally에서 release를
     // 부르지 않는다(다른 요청이 아직 들고 있는 마커를 지우면 안 된다).
     logGenerationMarker({ topic: "selfIntro", outcome: "wait_timeout", waitedMs });
