@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, HTMLAttributes, TextareaHTMLAttributes } from "react";
 
 type Variant = "default" | "primary" | "secondary" | "ghost" | "danger" | "outline";
 type Size = "sm" | "md" | "lg";
@@ -32,10 +32,6 @@ export function Button({ variant = "default", size = "md", loading, className, c
   return <button className={cx("inline-flex items-center justify-center gap-2 rounded-pill font-extrabold tracking-[-0.01em] transition-all duration-normal ease-emphasized active:translate-y-0 active:scale-[.985]", focus, disabled, buttonVariants[variant], buttonSizes[size], className)} disabled={props.disabled || loading} {...props}>{loading ? "정리 중..." : children}</button>;
 }
 
-export function IconButton({ label, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
-  return <button aria-label={label} className={cx("grid size-11 place-items-center rounded-pill border border-border bg-surface text-text-primary shadow-subtle transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:bg-surface-elevated hover:shadow-floating active:translate-y-0 active:scale-95", focus, disabled, className)} {...props} />;
-}
-
 export function Surface({ elevated, className, ...props }: HTMLAttributes<HTMLDivElement> & { elevated?: boolean }) {
   return <div className={cx("border border-border backdrop-blur-xl transition-shadow duration-normal ease-standard", elevated ? "bg-surface-elevated shadow-floating" : "bg-surface shadow-subtle", className)} {...props} />;
 }
@@ -47,10 +43,6 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 export function Badge({ tone = "default", className, ...props }: HTMLAttributes<HTMLSpanElement> & { tone?: "default" | "fact" | "feeling" | "value" | "option" | "uncertainty" | "risk" | "action" | "success" | "error" }) {
   const tones = { default: "bg-surface text-text-secondary", fact: "bg-fact", feeling: "bg-feeling", value: "bg-value", option: "bg-option", uncertainty: "bg-uncertainty", risk: "bg-risk", action: "bg-action", success: "bg-option text-success", error: "bg-risk text-error" };
   return <span className={cx("inline-flex items-center rounded-pill border border-border/60 px-3 py-1 text-xs font-extrabold tracking-[-0.01em]", tones[tone], className)} {...props} />;
-}
-
-export function Input({ error, className, ...props }: InputHTMLAttributes<HTMLInputElement> & { error?: boolean }) {
-  return <input className={cx("min-h-11 w-full rounded-medium border bg-surface-elevated px-4 text-text-primary shadow-subtle transition duration-normal ease-standard placeholder:text-text-muted hover:border-border-strong", error ? "border-error" : "border-border", focus, disabled, className)} {...props} />;
 }
 
 export function Textarea({ error, className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement> & { error?: boolean }) {
@@ -89,8 +81,7 @@ export function MapLegend({ items = ["fact", "feeling", "option", "uncertainty",
   return <div className="flex flex-wrap gap-2">{items.map((item) => <Badge key={item} tone={item}>{item}</Badge>)}</div>;
 }
 
-export const Modal = ({ children, className, ...props }: HTMLAttributes<HTMLDivElement> & { children: ReactNode }) => <div role="dialog" aria-modal="true" className={cx("rounded-large border border-border bg-surface-elevated p-6 shadow-modal", className)} {...props}>{children}</div>;
-export const BottomSheet = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => <div className={cx("fixed inset-x-0 bottom-0 rounded-t-large border border-border bg-surface-elevated p-5 shadow-modal", className)} {...props} />;
+export const BottomSheet =({ className, ...props }: HTMLAttributes<HTMLDivElement>) => <div className={cx("fixed inset-x-0 bottom-0 rounded-t-large border border-border bg-surface-elevated p-5 shadow-modal", className)} {...props} />;
 export const Toast = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => <div role="status" className={cx("rounded-medium border border-border bg-surface-elevated px-4 py-3 text-sm font-extrabold shadow-floating backdrop-blur-xl", className)} {...props} />;
 export const EmptyState = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => <Card className={cx("text-center text-text-secondary", className)} {...props} />;
 export const ResultActionBar = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => <div className={cx("sticky bottom-4 flex flex-wrap gap-3 rounded-large border border-border bg-surface p-3 shadow-floating backdrop-blur-xl", className)} {...props} />;
