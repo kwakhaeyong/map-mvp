@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmapPhase, MapSession } from "../types";
 import { getGenerationEffort } from "./generation-config";
 import { isServerSideGenerationError } from "./generation-error";
+import { logGenerationAttempt } from "./generation-timing";
 import { getIdealTypeTags } from "./ideal-type-tags";
 import { now } from "./session";
 
@@ -291,9 +292,21 @@ const IDEAL_TYPE_MAX_TOKENS_RETRY = 16384;
 // engine/generation-error.ts) — 사용자가 무엇을 입력했든 똑같이 났을
 // 실패이기 때문이다. 빈 응답·스키마 검증 실패는 입력/출력 내용에
 // 기인한 실패라 항상 true.
-async function attemptGeneration(client: Anthropic, session: MapSession, maxTokens: number): Promise<{ result: IdealTypeResult | null; truncated: boolean; countsAsFailure: boolean }> {
+async function attemptGeneration(
+  client: Anthropic,
+  session: MapSession,
+  maxTokens: number,
+  attempt: number,
+  generationStartedAt: number,
+): Promise<{ result: IdealTypeResult | null; truncated: boolean; countsAsFailure: boolean }> {
   let responseText: string | undefined;
   let truncated = false;
+  let outputTokens: number | null = null;
+  let thinkingTokens: number | null = null;
+  // getGenerationEffort()는 호출될 때마다 "[generation] effort=..."를
+  // 로그로 남긴다 — 아래 계측 로그에도 같은 값을 실어야 하니 한 번만
+  // 불러 변수에 담아 재사용한다(두 번 부르면 그 로그도 두 번 남는다).
+  const effort = getGenerationEffort();
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-5",
@@ -312,17 +325,19 @@ async function attemptGeneration(client: Anthropic, session: MapSession, maxToke
         },
       ],
       output_config: {
-        effort: getGenerationEffort(),
+        effort,
         format: { type: "json_schema", schema: IDEAL_TYPE_SCHEMA },
       },
     });
     truncated = response.stop_reason === "max_tokens";
+    outputTokens = response.usage?.output_tokens ?? null;
+    thinkingTokens = response.usage?.output_tokens_details?.thinking_tokens ?? null;
     if (truncated) {
       // 사용자 입력·응답 내용은 절대 로그에 넣지 않는다 — 토큰 수치만.
       console.warn("[ideal-type-generator] response truncated by max_tokens", {
         maxTokens,
-        outputTokens: response.usage?.output_tokens ?? null,
-        thinkingTokens: response.usage?.output_tokens_details?.thinking_tokens ?? null,
+        outputTokens,
+        thinkingTokens,
       });
     }
     responseText = response.content.find((block) => block.type === "text")?.text;
@@ -341,17 +356,32 @@ async function attemptGeneration(client: Anthropic, session: MapSession, maxToke
       message: error instanceof Error ? error.message : String(error),
       countsAsFailure: !serverSide,
     });
+    logGenerationAttempt({ topic: "idealType", attempt, generationStartedAt, effort, outcome: { kind: "api_error" } });
     return { result: null, truncated, countsAsFailure: !serverSide };
   }
 
   if (!responseText) {
     console.error("[ideal-type-generator] empty response from Claude");
+    logGenerationAttempt({
+      topic: "idealType",
+      attempt,
+      generationStartedAt,
+      effort,
+      outcome: truncated ? { kind: "truncated", outputTokens, thinkingTokens } : { kind: "api_error" },
+    });
     return { result: null, truncated, countsAsFailure: true };
   }
 
   const parsed = parseAndValidate(responseText);
   if (!parsed.ok) {
     console.error("[ideal-type-generator] response failed schema validation", { reason: parsed.reason, truncated });
+    logGenerationAttempt({
+      topic: "idealType",
+      attempt,
+      generationStartedAt,
+      effort,
+      outcome: truncated ? { kind: "truncated", outputTokens, thinkingTokens } : { kind: "schema_invalid", outputTokens, thinkingTokens },
+    });
     return { result: null, truncated, countsAsFailure: true };
   }
 
@@ -393,6 +423,7 @@ async function attemptGeneration(client: Anthropic, session: MapSession, maxToke
     // 붙인다(session.quizAnswers가 없는 예전 세션이면 빈 배열).
     tags: getIdealTypeTags(session.quizAnswers, "idealType"),
   };
+  logGenerationAttempt({ topic: "idealType", attempt, generationStartedAt, effort, outcome: { kind: "success", outputTokens, thinkingTokens } });
   return { result, truncated, countsAsFailure: false };
 }
 
@@ -416,10 +447,11 @@ export async function generateIdealTypeResult(session: MapSession): Promise<Idea
   }
 
   const client = new Anthropic({ apiKey });
+  const generationStartedAt = Date.now();
   let maxTokens = IDEAL_TYPE_MAX_TOKENS;
   let countsAsFailure = false;
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const outcome = await attemptGeneration(client, session, maxTokens);
+    const outcome = await attemptGeneration(client, session, maxTokens, attempt, generationStartedAt);
     if (outcome.result) return { result: outcome.result, countsAsFailure: false };
     if (outcome.countsAsFailure) countsAsFailure = true;
     if (outcome.truncated) maxTokens = IDEAL_TYPE_MAX_TOKENS_RETRY;
