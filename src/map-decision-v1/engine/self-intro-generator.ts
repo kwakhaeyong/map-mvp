@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { MapSession, SelfIntroMatrixPoint, SelfIntroResult, SelfIntroRoadmapPhase } from "../types";
 import { getGenerationEffort } from "./generation-config";
 import { isServerSideGenerationError } from "./generation-error";
+import { logGenerationAttempt } from "./generation-timing";
 import { getIdealTypeTags } from "./ideal-type-tags";
 import { now } from "./session";
 
@@ -265,9 +266,21 @@ const SELF_INTRO_MAX_TOKENS_RETRY = 16384;
 // countsAsFailure: 이 실패를 rate-limit.ts의 세션당 실패 상한에 넣을지.
 // 서버 쪽 원인(engine/generation-error.ts)은 false, 빈 응답·스키마
 // 검증 실패는 항상 true — ideal-type-generator.ts와 같은 원칙이다.
-async function attemptGeneration(client: Anthropic, session: MapSession, maxTokens: number): Promise<{ result: SelfIntroResult | null; truncated: boolean; countsAsFailure: boolean }> {
+async function attemptGeneration(
+  client: Anthropic,
+  session: MapSession,
+  maxTokens: number,
+  attempt: number,
+  generationStartedAt: number,
+): Promise<{ result: SelfIntroResult | null; truncated: boolean; countsAsFailure: boolean }> {
   let responseText: string | undefined;
   let truncated = false;
+  let outputTokens: number | null = null;
+  let thinkingTokens: number | null = null;
+  // getGenerationEffort()는 호출될 때마다 "[generation] effort=..."를
+  // 로그로 남긴다 — 아래 계측 로그에도 같은 값을 실어야 하니 한 번만
+  // 불러 변수에 담아 재사용한다(두 번 부르면 그 로그도 두 번 남는다).
+  const effort = getGenerationEffort();
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-5",
@@ -280,16 +293,18 @@ async function attemptGeneration(client: Anthropic, session: MapSession, maxToke
         },
       ],
       output_config: {
-        effort: getGenerationEffort(),
+        effort,
         format: { type: "json_schema", schema: SELF_INTRO_SCHEMA },
       },
     });
     truncated = response.stop_reason === "max_tokens";
+    outputTokens = response.usage?.output_tokens ?? null;
+    thinkingTokens = response.usage?.output_tokens_details?.thinking_tokens ?? null;
     if (truncated) {
       console.warn("[self-intro-generator] response truncated by max_tokens", {
         maxTokens,
-        outputTokens: response.usage?.output_tokens ?? null,
-        thinkingTokens: response.usage?.output_tokens_details?.thinking_tokens ?? null,
+        outputTokens,
+        thinkingTokens,
       });
     }
     responseText = response.content.find((block) => block.type === "text")?.text;
@@ -308,17 +323,32 @@ async function attemptGeneration(client: Anthropic, session: MapSession, maxToke
       message: error instanceof Error ? error.message : String(error),
       countsAsFailure: !serverSide,
     });
+    logGenerationAttempt({ topic: "selfIntro", attempt, generationStartedAt, effort, outcome: { kind: "api_error" } });
     return { result: null, truncated, countsAsFailure: !serverSide };
   }
 
   if (!responseText) {
     console.error("[self-intro-generator] empty response from Claude");
+    logGenerationAttempt({
+      topic: "selfIntro",
+      attempt,
+      generationStartedAt,
+      effort,
+      outcome: truncated ? { kind: "truncated", outputTokens, thinkingTokens } : { kind: "api_error" },
+    });
     return { result: null, truncated, countsAsFailure: true };
   }
 
   const parsed = parseAndValidate(responseText);
   if (!parsed.ok) {
     console.error("[self-intro-generator] response failed schema validation", { reason: parsed.reason, truncated });
+    logGenerationAttempt({
+      topic: "selfIntro",
+      attempt,
+      generationStartedAt,
+      effort,
+      outcome: truncated ? { kind: "truncated", outputTokens, thinkingTokens } : { kind: "schema_invalid", outputTokens, thinkingTokens },
+    });
     return { result: null, truncated, countsAsFailure: true };
   }
 
@@ -357,6 +387,7 @@ async function attemptGeneration(client: Anthropic, session: MapSession, maxToke
     // 두 결과의 태그가 같은 문자열 체계여야 한다(docs/NASOGAE_DESIGN.md).
     tags: getIdealTypeTags(session.quizAnswers, "selfIntro"),
   };
+  logGenerationAttempt({ topic: "selfIntro", attempt, generationStartedAt, effort, outcome: { kind: "success", outputTokens, thinkingTokens } });
   return { result, truncated, countsAsFailure: false };
 }
 
@@ -378,10 +409,11 @@ export async function generateSelfIntroResult(session: MapSession): Promise<Self
   }
 
   const client = new Anthropic({ apiKey });
+  const generationStartedAt = Date.now();
   let maxTokens = SELF_INTRO_MAX_TOKENS;
   let countsAsFailure = false;
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const outcome = await attemptGeneration(client, session, maxTokens);
+    const outcome = await attemptGeneration(client, session, maxTokens, attempt, generationStartedAt);
     if (outcome.result) return { result: outcome.result, countsAsFailure: false };
     if (outcome.countsAsFailure) countsAsFailure = true;
     if (outcome.truncated) maxTokens = SELF_INTRO_MAX_TOKENS_RETRY;

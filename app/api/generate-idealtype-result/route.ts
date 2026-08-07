@@ -12,6 +12,7 @@ import {
   releaseGenerationSlotOnFailure,
   reserveGenerationSlot,
 } from "../../../src/map-decision-v1/engine/rate-limit";
+import { logGenerationRequest } from "../../../src/map-decision-v1/engine/generation-timing";
 import { signResult } from "../../../src/map-decision-v1/engine/result-signature";
 import { resolveTopic } from "../../../src/map-decision-v1/engine/topics";
 import { IdealTypeResult, MapSession } from "../../../src/map-decision-v1/types";
@@ -58,10 +59,16 @@ function isOversized(session: MapSession): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  const requestStartedAt = Date.now();
+  let cacheStatus: "hit" | "miss" | "unknown" = "unknown";
+  const logTiming = (outcome: string): void =>
+    logGenerationRequest({ topic: "idealType", requestStartedAt, cache: cacheStatus, outcome });
+
   // curl 한 줄로 직접 때리는 기회주의적 남용을 막는다 — 위조는 가능하지만
   // 헤더 자체를 안 붙이는 가장 흔한 경우는 걸러진다. 공유 링크에서 넘어와
   // 새 카드를 만드는 경로도 이 시점 기준 Origin이라 정상적으로 통과한다.
   if (!isTrustedRequestOrigin(request)) {
+    logTiming("invalid_request");
     return NextResponse.json(
       { blocked: true, reason: "invalid_request", message: "요청 형식이 올바르지 않아요." } satisfies BlockedResponse,
       { status: 400 },
@@ -70,6 +77,7 @@ export async function POST(request: NextRequest) {
 
   const body: unknown = await request.json().catch(() => null);
   if (!isRequestBody(body)) {
+    logTiming("invalid_request");
     return NextResponse.json(
       { blocked: true, reason: "invalid_request", message: "요청 형식이 올바르지 않아요." } satisfies BlockedResponse,
       { status: 400 },
@@ -78,6 +86,7 @@ export async function POST(request: NextRequest) {
   const { session } = body;
 
   if (isOversized(session)) {
+    logTiming("payload_too_large");
     return NextResponse.json(
       { blocked: true, reason: "payload_too_large", message: "답변 내용이 처리할 수 있는 범위를 넘어섰어요." } satisfies BlockedResponse,
       { status: 400 },
@@ -90,12 +99,15 @@ export async function POST(request: NextRequest) {
   const cacheKey = computeGenerationCacheKey("idealType", session);
   const cachedBeforeReservation = await getCachedGeneration<IdealTypeResult>(cacheKey);
   if (cachedBeforeReservation) {
+    cacheStatus = "hit";
     console.log("[generation-cache] hit, skip reservation");
+    logTiming("cache_hit");
     return NextResponse.json({
       result: cachedBeforeReservation,
       signature: signResult(SIGNATURE_SCOPE, cachedBeforeReservation),
     } satisfies SuccessResponse);
   }
+  cacheStatus = "miss";
   console.log("[generation-cache] miss, proceeding to generate");
 
   const ip = getClientIp(request);
@@ -127,6 +139,7 @@ export async function POST(request: NextRequest) {
             : reservation.reason === "unavailable"
               ? "generation_unavailable"
               : "generation_failure_limit";
+    logTiming(blockedReason);
     return NextResponse.json(
       { blocked: true, reason: blockedReason, message } satisfies BlockedResponse,
       { status: 429 },
@@ -136,6 +149,7 @@ export async function POST(request: NextRequest) {
   const { result, countsAsFailure } = await generateIdealTypeResult(session);
   if (!result) {
     await releaseGenerationSlotOnFailure(ip, session.startedAt, countsAsFailure);
+    logTiming("generation_failed");
     return NextResponse.json(
       { blocked: true, reason: "generation_failed", message: "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
       { status: 502 },
@@ -144,5 +158,6 @@ export async function POST(request: NextRequest) {
 
   await setCachedGeneration(cacheKey, result);
 
+  logTiming("success");
   return NextResponse.json({ result, signature: signResult(SIGNATURE_SCOPE, result) } satisfies SuccessResponse);
 }
