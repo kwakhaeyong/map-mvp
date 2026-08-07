@@ -141,19 +141,28 @@ function TopicSection({
   ids,
   onStart,
   onLocked,
+  showCount = true,
 }: {
   kicker: string;
   ids: string[];
   onStart: (topicId: string) => void;
   onLocked: (topic: TopicConfig) => void;
+  showCount?: boolean;
 }) {
-  // 카드가 1개뿐이면(현재 "차근차근, 깊이 있게") 2~3열 그리드에 넣지
+  // 카드가 1개뿐이면(현재 "무엇을 결정해야 할지") 2~3열 그리드에 넣지
   // 않고 전폭 1열로 그린다 — 그리드 칸이 남아 오른쪽이 비어 보이는
   // 문제를 없앤다. 카드가 여러 개면 기존 2~3열 그대로다.
   const isSingle = ids.length === 1;
   return (
     <section className="map-container py-4">
-      <p className="mb-4 px-1 text-lg font-black tracking-[-0.02em] text-text-primary">{kicker}</p>
+      {/* 배지 숫자는 ids.length에서 계산한다 — VIRAL_TOPIC_IDS/DEPTH_TOPIC_IDS에
+          주제가 추가·삭제돼도 따로 고칠 값이 늘지 않는다. showCount=false인
+          섹션(현재 "무엇을 결정해야 할지")은 배지 자체를 렌더링하지 않는다 —
+          "6개"와 "1개"가 나란히 있으면 후자가 미완성처럼 보이기 때문. */}
+      <div className="mb-4 flex items-center gap-2 px-1">
+        <p className="text-lg font-black tracking-[-0.02em] text-text-primary">{kicker}</p>
+        {showCount ? <Badge>{ids.length}개</Badge> : null}
+      </div>
       <div className={cx("grid gap-4", isSingle ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3")}>
         {ids.map((id) => (
           <TopicCard key={id} topic={TOPICS[id]} onStart={onStart} onLocked={onLocked} />
@@ -250,13 +259,26 @@ export function Landing({
       </section>
 
       {/* 홍보 유입의 주 목적지(완성된 이상형·나소개 등 6개)를 먼저
-          보여준다 — "차근차근, 깊이 있게"(현재 career 1개뿐)는 아래로
+          보여준다 — "무엇을 결정해야 할지"(현재 career 1개뿐)는 아래로
           내렸다. 순서는 이 두 줄의 렌더링 순서로만 정해진다(공유
           배열이 아니라 각자 자기 ids 배열을 가진 별개의 TopicSection
           호출) — 섹션 내부 카드 순서(DEPTH_TOPIC_IDS/VIRAL_TOPIC_IDS)는
-          그대로다. */}
-      <TopicSection kicker="가볍게, 빠르게" ids={VIRAL_TOPIC_IDS} onStart={onStart} onLocked={handleLocked} />
-      <TopicSection kicker="차근차근, 깊이 있게" ids={DEPTH_TOPIC_IDS} onStart={onStart} onLocked={handleLocked} />
+          그대로다.
+
+          라벨 교체(2026-08): "가볍게, 빠르게"/"차근차근, 깊이 있게"는
+          소요 방식(속도·깊이)만 말해서 두 그룹의 차이가 "빠른 것 vs
+          느린 것"으로만 읽혔다("가볍게 빠르게가 무슨 말이에요?" 반응).
+          "내가 어떤 사람인지"/"무엇을 결정해야 할지"는 각 그룹에서
+          실제로 얻는 결과물(자기 이해 카드 vs 결정을 위한 정리)을
+          말한다. */}
+      <TopicSection kicker="내가 어떤 사람인지" ids={VIRAL_TOPIC_IDS} onStart={onStart} onLocked={handleLocked} />
+      <TopicSection
+        kicker="무엇을 결정해야 할지"
+        ids={DEPTH_TOPIC_IDS}
+        onStart={onStart}
+        onLocked={handleLocked}
+        showCount={false}
+      />
 
       <section className="map-container py-3">
         <button
