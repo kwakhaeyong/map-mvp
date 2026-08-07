@@ -283,7 +283,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: WorkSelfRef
 function RoadmapSection({ roadmap }: { roadmap: WorkRoadmap }) {
   return (
     <Card className="flex flex-col gap-4">
-      <SectionHeader title="로드맵" description="바로 시도해볼 것부터 30일 계획까지예요." />
+      <SectionHeader title="다음 행동" description="바로 시도해볼 것부터 30일 계획까지예요." />
       <div className="rounded-medium border border-primary bg-surface p-3">
         <p className="text-xs font-black text-primary">24시간 안에</p>
         <p className="mt-1 text-sm font-bold leading-6 text-text-primary">{roadmap.firstAction}</p>
@@ -299,10 +299,21 @@ function RoadmapSection({ roadmap }: { roadmap: WorkRoadmap }) {
             </div>
             <div className="pb-1">
               <p className="text-sm font-black text-text-primary">{phase.label}</p>
-              <ul className="mt-1 space-y-1">
+              {/* 체크박스 모양(빈 사각형, 채우기 없음)은 순수 시각 표현이다 —
+                  클릭 상태를 저장할 수단이 없어 실제로 체크되지는 않는다.
+                  아이콘을 li 밖에 두고 텍스트를 span으로 감싸 flex로 배치한
+                  것은, 항목이 두 줄로 넘어갈 때 둘째 줄이 아이콘 아래(왼쪽
+                  끝)가 아니라 첫 줄 텍스트 시작 위치에 맞춰 정렬되게 하기
+                  위해서다 — text-indent가 아니라 flex 자식 정렬이라야
+                  줄바꿈된 텍스트가 자연스럽게 첫 줄과 같은 지점에서
+                  시작한다. */}
+              <ul className="mt-1 space-y-2">
                 {phase.actions.map((action, actionIndex) => (
-                  <li key={actionIndex} className="text-xs font-semibold leading-5 text-text-secondary">
-                    · {action}
+                  <li key={actionIndex} className="flex items-start gap-1.5 text-xs font-semibold leading-5 text-text-secondary">
+                    <svg viewBox="0 0 16 16" className="mt-0.5 size-3.5 shrink-0" aria-hidden="true">
+                      <rect x="1.5" y="1.5" width="13" height="13" rx="3" className="fill-none stroke-primary" strokeWidth="1.5" />
+                    </svg>
+                    <span>{action}</span>
                   </li>
                 ))}
               </ul>
