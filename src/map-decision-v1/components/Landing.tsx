@@ -141,11 +141,13 @@ function TopicSection({
   ids,
   onStart,
   onLocked,
+  showCount = true,
 }: {
   kicker: string;
   ids: string[];
   onStart: (topicId: string) => void;
   onLocked: (topic: TopicConfig) => void;
+  showCount?: boolean;
 }) {
   // 카드가 1개뿐이면(현재 "무엇을 결정해야 할지") 2~3열 그리드에 넣지
   // 않고 전폭 1열로 그린다 — 그리드 칸이 남아 오른쪽이 비어 보이는
@@ -154,10 +156,12 @@ function TopicSection({
   return (
     <section className="map-container py-4">
       {/* 배지 숫자는 ids.length에서 계산한다 — VIRAL_TOPIC_IDS/DEPTH_TOPIC_IDS에
-          주제가 추가·삭제돼도 따로 고칠 값이 늘지 않는다. */}
+          주제가 추가·삭제돼도 따로 고칠 값이 늘지 않는다. showCount=false인
+          섹션(현재 "무엇을 결정해야 할지")은 배지 자체를 렌더링하지 않는다 —
+          "6개"와 "1개"가 나란히 있으면 후자가 미완성처럼 보이기 때문. */}
       <div className="mb-4 flex items-center gap-2 px-1">
         <p className="text-lg font-black tracking-[-0.02em] text-text-primary">{kicker}</p>
-        <Badge>{ids.length}개</Badge>
+        {showCount ? <Badge>{ids.length}개</Badge> : null}
       </div>
       <div className={cx("grid gap-4", isSingle ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3")}>
         {ids.map((id) => (
@@ -268,7 +272,13 @@ export function Landing({
           실제로 얻는 결과물(자기 이해 카드 vs 결정을 위한 정리)을
           말한다. */}
       <TopicSection kicker="내가 어떤 사람인지" ids={VIRAL_TOPIC_IDS} onStart={onStart} onLocked={handleLocked} />
-      <TopicSection kicker="무엇을 결정해야 할지" ids={DEPTH_TOPIC_IDS} onStart={onStart} onLocked={handleLocked} />
+      <TopicSection
+        kicker="무엇을 결정해야 할지"
+        ids={DEPTH_TOPIC_IDS}
+        onStart={onStart}
+        onLocked={handleLocked}
+        showCount={false}
+      />
 
       <section className="map-container py-3">
         <button
