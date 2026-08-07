@@ -13,7 +13,10 @@
   --color-border-strong: rgba(34, 34, 34, 0.24);
   --color-text-primary: #222222;
   --color-text-secondary: #5a5a58;
-  --color-text-muted: #8a8a86;
+  /* #8a8a86(2026 리브랜드 1차)은 배경(#faf9f6) 대비 3.29:1로 본문 기준
+     (4.5:1) 미달이었다 — 대부분 12px 안팎 라벨이라 큰 글씨 예외(3:1)도
+     못 받는다. #6e6e6a로 낮춰 4.86:1까지 올렸다. */
+  --color-text-muted: #6e6e6a;
   --color-primary: #3e6b70;
   /* primary(#3e6b70)를 HSL로 바꾼 뒤(약 186°, 28.7%, 34.1%) 명도(L)만
      8%p 낮춰(→26.1%) 되돌린 값. 색상·채도는 그대로 두고 어둡게만 했다. */
