@@ -1,5 +1,15 @@
 "use client";
 
+// FinalResultSection·FinalResultSectionReadOnly 위에 있던 목차 칩
+// (NAV_ITEMS + href="#factors" 등 4개 링크)과, 그 링크가 가리키던
+// factors/scenarios/timeline/insights 블록의 id·scroll-mt-6를 함께
+// 없앴다(2026-08). 다른 여섯 주제(IdealTypeResultBlocks.tsx 등)의
+// 목차 칩 제거와 같은 이유다 — 클릭해도 실제로는 앵커 스크롤 대신
+// MapDecisionProduct.tsx의 popstate 핸들러가 화면을 이탈시켜 버려
+// 작동하지 않았다(자세한 원인은 그 파일 참고). career는 라이브 화면
+// (FinalResultSection)과 공유 화면(FinalResultSectionReadOnly) 둘 다
+// 같은 목차를 갖고 있어서 두 곳 다 제거했다.
+
 import { nodeLabels } from "../engine/thinking-extractor";
 import { FactorMatrixBlock, FinalResult, InsightBlock, MapSession, NodeKind, ResultBlockKey, ScenarioBlock, TimelineBlock } from "../types";
 import { Badge, Button, Card, ReflectionCard } from "./ui/primitives";
@@ -163,7 +173,7 @@ function FactorMatrixChart({ block }: { block: FactorMatrixBlock }) {
 
 function FactorMatrixCard({ block, regen }: { block: FactorMatrixBlock; regen?: BlockRegenControls }) {
   return (
-    <Card id="factors" className="scroll-mt-6">
+    <Card>
       <BlockHeader title="요인과 2x2 매트릭스" description="대화에서 드러난 요인들을 두 기준으로 놓고 봤어요." regen={regen} />
       <div className="mt-8">
         <FactorMatrixChart block={block} />
@@ -189,7 +199,7 @@ function FactorMatrixCard({ block, regen }: { block: FactorMatrixBlock; regen?: 
 
 function ScenarioCards({ block, regen }: { block: ScenarioBlock; regen?: BlockRegenControls }) {
   return (
-    <Card id="scenarios" className="scroll-mt-6">
+    <Card>
       <BlockHeader title="시나리오 비교" description="정답을 고르는 게 아니라, 방향별 장단점을 나란히 뒀어요." regen={regen} />
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {block.scenarios.map((scenario) => {
@@ -238,7 +248,7 @@ function ScenarioCards({ block, regen }: { block: ScenarioBlock; regen?: BlockRe
 
 function TimelineSteps({ block, regen }: { block: TimelineBlock; regen?: BlockRegenControls }) {
   return (
-    <Card id="timeline" className="scroll-mt-6">
+    <Card>
       <BlockHeader title="타임라인과 액션 플랜" description="이야기한 내용을 바탕으로 단계별 행동을 정리했어요." regen={regen} />
       <ol className="mt-6 space-y-4">
         {block.phases.map((phase, index) => (
@@ -266,7 +276,7 @@ function TimelineSteps({ block, regen }: { block: TimelineBlock; regen?: BlockRe
 
 function InsightCallout({ block, regen }: { block: InsightBlock; regen?: BlockRegenControls }) {
   return (
-    <Card id="insights" className="scroll-mt-6 border-primary/40 bg-surface-elevated">
+    <Card className="border-primary/40 bg-surface-elevated">
       <BlockHeader title="핵심 메시지·통찰" description="혼자서는 잘 안 보였을 수 있는 관점이에요." regen={regen} />
       <ul className="mt-6 space-y-3">
         {block.messages.map((message, index) => (
@@ -279,13 +289,6 @@ function InsightCallout({ block, regen }: { block: InsightBlock; regen?: BlockRe
   );
 }
 
-const NAV_ITEMS: Array<{ id: string; label: string }> = [
-  { id: "factors", label: "요인" },
-  { id: "scenarios", label: "시나리오" },
-  { id: "timeline", label: "타임라인" },
-  { id: "insights", label: "통찰" },
-];
-
 export function FinalResultSection({
   result,
   regenControls,
@@ -295,18 +298,7 @@ export function FinalResultSection({
 }) {
   return (
     <section className="mt-8" aria-label="최종 결과">
-      <div className="flex flex-wrap gap-2 print:hidden">
-        {NAV_ITEMS.map((item) => (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            className="inline-flex min-h-9 items-center rounded-pill border border-border bg-surface-elevated px-4 text-sm font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
-          >
-            {item.label}
-          </a>
-        ))}
-      </div>
-      <div className="mt-4 space-y-6">
+      <div className="space-y-6">
         <FactorMatrixCard block={result.factorMatrix} regen={regenControls.factorMatrix} />
         <ScenarioCards block={result.scenarios} regen={regenControls.scenarios} />
         <TimelineSteps block={result.timeline} regen={regenControls.timeline} />
@@ -322,18 +314,7 @@ export function FinalResultSection({
 export function FinalResultSectionReadOnly({ result }: { result: FinalResult }) {
   return (
     <section className="mt-4" aria-label="MAP 결과">
-      <div className="flex flex-wrap gap-2">
-        {NAV_ITEMS.map((item) => (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            className="inline-flex min-h-9 items-center rounded-pill border border-border bg-surface-elevated px-4 text-sm font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
-          >
-            {item.label}
-          </a>
-        ))}
-      </div>
-      <div className="mt-4 space-y-6">
+      <div className="space-y-6">
         <FactorMatrixCard block={result.factorMatrix} />
         <ScenarioCards block={result.scenarios} />
         <TimelineSteps block={result.timeline} />

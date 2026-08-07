@@ -25,34 +25,6 @@ function SectionHeader({ title, description }: { title: string; description: str
   );
 }
 
-const NAV_ITEMS: Array<{ id: string; label: string }> = [
-  { id: "drivers", label: "동력" },
-  { id: "patterns", label: "패턴" },
-  { id: "matrix", label: "매트릭스" },
-  { id: "fit", label: "환경" },
-  { id: "reflection", label: "성찰" },
-  { id: "roadmap", label: "로드맵" },
-];
-
-// 이유·구현 방식은 FriendshipResultBlocks.tsx의 같은 이름 컴포넌트와
-// 동일하다(구조를 통일하기 위해 그대로 복제) — 주석은 그쪽에 적었다.
-function SectionNav() {
-  return (
-    <div className="sticky top-0 z-10 border-b border-border bg-background py-2">
-      <div className="flex gap-1.5 overflow-x-auto">
-        {NAV_ITEMS.map((item) => (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            className="inline-flex min-h-8 shrink-0 items-center rounded-pill border border-border bg-surface-elevated px-1.5 text-xs font-bold text-text-secondary shadow-subtle transition-colors hover:text-text-primary"
-          >
-            {item.label}
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // 이상형·나 소개·친구와 태그 축 일부를 공유하는 사전을 재사용하므로
 // 시각적 표현도 FriendshipTagRow(FriendshipResultBlocks.tsx)와 동일하게
@@ -74,7 +46,7 @@ export function WorkTagRow({ tags, className }: { tags: string[]; className?: st
 
 function HeroHeader({ result }: { result: WorkResult }) {
   return (
-    <Card id="summary" className="scroll-mt-6 p-5">
+    <Card className="p-5">
       <span className="inline-flex items-center rounded-pill bg-tag-fill px-3 py-1 text-xs font-extrabold text-text-primary">
         일할 때의 나 카드
       </span>
@@ -109,7 +81,7 @@ function DriverTier({ label, items, tone }: { label: string; items: string[]; to
 
 function WorkDriversSection({ workDrivers }: { workDrivers: WorkResult["workDrivers"] }) {
   return (
-    <Card id="drivers" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="일을 움직이는 힘" description="답변에서 추론한 우선순위를 세 단계로 나눠봤어요." />
       <div className="grid gap-3 sm:grid-cols-3">
         <DriverTier label="없으면 못 버티는 것" items={workDrivers.essential} tone="strong" />
@@ -122,7 +94,7 @@ function WorkDriversSection({ workDrivers }: { workDrivers: WorkResult["workDriv
 
 function PatternsSection({ items }: { items: string[] }) {
   return (
-    <Card id="patterns" className="scroll-mt-16 flex flex-col gap-3">
+    <Card className="flex flex-col gap-3">
       <SectionHeader title="반복되는 일 패턴" description="답변을 가로질러 반복되는 행동이에요." />
       <div className="flex flex-col gap-2">
         {items.map((item, index) => (
@@ -217,7 +189,7 @@ function MatrixChart({ matrix }: { matrix: WorkMatrix }) {
 
 function MatrixSection({ matrix }: { matrix: WorkMatrix }) {
   return (
-    <Card id="matrix" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="나의 여러 모습" description="답변에서 나온 4가지 업무 모습을 놓고 봤어요." />
       <MatrixChart matrix={matrix} />
       <ul className="flex flex-col gap-2">
@@ -238,7 +210,7 @@ function MatrixSection({ matrix }: { matrix: WorkMatrix }) {
 
 function WorkFitSection({ workFit }: { workFit: WorkFit }) {
   return (
-    <Card id="fit" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="맞는 환경, 소모되는 환경" description="답변 패턴을 근거로 짚어본 환경이에요." />
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
@@ -277,8 +249,7 @@ function WorkFitSection({ workFit }: { workFit: WorkFit }) {
 function SelfReflectionSection({ selfReflection }: { selfReflection: WorkSelfReflection }) {
   return (
     <div
-      id="reflection"
-      className="scroll-mt-16 flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
+      className="flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
     >
       <div>
         <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary-foreground" />
@@ -311,7 +282,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: WorkSelfRef
 
 function RoadmapSection({ roadmap }: { roadmap: WorkRoadmap }) {
   return (
-    <Card id="roadmap" className="scroll-mt-16 flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <SectionHeader title="로드맵" description="바로 시도해볼 것부터 30일 계획까지예요." />
       <div className="rounded-medium border border-primary bg-surface p-3">
         <p className="text-xs font-black text-primary">24시간 안에</p>
@@ -358,7 +329,6 @@ export function WorkResultBlocks({
     <>
       {showHero ? <HeroHeader result={result} /> : null}
       {afterHero}
-      <SectionNav />
       <WorkDriversSection workDrivers={result.workDrivers} />
       <PatternsSection items={result.patterns} />
       <MatrixSection matrix={result.matrix} />
