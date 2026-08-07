@@ -96,3 +96,95 @@ export async function setCachedGeneration(cacheKey: string, result: unknown): Pr
     console.error("[generation-cache] write failed", error);
   }
 }
+
+// 생성이 "지금 진행 중"임을 나타내는 마커. 위 캐시(getCachedGeneration/
+// setCachedGeneration)는 완성된 결과만 알고, 진행 중인 생성에 대해서는
+// 아무것도 모른다 — 그래서 같은 답변으로 두 요청이 겹치면(재마운트·
+// 새로고침·탭 중복 등으로) 첫 요청이 아직 캐시를 채우기 전까지는 둘 다
+// 캐시 미스를 보고 각자 생성을 시작해버린다(실제 프로덕션에서 취향
+// 결과가 이렇게 두 번 생성된 사고가 있었다). 이 마커는 SET NX(키가
+// 없을 때만 성공하는 원자적 쓰기)로 "내가 먼저 왔다"를 표시해서, 뒤따라
+// 들어온 요청이 새로 생성하는 대신 잠깐 기다리게 한다.
+const GENERATION_MARKER_TTL_SECONDS = 3 * 60; // 3분 — 아래 acquireGenerationMarker 주석 참고
+
+function generationMarkerKey(cacheKey: string): string {
+  return `${cacheKey}:in-progress`;
+}
+
+// SET NX EX로 마커를 원자적으로 건다 — Redis는 명령을 하나씩 순서대로
+// 처리하므로, 두 요청이 정확히 같은 순간에 이 명령을 보내도 Upstash가
+// 둘 중 하나에게만 "OK"를 주고 나머지에게는 null을 준다(키가 이미
+// 있으므로 SET이 적용되지 않음) — 그래서 정확히 하나의 요청만 true를
+// 받는다.
+//
+// TTL 3분: 실측 결과(프로덕션 로그) 생성 1회는 보통 100~135초 걸린다.
+// 서버가 도중에 죽거나 함수가 타임아웃돼 releaseGenerationMarker가 아예
+// 호출되지 못하는 최악의 경우에도, 이 마커가 영원히 남아 다음 요청들을
+// 무한정 기다리게 만들면 안 된다 — 실제 생성 시간보다 여유 있게, 하지만
+// 무한정 길지는 않게 3분으로 잡았다.
+//
+// Redis 연결이 없으면(로컬 개발 등) 캐시 자체가 이미 꺼져 있는 상태이므로
+// (getCachedGeneration이 항상 null을 준다), 마커도 항상 "내가 획득했다"로
+// 취급해 기존 동작(매번 새로 생성)을 그대로 유지한다. 마커 쓰기 자체가
+// 실패해도(네트워크 오류 등) 마찬가지로 "획득했다"로 처리한다 — 조율에
+// 실패했다고 사용자를 막을 이유는 없다(캐시 읽기 실패 시 처리와 같은
+// fail-open 원칙, 위 getCachedGeneration 주석 참고). 이 함수가 false를
+// 반환하는 경우는 오직 "다른 요청이 실제로 이 답변을 생성 중"일 때뿐이다.
+export async function acquireGenerationMarker(cacheKey: string): Promise<boolean> {
+  const redis = getRedisClient();
+  if (!redis) return true;
+  try {
+    const result = await redis.set(generationMarkerKey(cacheKey), "1", { nx: true, ex: GENERATION_MARKER_TTL_SECONDS });
+    return result === "OK";
+  } catch (error) {
+    console.error("[generation-cache] marker acquire failed", error);
+    return true;
+  }
+}
+
+// acquireGenerationMarker가 true를 반환한 요청만 호출한다. 생성이
+// 성공하든 실패하든, 도중에 예외가 나든 반드시 호출돼야 하므로 호출부는
+// 항상 finally 블록에서 이 함수를 부른다 — 안 그러면 그 답변은 마커
+// TTL(3분)이 끝날 때까지 다른 요청들이 계속 대기하게 된다.
+export async function releaseGenerationMarker(cacheKey: string): Promise<void> {
+  const redis = getRedisClient();
+  if (!redis) return;
+  try {
+    await redis.del(generationMarkerKey(cacheKey));
+  } catch (error) {
+    console.error("[generation-cache] marker release failed", error);
+  }
+}
+
+const MARKER_WAIT_POLL_INTERVAL_MS = 2_000;
+// 요청 사양: 최대 대기는 90초를 넘기지 않는다. 실측 생성 시간(100~135초)
+// 보다 짧지만, 이 대기는 "이미 진행 중인 다른 요청" 뒤에 붙는 것이므로
+// 그 다른 요청이 이미 어느 정도 진행된 뒤에 시작된다 — 실제 사고
+// 사례(첫 요청 시작 73초 뒤 두 번째 요청 도착, 첫 요청은 104초에 완료)로
+// 계산해보면 90초 대기로도 이 사고는 그대로 방지됐을 시간차다. 다만
+// 두 요청이 거의 동시에(0초 차이로) 들어오는 경우처럼 첫 요청의 실제
+// 소요 시간이 90초를 넘기면 이 대기도 놓칠 수 있다 — 그 경우에도
+// "새로 생성"으로 안전하게 넘어가지, 사용자를 계속 기다리게 하지는
+// 않는다.
+const MARKER_WAIT_MAX_MS = 90_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// 마커 획득에 실패한(= 다른 요청이 이미 생성 중인) 요청이 부른다. 캐시를
+// 2초 간격으로 다시 조회하면서 최대 90초까지 기다린다 — 그 안에 먼저
+// 온 요청이 끝나 캐시를 채우면 그 결과를 바로 돌려준다. 90초가 지나도
+// 캐시가 비어 있으면 null을 반환한다 — 호출부는 이 경우 대기를 포기하고
+// 직접 생성해야 한다(사용자가 무한정 기다리는 상황을 만들지 않는다는
+// 요구사항의 핵심 안전장치 — 마커나 이 함수가 무엇을 하든 이 보장은
+// 깨지면 안 된다).
+export async function waitForCachedGeneration<T>(cacheKey: string): Promise<T | null> {
+  const deadline = Date.now() + MARKER_WAIT_MAX_MS;
+  while (Date.now() < deadline) {
+    await sleep(MARKER_WAIT_POLL_INTERVAL_MS);
+    const cached = await getCachedGeneration<T>(cacheKey);
+    if (cached) return cached;
+  }
+  return null;
+}

@@ -56,3 +56,22 @@ export function logGenerationRequest(params: {
   const elapsedMs = Date.now() - requestStartedAt;
   console.log(`[api-timing:${topic}] outcome=${outcome} elapsedMs=${elapsedMs} cache=${cache}`);
 }
+
+// 같은 답변으로 겹쳐 들어온 요청 중 누가 실제로 생성을 맡았는지 남기는
+// 계측 로그(generation-cache.ts의 acquireGenerationMarker/
+// waitForCachedGeneration 참고). outcome 세 가지:
+// - "acquired": 이 요청이 마커를 획득해 생성을 직접 담당함(waitedMs=0).
+// - "wait_hit": 마커를 못 얻어 대기하다가, 먼저 온 요청이 채운 캐시를
+//   받음(waitedMs=실제로 기다린 시간).
+// - "wait_timeout": 마커를 못 얻어 최대 시간(90초)까지 기다렸지만 캐시가
+//   안 채워져 직접 생성으로 넘어감(waitedMs≈90000).
+export type GenerationMarkerOutcome = "acquired" | "wait_hit" | "wait_timeout";
+
+export function logGenerationMarker(params: {
+  topic: GenerationTopic;
+  outcome: GenerationMarkerOutcome;
+  waitedMs: number;
+}): void {
+  const { topic, outcome, waitedMs } = params;
+  console.log(`[generation-marker:${topic}] outcome=${outcome} waitedMs=${waitedMs}`);
+}
