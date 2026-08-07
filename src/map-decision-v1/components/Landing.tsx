@@ -232,14 +232,20 @@ export function Landing({
           없이"는 6개 주제·진로 전부에 공통으로 해당하는 사실이라
           카드마다 반복하지 않고 이 자리에서 한 번만 말한다(로그인·
           회원가입·이메일 요구 지점이 코드 전체에 없다는 건 별도
-          조사로 확인됨). */}
+          조사로 확인됨).
+
+          이 위에 있던 "MAP Decision" kicker 텍스트(.kicker 클래스)는
+          2026-08에 없앴다 — 바로 위 헤더 로고에 이미 같은 글자가 있어
+          세로로 두 번 반복돼 보였다. 헤더는 모든 화면에 있는 고정
+          요소라 그대로 두고, 히어로 쪽만 지웠다. .kicker 클래스 자체는
+          진로 결과 화면(Result.tsx)과 마인드맵 캔버스(MapCanvas.tsx)가
+          여전히 쓰고 있어 지우지 않았다. */}
       <section className="map-container pb-2 pt-8 text-center sm:pt-14">
-        <p className="kicker">MAP Decision</p>
-        <h1 className="mt-3 text-balance break-keep text-[1.9rem] font-black leading-[1.18] tracking-[-0.04em] sm:text-4xl">
-          16개 유형에 넣지 않아요
+        <h1 className="text-balance break-keep text-[1.9rem] font-black leading-[1.18] tracking-[-0.04em] sm:text-4xl">
+          16개 유형에<br className="sm:hidden" /> 넣지 않아요
         </h1>
         <p className="mx-auto mt-3 max-w-md break-keep text-sm font-semibold leading-6 text-text-secondary sm:text-base">
-          당신 답변에서만 나온 결과 · 로그인 없이
+          답한 나와 행동하는 나, 그 차이를 봅니다 · 로그인 없이
         </p>
       </section>
 
