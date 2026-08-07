@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateSelfIntroResult } from "../../../src/map-decision-v1/engine/self-intro-generator";
 import {
+  acquireGenerationMarker,
   computeGenerationCacheKey,
   getCachedGeneration,
+  releaseGenerationMarker,
   setCachedGeneration,
+  waitForCachedGeneration,
 } from "../../../src/map-decision-v1/engine/generation-cache";
 import {
   MAX_INPUT_LENGTH,
@@ -12,10 +15,16 @@ import {
   releaseGenerationSlotOnFailure,
   reserveGenerationSlot,
 } from "../../../src/map-decision-v1/engine/rate-limit";
-import { logGenerationRequest } from "../../../src/map-decision-v1/engine/generation-timing";
+import { logGenerationMarker, logGenerationRequest } from "../../../src/map-decision-v1/engine/generation-timing";
 import { signResult } from "../../../src/map-decision-v1/engine/result-signature";
 import { resolveTopic } from "../../../src/map-decision-v1/engine/topics";
 import { MapSession, SelfIntroResult } from "../../../src/map-decision-v1/types";
+
+// 마커 대기(최대 45초) + 실제 생성(실측 100~135초)이 겹치는 최악의
+// 경우에도 Vercel 기본 함수 시간제한(플랜에 따라 10~60초)에 걸려 응답이
+// 끊기지 않도록 이 라우트만 명시적으로 넉넉하게 늘린다. 값 300은 그
+// 최악 경우(45+135=180초)에 여유를 더한 것이다.
+export const maxDuration = 300;
 
 const SIGNATURE_SCOPE = "selfIntro";
 
@@ -95,50 +104,86 @@ export async function POST(request: NextRequest) {
   cacheStatus = "miss";
   console.log("[generation-cache] miss, proceeding to generate");
 
-  const ip = getClientIp(request);
-  // 이상형·진로와 같은 레이트리밋 예산을 공유한다(엔드포인트만 분리,
-  // 안전장치는 그대로 재사용 — engine/rate-limit.ts는 건드리지 않는다).
-  const reservation = await reserveGenerationSlot(ip, session.startedAt);
-  if (!reservation.allowed) {
-    const message =
-      reservation.reason === "session_limit"
-        ? "이 카드에서 만들 수 있는 횟수를 모두 사용했어요. 새로 시작해 주세요."
-        : reservation.reason === "ip_daily_limit"
-          ? "오늘 만들 수 있는 카드 수를 모두 사용했어요. 내일 다시 시도해 주세요."
-          : reservation.reason === "global_daily_limit"
-            ? "지금 이용자가 많아요. 잠시 후 다시 시도해 주세요."
-            : reservation.reason === "unavailable"
-              ? "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요."
-              : "이 카드는 반복해서 만들지 못했어요. 잠시 후 다시 시도하거나 새로 시작해 주세요.";
-    const blockedReason =
-      reservation.reason === "session_limit"
-        ? "session_generation_limit"
-        : reservation.reason === "ip_daily_limit"
-          ? "ip_daily_generation_limit"
-          : reservation.reason === "global_daily_limit"
-            ? "global_daily_generation_limit"
-            : reservation.reason === "unavailable"
-              ? "generation_unavailable"
-              : "generation_failure_limit";
-    logTiming(blockedReason);
-    return NextResponse.json(
-      { blocked: true, reason: blockedReason, message } satisfies BlockedResponse,
-      { status: 429 },
-    );
+  // 같은 답변으로 다른 요청이 이미 생성 중일 수 있다(새로고침·탭 중복·
+  // 뒤로가기 왕복 등으로 재요청된 경우) — 마커를 원자적으로 먼저 걸어본다.
+  // 이 요청이 마커를 얻으면 아래에서 정상적으로 생성을 담당하고, 못
+  // 얻으면 다른 요청이 채울 캐시를 잠깐 기다린다(generation-cache.ts의
+  // acquireGenerationMarker/waitForCachedGeneration 참고).
+  const acquiredMarker = await acquireGenerationMarker(cacheKey);
+  if (!acquiredMarker) {
+    const waitStartedAt = Date.now();
+    const cachedAfterWait = await waitForCachedGeneration<SelfIntroResult>(cacheKey);
+    const waitedMs = Date.now() - waitStartedAt;
+    if (cachedAfterWait) {
+      logGenerationMarker({ topic: "selfIntro", outcome: "wait_hit", waitedMs });
+      cacheStatus = "hit";
+      logTiming("cache_hit_after_wait");
+      return NextResponse.json({
+        result: cachedAfterWait,
+        signature: signResult(SIGNATURE_SCOPE, cachedAfterWait),
+      } satisfies SuccessResponse);
+    }
+    // 최대 대기 시간(45초)을 넘겼다 — 계속 기다리게 두지 않고 이 요청이
+    // 직접 생성한다. 마커를 얻은 적이 없으므로 아래 finally에서 release를
+    // 부르지 않는다(다른 요청이 아직 들고 있는 마커를 지우면 안 된다).
+    logGenerationMarker({ topic: "selfIntro", outcome: "wait_timeout", waitedMs });
+  } else {
+    logGenerationMarker({ topic: "selfIntro", outcome: "acquired", waitedMs: 0 });
   }
 
-  const { result, countsAsFailure } = await generateSelfIntroResult(session);
-  if (!result) {
-    await releaseGenerationSlotOnFailure(ip, session.startedAt, countsAsFailure);
-    logTiming("generation_failed");
-    return NextResponse.json(
-      { blocked: true, reason: "generation_failed", message: "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
-      { status: 502 },
-    );
+  try {
+    const ip = getClientIp(request);
+    // 이상형·진로와 같은 레이트리밋 예산을 공유한다(엔드포인트만 분리,
+    // 안전장치는 그대로 재사용 — engine/rate-limit.ts는 건드리지 않는다).
+    const reservation = await reserveGenerationSlot(ip, session.startedAt);
+    if (!reservation.allowed) {
+      const message =
+        reservation.reason === "session_limit"
+          ? "이 카드에서 만들 수 있는 횟수를 모두 사용했어요. 새로 시작해 주세요."
+          : reservation.reason === "ip_daily_limit"
+            ? "오늘 만들 수 있는 카드 수를 모두 사용했어요. 내일 다시 시도해 주세요."
+            : reservation.reason === "global_daily_limit"
+              ? "지금 이용자가 많아요. 잠시 후 다시 시도해 주세요."
+              : reservation.reason === "unavailable"
+                ? "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요."
+                : "이 카드는 반복해서 만들지 못했어요. 잠시 후 다시 시도하거나 새로 시작해 주세요.";
+      const blockedReason =
+        reservation.reason === "session_limit"
+          ? "session_generation_limit"
+          : reservation.reason === "ip_daily_limit"
+            ? "ip_daily_generation_limit"
+            : reservation.reason === "global_daily_limit"
+              ? "global_daily_generation_limit"
+              : reservation.reason === "unavailable"
+                ? "generation_unavailable"
+                : "generation_failure_limit";
+      logTiming(blockedReason);
+      return NextResponse.json(
+        { blocked: true, reason: blockedReason, message } satisfies BlockedResponse,
+        { status: 429 },
+      );
+    }
+
+    const { result, countsAsFailure } = await generateSelfIntroResult(session);
+    if (!result) {
+      await releaseGenerationSlotOnFailure(ip, session.startedAt, countsAsFailure);
+      logTiming("generation_failed");
+      return NextResponse.json(
+        { blocked: true, reason: "generation_failed", message: "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
+        { status: 502 },
+      );
+    }
+
+    await setCachedGeneration(cacheKey, result);
+
+    logTiming("success");
+    return NextResponse.json({ result, signature: signResult(SIGNATURE_SCOPE, result) } satisfies SuccessResponse);
+  } finally {
+    // acquiredMarker가 false면(마커를 못 얻어 대기하다 시간 초과로 여기
+    // 들어온 경우) 이 요청은 마커를 가진 적이 없으므로 아무것도 지우지
+    // 않는다 — 실제 소유자의 마커를 실수로 지우지 않기 위함이다.
+    if (acquiredMarker) {
+      await releaseGenerationMarker(cacheKey);
+    }
   }
-
-  await setCachedGeneration(cacheKey, result);
-
-  logTiming("success");
-  return NextResponse.json({ result, signature: signResult(SIGNATURE_SCOPE, result) } satisfies SuccessResponse);
 }

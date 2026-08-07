@@ -158,6 +158,13 @@ export function SelfIntroCard({
     if (session.selfIntroResult || attemptedRef.current) return;
     attemptedRef.current = true;
     generate();
+    // 언마운트 시 진행 중인 요청을 취소한다 — 새로고침/탭 중복/뒤로가기
+    // 왕복 등으로 이 화면이 다시 마운트되면 attemptedRef가 새 인스턴스라
+    // generate()가 또 호출되는데, 이전 요청을 그대로 두면 같은 답변으로
+    // 두 개의 생성 요청이 겹쳐 실행된다(서버 쪽 중복 방지는
+    // generation-cache.ts의 마커가 맡는다 — 이 abort는 클라이언트가 더는
+    // 관심 없는 요청을 정리하는 것뿐이다).
+    return () => controllerRef.current?.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
