@@ -363,8 +363,6 @@ export type ConversationProvider = {
   nextReply(session: MapSession, latestUserText: string, followUpQuestions?: string[]): Message;
 };
 
-export type VoiceProvider = { id: "webSpeech" | "openaiRealtime" | "whisper" | "geminiLive" | "custom"; label: string; configured: boolean; }
-
 export type VoiceProviderState = {
   supported: boolean;
   listening: boolean;

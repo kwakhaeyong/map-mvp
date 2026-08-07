@@ -5,7 +5,7 @@
 // (여행 스타일)까지 7개가 실제로 연결돼 있다. freeform(자유 고민)만 종류
 // 선택 화면(Landing.tsx)에 "준비 중"으로 노출되고 implemented: false라
 // 눌러도 대화가 시작되지 않는다 — conversationFocus/resultFocus는 아직
-// 비어 있고 entryQuestion/entryChips도 실제 대화 톤에 맞게 다듬어지기
+// 비어 있고 entryQuestion도 실제 대화 톤에 맞게 다듬어지기
 // 전이다. 새 주제가 완성되면 implemented를 true로 바꾸고 내용을 채운다.
 
 export type TopicCategory = "viral" | "depth"; // 바이럴 / 깊이
@@ -120,10 +120,9 @@ export type TopicConfig = {
   // 프롬프트에는 주제별로 뽑아낼 기존 문장이 없어서, 이번 단계에서는
   // 비워두고 결과 생성 로직 자체는 건드리지 않았다.
   resultFocus: string;
-  // 대화 시작 시 첫 질문/선택지 칩(2단계에서 실제로 쓰일 필드). 지금은
+  // 대화 시작 시 첫 질문(2단계에서 실제로 쓰일 필드). 지금은
   // 어떤 화면도 이 값을 읽지 않는다.
   entryQuestion: string;
-  entryChips: string[];
   implemented: boolean;
 };
 
@@ -142,7 +141,6 @@ export const TOPICS: Record<string, TopicConfig> = {
       "예를 들어 커리어 상담이면 지향하는 직무, 제약 조건, 실패 경험, 우선순위 갈등처럼 핵심적인 내용을 우선하고",
     resultFocus: "",
     entryQuestion: "요즘 진로나 큰 결정에서 가장 걸리는 게 뭐예요?",
-    entryChips: ["방향을 못 정하겠어요", "이직을 고민 중이에요", "큰 돈 결정을 앞두고 있어요"],
     implemented: true,
   },
   idealType: {
@@ -1347,7 +1345,6 @@ export const TOPICS: Record<string, TopicConfig> = {
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "어떤 사람에게 끌리세요?",
-    entryChips: ["성격이 잘 맞는 사람", "편안한 관계", "아직 잘 모르겠어요"],
     implemented: true,
   },
   selfIntro: {
@@ -1817,7 +1814,6 @@ export const TOPICS: Record<string, TopicConfig> = {
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "요즘 나를 한마디로 표현하면 뭐예요?",
-    entryChips: ["에너지가 넘쳐요", "차분한 편이에요", "잘 모르겠어요"],
     implemented: true,
   },
   friendship: {
@@ -2203,7 +2199,6 @@ export const TOPICS: Record<string, TopicConfig> = {
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "친구 관계에서 나는 어떤 편이에요?",
-    entryChips: ["먼저 다가가는 편이에요", "깊게 오래 가는 편이에요", "잘 모르겠어요"],
     implemented: true,
   },
   work: {
@@ -2598,12 +2593,10 @@ export const TOPICS: Record<string, TopicConfig> = {
     // 없다.
     conversationFocus: "",
     resultFocus: "",
-    // entryQuestion/entryChips는 기존 workSelf 껍데기에 이미 있던
-    // 값을 그대로 가져왔다 — "일할 때 나는 어떤 사람이에요?"라는
-    // 진단형 프레이밍이 이번 30문항의 성격과 정확히 일치해서 새로 쓸
-    // 이유가 없었다.
+    // entryQuestion은 기존 workSelf 껍데기에 이미 있던 값을 그대로
+    // 가져왔다 — "일할 때 나는 어떤 사람이에요?"라는 진단형 프레이밍이
+    // 이번 30문항의 성격과 정확히 일치해서 새로 쓸 이유가 없었다.
     entryQuestion: "일할 때 나는 어떤 사람이에요?",
-    entryChips: ["계획적으로 움직이는 편이에요", "임기응변에 강한 편이에요", "잘 모르겠어요"],
     implemented: true,
   },
   taste: {
@@ -2883,11 +2876,10 @@ export const TOPICS: Record<string, TopicConfig> = {
     // taste는 퀴즈형이라 이 필드들을 읽는 코드 자체가 없다.
     conversationFocus: "",
     resultFocus: "",
-    // entryQuestion/entryChips는 기존 taste 껍데기에 이미 있던 값을
-    // 그대로 가져왔다 — "요즘 제일 끌리는 게 뭐예요?"라는 가벼운
-    // 진입 질문이 이번 20문항의 성격과 잘 맞아서 새로 쓸 이유가 없었다.
+    // entryQuestion은 기존 taste 껍데기에 이미 있던 값을 그대로
+    // 가져왔다 — "요즘 제일 끌리는 게 뭐예요?"라는 가벼운 진입 질문이
+    // 이번 20문항의 성격과 잘 맞아서 새로 쓸 이유가 없었다.
     entryQuestion: "요즘 제일 끌리는 게 뭐예요?",
-    entryChips: ["분위기 있는 것", "실용적인 것", "잘 모르겠어요"],
     implemented: true,
   },
   travelStyle: {
@@ -3165,12 +3157,10 @@ export const TOPICS: Record<string, TopicConfig> = {
     // travelStyle은 퀴즈형이라 이 필드들을 읽는 코드 자체가 없다.
     conversationFocus: "",
     resultFocus: "",
-    // entryQuestion/entryChips는 기존 travelStyle 껍데기에 이미 있던
-    // 값을 그대로 가져왔다 — "여행 갈 때 뭘 제일 중요하게 봐요?"라는
-    // 가벼운 진입 질문이 이번 20문항의 성격과 잘 맞아서 새로 쓸 이유가
-    // 없었다.
+    // entryQuestion은 기존 travelStyle 껍데기에 이미 있던 값을 그대로
+    // 가져왔다 — "여행 갈 때 뭘 제일 중요하게 봐요?"라는 가벼운 진입
+    // 질문이 이번 20문항의 성격과 잘 맞아서 새로 쓸 이유가 없었다.
     entryQuestion: "여행 갈 때 뭘 제일 중요하게 봐요?",
-    entryChips: ["새로운 경험", "여유로운 휴식", "잘 모르겠어요"],
     implemented: true,
   },
   freeform: {
@@ -3186,7 +3176,6 @@ export const TOPICS: Record<string, TopicConfig> = {
     conversationFocus: "",
     resultFocus: "",
     entryQuestion: "오늘은 어떤 생각을 같이 정리해볼까요?",
-    entryChips: [],
     implemented: false,
   },
 };
