@@ -291,28 +291,28 @@ function FriendTypesSection({ friendTypes }: { friendTypes: FriendshipTypes }) {
 function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSelfReflection }) {
   return (
     <div
-      className="flex flex-col gap-7 rounded-large border-2 border-primary bg-primary p-5 text-primary-foreground shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
+      className="flex flex-col gap-7 rounded-large border-2 border-primary bg-surface-elevated p-5 text-text-primary shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
     >
       <div>
-        <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary-foreground" />
-        <h2 className="text-lg font-black tracking-[-0.02em] text-primary-foreground sm:text-xl">자기 성찰</h2>
-        <p className="mt-2 text-sm font-semibold leading-6 text-primary-foreground-soft">행동 답변을 모아서 본 나의 모습이에요.</p>
+        <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary" />
+        <h2 className="text-lg font-black tracking-[-0.02em] text-text-primary sm:text-xl">자기 성찰</h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">행동 답변을 모아서 본 나의 모습이에요.</p>
       </div>
       <div className="flex flex-col gap-3">
-        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground-soft">내가 주고 있는 것</p>
-        <ul className="flex flex-col gap-4 rounded-medium border border-primary-foreground-wash bg-primary-foreground-wash p-4 sm:p-5">
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-text-secondary">내가 주고 있는 것</p>
+        <ul className="flex flex-col gap-4 rounded-medium border border-border-strong bg-ink-wash p-4 sm:p-5">
           {selfReflection.whatYouOffer.map((item, index) => (
-            <li key={index} className="text-base font-semibold leading-7 text-primary-foreground sm:text-lg sm:leading-8">
+            <li key={index} className="text-base font-semibold leading-7 text-text-primary sm:text-lg sm:leading-8">
               {item}
             </li>
           ))}
         </ul>
       </div>
       <div className="flex flex-col gap-3">
-        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-primary-foreground-soft">보완할 부분</p>
-        <ul className="flex flex-col gap-4 rounded-medium border border-primary-foreground-wash-strong p-4 sm:p-5">
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-text-secondary">보완할 부분</p>
+        <ul className="flex flex-col gap-4 rounded-medium border border-border-strong p-4 sm:p-5">
           {selfReflection.whatToImprove.map((item, index) => (
-            <li key={index} className="text-base font-semibold leading-7 text-primary-foreground-strong sm:text-lg sm:leading-8">
+            <li key={index} className="text-base font-semibold leading-7 text-text-primary sm:text-lg sm:leading-8">
               {item}
             </li>
           ))}
