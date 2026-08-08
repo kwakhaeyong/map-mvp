@@ -260,8 +260,9 @@ function FriendTypesSection({ friendTypes }: { friendTypes: FriendshipTypes }) {
           </p>
           <ul className="mt-1.5 space-y-1">
             {friendTypes.wellMatched.map((item, index) => (
-              <li key={index} className="text-xs font-bold leading-5 text-text-primary">
-                · {item}
+              <li key={index} className="flex items-start gap-1.5 text-xs font-bold leading-5 text-text-primary">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-success" aria-hidden="true" />
+                <span>{item}</span>
               </li>
             ))}
           </ul>
@@ -273,8 +274,9 @@ function FriendTypesSection({ friendTypes }: { friendTypes: FriendshipTypes }) {
           </p>
           <ul className="mt-1.5 space-y-1">
             {friendTypes.friction.map((item, index) => (
-              <li key={index} className="text-xs font-bold leading-5 text-text-primary">
-                · {item}
+              <li key={index} className="flex items-start gap-1.5 text-xs font-bold leading-5 text-text-primary">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-error" aria-hidden="true" />
+                <span>{item}</span>
               </li>
             ))}
           </ul>
