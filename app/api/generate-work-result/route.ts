@@ -4,6 +4,7 @@ import {
   acquireGenerationMarker,
   computeGenerationCacheKey,
   getCachedGeneration,
+  hasSufficientTimeBudgetForGeneration,
   releaseGenerationMarker,
   setCachedGeneration,
   waitForCachedGeneration,
@@ -132,6 +133,20 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // 남은 시간 예산이 생성 1회를 안전하게 마치기에 부족하면 시작도 하지
+    // 않는다 — 어차피 결과를 못 보고 Vercel에 강제 종료돼 사용자가 빈
+    // 504만 보게 될 확률이 높은 시도라면, 차라리 기존 502
+    // generation_failed 응답을 바로 주는 편이 낫다(generation-cache.ts의
+    // hasSufficientTimeBudgetForGeneration 참고 — 마커 대기를 거쳤어도
+    // requestStartedAt 기준 남은 시간만 보므로 이 판단은 자동으로 맞다).
+    if (!hasSufficientTimeBudgetForGeneration(requestStartedAt)) {
+      logTiming("insufficient_time_budget");
+      return NextResponse.json(
+        { blocked: true, reason: "generation_failed", message: "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
+        { status: 502 },
+      );
+    }
+
     const ip = getClientIp(request);
     // 이상형·나 소개·친구·진로와 같은 레이트리밋 예산을 공유한다(엔드포인트만
     // 분리, 안전장치는 그대로 재사용 — engine/rate-limit.ts는 건드리지

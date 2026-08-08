@@ -189,3 +189,28 @@ export async function waitForCachedGeneration<T>(cacheKey: string): Promise<T | 
   }
   return null;
 }
+
+// 6개 생성 API 라우트가 실제로 쓰는 maxDuration(300초, Hobby 플랜 + Fluid
+// Compute 상한이라 이 이상 올릴 수 없다)을 여기 별도로 값으로 들고 있다.
+// Next.js는 `export const maxDuration = 300`을 각 route.ts 파일에서
+// 리터럴로 직접 읽어야 해서 그 값 자체를 여기서 export해 재사용할 수는
+// 없다 — 라우트의 maxDuration이 바뀌면 이 값도 같이 바꿔야 한다.
+const ROUTE_MAX_DURATION_MS = 300_000;
+
+// 생성 1회에 실제로 걸리는 시간의 실측 최댓값(최근 151초, 기존에 관측된
+// 100~135초 범위를 넘어선 값)에 약 20초 여유를 더한 값. 남은 시간이 이보다
+// 적은 상태로 생성을 시작하면, 결과가 나오기 전에 Vercel이 함수를 강제
+// 종료할 가능성이 매우 높다 — 그 경우 사용자는 아무 응답도 없는 504만
+// 보게 된다. 그럴 바에는 생성을 시작하지 않고 이미 있는 502
+// generation_failed 응답을 바로 돌려주는 편이 낫다(사용자에게 "지금은
+// 만들 수 없다"는 메시지라도 즉시 보여줄 수 있다).
+export const MIN_TIME_BUDGET_FOR_GENERATION_MS = 170_000;
+
+// requestStartedAt(라우트가 요청을 받은 시각)부터 지금까지 얼마가 지났든
+// 상관없이(마커 대기로 45초를 썼든, 그 전 단계들에서 시간이 걸렸든) 남은
+// 예산만 본다 — 그래서 마커 대기를 거친 뒤에도 이 판단이 자동으로
+// 정확하다.
+export function hasSufficientTimeBudgetForGeneration(requestStartedAt: number): boolean {
+  const remainingMs = ROUTE_MAX_DURATION_MS - (Date.now() - requestStartedAt);
+  return remainingMs >= MIN_TIME_BUDGET_FOR_GENERATION_MS;
+}
