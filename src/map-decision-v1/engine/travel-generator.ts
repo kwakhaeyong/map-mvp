@@ -361,7 +361,16 @@ async function attemptGeneration(
   return { result, truncated, countsAsFailure: false };
 }
 
-const MAX_GENERATION_ATTEMPTS = 2;
+// 2회 재시도는 잘림(truncation)으로 실패한 요청을 "같은 max_tokens 상한"으로
+// 다시 돌리는 구조라 실제로 구제되는지 불확실한 반면(잘려서 실패한 이유가
+// 그대로면 재시도도 같은 이유로 다시 잘릴 수 있다), 1회당 실측 최대 151초
+// 걸리는 시도를 두 번 이어 돌리면 151×2=302초로 maxDuration(300초, Hobby +
+// Fluid Compute 상한이라 이 이상 올릴 수 없다)을 확실히 넘겨 504로 끊긴다
+// — 실제 프로덕션 타임아웃 2건이 정확히 이 패턴이었다. 불확실한 구제
+// 효과보다 확실한 타임아웃을 피하는 쪽을 택해 1로 낮춘다. 재시도 루프
+// 구조 자체는 그대로 남겨둔다 — 나중에 시간 예산이 늘어나면(예: 플랜
+// 업그레이드) 이 값만 다시 올리면 된다.
+const MAX_GENERATION_ATTEMPTS = 1;
 
 export type TravelGenerationOutcome = { result: TravelResult | null; countsAsFailure: boolean };
 
