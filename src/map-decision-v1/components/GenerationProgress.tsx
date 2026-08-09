@@ -22,8 +22,15 @@ const DELAYED_AFTER_MS = 180_000; // 3분 경과
 // DELAYED_AFTER_MS와의 1분 간격은 그대로 유지한다.
 const RETRY_AFTER_MS = 240_000; // 4분 경과
 
-// 실측 약 144초에 맞춰 "2분 30초"로 표현한다.
-export const GENERATION_ESTIMATE_TEXT = "보통 2분 30초 정도 걸려요";
+// 이 문구는 6개 퀴즈형 주제(이상형·나소개·친구·인간관계·일할 때의
+// 나·취향·여행 스타일)가 공유하는 단일 상수다 — 문항 수가 주제별로
+// 20~38개로 거의 두 배 차이 나서 실제 생성 시간도 주제마다 다를 수
+// 있다. 지금 실측값은 friendship(30문항) 144초(2026-08-09, effort=high)
+// 하나뿐이고, 다른 주제는 아직 실측하지 않았다 — 주제별로 문구를
+// 나누려면 각 주제의 Vercel Logs에서 generation-timing 로그의
+// elapsedMs를 따로 확인해야 한다. 범위로 표현한 건 실측이 하나뿐인
+// 상태에서 특정 숫자를 단정하지 않기 위해서다.
+export const GENERATION_ESTIMATE_TEXT = "보통 2~3분 정도 걸려요";
 const DELAYED_TEXT = "조금 더 걸리고 있어요. 화면을 닫지 마세요.";
 const SAVED_REASSURANCE_TEXT = "답변은 이미 저장돼 있어요";
 // 태그 순차 강조가 다음 태그로 넘어가는 간격. 너무 빠르면 산만하고
