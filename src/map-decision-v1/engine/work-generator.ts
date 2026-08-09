@@ -3,7 +3,7 @@ import { MapSession, WorkMatrixPoint, WorkResult, WorkRoadmapPhase } from "../ty
 import { getGenerationEffort } from "./generation-config";
 import { isServerSideGenerationError } from "./generation-error";
 import { logGenerationAttempt } from "./generation-timing";
-import { getIdealTypeTags } from "./ideal-type-tags";
+import { getIdealTypeTags, getStatusLabel } from "./ideal-type-tags";
 import { now } from "./session";
 
 // 이상형(ideal-type-generator.ts)·나 소개(self-intro-generator.ts)·
@@ -394,6 +394,8 @@ async function attemptGeneration(
     // 재사용한다 — 네 주제 사이 교차 비교(engine/compatibility.ts)가
     // 성립하려면 결과의 태그가 같은 문자열 체계여야 한다.
     tags: getIdealTypeTags(session.quizAnswers, "work"),
+    // 결과 상단에 보여줄 한 줄 상태 라벨.
+    statusLabel: getStatusLabel(session.quizAnswers, "work"),
   };
   logGenerationAttempt({ topic: "work", attempt, generationStartedAt, effort, outcome: { kind: "success", outputTokens, thinkingTokens } });
   return { result, truncated, countsAsFailure: false };

@@ -3,7 +3,7 @@ import { IdealTypeMatrixPoint, IdealTypeResult, IdealTypeRoadmapPhase, MapSessio
 import { getGenerationEffort } from "./generation-config";
 import { isServerSideGenerationError } from "./generation-error";
 import { logGenerationAttempt } from "./generation-timing";
-import { getIdealTypeTags } from "./ideal-type-tags";
+import { getIdealTypeTags, getStatusLabel } from "./ideal-type-tags";
 import { now } from "./session";
 
 // 진로(final-result-generator.ts)와 완전히 분리된, 이상형 전용 생성기.
@@ -421,6 +421,8 @@ async function attemptGeneration(
     // 코드로 결정적으로 고른 공유 태그. AI 응답 파싱과 무관하게 항상
     // 붙인다(session.quizAnswers가 없는 예전 세션이면 빈 배열).
     tags: getIdealTypeTags(session.quizAnswers, "idealType"),
+    // 결과 상단에 보여줄 한 줄 상태 라벨.
+    statusLabel: getStatusLabel(session.quizAnswers, "idealType"),
   };
   logGenerationAttempt({ topic: "idealType", attempt, generationStartedAt, effort, outcome: { kind: "success", outputTokens, thinkingTokens } });
   return { result, truncated, countsAsFailure: false };

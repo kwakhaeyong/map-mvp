@@ -163,6 +163,12 @@ export type IdealTypeResult = {
   // 이 필드가 생기기 전에 만들어진 결과·공유 링크는 undefined로 읽히고,
   // 화면은 그 경우 태그 줄만 생략하고 나머지는 그대로 보여준다.
   tags?: string[];
+  // AI가 만들지 않는다 — engine/ideal-type-tags.ts의 getStatusLabel이
+  // 퀴즈 답변(session.quizAnswers)만 보고 고정 사전에서 코드로
+  // 결정적으로 골라 여기 얹는다. 이 필드가 생기기 전에 만들어진
+  // 결과·공유 링크는 undefined로 읽히고, 화면은 그 경우 라벨 줄만
+  // 생략하고 나머지는 그대로 보여준다.
+  statusLabel?: string;
 };
 
 // 나 소개·성격(selfIntro) 결과 — 이상형과 태그 4축(relationship/
@@ -200,6 +206,12 @@ export type SelfIntroResult = {
   // 재사용한다 — 나소개×이상형 교차 비교(engine/compatibility.ts)가
   // 성립하려면 두 결과의 태그가 같은 문자열 체계여야 한다.
   tags?: string[];
+  // AI가 만들지 않는다 — engine/ideal-type-tags.ts의 getStatusLabel이
+  // 퀴즈 답변(session.quizAnswers)만 보고 고정 사전에서 코드로
+  // 결정적으로 골라 여기 얹는다. 이 필드가 생기기 전에 만들어진
+  // 결과·공유 링크는 undefined로 읽히고, 화면은 그 경우 라벨 줄만
+  // 생략하고 나머지는 그대로 보여준다.
+  statusLabel?: string;
 };
 
 // 친구·인간관계(friendship) 결과 — 이상형·나 소개와 태그 축 일부를
@@ -240,9 +252,9 @@ export type FriendshipResult = {
   tags?: string[];
   // AI가 만들지 않는다 — engine/ideal-type-tags.ts의 getStatusLabel이
   // 퀴즈 답변(session.quizAnswers)만 보고 고정 사전에서 코드로
-  // 결정적으로 골라 여기 얹는다. 지금은 friendship에만 있는 필드다.
-  // 이 필드가 생기기 전에 만들어진 결과·공유 링크는 undefined로 읽히고,
-  // 화면은 그 경우 라벨 줄만 생략하고 나머지는 그대로 보여준다.
+  // 결정적으로 골라 여기 얹는다. 이 필드가 생기기 전에 만들어진
+  // 결과·공유 링크는 undefined로 읽히고, 화면은 그 경우 라벨 줄만
+  // 생략하고 나머지는 그대로 보여준다.
   statusLabel?: string;
 };
 
@@ -287,6 +299,12 @@ export type WorkResult = {
   // 재사용한다 — 네 주제 사이 교차 비교(engine/compatibility.ts)가
   // 성립하려면 결과의 태그가 같은 문자열 체계여야 한다.
   tags?: string[];
+  // AI가 만들지 않는다 — engine/ideal-type-tags.ts의 getStatusLabel이
+  // 퀴즈 답변(session.quizAnswers)만 보고 고정 사전에서 코드로
+  // 결정적으로 골라 여기 얹는다. 이 필드가 생기기 전에 만들어진
+  // 결과·공유 링크는 undefined로 읽히고, 화면은 그 경우 라벨 줄만
+  // 생략하고 나머지는 그대로 보여준다.
+  statusLabel?: string;
 };
 
 // work(strengths/blindSpots)와 이름이 다른 이유: taste는 재해석 축이
@@ -324,6 +342,12 @@ export type TasteResult = {
   // 비교(engine/compatibility.ts)가 성립하려면 결과의 태그가 같은
   // 문자열 체계여야 한다.
   tags?: string[];
+  // AI가 만들지 않는다 — engine/ideal-type-tags.ts의 getStatusLabel이
+  // 퀴즈 답변(session.quizAnswers)만 보고 고정 사전에서 코드로
+  // 결정적으로 골라 여기 얹는다. 이 필드가 생기기 전에 만들어진
+  // 결과·공유 링크는 undefined로 읽히고, 화면은 그 경우 라벨 줄만
+  // 생략하고 나머지는 그대로 보여준다.
+  statusLabel?: string;
 };
 
 // 6블록(travelCriteria/patterns/matrix/travelFit/selfReflection/roadmap)에서
@@ -362,6 +386,12 @@ export type TravelResult = {
   // 비교(engine/compatibility.ts)가 성립하려면 결과의 태그가 같은
   // 문자열 체계여야 한다.
   tags?: string[];
+  // AI가 만들지 않는다 — engine/ideal-type-tags.ts의 getStatusLabel이
+  // 퀴즈 답변(session.quizAnswers)만 보고 고정 사전에서 코드로
+  // 결정적으로 골라 여기 얹는다. 이 필드가 생기기 전에 만들어진
+  // 결과·공유 링크는 undefined로 읽히고, 화면은 그 경우 라벨 줄만
+  // 생략하고 나머지는 그대로 보여준다.
+  statusLabel?: string;
 };
 
 export type ConversationProvider = {

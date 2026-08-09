@@ -326,11 +326,26 @@ export function getIdealTypeTags(quizAnswers: Record<string, string[]> | undefin
   return tags;
 }
 
-// 친구·인간관계 결과 상단에 한 줄 "상태 라벨"을 보여주기 위한 별도
-// 고정 사전. conflictPattern 카테고리와 같은 축(experienceStressResponse)의
-// 답변 라벨을 키로 쓰지만, 짧은 해시태그 대신 그 사람이 지금 서 있는
-// 자리를 완결된 문장으로 설명한다 — 태그 시스템(TAG_CATEGORIES)과는
-// 용도가 달라 별도 사전으로 둔다. 지금은 friendship 한 곳에만 쓴다.
+// 6개 주제 결과 상단에 한 줄 "상태 라벨"을 보여주기 위한 별도 고정
+// 사전들. conflictPattern 카테고리와 같은 축의 답변 라벨을 키로 쓰지만,
+// 짧은 해시태그 대신 그 사람이 지금 서 있는 자리를 완결된 문장으로
+// 설명한다 — 태그 시스템(TAG_CATEGORIES)과는 용도가 달라 별도 사전으로
+// 둔다. selfIntro·friendship·work는 같은 축(experienceStressResponse)을
+// 참조하지만, 어투(관계/일 등 맥락)가 달라 사전은 주제별로 따로 둔다.
+const IDEAL_TYPE_STATUS_LABELS: Record<string, string> = {
+  "바로 이야기해서 푸는 사람": "지금은 미루지 않는 사람을 찾는 자리에 있어요",
+  "혼자 정리하고 넘어가는 사람": "지금은 스스로 정리할 줄 아는 사람을 찾는 자리에 있어요",
+  "잠깐 거리를 두는 사람": "지금은 한 박자 쉬어 가는 사람을 찾는 자리에 있어요",
+  "주변에 털어놓는 사람": "지금은 말로 푸는 사람을 찾는 자리에 있어요",
+};
+
+const SELF_INTRO_STATUS_LABELS: Record<string, string> = {
+  "바로 이야기하는 편": "지금은 감정을 미루지 않고 꺼내는 자리에 있어요",
+  "혼자 삭이는 편": "지금은 혼자 정리한 뒤 넘어가는 자리에 있어요",
+  "거리를 두는 편": "지금은 한 발 물러나 가라앉히는 자리에 있어요",
+  "주변에 털어놓는 편": "지금은 말로 꺼내며 정리하는 자리에 있어요",
+};
+
 const FRIENDSHIP_STATUS_LABELS: Record<string, string> = {
   "바로 이야기하는 편": "지금은 갈등을 정면으로 통과하는 자리에 있어요",
   "혼자 삭이는 편": "지금은 감정을 안으로 접어두는 자리에 있어요",
@@ -338,11 +353,52 @@ const FRIENDSHIP_STATUS_LABELS: Record<string, string> = {
   "주변에 털어놓는 편": "지금은 밖에서 정리하고 돌아오는 자리에 있어요",
 };
 
-// friendship이 아니면 항상 undefined — 다른 다섯 주제는 이 라벨
-// 자체가 없다. 매칭되는 답변이 없어도(quizAnswers 부재, 예전 세션 등)
-// undefined를 돌려주고, 화면은 그 경우 라벨 줄을 생략한다.
+const WORK_STATUS_LABELS: Record<string, string> = {
+  "바로 이야기하는 편": "지금은 문제를 바로 꺼내 놓는 자리에 있어요",
+  "혼자 삭이는 편": "지금은 안에서 소화하고 넘어가는 자리에 있어요",
+  "거리를 두는 편": "지금은 거리를 두고 판단을 미루는 자리에 있어요",
+  "주변에 털어놓는 편": "지금은 주변에 나누며 정리하는 자리에 있어요",
+};
+
+const TASTE_STATUS_LABELS: Record<string, string> = {
+  "거의 그대로인 편": "지금은 오래 좋아한 것에 머무는 자리에 있어요",
+  "조금씩 넓어진 편": "지금은 좋아하는 게 넓어지는 자리에 있어요",
+  "완전히 바뀐 편": "지금은 예전과 다른 것에 끌리는 자리에 있어요",
+  "계속 바뀌는 편": "지금은 한곳에 머물지 않는 자리에 있어요",
+};
+
+const TRAVEL_STYLE_STATUS_LABELS: Record<string, string> = {
+  "아침부터 부지런히 도는 사람": "지금은 많이 보고 싶은 자리에 있어요",
+  "두세 곳만 여유롭게 보는 사람": "지금은 깊게 보고 싶은 자리에 있어요",
+  "숙소에서 쉬는 시간이 긴 사람": "지금은 쉬러 떠나고 싶은 자리에 있어요",
+  "그날 컨디션 따라 정하는 사람": "지금은 정해두지 않고 움직이는 자리에 있어요",
+};
+
+// 상태 라벨이 참조하는 축은 conflictPattern 카테고리의 axisId와
+// 정확히 같다(위 TAG_CATEGORIES 참고) — 다만 태그 매핑과 별개로 여기
+// 다시 선언해서, 상태 라벨 사전을 건드릴 때 태그 사전까지 함께 읽을
+// 필요가 없게 한다.
+const STATUS_LABEL_AXIS_ID: Record<TagTopicId, string> = {
+  idealType: "idealStressResponse",
+  selfIntro: "experienceStressResponse",
+  friendship: "experienceStressResponse",
+  work: "experienceStressResponse",
+  taste: "tasteChange",
+  travelStyle: "travelPace",
+};
+
+const STATUS_LABELS: Record<TagTopicId, Record<string, string>> = {
+  idealType: IDEAL_TYPE_STATUS_LABELS,
+  selfIntro: SELF_INTRO_STATUS_LABELS,
+  friendship: FRIENDSHIP_STATUS_LABELS,
+  work: WORK_STATUS_LABELS,
+  taste: TASTE_STATUS_LABELS,
+  travelStyle: TRAVEL_STYLE_STATUS_LABELS,
+};
+
+// 매칭되는 답변이 없어도(quizAnswers 부재, 예전 세션 등) undefined를
+// 돌려주고, 화면은 그 경우 라벨 줄을 생략한다.
 export function getStatusLabel(quizAnswers: Record<string, string[]> | undefined, topicId: TagTopicId): string | undefined {
-  if (topicId !== "friendship") return undefined;
-  const label = firstLabel(quizAnswers, "experienceStressResponse");
-  return label ? FRIENDSHIP_STATUS_LABELS[label] : undefined;
+  const label = firstLabel(quizAnswers, STATUS_LABEL_AXIS_ID[topicId]);
+  return label ? STATUS_LABELS[topicId][label] : undefined;
 }
