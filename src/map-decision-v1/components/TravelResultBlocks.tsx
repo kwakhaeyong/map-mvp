@@ -2,6 +2,7 @@
 
 import { useRef, type MutableRefObject, type ReactNode } from "react";
 import { TravelFit, TravelMatrix, TravelMatrixPoint, TravelResult, TravelRoadmap } from "../types";
+import { CollapsibleItems } from "./CollapsibleItems";
 import { Card } from "./ui/primitives";
 
 // 6블록(travelCriteria/patterns/matrix/travelFit/selfReflection/roadmap)에서
@@ -124,13 +125,13 @@ function PatternsSection({ items }: { items: string[] }) {
         </blockquote>
       ) : null}
       {rest.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          {rest.map((item, index) => (
+        <CollapsibleItems
+          items={rest.map((item, index) => (
             <blockquote key={index} className="rounded-medium border border-border border-l-4 border-l-primary bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
               {item}
             </blockquote>
           ))}
-        </div>
+        />
       ) : null}
     </Card>
   );
