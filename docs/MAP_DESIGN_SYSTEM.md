@@ -92,7 +92,7 @@ Validate 375px, 768px, 1280px, 1440px, and 1920px widths. Browser zoom checks: 9
 
 ## 10. Shared primitives
 
-Use shared primitives for Button, IconButton, Card, Surface, Badge, Input, Textarea, VoiceButton, MessageBubble, ReflectionCard, ResponseChip, CheckpointCard, MapNode, MapLegend, Modal, BottomSheet, Toast, EmptyState, and ResultActionBar. New variants require a design-system update first.
+Use shared primitives for Button, IconButton, Card, Surface, Badge, Input, Textarea, VoiceButton, MessageBubble, ReflectionCard, ResponseChip, CheckpointCard, MapNode, MapLegend, Modal, BottomSheet, Toast, EmptyState, ResultActionBar, and CollapsibleItems. New variants require a design-system update first.
 
 ## 11. Golden Screens
 
@@ -120,7 +120,7 @@ Use shared primitives for Button, IconButton, Card, Surface, Badge, Input, Texta
 - Purpose: turn the conversation into a user-owned structure and realistic first action.
 - Primary action: take or refine the first action.
 - Hierarchy: result summary, MAP, decision structure, risks/missing information, 24-hour action, controls.
-- Allowed patterns: ReflectionCard, MapLegend, ResultActionBar, Button, Modal, Toast, EmptyState.
+- Allowed patterns: ReflectionCard, MapLegend, ResultActionBar, Button, Modal, Toast, EmptyState, CollapsibleItems.
 - Mobile: result actions remain reachable after the MAP; labels stay readable.
 - Empty/loading/error: incomplete result invites more conversation; export limitations are truthful.
 - Must never appear: AI-decided final answer, fake payment/share/login, decorative-only bubbles.
