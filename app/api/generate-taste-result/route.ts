@@ -44,7 +44,10 @@ function isRequestBody(value: unknown): value is RequestBody {
 // 밟는 구조라 메시지 개수가 문항 수로 이미 정해져 있다. 문항 수가
 // 나중에 바뀌어도 이 상한이 자동으로 따라가서 #81류 사고(상한
 // 하드코딩 → 문항 수 변경 시 정상 완주한 사용자가 결과를 못 받는 사고)가
-// 재발하지 않는다.
+// 재발하지 않는다. 아래 2배 마진의 유래(그리고 "이전" 버튼이 지금은
+// TopicQuiz.tsx의 pruneFromStep·commitAnswer로 messages·quizAnswers를
+// 정리한다는 점)는 generate-idealtype-result/route.ts의
+// maxIdealTypeMessages() 주석 참고.
 function maxTasteMessages(): number {
   const axisCount = (resolveTopic("taste").axes ?? []).length;
   return axisCount * 2 * 2 + 10;

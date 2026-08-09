@@ -53,12 +53,17 @@ function isRequestBody(value: unknown): value is RequestBody {
 // 따라가서 같은 사고가 재발하지 않는다.
 function maxIdealTypeMessages(): number {
   const axisCount = (resolveTopic("idealType").axes ?? []).length;
-  // 문항당 질문+답변 2개가 정상 경로의 최소치다. 그런데 "이전" 버튼으로
-  // 답을 바꿔도 이미 쌓인 메시지는 지워지지 않고 그대로 남는다
-  // (TopicQuiz.tsx의 goBack은 quizStep만 되돌리고 messages는 그대로
-  // 둔다) — 그래서 실제 메시지 수는 정상 경로보다 얼마든지 늘어날 수
-  // 있다. 문항마다 한 번씩 되돌아가 다시 답해도(2배) 넉넉히 통과하도록
-  // 여유를 두고, 마무리 질문 몫으로 10을 더한다.
+  // 문항당 질문+답변 2개가 정상 경로의 최소치다. "이전" 버튼으로 답을
+  // 바꾸면 TopicQuiz.tsx의 goBack이 pruneFromStep으로 되돌아간 지점
+  // 이후의 messages·quizAnswers를 함께 지우고, 재제출 시에도
+  // commitAnswer가 같은 axisId의 옛 질문·답변 쌍을 새 쌍으로 교체한다
+  // (PR #111·#114에서 수정 — 그전에는 goBack이 quizStep만 되돌리고
+  // messages는 그대로 둬서 되돌아갈 때마다 쌓였다). 그래서 완주 시점의
+  // 실제 메시지 수는 몇 번 되돌렸는지와 무관하게 "답한 문항 수 × 2"로
+  // 돌아온다. 아래 2배 마진은 수정 전 "이전으로 메시지가 쌓인다"는
+  // 전제에서 잡아둔 값이라 지금 기준으로는 필요 이상으로 넉넉하지만,
+  // 상한을 낮추는 쪽보다 안전하므로 계산식은 그대로 둔다. 마무리 질문
+  // 몫으로 10을 더한다.
   return axisCount * 2 * 2 + 10;
 }
 
