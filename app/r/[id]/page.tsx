@@ -308,6 +308,9 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
               title={renderable.result.title}
               fallback={
                 <div className="flex flex-col items-center gap-2 text-center">
+                  {renderable.result.statusLabel ? (
+                    <p className="text-xs font-semibold leading-5 text-text-secondary">{renderable.result.statusLabel}</p>
+                  ) : null}
                   <h1 className="text-balance break-keep text-2xl font-black leading-8 tracking-[-0.03em] text-text-primary">
                     {renderable.result.title}
                   </h1>

@@ -325,3 +325,24 @@ export function getIdealTypeTags(quizAnswers: Record<string, string[]> | undefin
   }
   return tags;
 }
+
+// 친구·인간관계 결과 상단에 한 줄 "상태 라벨"을 보여주기 위한 별도
+// 고정 사전. conflictPattern 카테고리와 같은 축(experienceStressResponse)의
+// 답변 라벨을 키로 쓰지만, 짧은 해시태그 대신 그 사람이 지금 서 있는
+// 자리를 완결된 문장으로 설명한다 — 태그 시스템(TAG_CATEGORIES)과는
+// 용도가 달라 별도 사전으로 둔다. 지금은 friendship 한 곳에만 쓴다.
+const FRIENDSHIP_STATUS_LABELS: Record<string, string> = {
+  "바로 이야기하는 편": "갈등을 정면으로 통과하는 자리에 있습니다 — 성격이 급해서가 아니라, 미뤄둔 감정이 더 무겁다는 걸 알아서",
+  "혼자 삭이는 편": "감정을 안으로 접어두는 자리에 있습니다 — 참는 게 편해서가 아니라, 말로 꺼내면 더 커진 경험이 있어서",
+  "거리를 두는 편": "잠시 물러나 지켜보는 자리에 있습니다 — 관심이 식어서가 아니라, 가라앉힌 뒤에야 제대로 말할 수 있어서",
+  "주변에 털어놓는 편": "밖에서 정리하고 돌아오는 자리에 있습니다 — 뒷말이 아니라, 당사자 앞에서 흐트러지고 싶지 않아서",
+};
+
+// friendship이 아니면 항상 undefined — 다른 다섯 주제는 이 라벨
+// 자체가 없다. 매칭되는 답변이 없어도(quizAnswers 부재, 예전 세션 등)
+// undefined를 돌려주고, 화면은 그 경우 라벨 줄을 생략한다.
+export function getStatusLabel(quizAnswers: Record<string, string[]> | undefined, topicId: TagTopicId): string | undefined {
+  if (topicId !== "friendship") return undefined;
+  const label = firstLabel(quizAnswers, "experienceStressResponse");
+  return label ? FRIENDSHIP_STATUS_LABELS[label] : undefined;
+}
