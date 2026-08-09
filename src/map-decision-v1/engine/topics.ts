@@ -1383,7 +1383,14 @@ export const TOPICS: Record<string, TopicConfig> = {
     // 아니라 건드리지 않는다. 필수 36→32문항. 대체 문항은 아직 없다 —
     // 자유서술(reflection)이 3개에서 2개로 줄어들어 자기성찰 블록
     // 원료가 얕아지는 트레이드오프를 감수했다.
-    quizVersion: 3,
+    // 4: quizVersion 3에서 뺀 자유서술 1개를 직업 무관한 형태로
+    // 복원한다 — experienceMistake·reflectionMistake 쌍을 새로 추가해
+    // 자기성찰 블록 원료를 다시 3개로 되돌린다. 기존 workMistake·
+    // reflectionWorkMistake와 문항 형태(경험형+자유서술 쌍)는 같지만
+    // "일하다가"를 걷어내 고등학생부터 30대 후반까지 답할 수 있게
+    // 했다 — 실수는 학교·취미·일상에서도 누구나 겪는 경험이라 재직
+    // 여부와 무관하다. 필수 32→34문항.
+    quizVersion: 4,
     axes: [
       {
         id: "relationship",
@@ -1450,6 +1457,29 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "천천히 스며들듯 가까워지는 편", description: "자연스럽게 흘러가는 편이다" },
           { label: "확실히 선을 정하고 가는 편", description: "명확하게 정리하고 가는 편이다" },
         ],
+      },
+      // ── 실수했을 때 ───────────────────────────────────────────────
+      // quizVersion 4에서 추가(위 quizVersion 4 주석 참고) — 제거된
+      // workMistake·reflectionWorkMistake의 직업 무관 버전이다.
+      {
+        id: "experienceMistake",
+        type: "experience",
+        required: true,
+        question: "뭔가 실수했던 순간, 그때 나는 보통 어떻게 했어?",
+        options: [
+          { label: "바로 알리고 수습부터 하는 편", description: "숨기지 않고 먼저 말하는 편이다" },
+          { label: "혼자 조용히 고치려 하는 편", description: "일단 스스로 해결해보려는 편이다" },
+          { label: "왜 그랬는지부터 따져보는 편", description: "원인을 먼저 분석하는 편이다" },
+          { label: "다음부터 안 그러려고 기록해두는 편", description: "재발 방지에 신경 쓰는 편이다" },
+        ],
+      },
+      {
+        id: "reflectionMistake",
+        type: "reflection",
+        required: true,
+        question: "그 실수 이후로, 뭐가 달라졌어요?",
+        placeholder: "예: 그 뒤로는 중요한 건 미리 메모해두는 습관이 생겼어요",
+        options: [],
       },
       // ── 갈등·의견 차이(비연애) ────────────────────────────────────
       {
