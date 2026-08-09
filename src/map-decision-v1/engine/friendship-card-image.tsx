@@ -259,13 +259,11 @@ function Frame() {
   );
 }
 
-// 타이틀 + 한줄설명 + 상태 라벨(있으면) + 태그 4개 + 하단 도메인만
+// 타이틀 + 태그 4개 + 한줄설명 + 상태 라벨(있으면) + 하단 도메인만
 // 담는다(이상형·나 소개의 초대장 카드와 동일한 범위 — 자기성찰 텍스트는
-// 카드에 넣지 않는다). 순서는 결과 화면(HeroHeader)과 맞춘다 —
-// title → oneLiner → statusLabel → tags. 예전에는 title → tags →
-// oneLiner였는데(결과 화면과 태그·한줄설명 순서가 반대였다), statusLabel을
-// "oneLiner 아래, tags 위"에 넣으려면 이 카드도 결과 화면과 같은 순서로
-// 맞춰야 해서 tags·oneLiner 순서를 함께 바꿨다.
+// 카드에 넣지 않는다). 순서는 title → tags → oneLiner → statusLabel —
+// 이 카드의 기존 tags·oneLiner 순서(결과 화면과는 반대)는 그대로 두고,
+// statusLabel만 oneLiner 바로 아래에 추가한다.
 export function buildFriendshipCardElement(result: FriendshipResult) {
   const title = clampForSafety(result.title.trim(), 60);
   const oneLiner = clampForSafety(result.oneLiner.trim(), 120);
@@ -292,9 +290,9 @@ export function buildFriendshipCardElement(result: FriendshipResult) {
       <div style={{ display: "flex", width: INVITATION_CARD_WIDTH, height: ZONE.topMargin, flexShrink: 0 }} />
       <TopicLabel label="나는 이런 친구" />
       <Title title={title} />
+      <Tags tags={tags} />
       <OneLiner oneLiner={oneLiner} />
       <StatusLabel statusLabel={statusLabel} />
-      <Tags tags={tags} />
       <Footer />
       <div style={{ display: "flex", width: INVITATION_CARD_WIDTH, height: ZONE.bottomMargin, flexShrink: 0 }} />
     </div>
