@@ -9,6 +9,7 @@ import { Conversation } from "./Conversation";
 import { FriendshipCard } from "./FriendshipCard";
 import { IdealTypeCard } from "./IdealTypeCard";
 import { Landing } from "./Landing";
+import { ProfileStep } from "./ProfileStep";
 import { Result } from "./Result";
 import { SelfIntroCard } from "./SelfIntroCard";
 import { TasteCard } from "./TasteCard";
@@ -161,7 +162,7 @@ export function MapDecisionProduct() {
   useEffect(() => {
     const onPopState = (event: PopStateEvent) => {
       const stage = (event.state as { mapStage?: MapSession["stage"] } | null)?.mapStage;
-      if (stage === "landing" || stage === "conversation" || stage === "result") {
+      if (stage === "landing" || stage === "profile" || stage === "conversation" || stage === "result") {
         setSession((current) => ({ ...current, stage }));
         return;
       }
@@ -175,7 +176,22 @@ export function MapDecisionProduct() {
   // hasStaleResult는 그 예전 세션 얘기라 새 세션에는 더 이상 맞지
   // 않으므로 같이 꺼준다(안 그러면 방금 만든, 결과가 없는 세션인데도
   // "이전 결과 보기"가 남아있다가 눌렀을 때 깨진다).
-  const start = (topicId?: string) => { setHasStaleResult(false); setSession(createSession(topicId)); };
+  // 주제를 고른 직후 곧장 "conversation"(대화·퀴즈 화면)으로 보내지
+  // 않고 "profile"(ProfileStep.tsx)을 먼저 거치게 한다 — 프로필 입력을
+  // 마치거나 건너뛰면 goConversation이 "conversation"으로 넘긴다.
+  // /?start=<topicId> 딥링크(공유 카드의 "너도 만들어봐")는 이 함수를
+  // 거치지 않고 createSession()을 직접 호출하는 별도 경로라(아래
+  // hydrate effect 참고) 여전히 profile 화면을 건너뛴다 — 알려진 한계.
+  //
+  // current.profile을 새 세션에 이어붙인다 — createSession()은 매번
+  // 완전히 새 세션을 만들어 profile을 모른다. 이 이어붙이기가 없으면
+  // "다른 주제 고르기"(ProfileStep.tsx의 work+학생 안내)로 랜딩에
+  // 돌아가 새 주제를 골랐을 때 방금 답한 프로필이 사라져 다시 물어보게
+  // 된다.
+  const start = (topicId?: string) => {
+    setHasStaleResult(false);
+    setSession((current) => ({ ...createSession(topicId), stage: "profile", profile: current.profile }));
+  };
   const startDemo = () => { setHasStaleResult(false); setSession(createDemoSession()); };
   const reset = () => { if (!session.isDemo) clearSession(); setHasSavedDraft(false); setHasStaleResult(false); setSaveState("saved"); setSession(createLandingSession()); };
   const selectType = (type: MapOutputType) => setSession((current) => ({ ...current, preferredMapType: type }));
@@ -185,6 +201,11 @@ export function MapDecisionProduct() {
   const exitDemoToReal = () => { setHasStaleResult(false); setSession(createLandingSession()); };
   const goConversation = useCallback(() => setSession((current) => ({ ...current, stage: "conversation" })), []);
   const goResult = useCallback(() => setSession((current) => ({ ...current, stage: "result" })), []);
+  // "다른 주제 고르기"(ProfileStep.tsx의 work+학생 안내) 전용. reset()과
+  // 달리 세션·localStorage를 지우지 않고 stage만 "landing"으로 돌린다 —
+  // session.profile이 그대로 남아있어야 start()가 다음 주제에 이어붙일
+  // 수 있다.
+  const backToLandingKeepProfile = useCallback(() => setSession((current) => ({ ...current, stage: "landing" })), []);
 
   const advanceDemo = () => setSession((current) => {
     const step = current.demoStep || 0;
@@ -215,6 +236,24 @@ export function MapDecisionProduct() {
         onViewResult={goResult}
         onDemo={startDemo}
         saveState={saveState}
+        // 프로필 화면은 주제를 고른 "뒤"에 나온다 — 그래서 이 값은 첫
+        // 방문(아직 profile이 없음)에는 항상 false다. work를 처음
+        // 선택하는 사람에게는 아무 영향이 없다. 이미 학생으로 답한 뒤
+        // (1) 브라우저 뒤로가기로 랜딩에 돌아왔거나 (2) ProfileStep.tsx의
+        // work+학생 안내에서 "다른 주제 고르기"를 눌렀을 때만 카드가
+        // 빠진다 — 두 경로 다 reset()이 아니라서 profile이 유지된다.
+        hideWorkTopic={session.profile?.occupationStatus === "학생"}
+      />
+    );
+  }
+  if (session.stage === "profile") {
+    return (
+      <ProfileStep
+        session={session}
+        setSession={setSession}
+        onContinue={goConversation}
+        onReset={reset}
+        onChooseDifferentTopic={backToLandingKeepProfile}
       />
     );
   }

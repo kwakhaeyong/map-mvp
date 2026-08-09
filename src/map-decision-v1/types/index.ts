@@ -3,7 +3,10 @@ export const STORAGE_KEY = "map-decision-v1-session";
 
 export type Role = "ai" | "user";
 export type MapOutputType = "thinking" | "decision" | "execution" | "priority" | "comparison" | "career" | "process" | "patientJourney" | "handover";
-export type SessionStage = "landing" | "conversation" | "result";
+// "profile"은 주제를 고른 직후, 첫 문항(대화든 퀴즈든)보다 앞에 오는
+// 화면이다(MapDecisionProduct.tsx가 ProfileStep.tsx를 렌더링). 프로필
+// 입력을 마치거나 건너뛰면 "conversation"으로 넘어간다.
+export type SessionStage = "landing" | "profile" | "conversation" | "result";
 export type Confidence = "user" | "ai" | "confirmed";
 export type NodeKind = "topic" | "trigger" | "fact" | "emotion" | "person" | "value" | "reason" | "constraint" | "option" | "benefit" | "risk" | "missing" | "direction" | "action" | "correction";
 export type RelationKind = "원인" | "영향" | "충돌" | "대안" | "장점" | "리스크" | "확인 필요" | "다음 행동";
@@ -43,6 +46,15 @@ export type MapSession = {
   // 퀴즈 진행 상태를 안전하게 초기화하고 새로 시작한다.
   quizVersion?: number;
   localDraft?: string;
+  // ProfileStep.tsx(주제 선택 직후, 첫 문항 전 화면)에서 채운다. 세
+  // 항목 모두 건너뛸 수 있고, 건너뛴 항목은 undefined다 — 이 필드가
+  // 생기기 전 세션(profile 자체가 undefined)도 같은 방식으로 다뤄진다.
+  // 결과 타입(SelfIntroResult 등 6종)에는 절대 넣지 않는다 — 넣으면
+  // 공유 링크·카드 이미지(engine/share-store.ts의 SharedResultRecord는
+  // topicId별 result만 저장)에 그대로 실려 나갈 위험이 생긴다. 이 필드는
+  // 오직 (1) 각 생성기의 프롬프트 참고 자료, (2) Landing.tsx의 work
+  // 주제 카드 노출 여부 판단, 두 곳에서만 읽는다.
+  profile?: { ageRange?: string; occupationStatus?: string; gender?: string };
   result?: FinalResult;
   idealTypeResult?: IdealTypeResult;
   // 이상형 퀴즈를 필수 34문항에서 끝냈는지("quick"), 선택 6문항까지
