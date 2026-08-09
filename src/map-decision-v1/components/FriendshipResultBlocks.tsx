@@ -91,6 +91,9 @@ function HeroHeader({ result }: { result: FriendshipResult }) {
       <span className="inline-flex items-center rounded-pill bg-tag-fill px-3 py-1 text-xs font-extrabold text-text-primary">
         친구·인간관계 카드
       </span>
+      {result.statusLabel ? (
+        <p className="mt-2 text-xs font-semibold leading-5 text-text-secondary">{result.statusLabel}</p>
+      ) : null}
       <h1 className="mt-3 text-balance break-keep text-3xl font-black leading-9 tracking-[-0.03em] text-text-primary">{result.title}</h1>
       <p className="mt-2 text-sm font-bold leading-6 text-text-primary">{result.oneLiner}</p>
       <FriendshipTagRow tags={result.tags ?? []} className="mt-3" />

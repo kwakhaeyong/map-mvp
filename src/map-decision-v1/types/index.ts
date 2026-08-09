@@ -238,6 +238,12 @@ export type FriendshipResult = {
   // 재사용한다 — 세 주제 사이 교차 비교(engine/compatibility.ts)가
   // 성립하려면 결과의 태그가 같은 문자열 체계여야 한다.
   tags?: string[];
+  // AI가 만들지 않는다 — engine/ideal-type-tags.ts의 getStatusLabel이
+  // 퀴즈 답변(session.quizAnswers)만 보고 고정 사전에서 코드로
+  // 결정적으로 골라 여기 얹는다. 지금은 friendship에만 있는 필드다.
+  // 이 필드가 생기기 전에 만들어진 결과·공유 링크는 undefined로 읽히고,
+  // 화면은 그 경우 라벨 줄만 생략하고 나머지는 그대로 보여준다.
+  statusLabel?: string;
 };
 
 // 일할 때의 나(work) 결과 — 이상형·나 소개·친구와 태그 축 일부를
