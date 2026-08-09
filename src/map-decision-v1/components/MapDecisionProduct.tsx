@@ -182,7 +182,16 @@ export function MapDecisionProduct() {
   // /?start=<topicId> 딥링크(공유 카드의 "너도 만들어봐")는 이 함수를
   // 거치지 않고 createSession()을 직접 호출하는 별도 경로라(아래
   // hydrate effect 참고) 여전히 profile 화면을 건너뛴다 — 알려진 한계.
-  const start = (topicId?: string) => { setHasStaleResult(false); setSession({ ...createSession(topicId), stage: "profile" }); };
+  //
+  // current.profile을 새 세션에 이어붙인다 — createSession()은 매번
+  // 완전히 새 세션을 만들어 profile을 모른다. 이 이어붙이기가 없으면
+  // "다른 주제 고르기"(ProfileStep.tsx의 work+학생 안내)로 랜딩에
+  // 돌아가 새 주제를 골랐을 때 방금 답한 프로필이 사라져 다시 물어보게
+  // 된다.
+  const start = (topicId?: string) => {
+    setHasStaleResult(false);
+    setSession((current) => ({ ...createSession(topicId), stage: "profile", profile: current.profile }));
+  };
   const startDemo = () => { setHasStaleResult(false); setSession(createDemoSession()); };
   const reset = () => { if (!session.isDemo) clearSession(); setHasSavedDraft(false); setHasStaleResult(false); setSaveState("saved"); setSession(createLandingSession()); };
   const selectType = (type: MapOutputType) => setSession((current) => ({ ...current, preferredMapType: type }));
@@ -192,6 +201,11 @@ export function MapDecisionProduct() {
   const exitDemoToReal = () => { setHasStaleResult(false); setSession(createLandingSession()); };
   const goConversation = useCallback(() => setSession((current) => ({ ...current, stage: "conversation" })), []);
   const goResult = useCallback(() => setSession((current) => ({ ...current, stage: "result" })), []);
+  // "다른 주제 고르기"(ProfileStep.tsx의 work+학생 안내) 전용. reset()과
+  // 달리 세션·localStorage를 지우지 않고 stage만 "landing"으로 돌린다 —
+  // session.profile이 그대로 남아있어야 start()가 다음 주제에 이어붙일
+  // 수 있다.
+  const backToLandingKeepProfile = useCallback(() => setSession((current) => ({ ...current, stage: "landing" })), []);
 
   const advanceDemo = () => setSession((current) => {
     const step = current.demoStep || 0;
@@ -224,14 +238,24 @@ export function MapDecisionProduct() {
         saveState={saveState}
         // 프로필 화면은 주제를 고른 "뒤"에 나온다 — 그래서 이 값은 첫
         // 방문(아직 profile이 없음)에는 항상 false다. work를 처음
-        // 선택하는 사람에게는 아무 영향이 없고, 이미 학생으로 답한 뒤
-        // 다시 랜딩으로 돌아왔을 때만 카드가 빠진다.
+        // 선택하는 사람에게는 아무 영향이 없다. 이미 학생으로 답한 뒤
+        // (1) 브라우저 뒤로가기로 랜딩에 돌아왔거나 (2) ProfileStep.tsx의
+        // work+학생 안내에서 "다른 주제 고르기"를 눌렀을 때만 카드가
+        // 빠진다 — 두 경로 다 reset()이 아니라서 profile이 유지된다.
         hideWorkTopic={session.profile?.occupationStatus === "학생"}
       />
     );
   }
   if (session.stage === "profile") {
-    return <ProfileStep session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
+    return (
+      <ProfileStep
+        session={session}
+        setSession={setSession}
+        onContinue={goConversation}
+        onReset={reset}
+        onChooseDifferentTopic={backToLandingKeepProfile}
+      />
+    );
   }
   if (session.stage === "result") {
     const resultTopic = resolveTopic(session.topicId);

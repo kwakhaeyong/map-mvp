@@ -12,7 +12,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 type ProfileFieldKey = "ageRange" | "occupationStatus" | "gender";
 
-const AGE_RANGE_OPTIONS = ["14세 미만", "10대", "20대 초반", "20대 후반", "30대 이상"] as const;
+const AGE_RANGE_OPTIONS = ["14세 미만", "10대", "20대", "30대", "40대 이상"] as const;
 const OCCUPATION_STATUS_OPTIONS = ["학생", "직장인", "그 외"] as const;
 const GENDER_OPTIONS = ["여성", "남성", "기타·밝히지 않음"] as const;
 
@@ -22,6 +22,12 @@ const GENDER_OPTIONS = ["여성", "남성", "기타·밝히지 않음"] as const
 // 다듬는 참고 자료일 뿐이기 때문이다. 대신 보호자 동반 이용만 짧게
 // 안내한다.
 const UNDER_14_NOTICE = "보호자와 함께 이용해주세요.";
+
+// work(일할 때의 나)는 직장 경험을 전제로 한 문항이 대부분이라, 학생이
+// 고르면 답하기 어려운 문항을 많이 만난다. 여기서도 차단하지 않는다 —
+// "다른 주제 고르기"와 "그래도 계속하기" 둘 다 정상적인 선택지로 제시하고,
+// 계속하기를 고르면 그대로 진행된다.
+const WORK_STUDENT_NOTICE = "'일할 때의 나'는 직장 경험을 전제로 한 문항이 많아요. 다른 주제를 골라볼까요?";
 
 // 세 질문 모두 같은 모양이라 하나의 컴포넌트로 만든다 — 탭 한 번으로
 // 바로 선택되고(별도 "확인" 버튼 없음), 이미 고른 항목을 다시 누르면
@@ -79,13 +85,19 @@ export function ProfileStep({
   setSession,
   onContinue,
   onReset,
+  onChooseDifferentTopic,
 }: {
   session: MapSession;
   setSession: Dispatch<SetStateAction<MapSession>>;
   onContinue: () => void;
   onReset: () => void;
+  // "다른 주제 고르기"(work+학생 안내) 전용. onReset과 달리 세션을
+  // 통째로 지우지 않고 랜딩으로만 돌아간다 — 방금 답한 profile을 그대로
+  // 들고 가서, 다음 주제를 고를 때 프로필 질문을 또 물어보지 않는다.
+  onChooseDifferentTopic: () => void;
 }) {
   const profile = session.profile ?? {};
+  const showWorkStudentNotice = session.topicId === "work" && profile.occupationStatus === "학생";
 
   const setField = (field: ProfileFieldKey, value: string | undefined) => {
     setSession((current) => ({ ...current, profile: { ...current.profile, [field]: value }, updatedAt: now() }));
@@ -137,9 +149,23 @@ export function ProfileStep({
           onSkip={() => setField("gender", undefined)}
         />
 
-        <Button type="button" variant="primary" size="lg" onClick={onContinue} className="self-stretch">
-          다음
-        </Button>
+        {showWorkStudentNotice ? (
+          <div className="flex flex-col gap-3 rounded-large border border-border bg-surface-elevated p-4">
+            <p className="break-keep text-sm font-semibold leading-6 text-text-secondary">{WORK_STUDENT_NOTICE}</p>
+            <div className="flex flex-col gap-2">
+              <Button type="button" variant="primary" size="lg" onClick={onChooseDifferentTopic}>
+                다른 주제 고르기
+              </Button>
+              <Button type="button" variant="secondary" size="lg" onClick={onContinue}>
+                그래도 계속하기
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button type="button" variant="primary" size="lg" onClick={onContinue} className="self-stretch">
+            다음
+          </Button>
+        )}
       </section>
     </main>
   );
