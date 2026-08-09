@@ -126,6 +126,7 @@ function PatternsSection({ items }: { items: string[] }) {
       ) : null}
       {rest.length > 0 ? (
         <CollapsibleItems
+          initialVisible={1}
           items={rest.map((item, index) => (
             <blockquote key={index} className="rounded-medium border border-border border-l-4 border-l-primary bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
               {item}
