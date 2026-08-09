@@ -11,6 +11,13 @@ export const MAX_GENERATIONS_PER_SESSION = 5;
 // (roughly "2 generations across a day's worth of sessions" for a real user)
 // rather than the naive DAILY_SESSION_LIMIT * MAX_GENERATIONS_PER_SESSION
 // worst case, which would let one IP trigger up to 25 Sonnet calls/day.
+//
+// ★2026-08-09 조사★ getClientIp가 보는 건 클라이언트 공인 IP 하나뿐이라,
+// 국내 이동통신사 CGNAT 환경에서는 무관한 여러 실사용자가 같은 IP로
+// 잡힌다. share-store.ts가 같은 이유로 공유 하루 한도를 5→25로 올린
+// 이력이 있다(DAILY_SHARE_LIMIT 참고) — 생성 쪽 이 상한(10)은 아직
+// 조정되지 않았다. 홍보로 모바일 유입이 늘기 시작하면 ip_daily_limit
+// 차단 빈도를 관찰해서 이 값도 같이 조정해야 한다.
 export const DAILY_GENERATION_LIMIT = 10;
 // 서비스 전체 하루 생성 상한 — IP·세션 단위 한도는 IP 로테이션으로 뚫을 수
 // 있지만, 이 한도만은 뚫을 방법이 없다(유일하게 IP·세션과 무관하다).
@@ -154,6 +161,21 @@ export async function incrWithExpire(redis: NonNullable<ReturnType<typeof getRed
 // sessionKey should be a value stable for the lifetime of one MapSession
 // (e.g. session.startedAt) so repeated "정리해줘"/재생성 calls within the
 // same session share one small budget, independent of the per-IP daily cap.
+//
+// ★2026-08-09 조사★ session.startedAt은 클라이언트(engine/session.ts의
+// createSession/createLandingSession)가 만드는 값이고, 서버는 이 값의
+// 형식·내용을 전혀 검증하지 않는다(각 라우트의 isRequestBody는 session이
+// 객체인지만 본다) — 그래서 매 요청마다 새 문자열을 지어 보내면
+// MAX_GENERATIONS_PER_SESSION은 우회할 수 있다. 다만 DAILY_GENERATION_LIMIT
+// (IP·날짜 기준)과 DAILY_GLOBAL_GENERATION_LIMIT은 sessionKey가 아니라
+// IP·전역 카운터라 이 방식으로는 안 뚫리므로, 비용 상한 자체는 유지된다.
+// 대안으로 computeGenerationCacheKey(답변 내용의 해시)를 세션 키로 쓰는
+// 것도 검토했으나 기각했다 — 답 하나만 바꿔도 해시가 통째로 바뀌어 세션
+// 한도를 오히려 더 쉽게 우회하게 되고, 무관한 두 사용자가 우연히 같은
+// 답을 고르면 같은 버킷을 공유해 서로의 사용량으로 차단당하는 오작동이
+// 생긴다(generation-cache.ts 참고). 로그인을 도입하면 sessionKey를 사용자
+// ID로 대체하는 것이 근본 해법이다 — 그전까지는 이 우회 가능성을 감수한
+// 안전핀이다.
 //
 // 이전에는 "조회만 하고 성공 시에만 나중에 차감"하는 2단계 방식이었는데,
 // 이 방식은 동시에 여러 요청이 들어오면 전부 조회를 통과해버리는 경쟁
