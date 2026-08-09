@@ -48,6 +48,7 @@ const SYSTEM_PROMPT = `너는 MAP Decision의 "취향 발견 엔진"이다. 사�
 - tasteMap(expand/avoid): 사용자의 답변 패턴을 근거로 "넓혀볼 만한 방향" / "안 맞을 방향"을 짚는다. 위 ★중요★(우열 금지) 원칙을 반드시 지켜라 — "넓혀볼 만한 방향"은 더 나은 취향이 아니라 지금 결과 자연스럽게 이어질 법한, 아직 안 가본 결이라는 톤으로 쓰고, "안 맞을 방향"도 부족하다는 뉘앙스 없이 그냥 지금 결과 안 맞을 뿐이라는 톤으로 쓴다. 구체적인 브랜드·작품명이 아니라 범주로 서술한다. 각 2~4개.
 - selfReflection(awareness/blindSpots): ★가장 중요한 항목★. awareness는 patterns에서 이미 다룬 결 자체나 그 이유를 다시 확인해주는 자리가 아니다 — patterns가 "무엇이 반복되는지"를 다뤘다면, awareness는 그 결이 이 사람에게 실제로 어떤 역할을 하는지, 즉 그 결이 채워주는 심리적·실용적 필요(예: 안정감, 통제감, 몰입, 회복, 정체성 표현, 관계에서의 안전거리 등)를 답변을 근거로 짚는다. "그런 편이죠", "이미 느끼고 있을 습관이다"처럼 이미 아는 내용을 확인해주는 문장으로 끝내지 마라 — patterns와 다른 질문("그게 왜 이 사람에게 필요한지")에 답해야 한다. blindSpots는 여러 답변을 교차했을 때 드러나는, 본인은 잘 모를 수 있는 결이다 — 위 ★핵심 재해석 (1)★과 ★핵심 재해석 (2)★ 중 최소 하나는 반드시 포함한다. awareness는 정확히 2개, blindSpots는 정확히 3개 — 각각 가장 강한 발견만 고른다. ★대조 구문 금지★: patterns와 selfReflection 어디에서도 "~라고 답했지만", "~라고 했지만", "~인데 정작", "~지만 실제로는"처럼 앞 문장의 내용을 뒤 문장이 뒤집는 대조 접속 구조를 쓰지 마라 — 답변자를 모순된 사람으로 단정하는 인상을 준다. 간극을 짚으라는 지시 자체는 그대로다 — 대신 두 모습을 각각 병렬로 서술한 뒤, 그 둘이 어떻게 함께 있을 수 있는지를 설명하는 방식으로 써라(예: "A인 것과 B인 것은 다른 얘기다"처럼, 어느 한쪽도 부정하지 않고 두 사실이 동시에 성립하는 이유를 짚는다).
 - roadmap: firstAction은 24시간 안에 시도해볼 수 있는 아주 구체적인 행동 하나(예: "오늘, 평소라면 안 골랐을 분위기의 콘텐츠 하나만 틀어보기"). phases는 취향을 조금씩 넓혀보거나 지금 결을 더 즐기는 방법을 30일 동안 단계별로 담는다("1주 이내", "2주 이내", "한 달 이내" 등) 2~4단계, 각 단계에 실행 항목 2~3개.
+- 사용자 프로필(나이대·신분·성별)이 주어지면, 그 정보를 결과 문장에 그대로 언급하거나 인용하지 마라 — 예시나 어조가 그 나이대·상황에 맞는지 표현 수위를 조정하는 데만 참고 자료로 써라.
 - 사용자가 어떤 항목을 건너뛰었으면(선택지도 직접입력도 없으면) 그 항목은 자연스럽고 무난한 내용으로 채운다 — 절대 "답변 없음"이나 빈 배열로 두지 않는다.
 - 문장 끝맺음을 다양하게 쓴다. 기본 어조는 "해요체"(예: "반복돼요", "가능성이 높아요")지만, 같은 어미가 연속 3번 이상 나오면 안 된다 — 특히 "~예요"/"~이에요"/"~거예요"가 줄줄이 이어지지 않게, 평서형 종결(예: "반복된다", "그게 결이다"), 명사형 마무리(예: "~하는 편", "~라는 신호"), 짧은 단정(예: "이유는 이거다.")을 같은 블록 안에서 의도적으로 섞어 쓴다 — title/oneLiner/tasteCore/patterns/matrix의 설명/tasteMap/selfReflection/roadmap 전부 예외 없이 해당된다. 표현의 리듬을 다양하게 하라는 것이지 내용을 부드럽게 하라는 뜻이 아니다 — 불편한 내용이라도 완곡하게 순화하지 말고 정확하게 쓰되, 어미만 다채롭게 쓴다.
 - "~일 가능성이 높아요", "~라는 뜻이에요", "~신호예요" 같은 해설조 표현을 남발하지 마라. 재해석 문장에는 이런 확률·의미 부여 표현이 필요하지만, 그 외 문장까지 전부 이 틀로 채우면 결과 전체가 해설문처럼 읽힌다.
@@ -249,6 +250,19 @@ function formatTranscript(session: MapSession): string {
   return session.messages.map((message) => (message.role === "user" ? `사용자: ${message.text}` : `질문: ${message.text}`)).join("\n");
 }
 
+// ProfileStep.tsx(주제 선택 직후 화면)에서 채운, 있으면 참고하고 없으면
+// 그냥 없는 대로 두는 선택 정보다. 세 항목 다 없으면(건너뛰었거나 이
+// 필드가 생기기 전 세션) 빈 문자열을 돌려줘 호출부가 이 줄 자체를
+// 넣지 않게 한다 — SYSTEM_PROMPT에는 캐시 적중률이 떨어지므로 넣지
+// 않고, 매번 달라지는 이 user 메시지 쪽에만 붙인다.
+function formatProfileLine(session: MapSession): string {
+  const profile = session.profile;
+  if (!profile) return "";
+  const parts = [profile.ageRange, profile.occupationStatus, profile.gender].filter((value): value is string => Boolean(value));
+  if (parts.length === 0) return "";
+  return `사용자 프로필: ${parts.join(", ")}\n\n`;
+}
+
 // 화면에 너무 많이 나오지 않도록 자르는 상한은 여기(코드)에서만 건다 —
 // 스키마에 maxItems를 넣지 않는다(다른 다섯 주제와 같은 이유).
 function capArray<T>(items: T[], max: number): T[] {
@@ -295,7 +309,7 @@ async function attemptGeneration(
       messages: [
         {
           role: "user",
-          content: `사용자가 취향 퀴즈에서 고른 답변:\n${formatTranscript(session)}`,
+          content: `${formatProfileLine(session)}사용자가 취향 퀴즈에서 고른 답변:\n${formatTranscript(session)}`,
         },
       ],
       output_config: {

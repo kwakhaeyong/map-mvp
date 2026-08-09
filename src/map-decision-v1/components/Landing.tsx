@@ -189,6 +189,7 @@ export function Landing({
   onViewResult,
   onDemo,
   saveState = "saved",
+  hideWorkTopic = false,
 }: {
   hasDraft: boolean;
   // 30분 넘게 방치돼 stage가 landing으로 강제 전환되기 직전, 원래
@@ -204,6 +205,14 @@ export function Landing({
   onViewResult: () => void;
   onDemo: () => void;
   saveState?: "loading" | "saved" | "saving";
+  // session.profile.occupationStatus === "학생"일 때 true — work(일할
+  // 때의 나) 카드를 이 화면에서 뺀다. "준비 중" 배지가 붙는 비활성
+  // 처리 대신 완전히 숨기는 쪽을 택했다 — work는 이미 구현된 주제라
+  // disabled=true로 처리하면 "준비 중"이라는, 사실과 다른 라벨을
+  // 새로 만들어 붙여야 했다(MapDecisionProduct.tsx 참고: 프로필 입력이
+  // 주제 선택"뒤"에 오므로, 이 값은 학생이 work를 처음 고르는 순간에는
+  // 절대 true가 될 수 없고 그 이후 재방문에만 영향을 준다).
+  hideWorkTopic?: boolean;
 }) {
   const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => {
@@ -214,6 +223,7 @@ export function Landing({
 
   const handleLocked = (topic: TopicConfig) => setNotice(`${topic.name}은(는) 아직 준비 중이에요. 곧 만나요!`);
   const safetyNetTopic = TOPICS[SAFETY_NET_TOPIC_ID];
+  const viralTopicIds = hideWorkTopic ? VIRAL_TOPIC_IDS.filter((id) => id !== "work") : VIRAL_TOPIC_IDS;
 
   return (
     <main className="min-h-screen px-4 py-4 text-text-primary sm:px-6 lg:px-8">
@@ -280,7 +290,7 @@ export function Landing({
           "내가 어떤 사람인지"/"무엇을 결정해야 할지"는 각 그룹에서
           실제로 얻는 결과물(자기 이해 카드 vs 결정을 위한 정리)을
           말한다. */}
-      <TopicSection kicker="내가 어떤 사람인지" ids={VIRAL_TOPIC_IDS} onStart={onStart} onLocked={handleLocked} />
+      <TopicSection kicker="내가 어떤 사람인지" ids={viralTopicIds} onStart={onStart} onLocked={handleLocked} />
       <TopicSection
         kicker="무엇을 결정해야 할지"
         ids={DEPTH_TOPIC_IDS}

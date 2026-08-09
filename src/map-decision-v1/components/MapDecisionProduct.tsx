@@ -9,6 +9,7 @@ import { Conversation } from "./Conversation";
 import { FriendshipCard } from "./FriendshipCard";
 import { IdealTypeCard } from "./IdealTypeCard";
 import { Landing } from "./Landing";
+import { ProfileStep } from "./ProfileStep";
 import { Result } from "./Result";
 import { SelfIntroCard } from "./SelfIntroCard";
 import { TasteCard } from "./TasteCard";
@@ -161,7 +162,7 @@ export function MapDecisionProduct() {
   useEffect(() => {
     const onPopState = (event: PopStateEvent) => {
       const stage = (event.state as { mapStage?: MapSession["stage"] } | null)?.mapStage;
-      if (stage === "landing" || stage === "conversation" || stage === "result") {
+      if (stage === "landing" || stage === "profile" || stage === "conversation" || stage === "result") {
         setSession((current) => ({ ...current, stage }));
         return;
       }
@@ -175,7 +176,13 @@ export function MapDecisionProduct() {
   // hasStaleResult는 그 예전 세션 얘기라 새 세션에는 더 이상 맞지
   // 않으므로 같이 꺼준다(안 그러면 방금 만든, 결과가 없는 세션인데도
   // "이전 결과 보기"가 남아있다가 눌렀을 때 깨진다).
-  const start = (topicId?: string) => { setHasStaleResult(false); setSession(createSession(topicId)); };
+  // 주제를 고른 직후 곧장 "conversation"(대화·퀴즈 화면)으로 보내지
+  // 않고 "profile"(ProfileStep.tsx)을 먼저 거치게 한다 — 프로필 입력을
+  // 마치거나 건너뛰면 goConversation이 "conversation"으로 넘긴다.
+  // /?start=<topicId> 딥링크(공유 카드의 "너도 만들어봐")는 이 함수를
+  // 거치지 않고 createSession()을 직접 호출하는 별도 경로라(아래
+  // hydrate effect 참고) 여전히 profile 화면을 건너뛴다 — 알려진 한계.
+  const start = (topicId?: string) => { setHasStaleResult(false); setSession({ ...createSession(topicId), stage: "profile" }); };
   const startDemo = () => { setHasStaleResult(false); setSession(createDemoSession()); };
   const reset = () => { if (!session.isDemo) clearSession(); setHasSavedDraft(false); setHasStaleResult(false); setSaveState("saved"); setSession(createLandingSession()); };
   const selectType = (type: MapOutputType) => setSession((current) => ({ ...current, preferredMapType: type }));
@@ -215,8 +222,16 @@ export function MapDecisionProduct() {
         onViewResult={goResult}
         onDemo={startDemo}
         saveState={saveState}
+        // 프로필 화면은 주제를 고른 "뒤"에 나온다 — 그래서 이 값은 첫
+        // 방문(아직 profile이 없음)에는 항상 false다. work를 처음
+        // 선택하는 사람에게는 아무 영향이 없고, 이미 학생으로 답한 뒤
+        // 다시 랜딩으로 돌아왔을 때만 카드가 빠진다.
+        hideWorkTopic={session.profile?.occupationStatus === "학생"}
       />
     );
+  }
+  if (session.stage === "profile") {
+    return <ProfileStep session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
   }
   if (session.stage === "result") {
     const resultTopic = resolveTopic(session.topicId);

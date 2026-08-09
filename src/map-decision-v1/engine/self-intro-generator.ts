@@ -43,6 +43,7 @@ const SYSTEM_PROMPT = `너는 MAP Decision의 "자기 발견 엔진"이다. 사�
 - selfReflection(whatYouOffer/whatToImprove): ★가장 중요한 항목★. whatYouOffer는 patterns에서 이미 다룬 패턴 자체나 그 이유를 다시 확인해주는 자리가 아니다 — patterns가 "무엇이 반복되는지"를 다뤘다면, whatYouOffer는 그 패턴이 일상에서 실제로 어떤 역할을 하는지, 즉 채워주는 심리적·실용적 필요(예: 안정감, 통제감, 신뢰, 효능감, 정체성 표현 등)를 답변을 근거로 짚는다. "그런 편이죠"처럼 이미 아는 내용을 확인해주는 문장으로 끝내지 마라 — patterns와 다른 질문("그게 왜 필요한지")에 답해야 한다. whatToImprove는 여러 답변을 교차했을 때 드러나는 모순이나 반복되는 약점을 짚는다 — 예: "갈등이 생기면 거리를 둔다"고 답했으면서 "가까운 사람이 힘들 때는 옆에서 챙긴다"고도 답했다면, 이 둘 사이의 긴장을 짚는 식이다. whatYouOffer는 정확히 2개, whatToImprove는 정확히 3개 — 각각 가장 강한 발견만 고른다. ★대조 구문 금지★: patterns와 selfReflection 어디에서도 "~라고 답했지만", "~라고 했지만", "~인데 정작", "~지만 실제로는"처럼 앞 문장의 내용을 뒤 문장이 뒤집는 대조 접속 구조를 쓰지 마라 — 답변자를 모순된 사람으로 단정하는 인상을 준다. 간극을 짚으라는 지시 자체는 그대로다 — 대신 두 모습을 각각 병렬로 서술한 뒤, 그 둘이 어떻게 함께 있을 수 있는지를 설명하는 방식으로 써라(예: "A인 것과 B인 것은 다른 얘기다"처럼, 어느 한쪽도 부정하지 않고 두 사실이 동시에 성립하는 이유를 짚는다).
 - roadmap: firstAction은 24시간 안에 시도해볼 수 있는 아주 구체적인 행동 하나(예: "다음에 갈등이 생기면, 거리를 두기 전에 딱 한 문장만 먼저 말해보기"). phases는 이런 상황에서 시도해볼 것들을 30일 동안 단계별로 담는다("1주 이내", "2주 이내", "한 달 이내" 등) 2~4단계, 각 단계에 실행 항목 2~3개.
 - 실존 인물이나 유명인의 이름은 절대 언급하지 않는다.
+- 사용자 프로필(나이대·신분·성별)이 주어지면, 그 정보를 결과 문장에 그대로 언급하거나 인용하지 마라 — 예시나 어조가 그 나이대·상황에 맞는지 표현 수위를 조정하는 데만 참고 자료로 써라.
 - 사용자가 어떤 항목을 건너뛰었으면(선택지도 직접입력도 없으면) 그 항목은 자연스럽고 무난한 내용으로 채운다 — 절대 "답변 없음"이나 빈 배열로 두지 않는다.
 - 문장 끝맺음을 다양하게 쓴다. 기본 어조는 "해요체"(예: "반복돼요", "가능성이 높아요")지만, 같은 어미가 연속 3번 이상 나오면 안 된다 — 특히 "~예요"/"~이에요"/"~거예요"가 줄줄이 이어지지 않게, 평서형 종결(예: "반복된다", "그게 패턴이다"), 명사형 마무리(예: "~하는 편", "~라는 신호"), 짧은 단정(예: "이유는 이거다.")을 같은 블록 안에서 의도적으로 섞어 쓴다 — title/oneLiner/coreValues/patterns/matrix의 설명/traits/selfReflection/roadmap 전부 예외 없이 해당된다. 표현의 리듬을 다양하게 하라는 것이지 내용을 부드럽게 하라는 뜻이 아니다 — 불편한 내용이라도 완곡하게 순화하지 말고 정확하게 쓰되, 어미만 다채롭게 쓴다.
 - "~일 가능성이 높아요", "~라는 뜻이에요", "~신호예요" 같은 해설조 표현을 남발하지 마라. 예측 문장에는 이런 확률·의미 부여 표현이 필요하지만, 그 외 문장까지 전부 이 틀로 채우면 결과 전체가 해설문처럼 읽힌다.
@@ -243,6 +244,19 @@ function formatTranscript(session: MapSession): string {
   return session.messages.map((message) => (message.role === "user" ? `사용자: ${message.text}` : `질문: ${message.text}`)).join("\n");
 }
 
+// ProfileStep.tsx(주제 선택 직후 화면)에서 채운, 있으면 참고하고 없으면
+// 그냥 없는 대로 두는 선택 정보다. 세 항목 다 없으면(건너뛰었거나 이
+// 필드가 생기기 전 세션) 빈 문자열을 돌려줘 호출부가 이 줄 자체를
+// 넣지 않게 한다 — SYSTEM_PROMPT에는 캐시 적중률이 떨어지므로 넣지
+// 않고, 매번 달라지는 이 user 메시지 쪽에만 붙인다.
+function formatProfileLine(session: MapSession): string {
+  const profile = session.profile;
+  if (!profile) return "";
+  const parts = [profile.ageRange, profile.occupationStatus, profile.gender].filter((value): value is string => Boolean(value));
+  if (parts.length === 0) return "";
+  return `사용자 프로필: ${parts.join(", ")}\n\n`;
+}
+
 // 화면에 너무 많이 나오지 않도록 자르는 상한은 여기(코드)에서만 건다 —
 // 스키마에 maxItems를 넣지 않는다(이상형과 같은 이유).
 function capArray<T>(items: T[], max: number): T[] {
@@ -289,7 +303,7 @@ async function attemptGeneration(
       messages: [
         {
           role: "user",
-          content: `사용자가 나 소개·성격 퀴즈에서 고른 답변:\n${formatTranscript(session)}`,
+          content: `${formatProfileLine(session)}사용자가 나 소개·성격 퀴즈에서 고른 답변:\n${formatTranscript(session)}`,
         },
       ],
       output_config: {
