@@ -2,7 +2,7 @@
 
 이 문서는 특정 시점의 운영 현황을 기록합니다. 아래 "열려 있는 Draft PR"과 "다음 액션"만 예외적으로 가까운 계획을 담습니다. 그 외는 전부 "지금 실제로 그런 상태"만 적습니다.
 
-마지막 갱신: 2026-08-07. 이번 갱신은 그날 머지된 PR #194~#205(주제 선택 화면 섹션 라벨·랜딩 히어로 정리·브랜드 컬러 교체·travel 재해석 문구 순화·로드맵 블록 표현 개선·career 카드 설명·생성 계측 로그·결과 생성 중복 방지 마커·결과 화면 목차 부활·대기 화면 타이밍 재조정·죽은 코드 일부 삭제)을 코드 기준으로 반영하고, 프로덕션 실측(생성 소요 시간, effort 설정값, Vercel/Upstash 리전 구성)을 오너 확인을 거쳐 추가한 것입니다. 2026-08-06 갱신 내용(문항 수·심화 구간·결과 블록 구성 전수 점검)은 아래에 그대로 남아 있고, 그 이후 사실과 어긋나게 된 부분만 고쳤습니다.
+마지막 갱신: 2026-08-09. 이번 갱신은 2026-08-09 하루 동안 머지된 PR #227~#236(자기성찰 보완 필드 개수 조정·생성 예상 시간 문구 변경·레이트리밋 리스크 기록·공유 카드 상태 라벨 6개 주제 확장·나 소개 프롬프트의 일 맥락 정리·나 소개 문항 구성 변경·프로필 입력 화면 신설)을 코드 기준으로 반영하고, 그 과정에서 코드와 어긋나 있던 기존 서술(나 소개 문항 수, 공유 하루 한도, 생성 대기 문구, freeform 노출 여부)을 정정한 것입니다. 2026-08-06·2026-08-07 갱신 내용은 아래에 그대로 남아 있고, 이번에 사실과 어긋나게 된 부분만 고쳤습니다.
 
 ## 코드
 
@@ -22,31 +22,41 @@
 |---|---|---|
 | career | 진로·커리어 | 활성 (대화형, 축 없음) |
 | idealType | 이상형 | 활성 (필수 38문항, 심화 없음 — 심화 경로는 폐지됨) |
-| selfIntro | 나 소개·성격 | 활성 (PR #122·#123 머지 완료, 필수 36문항, 심화 없음 — 심화 경로는 폐지됨) |
+| selfIntro | 나 소개·성격 | 활성 (PR #122·#123 머지 완료, 필수 34문항, 심화 없음 — 심화 경로는 폐지됨. 2026-08-09 PR #234에서 직장 전제 문항 4개 제거 + 직업 무관 문항 2개 추가로 36→34, `quizVersion` 4) |
 | friendship | 친구·인간관계 | 활성 (PR #158~#163 머지 완료, 필수 30문항, 심화 없음) |
 | work | 일할 때의 나 | 활성 (PR #167~#170 머지 완료, 필수 30문항, 심화 없음) |
 | taste | 취향 | 활성 (PR #172~#175 머지 완료, 필수 20문항, 심화 없음) |
 | travelStyle | 여행 스타일 | 활성 (PR #177~#180 머지 완료, 필수 20문항, 심화 없음) |
-| freeform | (자유 서술) | 랜딩 카드로 노출되지 않는 숨은 안전망 주제, `implemented: false` |
+| freeform | (자유 서술) | 랜딩 하단에 별도 카드로 노출됨(위 6개 주제 그리드와는 다른 자리), `implemented: false` |
 
-"준비 중"은 `topics.ts`의 `implemented: false`로 판단합니다. `false`인 주제는 카드를 눌러도 대화가 시작되지 않고 "준비 중" 안내만 뜹니다 — 지금은 랜딩에 노출되는 7개 주제 모두 활성 상태라 해당하는 주제가 없습니다.
+"준비 중"은 `topics.ts`의 `implemented: false`로 판단합니다. `false`인 주제는 카드를 눌러도 대화가 시작되지 않고 "준비 중" 안내만 뜹니다 — 지금 이 조건에 해당하는 주제는 freeform(자유 고민) 하나뿐입니다. `Landing.tsx`의 "딱 맞는 게 없나요?" 카드(302~314행)가 freeform을 가리키며 "준비 중" 배지가 그 카드에 항상 붙어 있습니다. 위 표의 나머지 7개(career·idealType·selfIntro·friendship·work·taste·travelStyle)는 전부 활성 상태입니다.
 
 **심화(선택) 구간은 6개 완성형 퀴즈 주제 전부에서 폐지됐습니다.** `topics.ts`를 코드로 직접 세어 확인한 결과 6개 주제 모두 `required: false`인 축이 0개입니다 — 처음에는 이상형·나 소개만 필수+심화 구조였고 나머지 넷은 처음부터 전부 필수였는데, 이상형·나 소개도 이후 심화 경로가 제거되며 전부 필수로 통합돼 지금은 예외 없이 전부 필수입니다. 다만 `TopicQuiz.tsx`의 심화 갈림길 코드 자체는 아직 파일에 남아있습니다 — 아래 "발견된 죽은 코드" 참고.
+
+## 주제 선택 뒤 프로필 입력 화면 (PR #236, 2026-08-09)
+
+- 랜딩에서 주제 카드를 고르면 바로 대화·퀴즈 화면(`stage: "conversation"`)으로 가지 않고, 그 사이에 `ProfileStep.tsx`(`stage: "profile"`) 화면을 한 번 거칩니다. `MapDecisionProduct.tsx`의 `start(topicId)`가 세션을 만들 때 stage를 `"profile"`로 설정합니다.
+- `types/index.ts`의 `MapSession`에 `profile?: { ageRange?: string; occupationStatus?: string; gender?: string }` 필드가 새로 생겼습니다. 나이대·지금 하는 일·성별 세 질문이고 전부 건너뛸 수 있습니다. 이 값은 결과 타입(SelfIntroResult 등)에는 들어가지 않아 공유 링크·card.png에는 노출되지 않습니다.
+- 이 값은 두 곳에서만 쓰입니다: (1) 6개 완성형 퀴즈 주제 생성기가 결과 생성 프롬프트의 user 메시지 앞에 "사용자 프로필: ..." 한 줄로 붙여 표현 수위 참고 자료로만 쓰고(SYSTEM_PROMPT에는 넣지 않음, 프롬프트 캐시 적중률 유지 목적), (2) `Landing.tsx`가 `profile.occupationStatus === "학생"`이면 work(일할 때의 나) 카드를 목록에서 뺍니다.
+- 선택한 주제가 work이고 "지금 나는"에서 학생을 고르면 `ProfileStep.tsx` 하단에 다른 주제를 고를지 그대로 진행할지 묻는 안내가 뜨지만, 차단하지는 않습니다.
+- `/?start=<topicId>` 딥링크(공유 카드의 "너도 만들어봐" CTA)는 `start()`를 거치지 않고 `createSession()`을 직접 호출하는 별도 경로라, 이 경로로 들어온 사용자는 프로필 화면을 보지 않습니다.
 
 ## 결과 화면 레이아웃
 
 - 현재 실제로 구현된 결과 레이아웃은 7종류입니다(`types/index.ts`의 각 Result 타입 필드를 코드로 직접 확인):
   - **진로**(대화형, 기존 4블록+지도 구조, `Result.tsx`)
-  - **이상형**(6블록, `IdealTypeCard.tsx`+`IdealTypeResultBlocks.tsx` — criteria/attractionPatterns/matrix/flags/selfReflection(whatYouOffer·whatToImprove)/roadmap)
-  - **나소개**(6블록, `SelfIntroCard.tsx`+`SelfIntroResultBlocks.tsx` — coreValues/patterns/matrix/traits/selfReflection(whatYouOffer·whatToImprove)/roadmap)
-  - **친구·인간관계**(6블록 — friendCriteria/patterns/matrix/friendTypes/selfReflection(whatYouOffer·whatToImprove)/roadmap)
-  - **일할 때의 나**(6블록 — workDrivers/patterns/matrix/workFit/selfReflection(strengths·blindSpots)/roadmap)
-  - **취향**(6블록 — tasteCore/patterns/matrix/tasteMap/selfReflection(awareness·blindSpots)/roadmap)
+  - **이상형**(6블록, `IdealTypeCard.tsx`+`IdealTypeResultBlocks.tsx` — criteria/attractionPatterns/matrix/flags/selfReflection(whatYouOffer 2개·whatToImprove 3개)/roadmap)
+  - **나소개**(6블록, `SelfIntroCard.tsx`+`SelfIntroResultBlocks.tsx` — coreValues/patterns/matrix/traits/selfReflection(whatYouOffer 2개·whatToImprove 3개)/roadmap)
+  - **친구·인간관계**(6블록 — friendCriteria/patterns/matrix/friendTypes/selfReflection(whatYouOffer 2개·whatToImprove 3개)/roadmap)
+  - **일할 때의 나**(6블록 — workDrivers/patterns/matrix/workFit/selfReflection(strengths 2개·blindSpots 3개)/roadmap)
+  - **취향**(6블록 — tasteCore/patterns/matrix/tasteMap/selfReflection(awareness 2개·blindSpots 3개)/roadmap)
   - **여행 스타일**(4블록 — discovery/matrix/fit/roadmap. 원래 다른 다섯 주제와 같은 6블록이었으나 2026-08-06 오늘 4블록으로 재설계됨 — 아래 "오늘(8/6) 진행된 작업" 참고. selfReflection에 해당하는 블록이 없고 discovery가 그 역할까지 흡수함)
+  - **2026-08-09 PR #227·#228**: 위 5개 주제(여행 스타일 제외) 전부 selfReflection의 두 필드 개수를 "각 2개"에서 "한쪽 2개·다른 쪽 3개"(whatToImprove/blindSpots 계열이 3개)로 바꿨습니다 — friendship은 #227, idealType·selfIntro·taste·work 4개는 #228에서 적용됐습니다(각 생성기 SYSTEM_PROMPT 문구만 수정, 스키마·문항 변경 없음). 여행 스타일은 selfReflection 블록 자체가 없어 대상에서 빠졌습니다.
 - 이상형·나소개·친구·일·취향 다섯 주제는 카드 렌더링·공유 연결 구조가 유사하지만, **공통 추상화 컴포넌트로 뽑혀 있지는 않습니다** — 각자 별도 파일로 존재하는 병렬 구현입니다. "새 주제 추가 시 재사용 가능한 공통 틀"은 아직 코드로 존재하지 않고, 지금까지는 기존 주제 파일을 복제해 새로 만드는 방식으로 확장했습니다.
 - `TopicQuiz.tsx`(퀴즈 입력 UI)는 6개 완성형 퀴즈 주제(이상형·나소개·친구·일·취향·여행 스타일) 전부가 공유합니다 — `topic.id` 기반으로 세션 필드명을 계산하도록 일반화되어 있습니다(PR #123).
 - **결과 화면 상단 목차는 2026-08-07 하루 동안 제거됐다가 복원됐습니다.** 오전에 전부 제거됐습니다(PR #194) — 목차를 `<a href="#id">` 네이티브 해시 링크로 만들었더니, 클릭할 때 생기는 해시 네비게이션을 `MapDecisionProduct.tsx`의 `popstate` 핸들러가 "알 수 없는 화면 전환"으로 오판해 결과 화면 밖으로 튕겨나가는 버그가 있었기 때문입니다. 저녁에 URL/history를 전혀 건드리지 않는 방식(버튼 클릭 + `useRef` + `scrollIntoView`)으로 다시 만들어졌습니다(PR #203) — 이전 버그의 원인이던 해시 네비게이션 자체를 안 쓰므로 같은 문제가 구조적으로 재발하지 않습니다. career를 제외한 6개 완성형 퀴즈 주제 결과 화면에 전부 적용됐고, 라이브 화면과 공유 화면(`app/r/[id]/page.tsx`)이 같은 블록 컴포넌트를 재사용해 둘 다 자동으로 반영됩니다.
 - **로드맵 블록 제목이 "로드맵" → "이제 해볼 것" → "다음 행동"으로 이날 두 차례 바뀌었습니다**(PR #200, 최종적으로 "다음 행동"). 항목 텍스트 앞의 가운뎃점(·)도 인라인 SVG 체크박스 아이콘(빈 사각형, 클릭 기능 없는 순수 시각 표현)으로 교체됐습니다. `TopicQuiz.tsx`의 `RESULT_BLOCK_PREVIEW`(퀴즈 완주 전 보여주는 결과 블록 이름 미리보기, 지금은 idealType·selfIntro만 값이 채워져 있음)도 마지막 블록 이름을 "다음 행동"으로 맞춰 함께 갱신됐습니다.
+- **`statusLabel`**: 6개 완성형 퀴즈 주제 결과 타입 전부가 갖고 있는 짧은 상태 문구 필드입니다. AI가 만들지 않고 `engine/ideal-type-tags.ts`의 `getStatusLabel()`이 퀴즈 답변(`session.quizAnswers`)만 보고 고정 사전에서 코드로 결정적으로 골라 채웁니다. **2026-08-09 PR #231(과 자동 머지로 유실된 마지막 2커밋을 복구한 #233)**에서 6개 주제의 card.png(초대장 이미지)에 `statusLabel` 전용 존이 새로 추가됐습니다 — 그 전에는 card.png에 title/tags/oneLiner/footer만 있었고 statusLabel은 없었습니다. 존 높이 배분(`ZONE`/`INVITATION_ZONE` 상수)도 이 존을 넣기 위해 title·oneLiner·footer 사이에서 재조정됐습니다. `app/r/[id]/page.tsx`의 카드 이미지 실패 시 폴백 화면에서는 태그를 4개로 자르는 처리도 같은 PR에서 6개 주제 전부에 맞춰졌습니다.
 
 ## 새 퀴즈형 주제를 활성화하려면 손대야 하는 파일
 
@@ -62,10 +72,12 @@
 10. `src/map-decision-v1/types/index.ts` — 결과 타입, `MapSession` 필드 추가
 11. `app/privacy/page.tsx` — §1·§3·§5의 주제 나열 문장에 새 주제 이름 추가(§4는 "카드형 MAP" 범주 서술로 통일해 두어 원칙적으로 갱신 불필요, PR #162)
 
+**2026-08-09 PR #236 이후 참고**: 위 6번(`MapDecisionProduct.tsx` 라우팅)에는 결과 화면 분기뿐 아니라 `stage === "profile"`일 때 `ProfileStep.tsx`를 렌더링하는 분기도 이미 포함돼 있습니다 — 새 퀴즈형 주제를 추가해도 이 프로필 화면은 모든 주제가 공통으로 거치므로 주제별로 별도 작업이 필요하지 않습니다. 자세한 내용은 위 "주제 선택 뒤 프로필 입력 화면" 참고.
+
 ## 공유 링크 · card.png · 궁합 지원 범위 (코드로 확인, 세 기능의 지원 주제가 서로 다름)
 
-- **공유 링크(`/r/{id}`, `/api/share`)는 7개 주제 전부 지원합니다** — `share-validation.ts`의 `SUPPORTED_SHARE_TOPICS`에 idealType·career·selfIntro·friendship·work·taste·travelStyle이 전부 등록돼 있습니다. 공유 링크는 Upstash Redis에 결과 JSON만 저장(대화 원문·IP·이메일 저장 안 함), 90일 자동 만료, 하루 공유 5회 제한.
-- **card.png(초대장 컨셉 이미지, 1080×1350)는 career를 제외한 6개 완성형 퀴즈 주제만 지원합니다** — `app/r/[id]/card.png/route.ts`가 `resultLayoutId`로 분기하는데 career 분기가 없어, career 공유 링크는 card.png를 만들지 못합니다(진로는 원래 카드형이 아니라 지도형 결과라 이 컨셉 자체가 적용되지 않습니다).
+- **공유 링크(`/r/{id}`, `/api/share`)는 7개 주제 전부 지원합니다** — `share-validation.ts`의 `SUPPORTED_SHARE_TOPICS`에 idealType·career·selfIntro·friendship·work·taste·travelStyle이 전부 등록돼 있습니다. 공유 링크는 Upstash Redis에 결과 JSON만 저장(대화 원문·IP·이메일 저장 안 함), 90일 자동 만료, **하루 공유 25회 제한**(`share-store.ts`의 `DAILY_SHARE_LIMIT` — 원래 5였다가 국내 이동통신사 CGNAT 환경에서 무관한 사용자가 같은 공인 IP로 묶여 차단되는 문제 때문에 25로 올라간 값입니다. 언제 바뀌었는지는 이 문서 범위에서 확인하지 못했습니다).
+- **card.png(초대장 컨셉 이미지, 1080×1350)는 career를 제외한 6개 완성형 퀴즈 주제만 지원합니다** — `app/r/[id]/card.png/route.ts`가 `resultLayoutId`로 분기하는데 career 분기가 없어, career 공유 링크는 card.png를 만들지 못합니다(진로는 원래 카드형이 아니라 지도형 결과라 이 컨셉 자체가 적용되지 않습니다). 2026-08-09 PR #231·#233으로 이 6개 card.png 전부에 `statusLabel` 존이 추가된 내용은 위 "결과 화면 레이아웃" 참고.
 - **친구와의 궁합 비교(#107, `engine/compatibility.ts`)는 이상형 결과 전용입니다.** `app/r/[id]/match/page.tsx`의 `extractIdealTypeTags()`가 `resultLayoutId !== "idealType"`이면 곧바로 비교를 포기하고 "친구 결과를 찾을 수 없어요"로 안내합니다 — 나소개를 포함한 나머지 6개 주제는 궁합 화면 진입 자체가 안 됩니다. `compareTags()` 함수 자체는 태그 형식만 맞으면 어떤 주제의 태그든 비교할 수 있게 짜여 있지만(주제를 가리지 않음), 실제로 그 함수를 호출하는 화면 진입 경로가 이상형 하나로만 연결돼 있습니다.
 - 궁합 비교(`compareTags`)는 태그 4축이 양쪽 모두 전부 있을 때만("status: ok") 성립합니다. 한쪽이라도 축이 비어 있으면("status: incomplete") "지금은 두 결과를 비교할 수 없어요. 새로 만든 결과끼리는 비교할 수 있어요."로 중립적으로 안내합니다(PR #133). 어느 쪽 축이 비었는지는 사용자에게 노출하지 않고 서버 로그(`[compatibility] comparison incomplete — ...`)에만 남깁니다.
 - 태그 체계(`engine/ideal-type-tags.ts`)는 카테고리 4개·태그 총 64개로 고정돼 있습니다(6개 완성형 퀴즈 주제가 공유). 2026-08-06 오늘 이 중 7개 태그 문자열이 교체됐습니다 — 아래 "오늘(8/6) 진행된 작업" 참고.
@@ -88,6 +100,7 @@
 - 전체 하루 상한 키(`gen-slot:global:{KST 날짜}`)는 `.github/workflows/daily-limit-alert.yml`이 그대로 읽습니다 — 바뀌지 않았습니다.
 - Redis 연결 정보가 없으면(장애 포함) **막는 쪽(fail-closed)**으로 설계돼 있습니다 — 레이트리밋 없이 생성을 허용하면 이 기능의 목적(비용 방어) 자체가 무너지기 때문입니다. 위의 결과 생성 캐시(PR #135)는 이와 반대로 fail-open(Redis 장애 시 캐시를 건너뛰고 기존 동작 유지)이며, 레이트리밋의 fail-closed 동작 자체는 건드리지 않았습니다.
 - `session.startedAt`은 세션별 한도의 키로만 쓰입니다(날짜 판단에는 서버 시간만 사용) — 위조 시 세션당 5회 한도만 우회 가능하고, IP 하루 10회·전체 300회 한도는 영향받지 않습니다.
+- **2026-08-09 PR #230**에서 `rate-limit.ts`에 두 가지 리스크가 코드 주석으로 기록됐습니다(코드 로직 변경은 없음): (1) `session.startedAt`은 클라이언트가 만드는 값이라 서버가 형식·내용을 검증하지 않으므로, 매 요청마다 새 값을 지어 보내면 세션당 5회 한도를 우회할 수 있습니다(IP·전체 한도는 우회되지 않아 비용 상한 자체는 유지됨). (2) `getClientIp`가 보는 공인 IP 하나에 국내 이동통신사 CGNAT 환경의 여러 실사용자가 묶일 수 있어, IP당 하루 10회(`DAILY_GENERATION_LIMIT`) 한도가 무관한 사용자를 함께 차단할 위험이 있습니다 — 공유 하루 한도(`DAILY_SHARE_LIMIT`)는 같은 이유로 5→25로 이미 조정된 이력이 있지만, 이 생성 쪽 한도(10)는 이번 PR 시점까지 조정되지 않았습니다.
 - 세션 시작(`registerSessionStart`, `/api/extract-nodes`) 한도만 여전히 인메모리입니다 — AI 호출 비용이 없는 가벼운 동작이라 의도적으로 남겨둔 것입니다.
 
 ## 생성 실패 진단 로그 (PR #132)
@@ -108,7 +121,7 @@
 
 - 대기 화면의 단계별 문구 전환 간격이 실측 최대 생성 시간(135초)에 맞춰 재조정됐습니다 — 5단계 × 27초(`STAGE_INTERVAL_MS`) = 135초로, 마지막 단계 문구가 실제로 가장 오래 걸리는 경우와 거의 동시에 끝나도록 계산된 값입니다.
 - "시간이 오래 걸리고 있어요" 안내는 3분(`DELAYED_AFTER_MS`) 경과 후, 재시도 버튼은 4분(`RETRY_AFTER_MS`) 경과 후 노출됩니다.
-- 화면 안내 문구는 "보통 2분 정도 걸려요"(`GENERATION_ESTIMATE_TEXT`)입니다 — 실측 100~135초를 반올림해 여유를 둔 문구입니다.
+- 화면 안내 문구는 **"보통 2~3분 정도 걸려요"**(`GENERATION_ESTIMATE_TEXT`)입니다. 이 값은 "2분 정도 걸려요" → "2분 30초 정도 걸려요"를 거쳐 **2026-08-09 PR #229**에서 범위 표현으로 다시 바뀌었습니다 — friendship(30문항) 실측 144초(effort=high) 하나만 확인된 상태에서, 주제마다 문항 수(20~38개)가 달라 실제 생성 시간도 다를 수 있다는 이유로 특정 숫자 대신 범위를 씁니다.
 
 ## CI / 브랜치 보호 · 머지 방식
 
@@ -134,7 +147,7 @@
 
 ## 열려 있는 Draft PR
 
-이전 갱신까지 여기 남아있던 #136·#137은 각각 `7bccc6d`(PR #136 머지 커밋), `04e5a95`(PR #137 머지 커밋)로 이미 오래전에 main에 머지됐습니다 — git 로그로 확인. 이번 갱신 시점(2026-08-07) 기준으로 GitHub에 열려 있는 PR은 0건입니다(이 문서를 갱신하는 이번 PR 자체는 제외) — API로 확인.
+이전 갱신까지 여기 남아있던 #136·#137은 각각 `7bccc6d`(PR #136 머지 커밋), `04e5a95`(PR #137 머지 커밋)로 이미 오래전에 main에 머지됐습니다 — git 로그로 확인. 이번 갱신 시점(2026-08-09) 기준으로 GitHub에 열려 있는 PR은 0건입니다(이 문서를 갱신하는 이번 PR 자체는 제외) — API로 확인.
 
 ## 알려진 기술 부채
 
@@ -203,11 +216,26 @@
 
 이 12개 PR 전부 공통으로: 실제 AI 출력 품질(재해석 문구 순화가 실제 생성 결과에 미치는 효과 등)과 화면 시각 품질(색상 교체, 배지 레이아웃 등)은 이 개발 샌드박스에서 완전히 검증하지 못했습니다 — `ANTHROPIC_API_KEY` 부재, 프로덕션 도메인 접근 차단이 이유입니다.
 
+## 오늘(8/9) 머지된 PR 요약 (그 날짜 기준 기록, 그 이후 갱신되지 않음)
+
+- **#227** — friendship 생성기의 selfReflection `whatToImprove`를 2개→3개로 늘림(`whatYouOffer`는 2개 유지). SYSTEM_PROMPT 문구만 수정, 스키마·문항 변경 없음.
+- **#228** — #227과 같은 "한쪽 2개·다른 쪽 3개" 비대칭을 idealType·selfIntro·taste·work 4개 생성기에 동일 적용(위 "결과 화면 레이아웃" 참고). travelStyle은 selfReflection 블록 자체가 없어 제외.
+- **#229** — 생성 대기 화면 안내 문구를 "2분 30초 정도"에서 "2~3분 정도"(범위 표현)로 변경(위 "결과 생성 대기 화면 타이밍" 참고).
+- **#230** — `rate-limit.ts`에 세션 키(`session.startedAt`) 위조로 세션당 생성 한도를 우회할 수 있다는 점, CGNAT 환경에서 IP 기반 한도가 무관한 사용자를 함께 차단할 수 있다는 점을 코드 주석으로 기록(위 "레이트리밋" 참고). 코드 로직 변경 없음.
+- **#231** — 공유 카드(card.png)에 `statusLabel` 존을 신설하고 6개 완성형 퀴즈 주제 전부로 확장, 레이아웃 존 높이 재조정(위 "결과 화면 레이아웃" 참고).
+- **#232** — selfIntro 생성기 SYSTEM_PROMPT의 patterns/matrix/selfReflection 예시 문구에서 "일" 맥락 3곳 제거(테스터 피드백 "내 소개인데 왜 일할 때가 나와?" 대응).
+- **#233** — #231이 자동 머지되며 유실된 마지막 2개 커밋을 새 PR로 복구.
+- **#234** — selfIntro에서 직장 전제 문항 4개(workDeadline·workMistake·reflectionWorkMistake·workTeam) 제거, 직업 무관 문항 2개(experienceMistake·reflectionMistake) 추가. 필수 문항 수 36→34, `quizVersion` 2→4. 태그 4축·`work` 주제(별도 topicId)는 손대지 않음.
+- **#235** — selfIntro 생성기 SYSTEM_PROMPT에 남아있던 "동료"(문항 구성 설명 문장)·"일할 때"(patterns/matrix 개요 문단) 잔여 언급 정리. 30행의 모더레이션 지침("직장·연애·감정에 대한 솔직한 서술은 배제 대상이 아니다")은 그대로 유지.
+- **#236** — 주제 선택 뒤 프로필 입력 화면 신설(위 "주제 선택 뒤 프로필 입력 화면" 참고). 후속 커밋으로 나이 선택지를 "14세 미만/10대/20대/30대/40대 이상" 5단계로 정리하고, work+학생 조합일 때 다른 주제를 고를지 묻는 안내를 추가.
+
+이 10개 PR 전부 공통으로: 실제 AI 출력 품질(selfReflection 문구·개수 변경이 실제 생성 결과에 미치는 효과 등)과 화면 시각 품질(프로필 화면·상태 라벨 레이아웃 등)은 이 개발 샌드박스에서 완전히 검증하지 못했습니다 — `ANTHROPIC_API_KEY` 부재, 프로덕션 도메인 접근 차단이 이유입니다.
+
 ## 다음 액션
 
 1. **알려진 기술 부채 우선순위 판단** — 위 "알려진 기술 부채" 목록 중 어느 것부터 정리할지 결정(항목 4·7은 해소 확인됨, 항목 8·9는 이번에 새로 추가됨, 나머지는 여전히 열려 있음).
 2. **selfIntro의 재해석 축을 다른 다섯 주제 수준으로 명시할지 판단** — 위 "오늘(8/6) 진행된 작업" 참고. 지금은 selfIntro만 전용 라벨이 없는 상태입니다.
-3. **`docs/NASOGAE_DESIGN.md`의 설계 시점 수치(필수 34+심화 6=40문항, 목표 소요 시간 7~8분)가 실제 구현(필수 36, 심화 없음)과 다르다는 점을 인지** — 문서 자체에는 이번에 "구현 후 실제와 다른 점" 안내를 추가했습니다. 소요 시간을 다시 측정해 갱신할지는 별도 판단이 필요합니다.
+3. **`docs/NASOGAE_DESIGN.md`의 설계 시점 수치(필수 34+심화 6=40문항, 목표 소요 시간 7~8분)가 실제 구현(2026-08-09 기준 필수 34문항, 심화 없음)과 다르다는 점을 인지** — 문서 자체에는 "구현 후 실제와 다른 점" 안내가 추가돼 있습니다. 문항 수(34)는 이번 갱신 시점 기준 우연히 설계 시점 수치와 같아졌지만, 심화 6문항이 없다는 구조 차이는 여전합니다. 소요 시간을 다시 측정해 갱신할지는 별도 판단이 필요합니다.
 4. **위 "발견된 죽은 코드" 목록 중 남은 항목(`DecisionStep`, `progressHint`, `quizDepth` 배선)의 삭제 여부 판단** — `entryChips`·`IconButton`/`Input`/`Modal`·`VoiceProvider`는 PR #205로 이미 삭제됐습니다(위 항목 참고). 남은 세 가지는 재사용 가능성·과거 데이터 호환 이유로 이번에도 범위에서 제외됐습니다.
 5. **`generation-timing.ts` 66행 근처의 낡은 "90초" 주석을 45초로 고칠지 판단** — 코드 동작 자체는 정상이라 급하지 않지만, 다음에 이 파일을 만지는 사람이 혼동할 수 있습니다.
 6. **랜딩의 `TOPIC_META` 소요 시간 표시를 실측치(생성 100~135초 포함)로 갱신할지 판단** — 지금은 문항 수 기반 추정치만 보여주고 생성 대기 시간은 전혀 반영하지 않습니다. 위 "프로덕션 실측 데이터" 항목 참고.
