@@ -77,7 +77,14 @@ function fitOneLiner(text: string, fontSizes: number[], budget: number, lineHeig
 // topicLabel(36)은 title에서 그만큼(610→574) 떼어와 마련했다 —
 // friendship-card-image.tsx의 같은 상수 옆 주석 참고(네 파일이 같은
 // 초대장 레이아웃을 각자 복제해 쓰고 있어 계산 근거도 동일하다).
-const ZONE = { topMargin: 60, topicLabel: 36, title: 574, tags: 350, oneLiner: 200, footer: 70, bottomMargin: 60 } as const;
+// statusLabel(60)도 같은 방식으로 title에서 떼어왔다(574→514) —
+// friendship-card-image.tsx와 동일한 근거. oneLiner(200→140)·
+// footer(70→130)도 60을 주고받았다 — Zone이 justifyContent:center라
+// 존 안의 빈 공간이 위아래로 절반씩 나뉘는데, oneLiner 존을 줄이면 그
+// 아래(statusLabel과의 사이) 여백이 줄고, footer 존을 늘리면 그
+// 위(statusLabel과의 사이) 여백이 늘어 statusLabel이 oneLiner에 붙고
+// footer와는 떨어져 보인다.
+const ZONE = { topMargin: 60, topicLabel: 36, title: 514, statusLabel: 60, tags: 350, oneLiner: 140, footer: 130, bottomMargin: 60 } as const;
 const TAG = { sizes: [72, 68, 64, 58, 52, 46, 40, 34], paddingX: 32, gap: 20 };
 const TAG_CHAR_WIDTH_RATIO = 0.92;
 const ONELINER_FONT_SIZES = [44, 40, 36, 30];
@@ -211,6 +218,22 @@ function OneLiner({ oneLiner }: { oneLiner: string }) {
   );
 }
 
+// friendship-card-image.tsx의 StatusLabel과 같은 이유·같은 구현 —
+// OneLiner(inkStrong, 30~44px)보다 작고 옅은 보조 설명이라 새 색 없이
+// CARD_COLORS.textSecondary(TopicLabel·Footer가 이미 쓴다)를
+// 재사용한다. statusLabel이 없으면(옛 공유 데이터) 존 자체를
+// 렌더링하지 않는다 — Tags(tags.length === 0)와 같은 패턴이다.
+function StatusLabel({ statusLabel }: { statusLabel?: string }) {
+  if (!statusLabel) return null;
+  return (
+    <Zone height={ZONE.statusLabel}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: ZONE.statusLabel, overflow: "hidden" }}>
+        <span style={{ fontSize: 30, fontWeight: 500, lineHeight: 1.4, color: CARD_COLORS.textSecondary }}>{statusLabel}</span>
+      </div>
+    </Zone>
+  );
+}
+
 function Footer() {
   return (
     <Zone height={ZONE.footer}>
@@ -238,12 +261,13 @@ function Frame() {
   );
 }
 
-// 타이틀 + 태그 4개 + 한줄설명 + 하단 도메인만 담는다(이상형·나 소개·
-// 친구·인간관계의 초대장 카드와 동일한 범위 — 자기성찰 텍스트는 카드에
-// 넣지 않는다).
+// 타이틀 + 태그 4개 + 한줄설명 + 상태 라벨(있으면) + 하단 도메인만
+// 담는다(이상형·나 소개·친구·인간관계의 초대장 카드와 동일한 범위 —
+// 자기성찰 텍스트는 카드에 넣지 않는다).
 export function buildWorkCardElement(result: WorkResult) {
   const title = clampForSafety(result.title.trim(), 60);
   const oneLiner = clampForSafety(result.oneLiner.trim(), 120);
+  const statusLabel = result.statusLabel ? clampForSafety(result.statusLabel.trim(), 60) : undefined;
   const tags = (result.tags ?? []).slice(0, 4);
   const textureDataUri = loadPaperTextureDataUri();
 
@@ -268,6 +292,7 @@ export function buildWorkCardElement(result: WorkResult) {
       <Title title={title} />
       <Tags tags={tags} />
       <OneLiner oneLiner={oneLiner} />
+      <StatusLabel statusLabel={statusLabel} />
       <Footer />
       <div style={{ display: "flex", width: INVITATION_CARD_WIDTH, height: ZONE.bottomMargin, flexShrink: 0 }} />
     </div>

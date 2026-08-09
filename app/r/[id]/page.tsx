@@ -243,7 +243,10 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                   {renderable.result.statusLabel ? (
                     <p className="text-xs font-semibold leading-5 text-text-secondary">{renderable.result.statusLabel}</p>
                   ) : null}
-                  <TagRow tags={renderable.result.tags ?? []} className="justify-center" />
+                  {/* card.png(ideal-type-card-image.tsx)도 태그를 4개로
+                      자르므로, 이미지가 실패했을 때만 뜨는 이 폴백도
+                      같은 개수로 맞춘다. */}
+                  <TagRow tags={(renderable.result.tags ?? []).slice(0, 4)} className="justify-center" />
                 </div>
               }
             />
@@ -283,7 +286,10 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                   {renderable.result.statusLabel ? (
                     <p className="text-xs font-semibold leading-5 text-text-secondary">{renderable.result.statusLabel}</p>
                   ) : null}
-                  <SelfIntroTagRow tags={renderable.result.tags ?? []} className="justify-center" />
+                  {/* card.png(self-intro-card-image.tsx)도 태그를 4개로
+                      자르므로, 이미지가 실패했을 때만 뜨는 이 폴백도
+                      같은 개수로 맞춘다. */}
+                  <SelfIntroTagRow tags={(renderable.result.tags ?? []).slice(0, 4)} className="justify-center" />
                 </div>
               }
             />
@@ -362,7 +368,10 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                   {renderable.result.statusLabel ? (
                     <p className="text-xs font-semibold leading-5 text-text-secondary">{renderable.result.statusLabel}</p>
                   ) : null}
-                  <WorkTagRow tags={renderable.result.tags ?? []} className="justify-center" />
+                  {/* card.png(work-card-image.tsx)도 태그를 4개로
+                      자르므로, 이미지가 실패했을 때만 뜨는 이 폴백도
+                      같은 개수로 맞춘다. */}
+                  <WorkTagRow tags={(renderable.result.tags ?? []).slice(0, 4)} className="justify-center" />
                 </div>
               }
             />
@@ -399,7 +408,10 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                   {renderable.result.statusLabel ? (
                     <p className="text-xs font-semibold leading-5 text-text-secondary">{renderable.result.statusLabel}</p>
                   ) : null}
-                  <TasteTagRow tags={renderable.result.tags ?? []} className="justify-center" />
+                  {/* card.png(taste-card-image.tsx)도 태그를 4개로
+                      자르므로, 이미지가 실패했을 때만 뜨는 이 폴백도
+                      같은 개수로 맞춘다. */}
+                  <TasteTagRow tags={(renderable.result.tags ?? []).slice(0, 4)} className="justify-center" />
                 </div>
               }
             />
@@ -437,7 +449,10 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                   {renderable.result.statusLabel ? (
                     <p className="text-xs font-semibold leading-5 text-text-secondary">{renderable.result.statusLabel}</p>
                   ) : null}
-                  <TravelTagRow tags={renderable.result.tags ?? []} className="justify-center" />
+                  {/* card.png(travel-card-image.tsx)도 태그를 4개로
+                      자르므로, 이미지가 실패했을 때만 뜨는 이 폴백도
+                      같은 개수로 맞춘다. */}
+                  <TravelTagRow tags={(renderable.result.tags ?? []).slice(0, 4)} className="justify-center" />
                 </div>
               }
             />

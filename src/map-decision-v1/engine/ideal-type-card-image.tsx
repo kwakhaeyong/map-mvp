@@ -838,7 +838,15 @@ function buildNavyStoryCard(result: IdealTypeResult) {
 // 확보용이라 건드리면 내용이 테두리선과 겹칠 위험이 있어 그대로 뒀다.
 // title 574px는 실제 타이틀 최대 크기(130px, 2줄)*1.25 기준으로도 넉넉해
 // 줄어든 만큼의 손해가 없다.
-const INVITATION_ZONE = { topMargin: 60, topicLabel: 36, title: 574, tags: 350, oneLiner: 200, footer: 70, bottomMargin: 60 } as const;
+// statusLabel(60)도 같은 방식으로 title에서 떼어왔다(574→514) — friendship-
+// card-image.tsx와 동일한 근거(결과 화면에 statusLabel이 없는 기존 공유
+// 링크가 많아 title의 여유분에서 가져온다). oneLiner(200→140)·footer
+// (70→130)도 friendship-card-image.tsx와 동일하게 60을 주고받았다 —
+// InvitationZone이 justifyContent:center라 존 안의 빈 공간이 위아래로
+// 절반씩 나뉘는데, oneLiner 존을 줄이면 그 아래(statusLabel과의 사이)
+// 여백이 줄고, footer 존을 늘리면 그 위(statusLabel과의 사이) 여백이
+// 늘어 statusLabel이 oneLiner에 붙고 footer와는 떨어져 보인다.
+const INVITATION_ZONE = { topMargin: 60, topicLabel: 36, title: 514, statusLabel: 60, tags: 350, oneLiner: 140, footer: 130, bottomMargin: 60 } as const;
 
 function invitationTitleFontSize(title: string): number {
   return pickBySteps(
@@ -1020,6 +1028,23 @@ function InvitationOneLiner({ oneLiner }: { oneLiner: string }) {
   );
 }
 
+// friendship-card-image.tsx의 StatusLabel과 같은 이유·같은 구현 —
+// InvitationOneLiner(inkStrong, 30~44px)보다 작고 옅은 보조 설명이라
+// 새 색 없이 CARD_COLORS.textSecondary(InvitationTopicLabel·
+// InvitationFooter가 이미 쓴다)를 재사용한다. statusLabel이 없으면(옛
+// 공유 데이터) 존 자체를 렌더링하지 않는다 — InvitationTags(tags.length
+// === 0)와 같은 패턴이다.
+function InvitationStatusLabel({ statusLabel }: { statusLabel?: string }) {
+  if (!statusLabel) return null;
+  return (
+    <InvitationZone height={INVITATION_ZONE.statusLabel}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: INVITATION_ZONE.statusLabel, overflow: "hidden" }}>
+        <span style={{ fontSize: 30, fontWeight: 500, lineHeight: 1.4, color: CARD_COLORS.textSecondary }}>{statusLabel}</span>
+      </div>
+    </InvitationZone>
+  );
+}
+
 // 카드 하단 중앙 도메인 표기 — 본문 3블록을 뺄 때 같이 사라졌던 것을
 // 되살렸다. 이 카드는 인스타 스크린샷으로 퍼지는 게 목적이라 도메인이
 // 안 읽히면 유입 경로가 끊기므로, 375px로 축소된 상태에서도 읽히는
@@ -1057,14 +1082,16 @@ function InvitationFrame() {
   );
 }
 
-// 타이틀 + 태그 4개 + 한줄설명 + 하단 도메인만 남긴다 — 자기성찰
-// 텍스트는 뺐다(위 "본문 정리" 주석 참고). 봉랍은 절대 위치라 In-flow
-// 구역을 차지하지 않는다. 아래 In-flow 구역(topMargin/title/tags/
-// oneLiner/footer/bottomMargin)의 높이 합이 INVITATION_CARD_HEIGHT
-// (1350)와 정확히 맞도록 INVITATION_ZONE에서 배정한다.
+// 타이틀 + 태그 4개 + 한줄설명 + 상태 라벨(있으면) + 하단 도메인만
+// 남긴다 — 자기성찰 텍스트는 뺐다(위 "본문 정리" 주석 참고). 봉랍은
+// 절대 위치라 In-flow 구역을 차지하지 않는다. 아래 In-flow 구역
+// (topMargin/title/tags/oneLiner/statusLabel/footer/bottomMargin)의
+// 높이 합이 INVITATION_CARD_HEIGHT(1350)와 정확히 맞도록
+// INVITATION_ZONE에서 배정한다.
 function buildInvitationCard(result: IdealTypeResult) {
   const title = clampForSafety(result.title.trim(), 60);
   const oneLiner = clampForSafety(result.oneLiner.trim(), 120);
+  const statusLabel = result.statusLabel ? clampForSafety(result.statusLabel.trim(), 60) : undefined;
   const tags = (result.tags ?? []).slice(0, 4);
   const textureDataUri = loadPaperTextureDataUri();
 
@@ -1096,6 +1123,7 @@ function buildInvitationCard(result: IdealTypeResult) {
       <InvitationTitle title={title} height={INVITATION_ZONE.title} />
       <InvitationTags tags={tags} height={INVITATION_ZONE.tags} />
       <InvitationOneLiner oneLiner={oneLiner} />
+      <InvitationStatusLabel statusLabel={statusLabel} />
       <InvitationFooter height={INVITATION_ZONE.footer} />
       <div style={{ display: "flex", width: INVITATION_CARD_WIDTH, height: INVITATION_ZONE.bottomMargin, flexShrink: 0 }} />
     </div>

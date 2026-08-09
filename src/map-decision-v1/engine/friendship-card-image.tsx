@@ -81,7 +81,12 @@ function fitOneLiner(text: string, fontSizes: number[], budget: number, lineHeig
 // 화면(FriendshipResultBlocks.tsx의 HeroHeader)에서 statusLabel이 없는
 // 기존 공유 링크가 많아, 새 존을 위해 다른 필수 존(tags/oneLiner 등)의
 // 예산을 줄이기보다 title의 여유분에서 가져오는 쪽을 택했다.
-const ZONE = { topMargin: 60, topicLabel: 36, title: 514, statusLabel: 60, tags: 350, oneLiner: 200, footer: 70, bottomMargin: 60 } as const;
+// oneLiner(200→140)·footer(70→130)는 서로 60을 주고받았다 — 각 Zone이
+// justifyContent:center라 존 안의 빈 공간이 위아래로 절반씩 나뉘는데,
+// oneLiner 존을 줄이면 그 아래(statusLabel과의 사이) 여백이 줄고,
+// footer 존을 늘리면 그 위(statusLabel과의 사이) 여백이 늘어 statusLabel이
+// oneLiner에 붙고 footer와는 떨어져 보인다.
+const ZONE = { topMargin: 60, topicLabel: 36, title: 514, statusLabel: 60, tags: 350, oneLiner: 140, footer: 130, bottomMargin: 60 } as const;
 const TAG = { sizes: [72, 68, 64, 58, 52, 46, 40, 34], paddingX: 32, gap: 20 };
 const TAG_CHAR_WIDTH_RATIO = 0.92;
 const ONELINER_FONT_SIZES = [44, 40, 36, 30];
