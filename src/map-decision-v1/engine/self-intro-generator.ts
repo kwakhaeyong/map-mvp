@@ -3,7 +3,7 @@ import { MapSession, SelfIntroMatrixPoint, SelfIntroResult, SelfIntroRoadmapPhas
 import { getGenerationEffort } from "./generation-config";
 import { isServerSideGenerationError } from "./generation-error";
 import { logGenerationAttempt } from "./generation-timing";
-import { getIdealTypeTags } from "./ideal-type-tags";
+import { getIdealTypeTags, getStatusLabel } from "./ideal-type-tags";
 import { now } from "./session";
 
 // 이상형(ideal-type-generator.ts)·진로(final-result-generator.ts)와 완전히
@@ -386,6 +386,8 @@ async function attemptGeneration(
     // 나소개×이상형 교차 비교(engine/compatibility.ts)가 성립하려면
     // 두 결과의 태그가 같은 문자열 체계여야 한다(docs/NASOGAE_DESIGN.md).
     tags: getIdealTypeTags(session.quizAnswers, "selfIntro"),
+    // 결과 상단에 보여줄 한 줄 상태 라벨.
+    statusLabel: getStatusLabel(session.quizAnswers, "selfIntro"),
   };
   logGenerationAttempt({ topic: "selfIntro", attempt, generationStartedAt, effort, outcome: { kind: "success", outputTokens, thinkingTokens } });
   return { result, truncated, countsAsFailure: false };

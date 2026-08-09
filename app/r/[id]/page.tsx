@@ -240,6 +240,9 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                     {renderable.result.title}
                   </h1>
                   <p className="text-sm font-bold leading-6 text-text-secondary">{renderable.result.oneLiner}</p>
+                  {renderable.result.statusLabel ? (
+                    <p className="text-xs font-semibold leading-5 text-text-secondary">{renderable.result.statusLabel}</p>
+                  ) : null}
                   <TagRow tags={renderable.result.tags ?? []} className="justify-center" />
                 </div>
               }
@@ -277,6 +280,9 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                     {renderable.result.title}
                   </h1>
                   <p className="text-sm font-bold leading-6 text-text-secondary">{renderable.result.oneLiner}</p>
+                  {renderable.result.statusLabel ? (
+                    <p className="text-xs font-semibold leading-5 text-text-secondary">{renderable.result.statusLabel}</p>
+                  ) : null}
                   <SelfIntroTagRow tags={renderable.result.tags ?? []} className="justify-center" />
                 </div>
               }
@@ -349,6 +355,9 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                     {renderable.result.title}
                   </h1>
                   <p className="text-sm font-bold leading-6 text-text-secondary">{renderable.result.oneLiner}</p>
+                  {renderable.result.statusLabel ? (
+                    <p className="text-xs font-semibold leading-5 text-text-secondary">{renderable.result.statusLabel}</p>
+                  ) : null}
                   <WorkTagRow tags={renderable.result.tags ?? []} className="justify-center" />
                 </div>
               }
@@ -383,6 +392,9 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                     {renderable.result.title}
                   </h1>
                   <p className="text-sm font-bold leading-6 text-text-secondary">{renderable.result.oneLiner}</p>
+                  {renderable.result.statusLabel ? (
+                    <p className="text-xs font-semibold leading-5 text-text-secondary">{renderable.result.statusLabel}</p>
+                  ) : null}
                   <TasteTagRow tags={renderable.result.tags ?? []} className="justify-center" />
                 </div>
               }
@@ -418,6 +430,9 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                     {renderable.result.title}
                   </h1>
                   <p className="text-sm font-bold leading-6 text-text-secondary">{renderable.result.oneLiner}</p>
+                  {renderable.result.statusLabel ? (
+                    <p className="text-xs font-semibold leading-5 text-text-secondary">{renderable.result.statusLabel}</p>
+                  ) : null}
                   <TravelTagRow tags={renderable.result.tags ?? []} className="justify-center" />
                 </div>
               }

@@ -125,4 +125,4 @@ Use shared primitives for Button, IconButton, Card, Surface, Badge, Input, Texta
 - Empty/loading/error: incomplete result invites more conversation; export limitations are truthful.
 - Must never appear: AI-decided final answer, fake payment/share/login, decorative-only bubbles.
 
-**Note (2026-08, friendship only):** the friendship result header may show a one-line "상태 라벨" (status label) below the topic badge and above the title — a fixed sentence chosen deterministically from a quiz answer (engine/ideal-type-tags.ts's getStatusLabel), not AI-generated. It uses existing text tokens only (text-xs/text-secondary, no new color or variant) and is omitted entirely when absent. Not yet extended to the other five topics.
+**Note (2026-08):** all six quiz-format result headers (idealType, selfIntro, friendship, work, taste, travelStyle) may show a one-line "상태 라벨" (status label) below the oneLiner and above the tag row — a fixed sentence chosen deterministically from a quiz answer (engine/ideal-type-tags.ts's getStatusLabel), not AI-generated. It uses existing text tokens only (text-xs/text-secondary, no new color or variant) and is omitted entirely when absent.
