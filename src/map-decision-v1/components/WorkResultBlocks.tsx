@@ -2,6 +2,7 @@
 
 import { useRef, type MutableRefObject, type ReactNode } from "react";
 import { WorkFit, WorkMatrix, WorkMatrixPoint, WorkResult, WorkRoadmap, WorkSelfReflection } from "../types";
+import { CollapsibleItems } from "./CollapsibleItems";
 import { Card } from "./ui/primitives";
 
 // 일할 때의 나 결과를 "보여주기만" 하는 순수 프레젠테이션 컴포넌트
@@ -132,13 +133,13 @@ function PatternsSection({ items }: { items: string[] }) {
   return (
     <Card className="flex flex-col gap-3">
       <SectionHeader title="반복되는 일 패턴" description="답변을 가로질러 반복되는 행동이에요." />
-      <div className="flex flex-col gap-2">
-        {items.map((item, index) => (
+      <CollapsibleItems
+        items={items.map((item, index) => (
           <blockquote key={index} className="rounded-medium border border-border border-l-4 border-l-primary bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
             {item}
           </blockquote>
         ))}
-      </div>
+      />
     </Card>
   );
 }
