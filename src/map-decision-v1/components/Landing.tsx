@@ -94,7 +94,7 @@ const TOPIC_HOOK: Record<string, string> = {
 // 자유 대화형이라 문항 수 개념이 없어 이 맵에 넣지 않는다.
 const TOPIC_META: Record<string, { questions: number; minutes: number }> = {
   idealType: { questions: 38, minutes: 9 },
-  selfIntro: { questions: 36, minutes: 9 },
+  selfIntro: { questions: 34, minutes: 8 },
   friendship: { questions: 30, minutes: 7 },
   work: { questions: 30, minutes: 7 },
   taste: { questions: 20, minutes: 5 },

@@ -1370,7 +1370,27 @@ export const TOPICS: Record<string, TopicConfig> = {
     // scenarioCompliment)는 필수 roleSupport/decisionRecent/restTired/
     // commPraise와 주제가 겹치거나 방향만 반대인 대칭 축이라 삭제했다.
     // 필수 34→36문항.
-    quizVersion: 2,
+    // 3: 연령대 적합성 조사(타겟 10대 중반~30대 후반, 고등학생·대학생
+    // 포함) 결과, "일할 때 실제 모습" 섹션 4문항(workDeadline·
+    // workMistake·reflectionWorkMistake·workTeam)은 재직 경험이 없으면
+    // "해당 없음" 같은 대안 없이 선택지 중 하나를 실제 경험에서 고를 수
+    // 없는 구조였다 — 아르바이트 경험조차 없는 학생은 사실상 답할 수
+    // 없다. work(별도 topicId, 일할 때의 나)는 처음부터 재직자를
+    // 대상으로 하지만 selfIntro는 학생도 포함하는 범용 주제라 이 4문항만
+    // 제거한다. 태그 4축(relationship/lifestyle/binary1/
+    // experienceStressResponse)과 experienceCommitmentGeneral은 이
+    // 조사에서 별도 문제로 확인됐지만(연애 경험 전제) 이번 PR 범위가
+    // 아니라 건드리지 않는다. 필수 36→32문항. 대체 문항은 아직 없다 —
+    // 자유서술(reflection)이 3개에서 2개로 줄어들어 자기성찰 블록
+    // 원료가 얕아지는 트레이드오프를 감수했다.
+    // 4: quizVersion 3에서 뺀 자유서술 1개를 직업 무관한 형태로
+    // 복원한다 — experienceMistake·reflectionMistake 쌍을 새로 추가해
+    // 자기성찰 블록 원료를 다시 3개로 되돌린다. 기존 workMistake·
+    // reflectionWorkMistake와 문항 형태(경험형+자유서술 쌍)는 같지만
+    // "일하다가"를 걷어내 고등학생부터 30대 후반까지 답할 수 있게
+    // 했다 — 실수는 학교·취미·일상에서도 누구나 겪는 경험이라 재직
+    // 여부와 무관하다. 필수 32→34문항.
+    quizVersion: 4,
     axes: [
       {
         id: "relationship",
@@ -1425,8 +1445,7 @@ export const TOPICS: Record<string, TopicConfig> = {
       // 심화(선택)에서 필수로 승격(quizVersion 2) — 조사에서 필수 문항과
       // 겹치는 축이 없다고 확인된 유일한 심화 문항이다. 바로 위 4개(관계·
       // 생활·관계 리듬·갈등 스트레스)와 같은 "가까운 관계" 주제라 그
-      // 묶음 끝에 이어 붙이고, "일할 때 실제 모습" 섹션이 시작되기 전에
-      // 배치했다.
+      // 묶음 끝에 이어 붙였다.
       {
         id: "experienceCommitmentGeneral",
         type: "experience",
@@ -1439,24 +1458,14 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "확실히 선을 정하고 가는 편", description: "명확하게 정리하고 가는 편이다" },
         ],
       },
-      // ── 일할 때 실제 모습 ─────────────────────────────────────────
+      // ── 실수했을 때 ───────────────────────────────────────────────
+      // quizVersion 4에서 추가(위 quizVersion 4 주석 참고) — 제거된
+      // workMistake·reflectionWorkMistake의 직업 무관 버전이다.
       {
-        id: "workDeadline",
-        type: "quickTap",
-        required: true,
-        question: "마감이 촉박했던 상황에서, 나는 보통 어떻게 움직였어?",
-        options: [
-          { label: "일정을 쪼개서 바로 시작하는", description: "계획부터 세우고 바로 착수하는 편이다" },
-          { label: "몰아서 집중해서 끝내는", description: "마감 직전에 몰입해서 해치우는 편이다" },
-          { label: "주변에 도움을 요청하는", description: "혼자 끙끙대지 않고 나누는 편이다" },
-          { label: "일단 되는 만큼만 하고 조율하는", description: "범위를 줄여서라도 맞추는 편이다" },
-        ],
-      },
-      {
-        id: "workMistake",
+        id: "experienceMistake",
         type: "experience",
         required: true,
-        question: "일하다가 실수했던 순간, 그때 나는 어떻게 했어?",
+        question: "뭔가 실수했던 순간, 그때 나는 보통 어떻게 했어?",
         options: [
           { label: "바로 알리고 수습부터 하는 편", description: "숨기지 않고 먼저 말하는 편이다" },
           { label: "혼자 조용히 고치려 하는 편", description: "일단 스스로 해결해보려는 편이다" },
@@ -1464,31 +1473,13 @@ export const TOPICS: Record<string, TopicConfig> = {
           { label: "다음부터 안 그러려고 기록해두는 편", description: "재발 방지에 신경 쓰는 편이다" },
         ],
       },
-      // 심화(선택)에서 필수로 승격(quizVersion 2) — workMistake의 후속
-      // 자유 서술이다. experienceRegretGeneral→reflectionRegretGeneral,
-      // experienceChangeGeneral→reflectionGrowth와 같은 방식으로 짝이 되는
-      // 경험형 바로 뒤에 둔다. 심화에 있을 때는 이 쌍의 절반만 존재해서
-      // 심화를 건너뛴 사용자는 workMistake만 답하고 그 후속 서술은 받지
-      // 못했다.
       {
-        id: "reflectionWorkMistake",
+        id: "reflectionMistake",
         type: "reflection",
         required: true,
-        question: "일하다 실수했던 그 순간 이후로, 뭐가 달라졌어요?",
-        placeholder: "예: 그 뒤로는 마감 전에 한 번 더 확인하는 습관이 생겼어요",
+        question: "그 실수 이후로, 뭐가 달라졌어요?",
+        placeholder: "예: 그 뒤로는 중요한 건 미리 메모해두는 습관이 생겼어요",
         options: [],
-      },
-      {
-        id: "workTeam",
-        type: "preference",
-        required: true,
-        question: "같이 일할 때, 나는 어떤 역할을 더 자주 맡아?",
-        options: [
-          { label: "방향을 정하는 쪽", description: "전체 흐름을 짜는 역할을 자주 한다" },
-          { label: "꼼꼼히 챙기는 쪽", description: "디테일을 놓치지 않는 역할을 자주 한다" },
-          { label: "분위기를 풀어주는 쪽", description: "긴장을 풀어주는 역할을 자주 한다" },
-          { label: "실행을 밀어붙이는 쪽", description: "일을 진짜로 진행시키는 역할을 자주 한다" },
-        ],
       },
       // ── 갈등·의견 차이(비연애) ────────────────────────────────────
       {
