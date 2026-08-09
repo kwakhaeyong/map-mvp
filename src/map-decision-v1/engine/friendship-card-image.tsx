@@ -77,7 +77,11 @@ function fitOneLiner(text: string, fontSizes: number[], budget: number, lineHeig
 // topicLabel(36)은 title에서 그만큼(610→574) 떼어와 마련했다 —
 // self-intro-card-image.tsx의 같은 상수 옆 주석 참고(세 파일이 같은
 // 초대장 레이아웃을 각자 복제해 쓰고 있어 계산 근거도 동일하다).
-const ZONE = { topMargin: 60, topicLabel: 36, title: 574, tags: 350, oneLiner: 200, footer: 70, bottomMargin: 60 } as const;
+// statusLabel(60)도 같은 방식으로 title에서 떼어왔다(574→514) — 결과
+// 화면(FriendshipResultBlocks.tsx의 HeroHeader)에서 statusLabel이 없는
+// 기존 공유 링크가 많아, 새 존을 위해 다른 필수 존(tags/oneLiner 등)의
+// 예산을 줄이기보다 title의 여유분에서 가져오는 쪽을 택했다.
+const ZONE = { topMargin: 60, topicLabel: 36, title: 514, statusLabel: 60, tags: 350, oneLiner: 200, footer: 70, bottomMargin: 60 } as const;
 const TAG = { sizes: [72, 68, 64, 58, 52, 46, 40, 34], paddingX: 32, gap: 20 };
 const TAG_CHAR_WIDTH_RATIO = 0.92;
 const ONELINER_FONT_SIZES = [44, 40, 36, 30];
@@ -211,6 +215,23 @@ function OneLiner({ oneLiner }: { oneLiner: string }) {
   );
 }
 
+// 결과 화면(HeroHeader)과 같은 시각 위계 — oneLiner(inkStrong, 30~44px)
+// 보다 작고 옅은 색이라 "보조 설명"으로 읽힌다. 새 색을 만들지 않고
+// TopicLabel·Footer가 이미 쓰는 CARD_COLORS.textSecondary를 그대로
+// 재사용한다(design-tokens.css와의 수동 동기화 대상을 늘리지 않기
+// 위해서). 옛 공유 데이터처럼 statusLabel이 없으면 존 자체를 렌더링하지
+// 않는다 — Tags(tags.length === 0)와 같은 패턴이다.
+function StatusLabel({ statusLabel }: { statusLabel?: string }) {
+  if (!statusLabel) return null;
+  return (
+    <Zone height={ZONE.statusLabel}>
+      <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: ZONE.statusLabel, overflow: "hidden" }}>
+        <span style={{ fontSize: 30, fontWeight: 500, lineHeight: 1.4, color: CARD_COLORS.textSecondary }}>{statusLabel}</span>
+      </div>
+    </Zone>
+  );
+}
+
 function Footer() {
   return (
     <Zone height={ZONE.footer}>
@@ -238,11 +259,17 @@ function Frame() {
   );
 }
 
-// 타이틀 + 태그 4개 + 한줄설명 + 하단 도메인만 담는다(이상형·나 소개의
-// 초대장 카드와 동일한 범위 — 자기성찰 텍스트는 카드에 넣지 않는다).
+// 타이틀 + 한줄설명 + 상태 라벨(있으면) + 태그 4개 + 하단 도메인만
+// 담는다(이상형·나 소개의 초대장 카드와 동일한 범위 — 자기성찰 텍스트는
+// 카드에 넣지 않는다). 순서는 결과 화면(HeroHeader)과 맞춘다 —
+// title → oneLiner → statusLabel → tags. 예전에는 title → tags →
+// oneLiner였는데(결과 화면과 태그·한줄설명 순서가 반대였다), statusLabel을
+// "oneLiner 아래, tags 위"에 넣으려면 이 카드도 결과 화면과 같은 순서로
+// 맞춰야 해서 tags·oneLiner 순서를 함께 바꿨다.
 export function buildFriendshipCardElement(result: FriendshipResult) {
   const title = clampForSafety(result.title.trim(), 60);
   const oneLiner = clampForSafety(result.oneLiner.trim(), 120);
+  const statusLabel = result.statusLabel ? clampForSafety(result.statusLabel.trim(), 60) : undefined;
   const tags = (result.tags ?? []).slice(0, 4);
   const textureDataUri = loadPaperTextureDataUri();
 
@@ -265,8 +292,9 @@ export function buildFriendshipCardElement(result: FriendshipResult) {
       <div style={{ display: "flex", width: INVITATION_CARD_WIDTH, height: ZONE.topMargin, flexShrink: 0 }} />
       <TopicLabel label="나는 이런 친구" />
       <Title title={title} />
-      <Tags tags={tags} />
       <OneLiner oneLiner={oneLiner} />
+      <StatusLabel statusLabel={statusLabel} />
+      <Tags tags={tags} />
       <Footer />
       <div style={{ display: "flex", width: INVITATION_CARD_WIDTH, height: ZONE.bottomMargin, flexShrink: 0 }} />
     </div>

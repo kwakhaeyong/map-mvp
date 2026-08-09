@@ -321,7 +321,11 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                   {renderable.result.statusLabel ? (
                     <p className="text-xs font-semibold leading-5 text-text-secondary">{renderable.result.statusLabel}</p>
                   ) : null}
-                  <FriendshipTagRow tags={renderable.result.tags ?? []} className="justify-center" />
+                  {/* card.png(friendship-card-image.tsx)도 태그를 4개로
+                      자르므로, 이미지가 실패했을 때만 뜨는 이 폴백도
+                      같은 개수로 맞춘다 — 카드보다 폴백에 태그가 더 많이
+                      보이는 불일치를 피한다. */}
+                  <FriendshipTagRow tags={(renderable.result.tags ?? []).slice(0, 4)} className="justify-center" />
                 </div>
               }
             />
