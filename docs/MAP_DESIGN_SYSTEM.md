@@ -90,6 +90,8 @@ Tokens: duration-fast 160ms, duration-normal 240ms, duration-slow 360ms, easing-
 
 Validate 375px, 768px, 1280px, 1440px, and 1920px widths. Browser zoom checks: 90%, 100%, 110%, 125%. No horizontal overflow, clipped MAP labels, hidden primary actions, or keyboard-trapped controls.
 
+**Result cards are fixed-width, not viewport-responsive (2026-08):** the six quiz-format result screens (idealType, selfIntro, friendship, work, taste, travelStyle) always render inside a `max-w-sm` (384px) container regardless of the actual browser viewport. Tailwind's `sm:`/`md:`/`lg:`/`xl:` prefixes key off viewport width, not container width, so a `sm:` class inside this fixed-width card still activates on any viewport ≥640px — squeezing layouts meant for a wide screen into a narrow 384px box (e.g. a 3-column grid collapsing into ~110px columns, or text sizes meant for desktop reading widths). Do not use viewport-based responsive prefixes inside components rendered under this container. If a width-based branch is genuinely needed, use a container query instead, or pick one layout that works at 384px and ship only that.
+
 ## 10. Shared primitives
 
 Use shared primitives for Button, IconButton, Card, Surface, Badge, Input, Textarea, VoiceButton, MessageBubble, ReflectionCard, ResponseChip, CheckpointCard, MapNode, MapLegend, Modal, BottomSheet, Toast, EmptyState, ResultActionBar, and CollapsibleItems. New variants require a design-system update first.

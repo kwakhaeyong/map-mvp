@@ -123,11 +123,17 @@ function CriteriaTier({ label, items, tone }: { label: string; items: string[]; 
   );
 }
 
+// sm:grid-cols-3를 뺐다(2026-08) — 이 결과 화면 전체가 max-w-sm(384px)
+// 고정폭 컨테이너 안에서만 그려지는데, Tailwind의 sm: 접두사는 컨테이너
+// 폭이 아니라 뷰포트 폭(640px) 기준이라 데스크톱 브라우저에서는 이
+// 좁은 카드 안에 3열이 강제로 눌려 칸마다 줄바꿈 수가 달라지고 박스
+// 높이가 들쭉날쭉해 보였다(테스터 피드백, 실측 확인). 항상 1열로
+// 세로 나열한다 — MAP_DESIGN_SYSTEM.md의 반응형 접두사 금지 규칙 참고.
 function FriendCriteriaSection({ friendCriteria }: { friendCriteria: FriendshipResult["friendCriteria"] }) {
   return (
     <Card className="flex flex-col gap-4">
       <SectionHeader title="친구를 고르는 기준" description="답변에서 추론한 우선순위를 세 단계로 나눠봤어요." />
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3">
         <CriteriaTier label="꼭 있어야 하는 것" items={friendCriteria.essential} tone="strong" />
         <CriteriaTier label="있으면 좋은 것" items={friendCriteria.bonus} tone="medium" />
         <CriteriaTier label="없어도 괜찮은 것" items={friendCriteria.flexible} tone="light" />
@@ -292,6 +298,13 @@ function FriendTypesSection({ friendTypes }: { friendTypes: FriendshipTypes }) {
 
 // 이상형·나 소개의 SelfReflectionSection과 완전히 같은 발상(반전 배경으로
 // 강조)이라 시각 스타일도 그대로 가져왔다.
+// 항목(li)의 sm:text-lg sm:leading-8을 뺐다(2026-08) — 이유는 바로 위
+// FriendCriteriaSection 주석과 같다(뷰포트 640px 기준 접두사가 384px
+// 고정폭 카드 안에서 켜지는 문제). 이 블록은 페이지 안에서 가장 큰
+// 본문 글자였는데, 데스크톱에서 그 위에 sm:text-lg까지 얹히니 "결과
+// 아래쪽 줄글 폰트가 너무 크다"는 테스터 피드백으로 이어졌다.
+// 패딩(sm:p-5/sm:p-6)·제목 크기(sm:text-xl)는 384px 안에서도 줄바꿈이나
+// 정렬 파손을 일으키지 않아(단순 여백·크기 차이일 뿐) 그대로 둔다.
 function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSelfReflection }) {
   return (
     <div
@@ -306,7 +319,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
         <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-text-secondary">내가 주고 있는 것</p>
         <ul className="flex flex-col gap-4 rounded-medium border border-border-strong bg-ink-wash p-4 sm:p-5">
           {selfReflection.whatYouOffer.map((item, index) => (
-            <li key={index} className="text-base font-semibold leading-7 text-text-primary sm:text-lg sm:leading-8">
+            <li key={index} className="text-base font-semibold leading-7 text-text-primary">
               {item}
             </li>
           ))}
@@ -316,7 +329,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: IdealTypeSe
         <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-text-secondary">보완할 부분</p>
         <ul className="flex flex-col gap-4 rounded-medium border border-border-strong p-4 sm:p-5">
           {selfReflection.whatToImprove.map((item, index) => (
-            <li key={index} className="text-base font-semibold leading-7 text-text-primary sm:text-lg sm:leading-8">
+            <li key={index} className="text-base font-semibold leading-7 text-text-primary">
               {item}
             </li>
           ))}
