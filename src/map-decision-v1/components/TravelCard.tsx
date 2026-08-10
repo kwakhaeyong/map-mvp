@@ -121,6 +121,10 @@ export function TravelCard({
   const [attempt, setAttempt] = useState(0);
   const attemptedRef = useRef(false);
   const controllerRef = useRef<AbortController | null>(null);
+  // IdealTypeCard.tsx의 isResuming과 같은 목적·같은 원리 — 마운트
+  // 시점에 이미 pendingResultGeneration이 true였는지 딱 한 번만
+  // 계산한다(탭이 배경에서 폐기됐다가 새로고침으로 돌아온 경우만 true).
+  const [isResuming] = useState(() => Boolean(session.pendingResultGeneration));
 
   // 대기 화면에 "몇 개 답했는지" 보여줄 때 20을 하드코딩하지 않고
   // topics.ts의 실제 축 구성(전부 필수)에서 계산한다.
@@ -133,6 +137,7 @@ export function TravelCard({
     setGenerationState("loading");
     setGenerationError(null);
     setAttempt((count) => count + 1);
+    setSession((previous) => ({ ...previous, pendingResultGeneration: true }));
     fetch("/api/generate-travel-result", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -142,6 +147,7 @@ export function TravelCard({
       .then((response) => response.json())
       .then((data) => {
         if (data.blocked) {
+          setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
           if (data.reason === "generation_failed") {
             setGenerationState("fallback");
             return;
@@ -150,11 +156,18 @@ export function TravelCard({
           setGenerationState("error");
           return;
         }
-        setSession((previous) => ({ ...previous, travelResult: data.result, travelResultSignature: data.signature, updatedAt: now() }));
+        setSession((previous) => ({
+          ...previous,
+          travelResult: data.result,
+          travelResultSignature: data.signature,
+          pendingResultGeneration: false,
+          updatedAt: now(),
+        }));
         setGenerationState("idle");
       })
       .catch((error) => {
         if (error?.name === "AbortError") return;
+        setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
         setGenerationState("fallback");
       });
   };
@@ -178,7 +191,14 @@ export function TravelCard({
       <div className="mx-auto flex w-full max-w-sm flex-col gap-3">
         <div className="flex items-center justify-between px-1">
           <Brand />
-          <button type="button" onClick={onContinue} className="text-xs font-black text-text-muted hover:text-text-primary">
+          <button
+            type="button"
+            onClick={() => {
+              setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
+              onContinue();
+            }}
+            className="text-xs font-black text-text-muted hover:text-text-primary"
+          >
             다시 만들기
           </button>
         </div>
@@ -191,6 +211,7 @@ export function TravelCard({
             onRetry={generate}
             tags={getIdealTypeTags(session.quizAnswers, "travelStyle")}
             answeredCount={answeredCount}
+            resuming={isResuming}
           />
         ) : generationState === "fallback" ? (
           <Card className="flex flex-col items-center gap-3 py-10 text-center">

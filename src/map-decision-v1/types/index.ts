@@ -105,6 +105,18 @@ export type MapSession = {
   // regenerateBlock), 결과 전체가 아니라 블록마다 독립된 서명을 가진다 —
   // 한 블록만 다시 만들어도 그 블록의 서명만 갱신되고 나머지는 그대로다.
   resultBlockSignatures?: Partial<Record<ResultBlockKey, string | null>>;
+  // 6개 퀴즈형 주제(IdealTypeCard 등)가 결과 생성 요청을 보내기 직전에
+  // true로 세팅하고, 응답이 도착하면(성공·차단·오류 어느 쪽이든) 다시
+  // false로 되돌린다. 한 세션에서 동시에 두 주제를 생성할 일은 없으므로
+  // (topicId 하나당 결과 필드도 하나) 주제별로 나누지 않고 이 필드
+  // 하나만 둔다. 목적은 "탭이 배경에서 메모리 압박으로 폐기됐다가
+  // 새로고침으로 돌아온 경우"를 감지하는 것뿐이다 — 이 필드가 true인
+  // 채로 페이지가 새로 로드되면(정상 응답 경로를 못 타고 죽었다는 뜻),
+  // 다음 마운트는 "이전에 시작한 생성이 있었다"를 알 수 있다. 서버 쪽
+  // 캐시(generation-cache.ts)가 실제로 결과를 갖고 있는지는 이 필드로
+  // 알 수 없다 — 그저 "물어볼 가치가 있다"는 힌트일 뿐이라, 대기 화면
+  // 첫 문구를 바꾸는 데만 쓴다(각 *Card.tsx의 isResuming 참고).
+  pendingResultGeneration?: boolean;
 };
 
 export type FactorMatrixItem = { id: string; text: string; kind: NodeKind; x: number; y: number };
