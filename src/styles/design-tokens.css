@@ -43,20 +43,20 @@
   --color-ink-wash-border: rgba(62, 107, 112, 0.16); /* = primarySoftBorder, primary 기준 */
   --color-tag-fill: #f1f2ef; /* = invitationTagFill, background 95% + primary 5% 혼합(재계산) */
   --color-primary-overlay: rgba(62, 107, 112, 0.8); /* primary 80% 오버레이(이미지 저장 모달 배경 전용) */
-  /* 아래 4개도 같은 이유(#116)로 추가한다 — 이상형/나소개 결과의
+  /* 아래 2개도 같은 이유(#116)로 추가했다 — 이상형/나소개 결과의
      자기성찰 다크 블록(bg-primary 배경)이 text-primary-foreground/70
      같은 슬래시 클래스를 쓰고 있었는데, 그 클래스가 생성되지 않아
      색이 안 먹힌 채로 방치돼 있었다(라벨 텍스트가 옅어지지 않고
-     본문과 똑같이 진하게 보이고, 채워진 패널의 배경·테두리가 아예
-     안 보였다). engine/ideal-type-card-colors.ts의 onDarkSoftFill/
-     onDarkSoftBorder/foregroundSoft·foregroundFaint와 같은 흰색
-     계열이다 — 새 색이 아니라 이미 카드 이미지에 쓰던 "다크 배경 위
-     옅은 흰색" 톤을 HTML에서도 실제로 작동하게 옮긴 것뿐이다.
+     본문과 똑같이 진하게 보이고, 채워진 패널의 배경이 아예 안 보였다).
+     engine/ideal-type-card-colors.ts의 onDarkSoftFill/foregroundSoft와
+     같은 흰색 계열이다 — 새 색이 아니라 이미 카드 이미지에 쓰던
+     "다크 배경 위 옅은 흰색" 톤을 HTML에서도 실제로 작동하게 옮긴
+     것뿐이다. 짝이었던 -strong/-wash-strong 2개는 그 다크 블록 디자인이
+     흰 카드로 바뀌며 쓰이지 않게 돼 2026-08-10 삭제했다(TopicQuiz.tsx만
+     여전히 아래 2개를 쓴다 — git 히스토리로 복원 가능).
   */
   --color-primary-foreground-soft: rgba(255, 255, 255, 0.7); /* 라벨류(eyebrow) 텍스트 */
-  --color-primary-foreground-strong: rgba(255, 255, 255, 0.9); /* "보완할 부분" 항목 텍스트 */
-  --color-primary-foreground-wash: rgba(255, 255, 255, 0.15); /* "내가 줄 수 있는 것" 패널 배경·테두리 */
-  --color-primary-foreground-wash-strong: rgba(255, 255, 255, 0.25); /* "보완할 부분" 패널 테두리 */
+  --color-primary-foreground-wash: rgba(255, 255, 255, 0.15); /* 랭킹 선택 시 채워지는 배경 */
   /* KNOWN_OPACITY_DEBT 12개 중 위험이 낮은 항목을 실제로 고치면서(#116류
      추가분) 새로 필요해진 2개. 기존 8개와 같은 방식 — 슬래시 유틸리티가
      실패하던 자리에, 그 자리에서 실제로 의도했던 반투명 값을 고정값으로
