@@ -82,6 +82,23 @@ function isOversized(session: MapSession): boolean {
 // 방법이 없어 정상적으로 완주하면 반드시 quizAnswers에 축마다 하나씩
 // 채워지므로, 그 개수를 그대로 최소 기준으로 쓴다(전체 축 개수를 요구하면
 // 서술형을 건너뛴 정상 사용자가 막힌다).
+//
+// 이 임계값은 "필수이면서 서술형이 아닌 축"의 개수와 정확히 일치한다 —
+// 여유(margin)가 없다. 2026-08-10 Playwright 실측(생성 API를 인터셉트해
+// 실제 호출 없이 완주 시 요청 body만 캡처): 이상형 35/35, 취향 19/19로
+// 완주 시 정확히 이 임계값과 같은 개수가 quizAnswers에 기록됨을 확인했다.
+// 서술형을 빼는 이유는 위에 적힌 대로 commitAnswer가 selectedTopLevelLabels
+// 없이 호출되면 quizAnswers에 기록하지 않기 때문이고, 서술형은 항상
+// 건너뛸 수 있어 기록되지 않는 게 정상이다. 여유를 두지 않는 이유는
+// 봇 입장에서 축 15개짜리 객체를 만드는 것과 19개짜리를 만드는 것의
+// 난이도가 사실상 같아서, 여유를 주면 방어력만 낮추고 봇을 더 막지는
+// 못하기 때문이다.
+//
+// 주의: topics.ts에서 새 축 타입을 추가하거나 서술형(reflection)을
+// 필수 흐름에서 답변형으로 바꾸면(즉 quizAnswers에 기록되는 축의 종류가
+// 바뀌면) 이 검증이 정상 사용자를 막을 수 있다. topics.ts를 바꿀 때는
+// 이 검증(6개 라우트 전부 — self-intro/taste/travel/work/friendship
+// route.ts도 이 로직을 그대로 복제해서 쓴다)도 함께 확인할 것.
 function requiredAnswerCount(): number {
   const axes = resolveTopic("idealType").axes ?? [];
   return axes.filter((axis) => axis.required && axis.type !== "reflection").length;

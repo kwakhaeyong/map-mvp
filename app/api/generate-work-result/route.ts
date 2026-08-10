@@ -63,7 +63,10 @@ function isOversized(session: MapSession): boolean {
 // isMissingRequiredAnswers()와 완전히 같은 원리다(2026-08-10 조사 참고) —
 // isOversized는 상한만 볼 뿐 하한이 없어 빈 답변으로도 Anthropic 호출까지
 // 갈 수 있던 구멍을 막는다. 서술형(reflection)은 건너뛰면 quizAnswers에
-// 애초에 안 남으므로 필수 개수에서 뺀다.
+// 애초에 안 남으므로 필수 개수에서 뺀다. 임계값에 여유가 없는 이유·
+// Playwright 실측값·topics.ts 변경 시 주의사항은 그 파일의 같은 함수
+// 주석에 한 번만 적어뒀다(6개 라우트가 전부 복제해 쓰는 로직이라 여기서
+// 반복하지 않는다).
 function requiredAnswerCount(): number {
   const axes = resolveTopic("work").axes ?? [];
   return axes.filter((axis) => axis.required && axis.type !== "reflection").length;
