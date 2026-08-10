@@ -36,7 +36,6 @@ src/map-decision-v1/
     local-conversation-provider.ts  로컬(결정론적) 대화 응답 생성
     thinking-extractor.ts     대화에서 구조(사실/감정/가치/옵션 등) 추출
     topics.ts                 토픽 정의
-    integration-providers.ts  외부 AI 연동을 위한 인터페이스
   storage/session-storage.ts  로컬 자동저장
   voice/use-web-speech.ts     Web Speech API 연동
   types/index.ts              세션/노드/관계 타입 정의
