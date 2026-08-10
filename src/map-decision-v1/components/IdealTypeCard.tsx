@@ -232,6 +232,13 @@ export function IdealTypeCard({
   // 요청을 취소해서, 나중에 도착한 응답이 방금 시작한 새 요청 결과를
   // 덮어쓰는 경쟁 상태를 막는다.
   const controllerRef = useRef<AbortController | null>(null);
+  // 마운트 시점에 이미 pendingResultGeneration이 true였는지 딱 한 번만
+  // 계산한다 — 탭이 배경에서 폐기됐다가 새로고침으로 돌아와 이 컴포넌트가
+  // 다시 마운트된 경우에만 true다(정상적인 첫 생성 시도라면 이 값이
+  // 아직 세션에 없으므로 false). 이후 generate()가 이 필드를 true로
+  // 바꿔도 이 ref/state는 되짚어 갱신되지 않는다 — "이 마운트가 재개
+  // 상황으로 시작했는지"는 마운트 시점에 고정되는 사실이라야 한다.
+  const [isResuming] = useState(() => Boolean(session.pendingResultGeneration));
 
   // 대기 화면에 "몇 개 답했는지" 보여줄 때 37을 하드코딩하지 않고
   // topics.ts의 실제 축 구성(전부 필수)에서 계산한다.
@@ -244,6 +251,10 @@ export function IdealTypeCard({
     setGenerationState("loading");
     setGenerationError(null);
     setAttempt((count) => count + 1);
+    // 요청을 보내는 시점에 세션에 남겨둔다(GenerationWaitCard의 resuming
+    // 계산 참고) — 응답을 못 받고 탭이 죽어도 이 값은 localStorage에
+    // 이미 저장돼 있으므로, 다음 마운트가 "재개 상황"임을 알 수 있다.
+    setSession((previous) => ({ ...previous, pendingResultGeneration: true }));
     fetch("/api/generate-idealtype-result", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -253,6 +264,7 @@ export function IdealTypeCard({
       .then((response) => response.json())
       .then((data) => {
         if (data.blocked) {
+          setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
           if (data.reason === "generation_failed") {
             setGenerationState("fallback");
             return;
@@ -261,11 +273,23 @@ export function IdealTypeCard({
           setGenerationState("error");
           return;
         }
-        setSession((previous) => ({ ...previous, idealTypeResult: data.result, idealTypeResultSignature: data.signature, updatedAt: now() }));
+        setSession((previous) => ({
+          ...previous,
+          idealTypeResult: data.result,
+          idealTypeResultSignature: data.signature,
+          pendingResultGeneration: false,
+          updatedAt: now(),
+        }));
         setGenerationState("idle");
       })
       .catch((error) => {
         if (error?.name === "AbortError") return;
+        // AbortError가 아니면(네트워크 오류 등) 이 마운트가 이 요청의
+        // 결말을 확인한 것이므로 마커를 내린다 — AbortError는 반대로
+        // 그대로 둔다(뒤로가기 등으로 클라이언트만 포기했을 뿐 서버는
+        // 계속 생성 중일 수 있어, 다음 마운트가 재개 상황으로 인식하는
+        // 편이 맞다).
+        setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
         setGenerationState("fallback");
       });
   };
@@ -289,7 +313,19 @@ export function IdealTypeCard({
       <div className="mx-auto flex w-full max-w-sm flex-col gap-3">
         <div className="flex items-center justify-between px-1">
           <Brand />
-          <button type="button" onClick={onContinue} className="text-xs font-black text-text-muted hover:text-text-primary">
+          <button
+            type="button"
+            onClick={() => {
+              // 생성 중(loading)에 "다시 만들기"를 눌러 대화로 되돌아가면
+              // 이 마운트는 응답을 끝까지 기다리지 않고 사라진다 — 마커를
+              // 그대로 두면 다음에 답을 다르게(또는 같게) 마쳤을 때도
+              // "이전 결과를 찾는 중"으로 잘못 표시된다. 새로 시작하는
+              // 것이 명확하므로 여기서 미리 내린다.
+              setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
+              onContinue();
+            }}
+            className="text-xs font-black text-text-muted hover:text-text-primary"
+          >
             다시 만들기
           </button>
         </div>
@@ -302,6 +338,7 @@ export function IdealTypeCard({
             onRetry={generate}
             tags={getIdealTypeTags(session.quizAnswers, "idealType")}
             answeredCount={answeredCount}
+            resuming={isResuming}
           />
         ) : generationState === "fallback" ? (
           <Card className="flex flex-col items-center gap-3 py-10 text-center">

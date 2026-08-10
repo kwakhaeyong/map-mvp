@@ -33,6 +33,14 @@ const RETRY_AFTER_MS = 240_000; // 4분 경과
 export const GENERATION_ESTIMATE_TEXT = "보통 2~3분 정도 걸려요";
 const DELAYED_TEXT = "조금 더 걸리고 있어요. 화면을 닫지 마세요.";
 const SAVED_REASSURANCE_TEXT = "답변은 이미 저장돼 있어요";
+// 탭이 배경에서 메모리 압박으로 폐기됐다가 새로고침으로 돌아와 같은
+// 답변으로 재요청하는 경우에만 쓴다(session.pendingResultGeneration이
+// 마운트 시점에 이미 true였던 경우 — 각 *Card.tsx의 isResuming 참고).
+// 서버 캐시(generation-cache.ts)에 결과가 이미 있으면 몇 초 안에
+// 화면이 바뀌므로, 이 문구를 단계별로 진행시키는 로직은 만들지 않는다
+// — 캐시가 없어 처음부터 다시 만드는 경우에도 이 문구가 그대로 남아
+// 있다가 실제 응답이 오면 화면이 바뀔 뿐, 사용자에게 해가 되지 않는다.
+const RESUMING_TEXT = "이전에 만들던 결과를 찾고 있어요";
 // 태그 순차 강조가 다음 태그로 넘어가는 간격. 너무 빠르면 산만하고
 // 너무 느리면 "멈췄다"는 인상을 다시 준다 — animate-pulse(2s 주기)보다
 // 느긋하게, 부드러운 색 전환(TagRow의 duration-700)만으로 충분히
@@ -47,6 +55,7 @@ export function GenerationWaitCard({
   onRetry,
   tags,
   answeredCount,
+  resuming,
 }: {
   stages: string[];
   onRetry: () => void;
@@ -59,6 +68,10 @@ export function GenerationWaitCard({
   // 실제로 답한 문항 수(세션에서 계산해 넘겨받음, 여기서 하드코딩하지
   // 않는다). 태그와 마찬가지로 확정된 사실만 보여준다.
   answeredCount?: number;
+  // 호출부(각 *Card.tsx)가 마운트 시점에 session.pendingResultGeneration이
+  // 이미 true였는지 한 번만 계산해 넘겨준다 — 탭이 배경에서 폐기됐다가
+  // 새로고침으로 돌아와 같은 답변을 다시 보내는 경우를 뜻한다.
+  resuming?: boolean;
 }) {
   const [elapsedMs, setElapsedMs] = useState(0);
 
@@ -100,7 +113,7 @@ export function GenerationWaitCard({
         </Card>
       ) : null}
       <Card className="flex flex-col items-center gap-3 py-10 text-center">
-        <p className="text-sm font-extrabold text-text-secondary">{stages[stageIndex]}</p>
+        <p className="text-sm font-extrabold text-text-secondary">{resuming ? RESUMING_TEXT : stages[stageIndex]}</p>
         <p className="text-xs font-semibold text-text-muted">{isDelayed ? DELAYED_TEXT : GENERATION_ESTIMATE_TEXT}</p>
         <p className="text-[11px] font-medium text-text-muted">{SAVED_REASSURANCE_TEXT}</p>
         {canRetry ? (
