@@ -130,7 +130,13 @@
 ## CI / 브랜치 보호 · 머지 방식
 
 - `.github/workflows/quality-gate.yml`("MAP Quality Gate")이 모든 PR에서 `typecheck`, `harness:check`, `design:check`, `build`를 순서대로 실행하며, GitHub의 필수 상태 체크로 등록되어 있습니다.
-- `.github/workflows/auto-merge.yml`("Guarded Auto Merge")이 Quality Gate 성공 시 **Draft가 아닌 모든 PR을 브랜치 이름과 무관하게 자동으로 `main`에 스쿼시 머지**합니다(`--squash --delete-branch`). Draft PR은 절대 자동 머지되지 않습니다 — 오너가 확인할 유일한 사람 검증 기회는 Ready로 전환하기 전, 직접 화면을 보는 것뿐입니다.
+- **`.github/workflows/auto-merge.yml`("Guarded Auto Merge")은 설계상으로만 자동 머지고, 실제로는 작동하지 않습니다 — 2026-08-10 조사로 확인.** 아래 세 가지가 원인입니다.
+  1. `auto-merge.yml`은 자신이 PR 이벤트를 직접 구독하지 않고, `workflow_run`(즉 `MAP Quality Gate`가 `completed`되는 것)에만 반응합니다.
+  2. `quality-gate.yml`의 `pull_request` 트리거에는 `types`가 명시돼 있지 않아 GitHub 기본값(`opened`/`synchronize`/`reopened`)만 적용되고, **`ready_for_review`(Draft→Ready 전환)는 이 목록에 없습니다.**
+  3. 이 저장소는 PR을 항상 Draft로 먼저 엽니다. PR을 열면(`opened`) Quality Gate가 한 번 돌고, 뒤이어 `auto-merge.yml`도 한 번 실행되지만 그 시점엔 아직 Draft라 "Skip merge for Draft pull requests" 단계에서 매번 스킵됩니다(`gh pr merge --squash` 단계의 실행 결과가 `skipped`로 찍힘). Draft를 Ready로 바꿔도 `ready_for_review`는 Quality Gate를 다시 돌리지 않으므로, `auto-merge.yml`이 다시 트리거될 방법이 없습니다.
+  - **실측**: 최근 머지된 PR 10건(#236~#245) 전부의 GitHub Actions 실행 기록을 확인한 결과, `auto-merge.yml`의 머지 단계는 10건 전부 `skipped`였고, 10건 전부 `merged_by`가 오너 계정(`kwakhaeyong`)이었습니다(자동화 토큰이 머지했다면 `github-actions[bot]`으로 찍혔을 것). **자동 머지 워크플로가 실제로 머지를 수행한 사례는 지금까지 0건입니다.** main 히스토리가 `--squash`가 만드는 단일 커밋이 아니라 2-부모 병합 커밋(`Merge pull request #N from ...`) 형태인 것도 이 때문입니다 — 오너가 GitHub UI의 기본 "Merge pull request" 버튼을 직접 눌러 머지해온 것이 실제 경로입니다.
+  - **이 문제를 고치지 않기로 결정했습니다.** Ready 전환 즉시(또는 그 직후 아무 트리거로든) 자동 머지가 실제로 작동하게 되면, "완료 보고 전까지 머지 금지"처럼 세션 안에서 거는 요청이 더 이상 유효한 안전장치가 되지 못합니다 — 실제로 2026-08-09 PR #231에서 자동 머지 도중 마지막 커밋 2개가 유실되는 사고가 있었습니다(#233으로 복구). 지금처럼 "고장난 채로 있어서" 오너가 매번 직접 Merge 버튼을 누르는 것이, 결과적으로 마지막 사람 검토 지점 역할을 하고 있습니다. 고치려면 `quality-gate.yml`의 `pull_request` 트리거에 `types: [opened, synchronize, reopened, ready_for_review]`를 추가하면 됩니다 — 이 조사에서는 워크플로 파일을 건드리지 않았으므로 이 사실만 기록해둡니다.
+  - **자동 머지를 다시 살릴 경우 먼저 확인할 것: 저장소 설정(`Settings → General → Pull Requests`)의 "Allow squash merging" 체크 여부.** 이번 조사에서 사용한 GitHub MCP 도구로는 이 설정을 조회할 방법이 없었습니다(저장소 설정을 읽는 도구 자체가 없음) — 꺼져 있으면 `gh pr merge --squash`가 (Draft가 아닌 상태에서) 실행될 때마다 실패하게 됩니다. 오너가 웹에서 직접 확인해야 합니다.
 - `main`은 PR을 통해서만 반영됩니다.
 - 그 외 워크플로: `.github/workflows/daily-limit-alert.yml`(30분마다 전체 하루 생성 상한 임박 여부 확인), `.github/workflows/health-check.yml`(1시간마다 프로덕션 단순 응답 확인), `.github/workflows/production-smoke.yml`(main 푸시·머지 직후 + 6시간마다 더 폭넓은 프로덕션 확인, 실패 시 GitHub 이슈 자동 생성).
 
