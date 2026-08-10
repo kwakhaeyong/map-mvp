@@ -73,6 +73,25 @@ function isOversized(session: MapSession): boolean {
   return session.messages.some((message) => typeof message.text !== "string" || message.text.length > MAX_INPUT_LENGTH);
 }
 
+// 2026-08-10 조사: isOversized는 상한만 볼 뿐 하한이 없어서, session.messages가
+// 빈 배열이어도(퀴즈를 하나도 안 푼 요청) 여기를 그대로 통과해 Anthropic
+// 호출까지 갔다 — 봇이 생성 비용을 소모할 수 있는 구멍이었다. 서술형
+// (reflection) 문항은 TopicQuiz.tsx에서 건너뛰기가 항상 허용되고, 건너뛰면
+// commitAnswer가 애초에 quizAnswers에 기록하지 않는다(selectedTopLevelLabels가
+// 있을 때만 씀) — 그래서 필수 개수에서 뺀다. 그 외 선택형 문항은 건너뛸
+// 방법이 없어 정상적으로 완주하면 반드시 quizAnswers에 축마다 하나씩
+// 채워지므로, 그 개수를 그대로 최소 기준으로 쓴다(전체 축 개수를 요구하면
+// 서술형을 건너뛴 정상 사용자가 막힌다).
+function requiredAnswerCount(): number {
+  const axes = resolveTopic("idealType").axes ?? [];
+  return axes.filter((axis) => axis.required && axis.type !== "reflection").length;
+}
+
+function isMissingRequiredAnswers(session: MapSession): boolean {
+  const answered = session.quizAnswers ? Object.keys(session.quizAnswers).length : 0;
+  return answered < requiredAnswerCount();
+}
+
 export async function POST(request: NextRequest) {
   const requestStartedAt = Date.now();
   let cacheStatus: "hit" | "miss" | "unknown" = "unknown";
@@ -104,6 +123,18 @@ export async function POST(request: NextRequest) {
     logTiming("payload_too_large");
     return NextResponse.json(
       { blocked: true, reason: "payload_too_large", message: "답변 내용이 처리할 수 있는 범위를 넘어섰어요." } satisfies BlockedResponse,
+      { status: 400 },
+    );
+  }
+
+  // 레이트리밋 예약(아래 reserveGenerationSlot)보다 먼저 확인한다 — 답변이
+  // 없는 요청이 IP·전역 하루 카운터를 소모하지 않게 하기 위해서다. 캐시
+  // 조회보다도 먼저다 — 답변 없는 요청은 어차피 캐시에 없을 게 뻔해서
+  // Redis 왕복을 아낄 수 있다.
+  if (isMissingRequiredAnswers(session)) {
+    logTiming("invalid_request");
+    return NextResponse.json(
+      { blocked: true, reason: "invalid_request", message: "요청 형식이 올바르지 않아요." } satisfies BlockedResponse,
       { status: 400 },
     );
   }

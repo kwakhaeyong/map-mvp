@@ -58,6 +58,21 @@ function isOversized(session: MapSession): boolean {
   return session.messages.some((message) => typeof message.text !== "string" || message.text.length > MAX_INPUT_LENGTH);
 }
 
+// app/api/generate-idealtype-result/route.ts의 requiredAnswerCount()/
+// isMissingRequiredAnswers()와 완전히 같은 원리다(2026-08-10 조사 참고) —
+// isOversized는 상한만 볼 뿐 하한이 없어 빈 답변으로도 Anthropic 호출까지
+// 갈 수 있던 구멍을 막는다. 서술형(reflection)은 건너뛰면 quizAnswers에
+// 애초에 안 남으므로 필수 개수에서 뺀다.
+function requiredAnswerCount(): number {
+  const axes = resolveTopic("selfIntro").axes ?? [];
+  return axes.filter((axis) => axis.required && axis.type !== "reflection").length;
+}
+
+function isMissingRequiredAnswers(session: MapSession): boolean {
+  const answered = session.quizAnswers ? Object.keys(session.quizAnswers).length : 0;
+  return answered < requiredAnswerCount();
+}
+
 export async function POST(request: NextRequest) {
   const requestStartedAt = Date.now();
   let cacheStatus: "hit" | "miss" | "unknown" = "unknown";
@@ -86,6 +101,17 @@ export async function POST(request: NextRequest) {
     logTiming("payload_too_large");
     return NextResponse.json(
       { blocked: true, reason: "payload_too_large", message: "답변 내용이 처리할 수 있는 범위를 넘어섰어요." } satisfies BlockedResponse,
+      { status: 400 },
+    );
+  }
+
+  // 레이트리밋 예약(아래 reserveGenerationSlot)·캐시 조회보다 먼저 확인한다
+  // — 답변 없는 요청이 IP·전역 하루 카운터를 소모하지 않게 하고, 어차피
+  // 캐시에 없을 요청의 Redis 왕복도 아낀다.
+  if (isMissingRequiredAnswers(session)) {
+    logTiming("invalid_request");
+    return NextResponse.json(
+      { blocked: true, reason: "invalid_request", message: "요청 형식이 올바르지 않아요." } satisfies BlockedResponse,
       { status: 400 },
     );
   }
