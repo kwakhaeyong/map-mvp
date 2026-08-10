@@ -23,7 +23,10 @@ export default function PrivacyPage() {
           <p className="break-keep leading-7 text-text-secondary">
             MAP Decision은 로그인을 요구하지 않으며, 이름·이메일·전화번호 등을
             별도로 수집하지 않습니다. 수집되는 정보는 사용자가 대화창에 직접
-            입력한 텍스트(고민, 생각, 상황 설명 등)입니다.
+            입력한 텍스트(고민, 생각, 상황 설명 등)와, 카드형 MAP 주제를
+            시작하기 전 선택적으로 답하는 나이대·직업상태·성별입니다. 이
+            선택 항목은 모두 건너뛸 수 있으며, 답하지 않아도 이용에 지장이
+            없습니다.
           </p>
           <p className="break-keep leading-7 text-text-secondary">
             &ldquo;공유하기&rdquo; 버튼을 직접 눌러 결과를 공유 링크로 만드는
@@ -97,7 +100,11 @@ export default function PrivacyPage() {
           <ul className="ml-5 list-disc space-y-1 break-keep leading-7 text-text-secondary">
             <li>이전받는 자: Anthropic, PBC (미국)</li>
             <li>이전 목적: 카드형 MAP(이상형·나 소개·친구·인간관계 등)·진로 결과 생성, 대화 중 의사결정 구조화 분석(노드 추출·되묻기)</li>
-            <li>이전 항목: 사용자가 입력한 텍스트(퀴즈의 자유 서술형 답변 포함)</li>
+            <li>
+              이전 항목: 사용자가 입력한 텍스트(퀴즈의 자유 서술형 답변 포함),
+              카드형 MAP 시작 전 선택적으로 답한 나이대·직업상태·성별(건너뛸
+              수 있으며, 답하지 않아도 결과 생성에 지장이 없습니다)
+            </li>
             <li>
               이전받는 자의 보유·이용 기간: Anthropic의 자체 정책에 따르며,
               자세한 내용은 Anthropic의 개인정보처리방침을 참고해주세요.
@@ -210,7 +217,7 @@ export default function PrivacyPage() {
         <p className="mt-10 text-xs font-semibold text-text-muted">
           시행일: 2026-08-03
           <br />
-          최근 개정일: 2026-08-06 (1·3·5항의 주제 나열에 새로 추가된 &ldquo;여행 스타일&rdquo;을 반영)
+          최근 개정일: 2026-08-10 (1·4항에 프로필 선택 항목(나이대·직업상태·성별) 수집·전송 사실을 반영)
         </p>
       </article>
     </main>

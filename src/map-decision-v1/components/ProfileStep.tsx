@@ -98,6 +98,10 @@ export function ProfileStep({
 }) {
   const profile = session.profile ?? {};
   const showWorkStudentNotice = session.topicId === "work" && profile.occupationStatus === "학생";
+  // 아무것도 고르지 않은 첫 화면에는 "건너뛰기" 링크가 하나도 보이지
+  // 않는다(값이 있을 때만 나타나는 취소용 링크라서) — 그 상태에서 진행
+  // 버튼을 누르면 곧 건너뛰기라는 걸 라벨로 알려준다.
+  const hasAnyProfileValue = Boolean(profile.ageRange || profile.occupationStatus || profile.gender);
 
   const setField = (field: ProfileFieldKey, value: string | undefined) => {
     setSession((current) => ({ ...current, profile: { ...current.profile, [field]: value }, updatedAt: now() }));
@@ -163,7 +167,7 @@ export function ProfileStep({
           </div>
         ) : (
           <Button type="button" variant="primary" size="lg" onClick={onContinue} className="self-stretch">
-            다음
+            {hasAnyProfileValue ? "다음" : "건너뛰고 시작하기"}
           </Button>
         )}
       </section>
