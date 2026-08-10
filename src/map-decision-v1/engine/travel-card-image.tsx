@@ -93,7 +93,22 @@ function fitOneLiner(text: string, fontSizes: number[], budget: number, lineHeig
 // 쪽)에 붙여, StatusLabel 존의 남는 공간(statusLabel 아래)과 Footer
 // 존의 남는 공간(Footer 글자 위)이 전부 statusLabel-Footer 사이에
 // 쌓이게 한다.
-const ZONE = { topMargin: 60, topicLabel: 36, title: 514, statusLabel: 60, tags: 350, oneLiner: 140, footer: 130, bottomMargin: 60 } as const;
+//
+// ↑ 이렇게 만들다 보니 OneLiner-StatusLabel 사이 간격도 거의 0이 되어,
+// 실물 카톡 화면에서 statusLabel이 oneLiner에 바로 이어 붙어 한
+// 문단처럼 읽히는 문제가 있었다(실측 확인) — statusLabel은 oneLiner와
+// 별개 정보라는 게 드러나야 한다. StatusLabel-Footer 간격(위 문단
+// 그대로 "넓게")은 손대지 않고, OneLiner-StatusLabel 사이에만 고정
+// 높이 spacer(oneLinerGap)를 끼워 "중간" 간격을 명시적으로 만든다 —
+// StatusLabel 컴포넌트 안에서 statusLabel이 있을 때만 같이 렌더링되어,
+// 옛 공유 데이터(statusLabel 없음)의 레이아웃은 그대로다. topMargin·
+// bottomMargin은 줄이지 않는다 — Frame(테두리, top/bottom 40px 안쪽)과
+// 맞닿을 위험이 있다. 대신 topicLabel·statusLabel 때와 같은 방식으로
+// title의 남은 여유분에서 이 40px을 한 번 더 떼어온다(514→474) —
+// titleFontSize()가 글자 수가 많을수록 폰트를 줄이는 계단식이라(12자
+// 130px→60자대 50px), 실제로는 어느 길이든 줄바꿈해도 300px 안팎이라
+// 474px에 한참 못 미쳐 잘릴 위험이 없다.
+const ZONE = { topMargin: 60, topicLabel: 36, title: 474, statusLabel: 60, tags: 350, oneLiner: 140, oneLinerGap: 40, footer: 130, bottomMargin: 60 } as const;
 const TAG = { sizes: [72, 68, 64, 58, 52, 46, 40, 34], paddingX: 32, gap: 20 };
 const TAG_CHAR_WIDTH_RATIO = 0.92;
 const ONELINER_FONT_SIZES = [44, 40, 36, 30];
@@ -236,11 +251,17 @@ function OneLiner({ oneLiner }: { oneLiner: string }) {
 function StatusLabel({ statusLabel }: { statusLabel?: string }) {
   if (!statusLabel) return null;
   return (
-    <Zone height={ZONE.statusLabel} style={{ justifyContent: "flex-start" }}>
-      <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: ZONE.statusLabel, overflow: "hidden" }}>
-        <span style={{ fontSize: 30, fontWeight: 500, lineHeight: 1.4, color: CARD_COLORS.textSecondary }}>{statusLabel}</span>
-      </div>
-    </Zone>
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      {/* oneLiner와 별개 정보임을 드러내는 중간 간격 — ZONE 위 주석 참고.
+          satori는 Fragment(<>)를 지원하지 않아(내용이 통째로 사라짐 —
+          직접 재현해서 확인함) 여기도 다른 Zone처럼 감싸는 div가 필요하다. */}
+      <div style={{ display: "flex", width: INVITATION_CARD_WIDTH, height: ZONE.oneLinerGap, flexShrink: 0 }} />
+      <Zone height={ZONE.statusLabel} style={{ justifyContent: "flex-start" }}>
+        <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: ZONE.statusLabel, overflow: "hidden" }}>
+          <span style={{ fontSize: 30, fontWeight: 500, lineHeight: 1.4, color: CARD_COLORS.textSecondary }}>{statusLabel}</span>
+        </div>
+      </Zone>
+    </div>
   );
 }
 

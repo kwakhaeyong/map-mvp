@@ -853,7 +853,22 @@ function buildNavyStoryCard(result: IdealTypeResult) {
 // 붙여 둘 사이 간격을 항상 거의 0으로 만들고, Footer는 자기 존
 // 아래쪽(bottomMargin 쪽)에 붙여 StatusLabel-Footer 사이에 남는 공간이
 // 전부 쌓이게 한다.
-const INVITATION_ZONE = { topMargin: 60, topicLabel: 36, title: 514, statusLabel: 60, tags: 350, oneLiner: 140, footer: 130, bottomMargin: 60 } as const;
+//
+// ↑ 그 결과 OneLiner-StatusLabel 사이 간격도 거의 0이 되어, 실물 카톡
+// 화면에서 statusLabel이 oneLiner에 바로 이어 붙어 한 문단처럼 읽히는
+// 문제가 있었다(실측 확인) — statusLabel은 oneLiner와 별개 정보라는 게
+// 드러나야 한다. StatusLabel-Footer 간격(위 문단 그대로 "넓게")은
+// 손대지 않고, OneLiner-StatusLabel 사이에만 고정 높이
+// spacer(oneLinerGap)를 끼워 "중간" 간격을 명시적으로 만든다 —
+// InvitationStatusLabel 안에서 statusLabel이 있을 때만 같이 렌더링되어,
+// 옛 공유 데이터(statusLabel 없음)의 레이아웃은 그대로다. topMargin·
+// bottomMargin은 줄이지 않는다(바로 위 topMargin/bottomMargin 주석
+// 참고 — InvitationFrame 테두리와 맞닿을 위험). 대신 topicLabel·
+// statusLabel 때와 같은 방식으로 title의 남은 여유분에서 이 40px을
+// 한 번 더 떼어온다(514→474) — invitationTitleFontSize()도 글자 수가
+// 많을수록 폰트를 줄이는 계단식이라 실제로는 어느 길이든 300px
+// 안팎이라 474px에 한참 못 미쳐 잘릴 위험이 없다.
+const INVITATION_ZONE = { topMargin: 60, topicLabel: 36, title: 474, statusLabel: 60, tags: 350, oneLiner: 140, oneLinerGap: 40, footer: 130, bottomMargin: 60 } as const;
 
 function invitationTitleFontSize(title: string): number {
   return pickBySteps(
@@ -1044,11 +1059,18 @@ function InvitationOneLiner({ oneLiner }: { oneLiner: string }) {
 function InvitationStatusLabel({ statusLabel }: { statusLabel?: string }) {
   if (!statusLabel) return null;
   return (
-    <InvitationZone height={INVITATION_ZONE.statusLabel} style={{ justifyContent: "flex-start" }}>
-      <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: INVITATION_ZONE.statusLabel, overflow: "hidden" }}>
-        <span style={{ fontSize: 30, fontWeight: 500, lineHeight: 1.4, color: CARD_COLORS.textSecondary }}>{statusLabel}</span>
-      </div>
-    </InvitationZone>
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      {/* oneLiner와 별개 정보임을 드러내는 중간 간격 — INVITATION_ZONE 위
+          주석 참고. satori는 Fragment(<>)를 지원하지 않아(내용이 통째로
+          사라짐 — 직접 재현해서 확인함) 여기도 다른 Zone처럼 감싸는
+          div가 필요하다. */}
+      <div style={{ display: "flex", width: INVITATION_CARD_WIDTH, height: INVITATION_ZONE.oneLinerGap, flexShrink: 0 }} />
+      <InvitationZone height={INVITATION_ZONE.statusLabel} style={{ justifyContent: "flex-start" }}>
+        <div style={{ display: "flex", width: CONTENT_WIDTH, maxHeight: INVITATION_ZONE.statusLabel, overflow: "hidden" }}>
+          <span style={{ fontSize: 30, fontWeight: 500, lineHeight: 1.4, color: CARD_COLORS.textSecondary }}>{statusLabel}</span>
+        </div>
+      </InvitationZone>
+    </div>
   );
 }
 
