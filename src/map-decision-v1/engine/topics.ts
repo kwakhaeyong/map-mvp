@@ -1645,7 +1645,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         type: "reflection",
         required: true,
         question: "그 아쉬움이 가장 크게 남았던 순간이 언제였어요?\n그때 어떻게 했어요?",
-        placeholder: "예: 이직을 고민만 하다가 1년을 넘겼는데, 그때 더 알아보지 않고 그냥 다니던 곳에 남았어요",
+        placeholder: "예: 하고 싶은 걸 계속 미루기만 하다가 시기를 놓쳤는데, 그때 더 알아보지 않고 그냥 넘어갔어요",
         options: [],
       },
       {
@@ -2113,7 +2113,7 @@ export const TOPICS: Record<string, TopicConfig> = {
         type: "reflection",
         required: true,
         question: "가장 최근에 그렇게 멀어진 친구, 언제였어요?\n무슨 일이 있었는지 적어주세요",
-        placeholder: "예: 대학 때 제일 친했는데 취업하고 서로 바빠지면서 연락이 끊겼어요",
+        placeholder: "예: 한때 정말 친했는데 각자 생활이 바빠지면서 연락이 끊겼어요",
         options: [],
       },
       {
