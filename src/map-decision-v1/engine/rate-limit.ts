@@ -18,7 +18,20 @@ export const MAX_GENERATIONS_PER_SESSION = 5;
 // 이력이 있다(DAILY_SHARE_LIMIT 참고) — 생성 쪽 이 상한(10)은 아직
 // 조정되지 않았다. 홍보로 모바일 유입이 늘기 시작하면 ip_daily_limit
 // 차단 빈도를 관찰해서 이 값도 같이 조정해야 한다.
-export const DAILY_GENERATION_LIMIT = 10;
+//
+// ★2026-08-10 조정★ 위 조사에서 예고한 대로 10→25로 올린다.
+// - 국내 이동통신사 CGNAT 환경에서 무관한 여러 실사용자가 같은 공인
+//   IP로 잡히므로, IP당 한도가 정상 사용자를 차단할 수 있다는 게
+//   위 조사의 핵심 위험이었다.
+// - share-store.ts의 DAILY_SHARE_LIMIT이 같은 이유로 5→25로 올라간
+//   선례가 있어, 생성 쪽도 같은 값(25)으로 맞춘다.
+// - 비용 상한은 DAILY_GLOBAL_GENERATION_LIMIT(300)이 별도로 담당하므로,
+//   IP당 한도를 올려도 서비스 전체의 하루 최대 비용(최대 300회분)은
+//   변하지 않는다.
+// - 트레이드오프: 봇 차단은 isTrustedRequestOrigin의 Origin/Referer
+//   헤더 확인뿐이라, 이 헤더를 흉내 낸 단일 IP 봇이 전역 300 중 최대
+//   25회까지 소모할 수 있다는 점은 감수한다.
+export const DAILY_GENERATION_LIMIT = 25;
 // 서비스 전체 하루 생성 상한 — IP·세션 단위 한도는 IP 로테이션으로 뚫을 수
 // 있지만, 이 한도만은 뚫을 방법이 없다(유일하게 IP·세션과 무관하다).
 // 재배포 없이 조절할 수 있게 환경변수로 뺐다 — 홍보를 시작하면 실사용량을
