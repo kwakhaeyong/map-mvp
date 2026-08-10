@@ -183,14 +183,15 @@ export function MapDecisionProduct() {
   // 거치지 않고 createSession()을 직접 호출하는 별도 경로라(아래
   // hydrate effect 참고) 여전히 profile 화면을 건너뛴다 — 알려진 한계.
   //
-  // current.profile을 새 세션에 이어붙인다 — createSession()은 매번
-  // 완전히 새 세션을 만들어 profile을 모른다. 이 이어붙이기가 없으면
-  // "다른 주제 고르기"(ProfileStep.tsx의 work+학생 안내)로 랜딩에
-  // 돌아가 새 주제를 골랐을 때 방금 답한 프로필이 사라져 다시 물어보게
-  // 된다.
+  // createSession()은 매번 profile 없는 새 세션을 만들고, 여기서도 이전
+  // 세션의 profile을 이어붙이지 않는다 — 주제마다 맥락이 달라 같은
+  // 사람도 다르게 답할 수 있으므로(예: 방금 "일할 때의 나"에서 30대·
+  // 직장인이라 답했어도, 이어서 "친구·인간관계"를 고르면 그 답이 그대로
+  // 맞으리라고 가정하지 않는다), 주제를 바꿀 때마다 프로필을 새로
+  // 묻는 것은 의도된 설계이지 버그가 아니다.
   const start = (topicId?: string) => {
     setHasStaleResult(false);
-    setSession((current) => ({ ...createSession(topicId), stage: "profile", profile: current.profile }));
+    setSession({ ...createSession(topicId), stage: "profile" });
   };
   const startDemo = () => { setHasStaleResult(false); setSession(createDemoSession()); };
   const reset = () => { if (!session.isDemo) clearSession(); setHasSavedDraft(false); setHasStaleResult(false); setSaveState("saved"); setSession(createLandingSession()); };
@@ -203,8 +204,11 @@ export function MapDecisionProduct() {
   const goResult = useCallback(() => setSession((current) => ({ ...current, stage: "result" })), []);
   // "다른 주제 고르기"(ProfileStep.tsx의 work+학생 안내) 전용. reset()과
   // 달리 세션·localStorage를 지우지 않고 stage만 "landing"으로 돌린다 —
-  // session.profile이 그대로 남아있어야 start()가 다음 주제에 이어붙일
-  // 수 있다.
+  // 다음 주제에 profile을 이어붙이려는 게 아니라(그건 이제 하지 않는다,
+  // start() 참고), 방금 답한 occupationStatus가 남아있어야 돌아간
+  // 랜딩 화면에서 hideWorkTopic이 곧바로 work 카드를 계속 숨겨둘 수
+  // 있기 때문이다 — reset()을 쓰면 profile까지 지워져 카드가 다시
+  // 나타난다.
   const backToLandingKeepProfile = useCallback(() => setSession((current) => ({ ...current, stage: "landing" })), []);
 
   const advanceDemo = () => setSession((current) => {
