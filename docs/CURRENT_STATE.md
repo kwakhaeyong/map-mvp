@@ -95,12 +95,13 @@
 
 ## 레이트리밋 (Upstash Redis)
 
-- 생성 API(`/api/generate-result`, `/api/generate-idealtype-result`, `/api/generate-self-intro-result`)는 Upstash Redis 원자적 연산으로 세션당 5회(`MAX_GENERATIONS_PER_SESSION`)·IP당 하루 10회(`DAILY_GENERATION_LIMIT`)·서비스 전체 하루 상한(`DAILY_GLOBAL_GENERATION_LIMIT`, 기본 300, 환경변수로 재배포 없이 조절 가능, PR #126)을 겁니다.
+- 생성 API(`/api/generate-result`, `/api/generate-idealtype-result`, `/api/generate-self-intro-result`)는 Upstash Redis 원자적 연산으로 세션당 5회(`MAX_GENERATIONS_PER_SESSION`)·IP당 하루 25회(`DAILY_GENERATION_LIMIT`, 2026-08-10 10→25로 조정)·서비스 전체 하루 상한(`DAILY_GLOBAL_GENERATION_LIMIT`, 기본 300, 환경변수로 재배포 없이 조절 가능, PR #126)을 겁니다.
 - 생성 실패 시도 자체에도 세션당 2회(`MAX_FAILED_GENERATIONS_PER_SESSION`) 상한이 있습니다("failure_limit") — 항상 실패하는 입력으로 무제한 호출하는 것을 막기 위함입니다.
 - 전체 하루 상한 키(`gen-slot:global:{KST 날짜}`)는 `.github/workflows/daily-limit-alert.yml`이 그대로 읽습니다 — 바뀌지 않았습니다.
 - Redis 연결 정보가 없으면(장애 포함) **막는 쪽(fail-closed)**으로 설계돼 있습니다 — 레이트리밋 없이 생성을 허용하면 이 기능의 목적(비용 방어) 자체가 무너지기 때문입니다. 위의 결과 생성 캐시(PR #135)는 이와 반대로 fail-open(Redis 장애 시 캐시를 건너뛰고 기존 동작 유지)이며, 레이트리밋의 fail-closed 동작 자체는 건드리지 않았습니다.
-- `session.startedAt`은 세션별 한도의 키로만 쓰입니다(날짜 판단에는 서버 시간만 사용) — 위조 시 세션당 5회 한도만 우회 가능하고, IP 하루 10회·전체 300회 한도는 영향받지 않습니다.
-- **2026-08-09 PR #230**에서 `rate-limit.ts`에 두 가지 리스크가 코드 주석으로 기록됐습니다(코드 로직 변경은 없음): (1) `session.startedAt`은 클라이언트가 만드는 값이라 서버가 형식·내용을 검증하지 않으므로, 매 요청마다 새 값을 지어 보내면 세션당 5회 한도를 우회할 수 있습니다(IP·전체 한도는 우회되지 않아 비용 상한 자체는 유지됨). (2) `getClientIp`가 보는 공인 IP 하나에 국내 이동통신사 CGNAT 환경의 여러 실사용자가 묶일 수 있어, IP당 하루 10회(`DAILY_GENERATION_LIMIT`) 한도가 무관한 사용자를 함께 차단할 위험이 있습니다 — 공유 하루 한도(`DAILY_SHARE_LIMIT`)는 같은 이유로 5→25로 이미 조정된 이력이 있지만, 이 생성 쪽 한도(10)는 이번 PR 시점까지 조정되지 않았습니다.
+- `session.startedAt`은 세션별 한도의 키로만 쓰입니다(날짜 판단에는 서버 시간만 사용) — 위조 시 세션당 5회 한도만 우회 가능하고, IP 하루 25회·전체 300회 한도는 영향받지 않습니다.
+- **2026-08-09 PR #230**에서 `rate-limit.ts`에 두 가지 리스크가 코드 주석으로 기록됐습니다(코드 로직 변경은 없음): (1) `session.startedAt`은 클라이언트가 만드는 값이라 서버가 형식·내용을 검증하지 않으므로, 매 요청마다 새 값을 지어 보내면 세션당 5회 한도를 우회할 수 있습니다(IP·전체 한도는 우회되지 않아 비용 상한 자체는 유지됨). (2) `getClientIp`가 보는 공인 IP 하나에 국내 이동통신사 CGNAT 환경의 여러 실사용자가 묶일 수 있어, IP당 하루 10회(`DAILY_GENERATION_LIMIT`) 한도가 무관한 사용자를 함께 차단할 위험이 있습니다 — 공유 하루 한도(`DAILY_SHARE_LIMIT`)는 같은 이유로 5→25로 이미 조정된 이력이 있지만, 이 생성 쪽 한도(10)는 이번 PR 시점까지 조정되지 않았습니다. **→ 2026-08-10에 같은 근거로 10→25로 조정 완료(아래 항목 참고).**
+- **2026-08-10**: 위 PR #230이 예고한 대로 `DAILY_GENERATION_LIMIT`을 10→25로 올렸습니다(공유 하루 한도와 같은 값). 비용 상한은 `DAILY_GLOBAL_GENERATION_LIMIT`(300)이 별도로 담당하므로 서비스 전체의 하루 최대 비용은 그대로입니다. 트레이드오프: 봇 차단이 Origin/Referer 헤더 확인뿐이라, 이 헤더를 흉내 낸 단일 IP 봇이 전역 300 중 최대 25회까지 소모할 수 있다는 점은 감수합니다. `ip_daily_limit` 차단은 현재 서버 로그에 남지 않습니다(다른 사유들과 달리 `console.error` 호출이 없음) — 이번 PR에서는 구현하지 않았고, 필요해지면 `rate-limit.ts`의 `if (ipDailyCount > DAILY_GENERATION_LIMIT)` 분기에 `failure_limit` 분기와 같은 방식의 로그를 추가해야 합니다.
 - 세션 시작(`registerSessionStart`, `/api/extract-nodes`) 한도만 여전히 인메모리입니다 — AI 호출 비용이 없는 가벼운 동작이라 의도적으로 남겨둔 것입니다.
 
 ## 생성 실패 진단 로그 (PR #132)
