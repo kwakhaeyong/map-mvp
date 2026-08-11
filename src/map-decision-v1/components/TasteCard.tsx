@@ -60,7 +60,12 @@ function TasteCardBody({
   // 같은 useShareResult 상태를 그대로 쓴다(새 공유 로직을 만들지
   // 않는다). 첫 화면에서부터 "이 카드를 공유할 수 있다"는 게 보이게
   // 하는 게 목적이라, 지원되면 네이티브 공유 시트를, 아니면 링크
-  // 복사를 곧장 실행한다.
+  // 복사를 곧장 실행한다. RESULT VIRAL EXPERIENCE(2026-08) — variant를
+  // primary(꽉 찬 브랜드색)에서 secondary(테두리만)로 낮췄다: 카드 안의
+  // 진짜 주인공은 title·oneLiner이고, 버튼이 채워진 원색으로 있으면
+  // 그보다 먼저 눈에 들어와 "버튼이 콘텐츠보다 더 눈에 띄면 안 된다"는
+  // 요구와 부딪혔다 — 여전히 lg 크기·전체 폭이라 375px에서도 탭하기
+  // 쉽고, 존재감은 있지만 텍스트를 압도하지는 않는다.
   const heroShareLabel =
     shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : shareState === "shared" ? "공유했어요!" : "이 카드 공유하기";
 
@@ -70,7 +75,7 @@ function TasteCardBody({
         result={result}
         heroAction={
           <Button
-            variant="primary"
+            variant="secondary"
             size="lg"
             className="w-full"
             onClick={canNativeShare ? share : copyLink}

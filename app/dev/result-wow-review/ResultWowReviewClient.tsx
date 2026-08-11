@@ -138,7 +138,7 @@ function NewResultPreview({ result }: { result: TasteResult }) {
         <TasteResultHighlights
           result={result}
           heroAction={
-            <Button variant="primary" size="lg" className="w-full" disabled>
+            <Button variant="secondary" size="lg" className="w-full" disabled>
               이 카드 공유하기 (미리보기 — 비활성)
             </Button>
           }

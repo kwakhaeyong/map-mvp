@@ -80,19 +80,54 @@ export function TasteTagRow({ tags, className }: { tags: string[]; className?: s
   );
 }
 
-// STEP 1 RESULT CARD. title/oneLiner/statusLabel/tags는 전부 예전
-// HeroHeader와 동일하게 그대로 재사용한다 — 새로 추가한 건 heroAction
-// 슬롯 하나뿐이다(공유 버튼을 카드 "안"에 넣어, 카드 자체가 공유
-// 가능한 완결된 단위처럼 보이게 한다). 공유 로직 자체는 여기서
-// 새로 만들지 않고 호출부(TasteCard.tsx)의 useShareResult 결과를
-// 그대로 받아 버튼만 그린다.
+// RESULT VIRAL EXPERIENCE(2026-08) — 카드 우상단에 얹는 작은 "경로"
+// 모티프. MY MAP(매트릭스 차트)이 이미 쓰는 점·선 언어를 재사용하되,
+// 새 시각화 엔진이나 일러스트 세트 없이 SVG 도형 3개(원 3개 + 곡선
+// 1개)만으로 "이것도 하나의 지도"라는 인상만 옅게(opacity-20) 남긴다 —
+// 정보 전달용이 아니라 순수 브랜드 시그니처다. 정보(제목·한줄설명)
+// 뒤에 깔리는 배경 요소라 pointer-events-none + aria-hidden으로
+// 상호작용/스크린리더에서 완전히 제외한다.
+function CardSignature() {
+  return (
+    <svg viewBox="0 0 64 64" className="pointer-events-none absolute right-4 top-4 size-14 opacity-20" aria-hidden="true">
+      <path
+        d="M8 44 C20 40, 26 20, 40 18 S 54 10, 56 8"
+        className="fill-none stroke-primary"
+        strokeWidth="2"
+        strokeDasharray="1 5"
+        strokeLinecap="round"
+      />
+      <circle cx="8" cy="44" r="3" className="fill-primary" />
+      <circle cx="40" cy="18" r="2.4" className="fill-primary" />
+      <circle cx="56" cy="8" r="3" className="fill-primary" />
+    </svg>
+  );
+}
+
+// STEP 1 RESULT CARD. title/oneLiner/statusLabel/tags는 예전 HeroHeader와
+// 동일하게 그대로 재사용한다 — 새로 추가한 건 (1) heroAction 슬롯(공유
+// 버튼을 카드 "안"에 넣어, 카드 자체가 공유 가능한 완결된 단위처럼
+// 보이게 한다 — 공유 로직 자체는 새로 만들지 않고 호출부(TasteCard.tsx)의
+// useShareResult 결과를 그대로 받아 버튼만 그린다), (2) 카드 상단의
+// 작은 브랜드 마크(이 카드 한 장만 캡처·공유돼도 "MAP Decision" 출처가
+// 보이게), (3) 위 CardSignature뿐이다. 정보량 자체(필드 종류)는 늘리지
+// 않았다.
 function HeroHeader({ result, heroAction }: { result: TasteResult; heroAction?: ReactNode }) {
   return (
-    <Card className="p-5">
-      <span className="inline-flex items-center rounded-pill bg-tag-fill px-3 py-1 text-xs font-extrabold text-text-primary">
-        나의 취향 MAP
-      </span>
-      <h1 className="mt-3 text-balance break-keep text-3xl font-black leading-9 tracking-[-0.03em] text-text-primary">{result.title}</h1>
+    <Card className="relative overflow-hidden p-5">
+      <CardSignature />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5" aria-hidden="true">
+          <span className="grid size-5 place-items-center rounded-medium border border-primary bg-surface-elevated text-[10px] font-black text-primary">
+            M
+          </span>
+          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-text-muted">MAP Decision</span>
+        </div>
+        <span className="inline-flex items-center rounded-pill bg-tag-fill px-3 py-1 text-xs font-extrabold text-text-primary">
+          나의 취향 MAP
+        </span>
+      </div>
+      <h1 className="mt-4 text-balance break-keep text-3xl font-black leading-9 tracking-[-0.03em] text-text-primary">{result.title}</h1>
       <p className="mt-2 text-sm font-bold leading-6 text-text-primary">{result.oneLiner}</p>
       {result.statusLabel ? (
         <p className="mt-2 text-xs font-semibold leading-5 text-text-secondary">{result.statusLabel}</p>
@@ -105,19 +140,27 @@ function HeroHeader({ result, heroAction }: { result: TasteResult; heroAction?: 
 
 // STEP 2 "MAP이 발견한 3가지". 새 AI 필드나 새 계산 없이, 이미 생성된
 // 텍스트 중 딱 3곳에서 첫 항목만 그대로 가져온다(deterministic,
-// 문장을 고치거나 요약하지 않음):
-// ① selfReflection.awareness[0] — "나도 이미 알고 있던 것"
-// ② patterns[0] — 답변을 가로질러 반복된 것
-// ③ selfReflection.blindSpots[0] — "잘 안 보이던 것"
+// 문장을 고치거나 요약하지 않음). RESULT VIRAL EXPERIENCE(2026-08)로
+// 세 카드가 "점점 깊어지는 경험"이 되도록 역할을 다시 잡았다 —
+// 순서(awareness→patterns→blindSpots) 자체는 이전과 동일하고, 라벨과
+// 시각적 무게만 바꿨다:
+// ① "내가 아는 나"(selfReflection.awareness[0]) — "응, 나 원래 이런
+//    편이지" 하고 동의하게 만드는, 가장 안전한 진입점.
+// ② "반복되는 나"(patterns[0]) — 서로 다른 문항을 가로질러 반복된
+//    결이라, "따로 답했는데 이렇게 연결되네?"로 이어진다.
+// ③ "내가 놓친 나"(selfReflection.blindSpots[0]) — 본인은 잘 모를 수
+//    있는 결이라 이 셋 중 가장 중요하다("어떻게 알았지?" 반응을
+//    노린다) — 그래서 시각적으로도 가장 강하게(진한 테두리·굵은 글씨)
+//    그린다.
 // 세 배열이 서로 다른 필드라 항목이 겹칠 일이 없다. 혹시 어떤 배열이
 // 비어 있으면(스키마상 가능성만 있음) 그 항목만 건너뛰고 남은 것만
 // 보여준다 — 억지로 채우지 않는다.
 type Discovery = { role: string; text: string };
 
 const DISCOVERY_SOURCES: { role: string; pick: (result: TasteResult) => string | undefined }[] = [
-  { role: "내가 이미 알아채고 있던 것", pick: (result) => result.selfReflection.awareness[0] },
-  { role: "반복되는 패턴", pick: (result) => result.patterns[0] },
-  { role: "잘 안 보이던 부분", pick: (result) => result.selfReflection.blindSpots[0] },
+  { role: "내가 아는 나", pick: (result) => result.selfReflection.awareness[0] },
+  { role: "반복되는 나", pick: (result) => result.patterns[0] },
+  { role: "내가 놓친 나", pick: (result) => result.selfReflection.blindSpots[0] },
 ];
 
 function pickDiscoveries(result: TasteResult): Discovery[] {
@@ -125,6 +168,32 @@ function pickDiscoveries(result: TasteResult): Discovery[] {
     (discovery): discovery is Discovery => Boolean(discovery.text),
   );
 }
+
+// "더 깊게 보기"에서 위 세 카드가 이미 쓴 문장을 다시 보여주지 않기
+// 위한 유틸 — pickDiscoveries가 항상 각 소스 배열의 0번째만 쓰므로,
+// 상세 영역은 그 배열들의 1번째부터만 보여주면 된다(별도로 "어떤
+// 항목이 실제로 쓰였는지"를 들고 다닐 필요가 없다). 배열이 비어 있거나
+// 항목이 1개뿐이면 그대로 빈 배열을 돌려준다 — 각 소스 섹션(patterns
+// 2~4개, awareness/blindSpots는 항상 고정 개수)이 빈 배열을 이미
+// 안전하게 처리한다.
+function dropFirst<T>(items: T[]): T[] {
+  return items.length > 0 ? items.slice(1) : items;
+}
+
+// 1→2→3으로 갈수록 카드 무게(테두리·배경·글자 굵기)가 짙어지게 해서
+// 3번째("내가 놓친 나")가 자연스럽게 climax가 되게 한다 — 새 색을
+// 추가하지 않고 기존 토큰(border/border-strong/primary, surface-elevated/
+// ink-wash)만으로 3단계를 만든다.
+const DISCOVERY_TIER_CLASS = [
+  "border border-border bg-surface-elevated shadow-subtle",
+  "border border-border-strong bg-ink-wash shadow-subtle",
+  "border-2 border-primary bg-ink-wash shadow-floating",
+];
+const DISCOVERY_TEXT_CLASS = [
+  "text-base font-bold leading-7 text-text-primary",
+  "text-base font-bold leading-7 text-text-primary",
+  "text-lg font-black leading-7 text-text-primary",
+];
 
 function DiscoveriesSection({ result }: { result: TasteResult }) {
   const discoveries = pickDiscoveries(result);
@@ -134,15 +203,15 @@ function DiscoveriesSection({ result }: { result: TasteResult }) {
       <SectionHeader title="MAP이 발견한 3가지" description="따로 답한 문항들을 모아보니, 이런 게 보였어요." />
       <div className="flex flex-col gap-2">
         {discoveries.map((discovery, index) => (
-          <Card key={discovery.role} className="flex flex-col gap-1.5 p-4">
+          <div key={discovery.role} className={cx("flex flex-col gap-1.5 rounded-large p-4", DISCOVERY_TIER_CLASS[index % DISCOVERY_TIER_CLASS.length])}>
             <div className="flex items-center gap-2">
               <span className="grid size-6 shrink-0 place-items-center rounded-pill bg-primary text-xs font-black text-primary-foreground">
                 {index + 1}
               </span>
               <p className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-text-muted">{discovery.role}</p>
             </div>
-            <p className="text-base font-bold leading-7 text-text-primary">{discovery.text}</p>
-          </Card>
+            <p className={DISCOVERY_TEXT_CLASS[index % DISCOVERY_TEXT_CLASS.length]}>{discovery.text}</p>
+          </div>
         ))}
       </div>
     </div>
@@ -180,7 +249,7 @@ function CoreTier({ label, items, tone }: { label: string; items: string[]; tone
 function TasteCoreSection({ tasteCore }: { tasteCore: TasteResult["tasteCore"] }) {
   return (
     <Card className="flex flex-col gap-4">
-      <SectionHeader title="내 취향의 중심" description="답변에서 드러난 확실함의 정도를 세 단계로 나눠봤어요." />
+      <SectionHeader title="취향의 중심" description="답변에서 드러난 확실함의 정도를 세 단계로 나눠봤어요." />
       <div className="grid gap-3">
         <CoreTier label="확실한 것" items={tasteCore.certain} tone="strong" />
         <CoreTier label="상황 따라 다른 것" items={tasteCore.conditional} tone="medium" />
@@ -191,9 +260,12 @@ function TasteCoreSection({ tasteCore }: { tasteCore: TasteResult["tasteCore"] }
 }
 
 function PatternsSection({ items }: { items: string[] }) {
+  // dropFirst 이후 항목이 하나도 안 남는 경우(이론상만 가능 — patterns는
+  // 프롬프트 규칙상 2~4개다)에는 빈 카드를 보여주지 않는다.
+  if (items.length === 0) return null;
   return (
     <Card className="flex flex-col gap-3">
-      <SectionHeader title="반복되는 취향 패턴" description="답변을 가로질러 반복되는 결이에요." />
+      <SectionHeader title="반복되는 패턴" description="답변을 가로질러 반복되는 결이에요." />
       <CollapsibleItems
         items={items.map((item, index) => (
           <blockquote key={index} className="rounded-medium border border-border border-l-4 border-l-primary bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
@@ -369,7 +441,7 @@ function SelfReflectionSection({ selfReflection }: { selfReflection: TasteSelfRe
     >
       <div>
         <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary" />
-        <h2 className="text-lg font-black tracking-[-0.02em] text-text-primary sm:text-xl">자기 성찰</h2>
+        <h2 className="text-lg font-black tracking-[-0.02em] text-text-primary sm:text-xl">조금 더 들여다본 나</h2>
         <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">답변을 모아서 본 나의 취향이에요.</p>
       </div>
       <div className="flex flex-col gap-3">
@@ -466,14 +538,23 @@ export function TasteResultHighlights({
 
 // STEP 4 "더 깊게 보기". 기존 4블록(중심·패턴·방향·자기성찰)을 하나도
 // 지우지 않고 그대로 담되, 기본은 접어둔다 — 펼치면 예전과 똑같은
-// 깊이가 그대로 나온다.
+// 깊이가 그대로 나온다. RESULT VIRAL EXPERIENCE(2026-08)로 patterns·
+// awareness·blindSpots는 dropFirst로 0번째(위 "MAP이 발견한 3가지"가
+// 이미 쓴 항목)만 건너뛴다 — 배열 자체(result.patterns 등)는 그대로고,
+// 화면에 넘기기 직전에만 슬라이스한다. tasteCore·tasteMap은 발견
+// 3가지에서 쓰지 않는 필드라 그대로 전달한다.
 export function TasteResultDetails({ result }: { result: TasteResult }) {
   return (
     <Disclosure closedLabel="더 깊게 보기" openLabel="접기">
       <TasteCoreSection tasteCore={result.tasteCore} />
-      <PatternsSection items={result.patterns} />
+      <PatternsSection items={dropFirst(result.patterns)} />
       <TasteMapSection tasteMap={result.tasteMap} />
-      <SelfReflectionSection selfReflection={result.selfReflection} />
+      <SelfReflectionSection
+        selfReflection={{
+          awareness: dropFirst(result.selfReflection.awareness),
+          blindSpots: dropFirst(result.selfReflection.blindSpots),
+        }}
+      />
     </Disclosure>
   );
 }
