@@ -23,6 +23,16 @@ function SelfQuestionLabel() {
   return <p className="text-[11px] font-black uppercase tracking-[0.08em] text-text-muted">나에 대해</p>;
 }
 
+// FIRST FUN MVP(2026-08) — taste의 tasteRecent(Q2) 문항 전용 전환 라벨.
+// Q1(tasteMode, Landing Hero)이 "생각"을 묻고 바로 다음인 이 문항이
+// "실제 행동"을 묻는다는 관계만 짧게 짚어준다 — 답변을 해석하거나
+// 성격을 판단하는 문장은 아니다. SelfQuestionLabel과 같은 자리·같은
+// 역할(문항 위 작은 라벨)이지만, taste 전용이라는 걸 구분하려고
+// text-primary로 톤만 다르게 뒀다.
+function RealityCheckLabel() {
+  return <p className="text-[11px] font-black uppercase tracking-[0.08em] text-primary">이번엔 실제로</p>;
+}
+
 const MAX_SELECTIONS = 3;
 
 // 세부 선택지(subOptions)를 골랐어도 태그 매핑(ideal-type-tags.ts)은
@@ -64,12 +74,19 @@ function OptionChip({
   isDisabled,
   compact,
   onClick,
+  orderNumber,
 }: {
   choice: TopicChoice;
   isSelected: boolean;
   isDisabled: boolean;
   compact?: boolean;
   onClick: () => void;
+  // undefined면 기존과 완전히 동일(배지 없음) — BinaryStep과 AxisStep의
+  // 나머지 호출부는 전부 이 값을 넘기지 않아 그대로다. Q2(tasteRecent)의
+  // Reality Check Stack에서만 number(뽑힌 순서) | null(아직 안 뽑힘)을
+  // 넘겨서, 뽑히기 전부터 자리를 고정해 두고("빈 원") 뽑히면 숫자가
+  // 채워지는 식으로 레이아웃이 흔들리지 않게 한다.
+  orderNumber?: number | null;
 }) {
   return (
     <button
@@ -77,14 +94,28 @@ function OptionChip({
       onClick={onClick}
       disabled={isDisabled}
       className={cx(
-        "flex flex-col items-start gap-0.5 rounded-large border px-4 text-left transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+        "relative flex flex-col items-start gap-0.5 rounded-large border text-left transition-all duration-normal ease-emphasized disabled:pointer-events-none",
         compact ? "py-2" : "py-3",
+        orderNumber !== undefined ? (compact ? "pl-9 pr-4" : "pl-11 pr-4") : "px-4",
         isSelected
           ? "border-primary bg-primary text-primary-foreground shadow-subtle"
           : "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-border-strong hover:shadow-floating",
         isDisabled && !isSelected && "opacity-40",
       )}
     >
+      {orderNumber !== undefined ? (
+        <span
+          aria-hidden="true"
+          className={cx(
+            "absolute left-3 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full border text-[11px] font-black transition-all duration-normal ease-emphasized",
+            orderNumber
+              ? "border-primary-foreground-wash bg-primary-foreground-wash text-primary-foreground"
+              : "border-border-strong bg-surface text-transparent",
+          )}
+        >
+          {orderNumber ?? ""}
+        </span>
+      ) : null}
       <span className={cx("font-extrabold tracking-[-0.01em]", compact ? "text-sm" : "text-base")}>{choice.label}</span>
       <span className={cx("text-xs font-medium", isSelected ? "text-primary-foreground-soft" : "text-text-muted")}>{choice.description}</span>
     </button>
@@ -111,6 +142,7 @@ function AxisStep({
   showBack,
   aboutSelf,
   requireConfirm,
+  realityCheck,
 }: {
   question: string;
   options: TopicOption[];
@@ -124,6 +156,13 @@ function AxisStep({
   // 이상형·나 소개 둘 다 심화 경로 자체를 없애며 그 흐름이 제거됨),
   // prop 자체는 재사용 가능하게 남겨둔다.
   requireConfirm: boolean;
+  // FIRST FUN MVP(2026-08) — taste의 tasteRecent(Q2) 하나에만 켜지는
+  // "Reality Check Stack" 표현. AxisStep 자체(다중 선택·자동 진행·
+  // 커스텀 입력 로직)는 전혀 바꾸지 않고, 위에 전환 라벨을 붙이고
+  // 고른 순서를 작은 숫자 배지로 보여주는 표시만 얹는다. 다른 6개
+  // AxisStep 호출부(Q6·Q8·Q10·Q11·Q15·Q18 및 타 5개 주제)는 이 값을
+  // 넘기지 않아 기존 화면 그대로다.
+  realityCheck?: boolean;
 }) {
   const [selected, setSelected] = useState<TopicChoice[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -168,6 +207,7 @@ function AxisStep({
   return (
     <div className="flex w-full flex-col gap-5">
       {aboutSelf ? <SelfQuestionLabel /> : null}
+      {realityCheck ? <RealityCheckLabel /> : null}
       <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
       <p className="text-xs font-black text-text-muted">
         최대 {MAX_SELECTIONS}개까지 고를 수 있어요 · 먼저 고른 게 더 중요해요 · {selected.length}/{MAX_SELECTIONS} 선택
@@ -176,11 +216,19 @@ function AxisStep({
         {options.map((option) => {
           const isSelected = isChoiceSelected(option);
           const isExpanded = expanded[option.label] ?? false;
+          const selectionIndex = selected.findIndex((item) => item.label === option.label);
+          const orderNumber = realityCheck ? (selectionIndex === -1 ? null : selectionIndex + 1) : undefined;
           return (
             <div key={option.label} className="flex flex-col gap-2">
               <div className="flex items-stretch gap-2">
                 <div className="flex-1">
-                  <OptionChip choice={option} isSelected={isSelected} isDisabled={atCap && !isSelected} onClick={() => toggle(option)} />
+                  <OptionChip
+                    choice={option}
+                    isSelected={isSelected}
+                    isDisabled={atCap && !isSelected}
+                    onClick={() => toggle(option)}
+                    orderNumber={orderNumber}
+                  />
                 </div>
                 {option.subOptions && option.subOptions.length > 0 ? (
                   <button
@@ -239,6 +287,42 @@ function AxisStep({
   );
 }
 
+// FIRST FUN MVP(2026-08) — BinaryStep의 "Versus" 표현에서만 쓰는 큰
+// 대결형 블록. 기존 OptionChip(왼쪽 정렬 목록형)과 달리 가운데 정렬 +
+// 큰 패딩으로 "둘 중 하나"라는 긴장감을 준다. pick만 받고 선택/자동
+// 진행 로직은 그대로 BinaryStep의 useAutoAdvance가 갖고 있다.
+function VersusOption({
+  choice,
+  isSelected,
+  isDisabled,
+  onClick,
+}: {
+  choice: TopicChoice;
+  isSelected: boolean;
+  isDisabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isDisabled}
+      className={cx(
+        "flex flex-col items-center gap-1 rounded-large border px-5 py-6 text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none sm:py-7",
+        isSelected
+          ? "scale-[1.02] border-primary bg-primary text-primary-foreground shadow-floating"
+          : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:border-border-strong hover:shadow-floating",
+        isDisabled && !isSelected && "opacity-40",
+      )}
+    >
+      <span className={cx("text-base font-extrabold tracking-[-0.01em] sm:text-lg", isSelected ? "text-primary-foreground" : "text-text-primary")}>
+        {choice.label}
+      </span>
+      <span className={cx("text-xs font-medium", isSelected ? "text-primary-foreground-soft" : "text-text-muted")}>{choice.description}</span>
+    </button>
+  );
+}
+
 // 양자택일형은 우선순위를 가려내는 게 목적이라 복수 선택을 허용하면
 // 의미가 없어진다 — AxisStep과 달리 딱 하나만 고를 수 있고, 세부
 // 선택지도 없다(둘 중 하나를 강제하는 질문에 "더 자세히"가 끼어들면
@@ -250,6 +334,7 @@ function BinaryStep({
   onBack,
   showBack,
   requireConfirm,
+  versus,
 }: {
   question: string;
   options: TopicOption[];
@@ -259,11 +344,55 @@ function BinaryStep({
   // 지금은 호출부가 항상 false만 넘긴다 — AxisStep의 같은 이름 prop
   // 주석 참고.
   requireConfirm: boolean;
+  // FIRST FUN MVP(2026-08) — taste 전용 "Versus" 표현. 선택/자동 진행
+  // 로직(useAutoAdvance, 250ms)은 그대로 두고 레이아웃만 위아래 대결
+  // 구도로 바꾼다. taste가 아닌 다른 5개 주제 호출부는 이 값을 넘기지
+  // 않아 기존 세로 목록 그대로다.
+  versus?: boolean;
 }) {
   const { pending, pick, confirm } = useAutoAdvance(
     (choice) => onSubmit(`${choice.label} — ${choice.description}`, [choice.label]),
     requireConfirm,
   );
+
+  if (versus && options.length === 2) {
+    const [left, right] = options;
+    return (
+      <div className="flex w-full flex-col gap-5">
+        <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
+        <p className="text-xs font-black text-text-muted">둘 중 하나만 골라주세요</p>
+        <div className="flex flex-col gap-3">
+          <VersusOption
+            choice={left}
+            isSelected={pending?.label === left.label}
+            isDisabled={pending !== null && pending.label !== left.label}
+            onClick={() => pick(left)}
+          />
+          <div aria-hidden="true" className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-xs font-black tracking-[0.14em] text-text-muted">VS</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <VersusOption
+            choice={right}
+            isSelected={pending?.label === right.label}
+            isDisabled={pending !== null && pending.label !== right.label}
+            onClick={() => pick(right)}
+          />
+        </div>
+        {requireConfirm ? (
+          <div className="mt-1 flex items-center justify-between gap-3">
+            {showBack ? <EnhancedBackButton onBack={onBack} /> : <span />}
+            <Button type="button" variant="primary" size="lg" onClick={confirm} disabled={!pending}>
+              다음
+            </Button>
+          </div>
+        ) : showBack ? (
+          <EnhancedBackButton onBack={onBack} />
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -307,6 +436,7 @@ function QuickTapStep({
   showBack,
   aboutSelf,
   requireConfirm,
+  tasteVariant,
 }: {
   question: string;
   options: TopicOption[];
@@ -315,6 +445,12 @@ function QuickTapStep({
   showBack: boolean;
   aboutSelf?: boolean;
   requireConfirm: boolean;
+  // FIRST FUN MVP(2026-08) — Landing.tsx REAL Q1 히어로에서 검증된
+  // "누르고 싶은 타일" 톤(패딩 확대·선택 시 확대+코너 점)을 taste의
+  // 본 퀴즈 QuickTapStep에도 입힌다. 새 아이콘은 추가하지 않는다(이번
+  // 라운드에서 그래픽 자산은 늘리지 않기로 함). taste가 아닌 다른 5개
+  // 주제 호출부는 이 값을 넘기지 않아 기존 2열 그리드 그대로다.
+  tasteVariant?: boolean;
 }) {
   const { pending, pick, confirm } = useAutoAdvance(
     (choice) => onSubmit(`${choice.label} — ${choice.description}`, [choice.label]),
@@ -336,19 +472,38 @@ function QuickTapStep({
               onClick={() => pick(option)}
               disabled={isLocked}
               className={cx(
-                "group flex flex-col items-center gap-0.5 rounded-large border px-4 py-4 text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+                "group relative flex flex-col items-center text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+                tasteVariant ? "gap-1.5 rounded-large border px-4 py-6 sm:py-7" : "gap-0.5 rounded-large border px-4 py-4",
                 isSelected
-                  ? "border-primary bg-primary text-primary-foreground shadow-subtle"
-                  : "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating",
+                  ? cx("border-primary bg-primary text-primary-foreground shadow-subtle", tasteVariant && "scale-[1.03] shadow-floating")
+                  : cx(
+                      "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating",
+                      tasteVariant && "hover:scale-[1.01]",
+                    ),
                 isLocked && "opacity-40",
               )}
             >
-              <span className={cx("text-sm font-extrabold tracking-[-0.01em]", isSelected ? "text-primary-foreground" : "text-text-primary group-hover:text-primary-foreground")}>
+              {tasteVariant ? (
+                <span
+                  aria-hidden="true"
+                  className={cx(
+                    "absolute right-3 top-3 size-2 rounded-full bg-primary-foreground transition-all duration-normal ease-emphasized",
+                    isSelected ? "scale-100 opacity-100" : "scale-0 opacity-0",
+                  )}
+                />
+              ) : null}
+              <span
+                className={cx(
+                  tasteVariant ? "text-base font-extrabold tracking-[-0.01em] sm:text-lg" : "text-sm font-extrabold tracking-[-0.01em]",
+                  isSelected ? "text-primary-foreground" : "text-text-primary group-hover:text-primary-foreground",
+                )}
+              >
                 {option.label}
               </span>
               <span
                 className={cx(
-                  "text-[11px] font-medium transition-colors duration-normal ease-emphasized",
+                  tasteVariant ? "text-xs font-medium" : "text-[11px] font-medium",
+                  "transition-colors duration-normal ease-emphasized",
                   isSelected ? "text-primary-foreground-soft" : "text-text-muted group-hover:text-primary-foreground-soft",
                 )}
               >
@@ -1053,6 +1208,7 @@ export function TopicQuiz({
             onBack={goBack}
             aboutSelf={currentAxis.aboutSelf}
             requireConfirm={false}
+            tasteVariant={topic.id === "taste"}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
             }}
@@ -1065,6 +1221,7 @@ export function TopicQuiz({
             showBack={step > 0}
             onBack={goBack}
             requireConfirm={false}
+            versus={topic.id === "taste"}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
             }}
@@ -1126,6 +1283,7 @@ export function TopicQuiz({
             showBack={step > 0}
             aboutSelf={currentAxis.aboutSelf}
             requireConfirm={false}
+            realityCheck={topic.id === "taste" && currentAxis.id === "tasteRecent"}
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
