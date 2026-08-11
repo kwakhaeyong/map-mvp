@@ -3,6 +3,11 @@
 import { ReactNode, useState } from "react";
 import { TasteResult } from "../../../src/map-decision-v1/types";
 import { Button, Card } from "../../../src/map-decision-v1/components/ui/primitives";
+import {
+  TasteResultDetails,
+  TasteResultHighlights,
+  TasteRoadmapDisclosure,
+} from "../../../src/map-decision-v1/components/TasteResultBlocks";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -116,6 +121,35 @@ function ResultView({ result }: { result: TasteResult }) {
   );
 }
 
+// RESULT EXPERIENCE REBUILD(2026-08) 검증용. 실제 TasteCard.tsx가 쓰는
+// 것과 같은 384px 폭 컨테이너 안에 실제 프로덕션 컴포넌트(TasteResult
+// Highlights/Details/RoadmapDisclosure)를 그대로 그린다 — 이 페이지
+// 전용으로 새로 베낀 마크업이 아니다. 공유 버튼은 여기서 실제로
+// 눌러도 동작하지 않게 disabled로 뒀다(이 페이지는 useShareResult가
+// 필요로 하는 서명·세션 컨텍스트가 없어, 실제로 눌리면 검증 목적과
+// 무관한 공유 링크가 만들어질 수 있다) — 레이아웃 확인용이다. 실제
+// 공유 버튼 동작은 TasteCard.tsx(라이브 결과 화면)에서 그대로
+// 검증된다.
+function NewResultPreview({ result }: { result: TasteResult }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs font-black uppercase tracking-[0.08em] text-text-muted">새 결과 화면 미리보기 (RESULT EXPERIENCE REBUILD)</p>
+      <div className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-large border border-dashed border-border-strong bg-background p-3">
+        <TasteResultHighlights
+          result={result}
+          heroAction={
+            <Button variant="primary" size="lg" className="w-full" disabled>
+              이 카드 공유하기 (미리보기 — 비활성)
+            </Button>
+          }
+        />
+        <TasteResultDetails result={result} />
+        <TasteRoadmapDisclosure roadmap={result.roadmap} />
+      </div>
+    </div>
+  );
+}
+
 export function ResultWowReviewClient() {
   const [state, setState] = useState<RequestState>("idle");
   const [result, setResult] = useState<TasteResult | null>(null);
@@ -155,6 +189,7 @@ export function ResultWowReviewClient() {
 
       {state === "error" && errorMessage ? <p className="text-sm font-bold text-error">{errorMessage}</p> : null}
 
+      {result ? <NewResultPreview result={result} /> : null}
       {result ? <ResultView result={result} /> : null}
     </div>
   );

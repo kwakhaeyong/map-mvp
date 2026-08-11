@@ -5,7 +5,7 @@ import { IdealTypeResultBlocks, TagRow } from "../../../src/map-decision-v1/comp
 import { SelfIntroResultBlocks, SelfIntroTagRow } from "../../../src/map-decision-v1/components/SelfIntroResultBlocks";
 import { FriendshipResultBlocks, FriendshipTagRow } from "../../../src/map-decision-v1/components/FriendshipResultBlocks";
 import { WorkResultBlocks, WorkTagRow } from "../../../src/map-decision-v1/components/WorkResultBlocks";
-import { TasteResultBlocks, TasteTagRow } from "../../../src/map-decision-v1/components/TasteResultBlocks";
+import { TasteResultDetails, TasteResultHighlights, TasteRoadmapDisclosure, TasteTagRow } from "../../../src/map-decision-v1/components/TasteResultBlocks";
 import { TravelResultBlocks, TravelTagRow } from "../../../src/map-decision-v1/components/TravelResultBlocks";
 import { FinalResultSectionReadOnly } from "../../../src/map-decision-v1/components/FinalResultBlocks";
 import { ShareCardImage } from "../../../src/map-decision-v1/components/ShareCardImage";
@@ -417,12 +417,17 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
             />
             <TryItCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />
             <div className="h-px w-full bg-border" />
+            {/* RESULT EXPERIENCE REBUILD(2026-08): 라이브 결과 화면과
+                마찬가지로 "MAP이 발견한 3가지"·MY MAP은 접지 않고 바로
+                보여준다(§11 — 두 화면이 여기까지는 같은 걸 보여줘야
+                한다). showHero=false인 이유는 그대로다 — 위 ShareCardImage가
+                이미 타이틀·한줄설명·태그를 담은 카드 이미지라, RESULT
+                CARD(HeroHeader)를 텍스트로 한 번 더 반복할 필요가 없다. */}
+            <TasteResultHighlights result={renderable.result} showHero={false} />
             <CollapsibleFriendResult>
-              <TasteResultBlocks
-                result={renderable.result}
-                showHero={false}
-                afterReflection={<MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />}
-              />
+              <TasteResultDetails result={renderable.result} />
+              <MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />
+              <TasteRoadmapDisclosure roadmap={renderable.result.roadmap} />
             </CollapsibleFriendResult>
             <PolicyFooterLinks />
           </>

@@ -7,7 +7,7 @@ import { resolveTopic } from "../engine/topics";
 import { MapSession } from "../types";
 import { Brand } from "./Landing";
 import { GenerationWaitCard } from "./GenerationProgress";
-import { TasteResultBlocks } from "./TasteResultBlocks";
+import { TasteResultDetails, TasteResultHighlights, TasteRoadmapDisclosure } from "./TasteResultBlocks";
 import { NextMapPrompt } from "./NextMapPrompt";
 import { ShareStatusCard, useShareResult } from "./ShareResult";
 import { ImageSaveModal, useImageShare } from "./ImageShare";
@@ -56,9 +56,32 @@ function TasteCardBody({
     buildShareText: (shareUrl) => `이거 완전 내 얘기래\n\n${shareUrl}`,
   });
 
+  // RESULT CARD 안에 곧바로 두는 공유 버튼 — 아래쪽 공유 버튼 행과
+  // 같은 useShareResult 상태를 그대로 쓴다(새 공유 로직을 만들지
+  // 않는다). 첫 화면에서부터 "이 카드를 공유할 수 있다"는 게 보이게
+  // 하는 게 목적이라, 지원되면 네이티브 공유 시트를, 아니면 링크
+  // 복사를 곧장 실행한다.
+  const heroShareLabel =
+    shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : shareState === "shared" ? "공유했어요!" : "이 카드 공유하기";
+
   return (
     <div className="flex flex-col gap-3">
-      <TasteResultBlocks result={result} />
+      <TasteResultHighlights
+        result={result}
+        heroAction={
+          <Button
+            variant="primary"
+            size="lg"
+            className="w-full"
+            onClick={canNativeShare ? share : copyLink}
+            disabled={shareState === "creating"}
+          >
+            {heroShareLabel}
+          </Button>
+        }
+      />
+
+      <TasteResultDetails result={result} />
 
       <ShareStatusCard shareState={shareState} shareError={shareError} sharedUrl={sharedUrl} />
       <div className="flex gap-2">
@@ -86,10 +109,11 @@ function TasteCardBody({
               : "이미지로 저장"}
       </Button>
       {imageError ? <p className="text-center text-xs font-bold text-error">{imageError}</p> : null}
-      <Button variant="primary" size="lg" onClick={onReset}>
+      <Button variant="outline" size="lg" onClick={onReset}>
         너도 만들어봐
       </Button>
       <NextMapPrompt session={session} tags={result.tags} onStartTopic={onStartTopic} />
+      <TasteRoadmapDisclosure roadmap={result.roadmap} />
       <p className="text-center text-xs font-semibold text-text-muted">
         <a href="/privacy" className="underline underline-offset-2 hover:text-text-primary">
           개인정보처리방침
