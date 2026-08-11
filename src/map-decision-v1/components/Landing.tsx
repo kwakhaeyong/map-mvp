@@ -19,6 +19,25 @@ function cx(...classes: Array<string | false | null | undefined>) {
 // 준다. 텍스트 가독성을 해치지 않도록 헤더 텍스트보다 DOM에서 먼저
 // 그려 아래 레이어에 깔리게 하고, 부모(Hero 섹션)에는 aria-hidden으로
 // 스크린리더가 무시하게 한다.
+//
+// 2026-08-11 시각 보정(오너 검수 반려 사유: "정돈된 심리테스트 랜딩"에
+// 그쳐 "대표 콘텐츠 포스터" 수준의 시각적 존재감이 없다) — 아래 세
+// 가지로 존재감을 올렸다. 새 색상 토큰은 추가하지 않았다.
+// 1) 선 굵기(1.5→최대 2.5)·불투명도(최대 0.28→0.58)를 전반적으로
+//    올려 카드 위 옅은 장식이 아니라 그 자체로 눈에 띄는 그래픽이
+//    되게 했다 — 안쪽 원일수록 굵고 진하게 해 디자인 문법(§8)의
+//    "emphasized edge: 두꺼운 primary 선"과 같은 위계를 따른다.
+// 2) 두 등고선 군집을 잇는 점선 경로 하나를 추가했다 — 문법(§8)의
+//    "inferred edge: 점선, 확정된 edge보다 옅게"를 그대로 따라
+//    "아직 다 잇지 않은 관계"를 표현한다.
+// 3) 그 경로 위에 지도 노드 점 3개를 얹었다 — 새 색이 아니라
+//    fact/option/value(design-tokens.css 기존 MAP 노드 색, §8 "Fact/
+//    Option/Value node") 토큰을 fill-* 클래스로 그대로 쓴다. 취향
+//    콘텐츠 자체가 "선택 지점들을 지도로 본다"는 제품 은유와도
+//    맞아떨어진다.
+// 데스크톱(lg 그리드)에서 텍스트는 왼쪽 컬럼에, 이 SVG는 섹션 전체를
+// 덮는 절대 배치라 시각적으로는 비어 있는 오른쪽 컬럼에 걸쳐 보인다 —
+// 우측 군집의 중심(cx=300)을 오른쪽으로 치우쳐 둔 이유다.
 function TasteHeroBackdrop() {
   return (
     <svg
@@ -27,12 +46,25 @@ function TasteHeroBackdrop() {
       preserveAspectRatio="xMidYMid slice"
       className="pointer-events-none absolute inset-0 size-full text-primary"
     >
-      <ellipse cx="335" cy="55" rx="150" ry="105" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.14" />
-      <ellipse cx="335" cy="55" rx="108" ry="72" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.2" />
-      <ellipse cx="335" cy="55" rx="64" ry="42" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.28" />
-      <circle cx="55" cy="270" r="95" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.1" />
-      <circle cx="55" cy="270" r="62" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.16" />
-      <circle cx="55" cy="270" r="30" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.22" />
+      <circle cx="300" cy="90" r="150" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.18" />
+      <circle cx="300" cy="90" r="112" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
+      <circle cx="300" cy="90" r="76" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.44" />
+      <circle cx="300" cy="90" r="42" fill="none" stroke="currentColor" strokeWidth="2.5" opacity="0.58" />
+      <circle cx="50" cy="280" r="110" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.16" />
+      <circle cx="50" cy="280" r="76" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.26" />
+      <circle cx="50" cy="280" r="44" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
+      <path
+        d="M 92 248 Q 200 150 266 122"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeDasharray="2 7"
+        strokeLinecap="round"
+        opacity="0.42"
+      />
+      <circle cx="92" cy="248" r="6" className="fill-fact" opacity="0.9" />
+      <circle cx="180" cy="170" r="5" className="fill-option" opacity="0.9" />
+      <circle cx="266" cy="122" r="6" className="fill-value" opacity="0.9" />
     </svg>
   );
 }
@@ -154,6 +186,21 @@ export const TOPIC_META: Record<string, { questions: number; minutes: number }> 
 // 아이콘 라이브러리가 전혀 없어(package.json 확인) 주제마다 SVG를
 // 새로 그려야 했는데, 렌더링 비교 결과 타이포만 남긴 쪽이 더
 // 담백하고 일관돼 이 안으로 확정했다.
+// 2026-08-11 시각 보정(오너 검수 지시 5번): 5개 카드가 완전히 동일해
+// "콘텐츠 플랫폼" 느낌이 약하다는 지적에 따라, 카드 구조는 그대로 두고
+// 맨 위에 가는 색 띠 하나만 얹었다. 새 색이 아니라 design-tokens.css의
+// 기존 MAP 노드 색 5개(fact/feeling/value/option/uncertainty, §8)를
+// 그대로 재사용한다 — 결과 화면 매트릭스·태그가 이미 쓰는 색과 같은
+// 어휘라 새 의미를 만들지 않는다. taste는 이 그리드에 없어(Hero로
+// 이동) 목록에서 뺐다.
+const TOPIC_ACCENT: Record<string, string> = {
+  travelStyle: "bg-fact",
+  friendship: "bg-feeling",
+  selfIntro: "bg-value",
+  idealType: "bg-option",
+  work: "bg-uncertainty",
+};
+
 function TopicCard({
   topic,
   onStart,
@@ -171,10 +218,13 @@ function TopicCard({
       aria-disabled={disabled}
       onClick={() => (disabled ? onLocked(topic) : onStart(topic.id))}
       className={cx(
-        "group relative flex min-h-[112px] flex-col items-start justify-center gap-2 rounded-large border border-border bg-surface p-4 text-left shadow-subtle transition duration-normal ease-emphasized",
+        "group relative flex min-h-[112px] flex-col items-start justify-center gap-2 overflow-hidden rounded-large border border-border bg-surface p-4 text-left shadow-subtle transition duration-normal ease-emphasized",
         disabled ? "opacity-60" : "hover:-translate-y-1 hover:border-border-strong hover:shadow-floating",
       )}
     >
+      {TOPIC_ACCENT[topic.id] ? (
+        <span aria-hidden="true" className={cx("absolute inset-x-0 top-0 h-1", TOPIC_ACCENT[topic.id])} />
+      ) : null}
       {disabled ? (
         <span className="absolute right-3 top-3 rounded-pill border border-border bg-surface-elevated px-2.5 py-1 text-[10px] font-black text-text-muted">
           준비 중
@@ -342,33 +392,65 @@ export function Landing({
           진로 결과 화면(Result.tsx)과 마인드맵 캔버스(MapCanvas.tsx)가
           여전히 쓰고 있어 지우지 않았다.
 
-          Result Teaser("이런 차이를 발견할 수 있어요...")는 특정 사용자
-          결과를 가장하지 않는다 — taste-generator.ts의 ★핵심 재해석
-          (1)★이 다루는 "자기 인식(1번 문항) vs 최근 실제 선택(2번 문항)"
-          간극의 종류만 예고한다(구체적 발견 문장은 담지 않음). */}
-      <section className="map-container relative overflow-hidden rounded-large border border-border bg-surface px-5 pb-8 pt-8 text-center shadow-floating sm:px-8 sm:pb-10 sm:pt-12">
+          Result Teaser는 특정 사용자 결과를 가장하지 않는다 —
+          taste-generator.ts의 ★핵심 재해석(1)★이 다루는 "자기 인식(1번
+          문항) vs 최근 실제 선택(2번 문항)" 간극의 종류만 예고한다
+          (구체적 발견 문장은 담지 않음).
+
+          2026-08-11 시각 보정(오너 검수 반려 사유: 구조·카피는 승인,
+          시각적 존재감이 "정돈된 심리테스트 랜딩" 수준에 그침) — 세
+          가지를 고쳤다.
+          1) Result Teaser를 별도 점선 박스에서 뺐다 — 첫 fold 안에서
+             "설명 카드가 하나 더" 있는 느낌을 줘 Hero의 집중도를
+             떨어뜨린다는 지적을 반영해, 같은 문장을 박스 없이 CTA
+             아래의 작은 한 줄로 흡수했다(아래 result-preview 문단).
+          2) CTA를 강화했다 — 문구·마이크로카피는 그대로 두고, 버튼
+             높이·좌우 여백·데스크톱 글자 크기만 키웠다(Button
+             컴포넌트 자체는 앱 전역에서 공유해 손대지 않고, 이 자리의
+             className으로만 확장했다).
+          3) lg(1024px+)부터 텍스트/시각 2컬럼 그리드로 바꿨다 —
+             데스크톱에서 가운데 좁은 텍스트만 떠 있고 나머지가 빈
+             흰 여백으로 남는다는 지적 때문이다. 텍스트는 왼쪽
+             컬럼(lg:text-left)에, 오른쪽 컬럼은 내용 없이 비워
+             TasteHeroBackdrop(섹션 전체를 덮는 절대 배치)이 그 자리에
+             걸리게 한다 — 새 SVG 컴포넌트를 추가하지 않고 기존 배경의
+             구도만으로 두 영역의 균형을 맞췄다. lg 미만(모바일·태블릿)은
+             기존처럼 단일 컬럼 중앙 정렬 그대로다 — 지시대로 복잡한
+             2컬럼을 강제하지 않았다.
+             "20개의 선택에서 드러나는 내 기준" 보조문구는 검토 후
+             넣지 않았다 — 이미 있는 두 번째 teaser 문단("내가 말하는
+             취향과 실제로 고르는 것을 함께 봅니다")과 같은 의미(자기
+             인식 vs 실제 선택)를 다시 말하게 돼 지시의 "기존 teaser와
+             의미가 중복되면 사용하지 않는다" 조건에 해당한다. */}
+      <section className="map-container relative overflow-hidden rounded-large border border-border bg-surface shadow-floating">
         <TasteHeroBackdrop />
-        <p className="text-xs font-black tracking-[-0.01em] text-text-muted">16개 유형에 넣지 않아요</p>
-        <h1 className="mx-auto mt-3 max-w-sm text-balance break-keep text-[2rem] font-black leading-[1.16] tracking-[-0.04em] sm:text-[2.6rem]">
-          나도 모르는<br />내 취향은?
-        </h1>
-        <p className="mx-auto mt-4 max-w-xs break-keep text-sm font-semibold leading-6 text-text-secondary sm:max-w-sm sm:text-base">
-          익숙한 걸 계속 찾는지,<br />새로운 걸 자꾸 기웃대는지.
-        </p>
-        <p className="mx-auto mt-2 max-w-xs break-keep text-sm font-semibold leading-6 text-text-secondary sm:max-w-sm sm:text-base">
-          내가 말하는 취향과<br />실제로 고르는 것을 함께 봅니다.
-        </p>
-        <div className="mx-auto mt-6 flex max-w-xs flex-col items-center gap-2 sm:max-w-none">
-          <Button variant="primary" size="lg" className="w-full sm:w-auto sm:px-12" onClick={handleHeroStart}>
-            취향 확인해보기
-          </Button>
-          <p className="text-xs font-semibold text-text-muted">약 5분 · 가입 없음 · 20문항</p>
-        </div>
-        <div className="mx-auto mt-6 max-w-sm rounded-medium border border-dashed border-border-strong bg-surface-elevated p-4 text-left">
-          <p className="text-[11px] font-black text-text-muted">이런 차이를 발견할 수 있어요</p>
-          <p className="mt-1 break-keep text-sm font-semibold leading-6 text-text-primary">
-            좋아한다고 생각한 것과 최근 실제로 고른 것은 다를 수도 있어요.
-          </p>
+        <div className="relative px-5 pb-8 pt-8 text-center sm:px-8 sm:pb-10 sm:pt-12 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:px-14 lg:py-16 lg:text-left">
+          <div className="lg:max-w-md">
+            <p className="text-xs font-black tracking-[-0.01em] text-text-muted">16개 유형에 넣지 않아요</p>
+            <h1 className="mx-auto mt-3 max-w-sm text-balance break-keep text-[2rem] font-black leading-[1.16] tracking-[-0.04em] sm:text-[2.6rem] lg:mx-0 lg:max-w-none lg:text-[3.1rem]">
+              나도 모르는<br />내 취향은?
+            </h1>
+            <p className="mx-auto mt-4 max-w-xs break-keep text-sm font-semibold leading-6 text-text-secondary sm:max-w-sm sm:text-base lg:mx-0">
+              익숙한 걸 계속 찾는지,<br />새로운 걸 자꾸 기웃대는지.
+            </p>
+            <p className="mx-auto mt-2 max-w-xs break-keep text-sm font-semibold leading-6 text-text-secondary sm:max-w-sm sm:text-base lg:mx-0">
+              내가 말하는 취향과<br />실제로 고르는 것을 함께 봅니다.
+            </p>
+            <div className="mx-auto mt-6 flex max-w-xs flex-col items-center gap-2 sm:max-w-none lg:mx-0 lg:items-start">
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full py-4 text-base sm:w-auto sm:px-14 sm:py-4 sm:text-lg"
+                onClick={handleHeroStart}
+              >
+                취향 확인해보기
+              </Button>
+              <p className="text-xs font-semibold text-text-muted">약 5분 · 가입 없음 · 20문항</p>
+            </div>
+            <p className="mx-auto mt-5 max-w-xs break-keep text-xs font-semibold leading-5 text-text-muted sm:max-w-sm lg:mx-0">
+              좋아한다고 생각한 것과 최근 실제로 고른 것은 다를 수도 있어요.
+            </p>
+          </div>
         </div>
       </section>
 
