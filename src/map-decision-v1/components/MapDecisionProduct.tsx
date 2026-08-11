@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { track } from "@vercel/analytics";
+import { applyQuizAnswer } from "../engine/quiz-answer";
 import { createLandingSession, createSession, isSessionStale, now } from "../engine/session";
-import { resolveTopic } from "../engine/topics";
+import { resolveTopic, TopicChoice } from "../engine/topics";
 import { clearSession, loadSession, saveSession } from "../storage/session-storage";
 import { MapOutputType, MapSession } from "../types";
 import { Conversation } from "./Conversation";
@@ -225,6 +226,35 @@ export function MapDecisionProduct() {
     setHasStaleResult(false);
     setSession({ ...createSession(topicId, undefined, session), stage: "profile" });
   };
+  // FIRST ACTION MVP(2026-08) — taste 전용. Landing.tsx의 REAL Q1
+  // 히어로에서 사용자가 tasteMode(Q1)에 직접 답하면, "주제 고르기"와
+  // "Q1 답하기"가 같은 클릭 하나로 합쳐진다 — start()처럼 profile
+  // 화면부터 거치지 않고, 세션을 만들자마자 그 답을 곧장 기록한 뒤
+  // stage를 "conversation"으로 세팅해 TopicQuiz가 Q2부터 이어받게
+  // 한다. 답변 데이터는 applyQuizAnswer(engine/quiz-answer.ts, TopicQuiz.tsx
+  // 의 commitAnswer와 완전히 같은 함수)로 만든다 — 이 화면에서 답을
+  // 따로 조립하면 TopicQuiz가 만드는 것과 미묘하게 다른 모양이 될
+  // 위험이 있어, 아예 같은 함수를 호출해 그 위험 자체를 없앴다.
+  // start()와 마찬가지로 createSession(topicId, undefined, session)
+  // 패턴을 그대로 써서 preserveCompletedResults(다른 주제 완료 결과
+  // 보존)가 여기서도 동일하게 작동한다.
+  const startTasteFirstAnswer = (choice: TopicChoice) => {
+    setHasStaleResult(false);
+    const tasteTopic = resolveTopic("taste");
+    const axes = tasteTopic.axes ?? [];
+    // tasteMode는 topics.ts의 taste.axes[0]으로 고정된 실제 Q1이다 —
+    // id로 찾아서 배열 순서 변경에도 안전하게 한다(다만 이번 PR에서
+    // 순서는 건드리지 않는다).
+    const heroAxis = axes.find((axis) => axis.id === "tasteMode");
+    if (!heroAxis) return;
+    const requiredAxes = axes.filter((axis) => axis.required);
+    const optionalAxes = axes.filter((axis) => !axis.required);
+    const base = createSession("taste", undefined, session);
+    const answerText = `${choice.label} — ${choice.description}`;
+    const withAnswer = applyQuizAnswer(base, heroAxis.question, answerText, heroAxis.id, [choice.label], requiredAxes, optionalAxes);
+    track("hero_choice", { topicId: "taste", axisId: heroAxis.id });
+    setSession({ ...withAnswer, stage: "conversation" });
+  };
   const startDemo = () => { setHasStaleResult(false); setSession(createDemoSession()); };
   const reset = () => { if (!session.isDemo) clearSession(); setHasSavedDraft(false); setHasStaleResult(false); setSaveState("saved"); setSession(createLandingSession()); };
   const selectType = (type: MapOutputType) => setSession((current) => ({ ...current, preferredMapType: type }));
@@ -234,6 +264,13 @@ export function MapDecisionProduct() {
   const exitDemoToReal = () => { setHasStaleResult(false); setSession(createLandingSession()); };
   const goConversation = useCallback(() => setSession((current) => ({ ...current, stage: "conversation" })), []);
   const goResult = useCallback(() => setSession((current) => ({ ...current, stage: "result" })), []);
+  // taste 퀴즈를 다 마친 직후(ClosingStep 제출)에만 쓰인다 — 결과로
+  // 곧장 가지 않고 ProfileStep을 한 번 거친다(taste ProfileStep 후치,
+  // 아래 TopicQuiz 렌더 지점 참고). "profile" stage로 다시 진입하는
+  // 것 자체는 기존 stage 값을 재사용할 뿐이라 새 stage를 추가하지
+  // 않았다 — ProfileStep 렌더 지점에서 quizStep을 보고 "이번이 퀴즈
+  // 전인지 후인지"를 구분한다(아래 참고).
+  const goProfileAfterQuiz = useCallback(() => setSession((current) => ({ ...current, stage: "profile" })), []);
   // "다른 주제 고르기"(ProfileStep.tsx의 work+학생 안내) 전용. reset()과
   // 달리 세션·localStorage를 지우지 않고 stage만 "landing"으로 돌린다 —
   // 다음 주제에 profile을 이어붙이려는 게 아니라(그건 이제 하지 않는다,
@@ -268,6 +305,7 @@ export function MapDecisionProduct() {
         hasDraft={hasSavedDraft}
         hasStaleResult={hasStaleResult}
         onStart={start}
+        onStartTasteFirstAnswer={startTasteFirstAnswer}
         onResume={goConversation}
         onViewResult={goResult}
         onDemo={startDemo}
@@ -283,11 +321,22 @@ export function MapDecisionProduct() {
     );
   }
   if (session.stage === "profile") {
+    // taste만 ProfileStep을 퀴즈 완료 "후"(goProfileAfterQuiz)에도 거친다
+    // (아래 TopicQuiz 렌더 지점 참고) — 이 경우 onContinue는 대화 화면이
+    // 아니라 곧장 결과로 가야 한다. 별도 세션 필드를 추가하지 않고, 이미
+    // 있는 quizStep으로 "이번 profile 화면이 퀴즈 전인지 후인지"를
+    // 구분한다: 퀴즈 전이면 quizStep이 아직 필수 문항 수 이하이고(보통
+    // 0), 퀴즈를 마친 뒤라면 ClosingStep까지 답해 필수 문항 수보다 크다.
+    // 나머지 5개 주제는 이 stage에 항상 퀴즈 "전"에만 들어오므로
+    // isPostQuizProfile이 늘 false라 기존 동작(goConversation)과 같다.
+    const profileTopic = resolveTopic(session.topicId);
+    const profileRequiredCount = (profileTopic.axes ?? []).filter((axis) => axis.required).length;
+    const isPostQuizProfile = profileTopic.inputMode === "quiz" && (session.quizStep ?? 0) > profileRequiredCount;
     return (
       <ProfileStep
         session={session}
         setSession={setSession}
-        onContinue={goConversation}
+        onContinue={isPostQuizProfile ? goResult : goConversation}
         onReset={reset}
         onChooseDifferentTopic={backToLandingKeepProfile}
       />
@@ -317,7 +366,21 @@ export function MapDecisionProduct() {
   }
   const topic = resolveTopic(session.topicId);
   if (topic.inputMode === "quiz") {
-    return <TopicQuiz session={session} setSession={setSession} onFinish={goResult} onReset={reset} saveState={saveState} />;
+    // taste 한정 ProfileStep 후치(FIRST ACTION MVP, 2026-08) — 나머지
+    // 5개 주제는 결과 화면으로 바로 간다(goResult, 기존 그대로). taste만
+    // 퀴즈를 마치면 ProfileStep을 한 번 더 거친 뒤(goProfileAfterQuiz)
+    // 결과로 간다 — 나이대·지금 하는 일·성별을 묻는 이유가 "결과 문장
+    // 표현을 다듬는 참고 자료"이니, 몰입을 끊는 문항 사이가 아니라
+    // 문항을 다 끝낸 직후·결과 만들기 직전이 더 자연스럽다는 판단이다.
+    return (
+      <TopicQuiz
+        session={session}
+        setSession={setSession}
+        onFinish={topic.id === "taste" ? goProfileAfterQuiz : goResult}
+        onReset={reset}
+        saveState={saveState}
+      />
+    );
   }
   return <Conversation session={session} setSession={setSession} onFinish={goResult} onReset={reset} onRealStart={exitDemoToReal} onDemoChoice={advanceDemo} saveState={saveState} />;
 }

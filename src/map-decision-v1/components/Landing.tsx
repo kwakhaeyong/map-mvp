@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { track } from "@vercel/analytics";
-import { TOPICS, TopicConfig } from "../engine/topics";
+import { TOPICS, TopicAxis, TopicChoice, TopicConfig } from "../engine/topics";
+import { useAutoAdvance } from "../hooks/use-auto-advance";
 import { Badge, Button, Toast } from "./ui/primitives";
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -66,6 +67,62 @@ function TasteHeroBackdrop() {
       <circle cx="180" cy="170" r="5" className="fill-option" opacity="0.9" />
       <circle cx="266" cy="122" r="6" className="fill-value" opacity="0.9" />
     </svg>
+  );
+}
+
+// FIRST ACTION MVP(2026-08) — 히어로 자체를 taste의 실제 Q1(tasteMode)
+// 문항으로 만드는 2×2 선택 카드. TopicQuiz.tsx의 QuickTapStep과 같은
+// 시각 언어(같은 카드 톤·같은 선택 강조 스타일)를 쓴다 — 여기서 고른
+// 뒤 곧바로 이어지는 실제 Q2 화면(QuickTapStep)과 느낌이 달라지면
+// "다른 화면으로 넘어갔다"는 인상을 줘 몰입이 끊긴다. 선택 즉시
+// 자동으로 다음(=취향 세션 시작)으로 넘어가는 감각은 QuickTapStep과
+// 같은 훅(hooks/use-auto-advance.ts)을 그대로 재사용해서 만든다 —
+// 로직을 새로 만들지 않았다. 이 컴포넌트 자체는 화면(마크업)만 담당
+// 하고, 답을 실제로 세션에 기록하는 일은 부모(MapDecisionProduct.tsx의
+// startTasteFirstAnswer, engine/quiz-answer.ts의 applyQuizAnswer)가
+// 전담한다 — TopicQuiz.tsx의 commitAnswer와 똑같은 함수를 호출하므로
+// 이 화면에서 만드는 답변 데이터가 퀴즈 화면의 것과 어긋날 수 없다.
+function HeroFirstQuestion({ axis, onAnswer }: { axis: TopicAxis; onAnswer: (choice: TopicChoice) => void }) {
+  const { pending, pick } = useAutoAdvance(onAnswer, false);
+  return (
+    <div className="mx-auto mt-5 grid max-w-sm grid-cols-2 gap-3 sm:max-w-md lg:mx-0">
+      {axis.options.map((option) => {
+        const isSelected = pending?.label === option.label;
+        const isLocked = pending !== null && !isSelected;
+        return (
+          <button
+            key={option.label}
+            type="button"
+            onClick={() => pick(option)}
+            disabled={isLocked}
+            className={cx(
+              "group flex flex-col items-center gap-1 rounded-large border px-4 py-6 text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+              isSelected
+                ? "border-primary bg-primary text-primary-foreground shadow-floating"
+                : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating",
+              isLocked && "opacity-40",
+            )}
+          >
+            <span
+              className={cx(
+                "text-base font-extrabold tracking-[-0.01em] sm:text-lg",
+                isSelected ? "text-primary-foreground" : "text-text-primary group-hover:text-primary-foreground",
+              )}
+            >
+              {option.label}
+            </span>
+            <span
+              className={cx(
+                "text-xs font-medium transition-colors duration-normal ease-emphasized",
+                isSelected ? "text-primary-foreground-soft" : "text-text-muted group-hover:text-primary-foreground-soft",
+              )}
+            >
+              {option.description}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -281,6 +338,7 @@ export function Landing({
   hasDraft,
   hasStaleResult,
   onStart,
+  onStartTasteFirstAnswer,
   onResume,
   onViewResult,
   onDemo,
@@ -297,6 +355,13 @@ export function Landing({
   // 보기"가 맞는 동작이라 hasStaleResult가 있으면 그쪽을 우선한다.
   hasStaleResult: boolean;
   onStart: (topicId?: string) => void;
+  // FIRST ACTION MVP(2026-08) — taste 전용. 히어로의 REAL Q1(tasteMode)
+  // 카드를 고른 순간 바로 호출된다(MapDecisionProduct.tsx의
+  // startTasteFirstAnswer). onStart와 별도 함수인 이유: onStart는
+  // "주제만 고르고 아직 아무 문항도 안 푼" 상태(ProfileStep으로 감)를
+  // 만들지만, 이건 "Q1까지 이미 답한" 상태(TopicQuiz Q2로 감)를 만든다
+  // — 서로 다른 세션 모양을 만드는 함수라 하나로 합치지 않았다.
+  onStartTasteFirstAnswer: (choice: TopicChoice) => void;
   onResume: () => void;
   onViewResult: () => void;
   onDemo: () => void;
@@ -327,19 +392,15 @@ export function Landing({
   // taste를 영영 추천 못 하게 되는 사고로 이어진다. 이 필터링은 이
   // 컴포넌트의 "그리드에 무엇을 그릴지"에만 쓰는 화면 표시 선택이다.
   const gridTopicIds = VIRAL_TOPIC_IDS.filter((id) => id !== "taste" && (!hideWorkTopic || id !== "work"));
+  // FIRST ACTION MVP(2026-08) — 히어로가 취향의 실제 Q1(tasteMode)을
+  // topics.ts에서 직접 읽는다. 문항 원문·option label을 이 파일에
+  // 따로 옮겨 적지 않는다 — 두 군데(topics.ts, Landing.tsx)에 같은
+  // 문장이 따로 존재하면 나중에 한쪽만 고쳐 서로 어긋나는 사고로
+  // 이어진다. tasteMode는 taste.axes[0]으로 항상 존재하므로(이번
+  // PR에서 문항 순서를 바꾸지 않았다), heroAxis가 없는 경우는 방어
+  // 코드일 뿐 실제로는 발생하지 않는다.
+  const heroAxis = (TOPICS.taste.axes ?? []).find((axis) => axis.id === "tasteMode");
 
-  // topic_select — 랜딩에서 사용자가 실제로 주제를 골랐을 때만 찍는다.
-  // MapDecisionProduct.tsx의 start()(ProfileStep 진입 "직전")가 아니라
-  // 여기 클릭 시점에서 직접 track()을 부른다 — start()에서 찍으면
-  // TopicQuiz.tsx가 따로 찍는 quiz_start(실제 Q1 도달 시점)와 사실상
-  // 같은 타이밍이 돼버려 퍼널이 왜곡된다. 개인정보는 담지 않는다 —
-  // topicId와 source(어디서 골랐는지)만 보낸다. career·freeform은
-  // "테스트 선택"이 아니라 별도 성격의 진입이라 이 이벤트 대상에서
-  // 뺐다(기존 onStart를 그대로 쓴다, 아래 두 번째 TopicSection 참고).
-  const handleHeroStart = () => {
-    track("topic_select", { topicId: "taste", source: "hero" });
-    onStart("taste");
-  };
   const handleGridStart = (topicId: string) => {
     track("topic_select", { topicId, source: "grid" });
     onStart(topicId);
@@ -370,85 +431,65 @@ export function Landing({
         </div>
       </header>
 
-      {/* FIRST CLICK Hero 개편(2026-08): 첫 화면의 주인공을 브랜드 철학
-          문장("16개 유형에 넣지 않아요")에서 취향 대표 콘텐츠로 바꿨다 —
-          6개 주제를 실제 문항·재해석 구조·문항 수 기준으로 비교한 조사
-          결과, taste가 성별·연애 상태·직업(학생이면 work 카드 자체가
-          랜딩에서 숨는 것과 대비된다)에 가장 안 걸리고 6개 중 가장
-          짧다(20문항·약 5분)는 근거로 골랐다.
+      {/* FIRST ACTION MVP(2026-08, REAL Q1 LANDING) — 히어로 자체를
+          "설명 → CTA → 테스트"가 아니라 "선택 → 진행"으로 바꿨다. 오너
+          검수 지시: 처음 들어온 사람이 별도 설명이나 "테스트를 시작할지"
+          결정하는 단계 없이, 실제 taste 첫 문항(tasteMode, "혼자 있는
+          시간에 나는 주로 뭘 해?")에 곧바로 답하게 만드는 것이 이번
+          작업의 성공 기준이다("랜딩이 더 예뻐졌다"가 아니다).
 
-          기존 헤드라인("16개 유형에 넣지 않아요")은 지우지 않고 작은
-          eyebrow로 격하했다 — 여전히 사실에 근거한 포지셔닝 문장이라
-          유지하되, 더 이상 첫 시선을 독점하지 않는다. 기존 서브카피
-          ("답한 나와 행동하는 나, 그 차이를 봅니다 · 로그인 없이")는
-          새 teaser("내가 말하는 취향과 실제로 고르는 것을 함께 봅니다")·
-          microcopy("가입 없음")와 의미가 겹쳐 그대로 두면 같은 말을 두
-          번 하게 돼 없앴다.
+          이전 버전(FIRST CLICK MVP)의 "나도 모르는 내 취향은?" 헤드라인
+          + teaser + "취향 확인해보기" CTA + microcopy + result-preview
+          한 줄 구조를 전부 걷어내고, 그 자리에 실제 문항과 2×2 선택
+          카드(HeroFirstQuestion)를 놓았다. 문항 원문·option label은
+          topics.ts의 taste.axes[0](tasteMode)를 그대로 읽어온다 —
+          이 파일 안에 별도로 옮겨 적지 않는다(위 heroAxis 참고).
 
-          이 위에 있던 "MAP Decision" kicker 텍스트(.kicker 클래스)는
-          2026-08 초에 없앴다 — 바로 위 헤더 로고에 이미 같은 글자가
-          있어 세로로 두 번 반복돼 보였다. 헤더는 모든 화면에 있는 고정
-          요소라 그대로 두고, 히어로 쪽만 지웠다. .kicker 클래스 자체는
-          진로 결과 화면(Result.tsx)과 마인드맵 캔버스(MapCanvas.tsx)가
-          여전히 쓰고 있어 지우지 않았다.
+          "16개 유형에 넣지 않아요" 포지셔닝 문구는 삭제하지 않고 선택
+          카드 아래로 내렸다 — 첫 시선(선택 영역)보다 앞에 두지 않되,
+          여전히 사실에 근거한 브랜드 문장이라 완전히 없애지는 않는다.
 
-          Result Teaser는 특정 사용자 결과를 가장하지 않는다 —
-          taste-generator.ts의 ★핵심 재해석(1)★이 다루는 "자기 인식(1번
-          문항) vs 최근 실제 선택(2번 문항)" 간극의 종류만 예고한다
-          (구체적 발견 문장은 담지 않음).
+          선택 즉시 동작(카드 강조 → 약 250ms → 전환)은 HeroFirstQuestion이
+          hooks/use-auto-advance.ts의 useAutoAdvance를 그대로 재사용해서
+          만든다 — TopicQuiz.tsx의 QuickTapStep과 같은 훅이라 새 로직이
+          아니다. 답을 실제 세션에 기록하는 일은 MapDecisionProduct.tsx의
+          startTasteFirstAnswer(engine/quiz-answer.ts의 applyQuizAnswer
+          호출)가 전담한다 — TopicQuiz.tsx의 commitAnswer와 완전히 같은
+          함수라 이 화면에서 만드는 답변 데이터가 퀴즈 화면의 것과
+          어긋날 수 없다.
 
-          2026-08-11 시각 보정(오너 검수 반려 사유: 구조·카피는 승인,
-          시각적 존재감이 "정돈된 심리테스트 랜딩" 수준에 그침) — 세
-          가지를 고쳤다.
-          1) Result Teaser를 별도 점선 박스에서 뺐다 — 첫 fold 안에서
-             "설명 카드가 하나 더" 있는 느낌을 줘 Hero의 집중도를
-             떨어뜨린다는 지적을 반영해, 같은 문장을 박스 없이 CTA
-             아래의 작은 한 줄로 흡수했다(아래 result-preview 문단).
-          2) CTA를 강화했다 — 문구·마이크로카피는 그대로 두고, 버튼
-             높이·좌우 여백·데스크톱 글자 크기만 키웠다(Button
-             컴포넌트 자체는 앱 전역에서 공유해 손대지 않고, 이 자리의
-             className으로만 확장했다).
-          3) lg(1024px+)부터 텍스트/시각 2컬럼 그리드로 바꿨다 —
-             데스크톱에서 가운데 좁은 텍스트만 떠 있고 나머지가 빈
-             흰 여백으로 남는다는 지적 때문이다. 텍스트는 왼쪽
-             컬럼(lg:text-left)에, 오른쪽 컬럼은 내용 없이 비워
-             TasteHeroBackdrop(섹션 전체를 덮는 절대 배치)이 그 자리에
-             걸리게 한다 — 새 SVG 컴포넌트를 추가하지 않고 기존 배경의
-             구도만으로 두 영역의 균형을 맞췄다. lg 미만(모바일·태블릿)은
-             기존처럼 단일 컬럼 중앙 정렬 그대로다 — 지시대로 복잡한
-             2컬럼을 강제하지 않았다.
-             "20개의 선택에서 드러나는 내 기준" 보조문구는 검토 후
-             넣지 않았다 — 이미 있는 두 번째 teaser 문단("내가 말하는
-             취향과 실제로 고르는 것을 함께 봅니다")과 같은 의미(자기
-             인식 vs 실제 선택)를 다시 말하게 돼 지시의 "기존 teaser와
-             의미가 중복되면 사용하지 않는다" 조건에 해당한다. */}
+          hero_choice 이벤트는 이 컴포넌트가 아니라 startTasteFirstAnswer
+          안에서 찍는다(세션을 실제로 만드는 지점이 거기라서) — 이 화면은
+          onStartTasteFirstAnswer(choice)를 그대로 호출만 한다. 기존
+          topic_select는 이 히어로에서 더 이상 찍지 않는다 — hero_choice가
+          taste의 FIRST ACTION이고, topic_select는 아래 그리드에서 다른
+          주제를 고를 때만 남긴다(handleGridStart 참고).
+
+          TasteHeroBackdrop(등고선 배경)은 그대로 재사용한다 — 이번
+          화면의 주인공은 등고선이 아니라 문항·선택 카드이므로, 배경은
+          여전히 절대 배치로 뒤에 깔려 선택지 판독성을 방해하지 않는다
+          (카드 자체가 불투명한 배경색을 가지고 있어 텍스트 대비에
+          영향이 없다). 새 SVG를 추가하지 않았다. lg(1024px+) 2컬럼
+          구도(텍스트 왼쪽 · 등고선이 걸리는 오른쪽 여백)는 이전
+          버전에서 그대로 가져왔다 — 데스크톱에서 좁은 폼이 화면
+          가운데 떠 있는 느낌을 피하기 위해서다. */}
       <section className="map-container relative overflow-hidden rounded-large border border-border bg-surface shadow-floating">
         <TasteHeroBackdrop />
         <div className="relative px-5 pb-8 pt-8 text-center sm:px-8 sm:pb-10 sm:pt-12 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:px-14 lg:py-16 lg:text-left">
-          <div className="lg:max-w-md">
-            <p className="text-xs font-black tracking-[-0.01em] text-text-muted">16개 유형에 넣지 않아요</p>
-            <h1 className="mx-auto mt-3 max-w-sm text-balance break-keep text-[2rem] font-black leading-[1.16] tracking-[-0.04em] sm:text-[2.6rem] lg:mx-0 lg:max-w-none lg:text-[3.1rem]">
-              나도 모르는<br />내 취향은?
-            </h1>
-            <p className="mx-auto mt-4 max-w-xs break-keep text-sm font-semibold leading-6 text-text-secondary sm:max-w-sm sm:text-base lg:mx-0">
-              익숙한 걸 계속 찾는지,<br />새로운 걸 자꾸 기웃대는지.
+          <div className="lg:max-w-lg">
+            <p className="mx-auto max-w-xs break-keep text-sm font-semibold leading-6 text-text-secondary sm:max-w-sm sm:text-base lg:mx-0">
+              생각하지 말고,<br />지금의 나와 가까운 쪽을 골라보세요.
             </p>
-            <p className="mx-auto mt-2 max-w-xs break-keep text-sm font-semibold leading-6 text-text-secondary sm:max-w-sm sm:text-base lg:mx-0">
-              내가 말하는 취향과<br />실제로 고르는 것을 함께 봅니다.
-            </p>
-            <div className="mx-auto mt-6 flex max-w-xs flex-col items-center gap-2 sm:max-w-none lg:mx-0 lg:items-start">
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full py-4 text-base sm:w-auto sm:px-14 sm:py-4 sm:text-lg"
-                onClick={handleHeroStart}
-              >
-                취향 확인해보기
-              </Button>
-              <p className="text-xs font-semibold text-text-muted">약 5분 · 가입 없음 · 20문항</p>
-            </div>
-            <p className="mx-auto mt-5 max-w-xs break-keep text-xs font-semibold leading-5 text-text-muted sm:max-w-sm lg:mx-0">
-              좋아한다고 생각한 것과 최근 실제로 고른 것은 다를 수도 있어요.
+            {heroAxis ? (
+              <>
+                <h1 className="mx-auto mt-3 max-w-sm text-balance break-keep text-[1.9rem] font-black leading-[1.22] tracking-[-0.03em] sm:text-[2.4rem] lg:mx-0 lg:max-w-none lg:text-[2.9rem]">
+                  {heroAxis.question}
+                </h1>
+                <HeroFirstQuestion axis={heroAxis} onAnswer={onStartTasteFirstAnswer} />
+              </>
+            ) : null}
+            <p className="mx-auto mt-6 max-w-xs break-keep text-xs font-black tracking-[-0.01em] text-text-muted sm:max-w-sm lg:mx-0">
+              16개 유형에 넣지 않아요
             </p>
           </div>
         </div>

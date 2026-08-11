@@ -2,8 +2,10 @@
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { track } from "@vercel/analytics";
-import { createId, now } from "../engine/session";
+import { now } from "../engine/session";
+import { applyQuizAnswer, pruneFromStep } from "../engine/quiz-answer";
 import { resolveTopic, TopicAxis, TopicChoice, TopicOption } from "../engine/topics";
+import { useAutoAdvance } from "../hooks/use-auto-advance";
 import { MapSession } from "../types";
 import { useWebSpeech } from "../voice/use-web-speech";
 import { Brand } from "./Landing";
@@ -39,49 +41,6 @@ function resolveTopLevelLabel(label: string, options: TopicOption[]): string {
 
 function uniqueInOrder(values: string[]): string[] {
   return values.filter((value, index) => values.indexOf(value) === index);
-}
-
-// 단일 선택 문항(binary/quickTap/scenario/slider)이 공유하는 "고르면
-// 바로 다음으로" 동작. 선택 즉시 넘기면 방금 고른 항목이 눈에 보일
-// 틈도 없이 화면이 바뀌어 "내가 뭘 눌렀는지" 확인할 수가 없다 —
-// 200~300ms(여기서는 250ms, 그 사이 값) 동안 선택된 상태를 먼저
-// 보여준 뒤에 넘어간다. requireConfirm이 true인 동안은 자동으로
-// 넘어가지 않고 pending만 갱신한다 — 선택을 자유롭게 바꾼 뒤 별도
-// "다음" 버튼을 눌러야 한다. 지금은 모든 문항 흐름이 항상 false를
-// 넘겨 이 분기가 실행되지 않지만(예전엔 심화 재방문 마지막 문항에서
-// true였다 — 그 흐름 자체가 제거됨), prop은 재사용 가능하게 남겨둔다.
-const AUTO_ADVANCE_DELAY_MS = 250;
-
-function useAutoAdvance(onAdvance: (choice: TopicChoice) => void, requireConfirm: boolean) {
-  const [pending, setPending] = useState<TopicChoice | null>(null);
-  // 연속 탭 방지: 자동 전환이 이미 예약된 뒤에는 잠가서 두 번 넘어가거나
-  // 답이 중복 기록되는 걸 막는다. requireConfirm 모드에서는 예약이
-  // 없으니(사용자가 직접 "다음"을 눌러야 진짜로 넘어감) 이 값이 절대
-  // true가 되지 않고, 그래서 마음이 바뀌면 자유롭게 다시 고를 수 있다.
-  const advancingRef = useRef(false);
-  const timeoutRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  const pick = (choice: TopicChoice) => {
-    if (advancingRef.current) return;
-    setPending(choice);
-    if (requireConfirm) return;
-    advancingRef.current = true;
-    timeoutRef.current = window.setTimeout(() => onAdvance(choice), AUTO_ADVANCE_DELAY_MS);
-  };
-
-  const confirm = () => {
-    if (!pending || advancingRef.current) return;
-    advancingRef.current = true;
-    onAdvance(pending);
-  };
-
-  return { pending, pick, confirm };
 }
 
 // 자동으로 넘어가는 문항일수록 "잘못 눌렀을 때 되돌아갈 방법"이 더
@@ -833,45 +792,6 @@ function resolvePhase(step: number, requiredAxes: TopicAxis[], optionalAxes: Top
 // 건드리지 않는다 — 실제 axis가 아니라 이 컴포넌트 내부 부기용 값).
 const CLOSING_AXIS_ID = "closing";
 
-// step(포함) 이후에 위치한 필수·심화 문항의 axisId를 모은다 — "되돌아간
-// 지점부터 그 뒤 전부"를 지우기 위한 대상 목록. 필수·심화 문항이 전부
-// 이 하나의 함수로 처리된다(문항 종류마다 따로 분기하지 않는다). 요구
-// 인덱스로 직접 계산한다 — resolvePhase로 step을 하나씩 훑는 방식은
-// 시도했다가 버렸다: resolvePhase는 "빠른 경로"(requiredCount+1)와
-// "심화 경로"(requiredCount+2+심화개수) 두 서로 다른 step 번호를 똑같이
-// closing으로 해석해서, step을 그대로 훑으면 심화 쪽 closing 번호가
-// 얕은 목표 범위에도 우연히 걸려(심화 문항 하나로 돌아갔을 뿐인데 심화
-// 경로의 closing 번호가 그 뒤에 있어 같이 지워짐) 방금 빠른 경로로 막
-// 제출한 마무리 답변까지 지워버리는 걸 실제로 재현해서 확인했다.
-//
-// 그래서 마무리 질문(closing)은 이 목록에 아예 넣지 않는다 — 다시
-// 제출할 때 commitAnswer의 axisId 필터가 옛 것을 교체하는 것만으로
-// 충분하다(자유 서술 한 덩어리라, 옛 답이 잠깐 남아있어도 이상형 태그
-// 매핑처럼 실제 모순을 만들지 않는다).
-function collectAxisIdsFrom(step: number, requiredAxes: TopicAxis[], optionalAxes: TopicAxis[]): Set<string> {
-  const requiredCount = requiredAxes.length;
-  const ids = new Set<string>();
-  for (let i = Math.max(step, 0); i < requiredCount; i++) ids.add(requiredAxes[i].id);
-  optionalAxes.forEach((axis, index) => {
-    if (requiredCount + 2 + index >= step) ids.add(axis.id);
-  });
-  return ids;
-}
-
-// step 이후 axisId에 걸린 메시지·quizAnswers 항목을 지운 새 세션을
-// 돌려준다. 지울 게 없으면 원본 객체를 그대로 돌려줘 불필요한 리렌더를
-// 만들지 않는다.
-function pruneFromStep(current: MapSession, step: number, requiredAxes: TopicAxis[], optionalAxes: TopicAxis[]): MapSession {
-  const invalidIds = collectAxisIdsFrom(step, requiredAxes, optionalAxes);
-  if (invalidIds.size === 0) return current;
-  const nextMessages = current.messages.filter((message) => !message.axisId || !invalidIds.has(message.axisId));
-  const nextQuizAnswers = current.quizAnswers
-    ? Object.fromEntries(Object.entries(current.quizAnswers).filter(([axisId]) => !invalidIds.has(axisId)))
-    : current.quizAnswers;
-  if (nextMessages.length === current.messages.length && nextQuizAnswers === current.quizAnswers) return current;
-  return { ...current, messages: nextMessages, quizAnswers: nextQuizAnswers };
-}
-
 // 결과 화면 블록 이름을 그대로 옮긴 것 — AI가 만드는 문구가 아니라
 // IdealTypeResultBlocks.tsx/SelfIntroResultBlocks.tsx의 SectionHeader
 // title과 정확히 같은 문자열이다(둘 중 하나가 바뀌면 여기도 맞춰 바꿔야
@@ -895,6 +815,14 @@ const RESULT_BLOCK_PREVIEW: Record<string, string[]> = {
 const DEPTH_FIELD_BY_TOPIC: Partial<Record<string, "selfIntroQuizDepth" | "idealTypeQuizDepth">> = {
   idealType: "idealTypeQuizDepth",
   selfIntro: "selfIntroQuizDepth",
+};
+
+// quiz_start를 어느 step에서 찍을지 — 대부분의 주제는 Q1 화면(0)이지만,
+// taste는 Landing.tsx의 REAL Q1 히어로가 tasteMode(Q1)를 이미 답으로
+// 받아 TopicQuiz를 quizStep: 1(Q2)부터 마운트시키므로 1이다. 자세한
+// 이유는 아래 quizStartTrackedRef 근처 주석 참고.
+const QUIZ_START_STEP_BY_TOPIC: Partial<Record<string, number>> = {
+  taste: 1,
 };
 
 // 기본은 접힌 한 줄 요약 — 문항을 밀어내지 않으면서 "완주하면 이만큼
@@ -980,56 +908,40 @@ export function TopicQuiz({
   const step = isStaleQuizProgress ? 0 : (session.quizStep ?? 0);
   const phase = resolvePhase(step, requiredAxes, optionalAxes);
 
-  // quiz_start(FIRST CLICK MVP, 2026-08) — "실제로 Q1 화면에 도달한
-  // 시점"에만 찍는다(랜딩 카드 클릭이나 ProfileStep 진입 시점이 아니다
-  // — 그건 Landing.tsx의 topic_select가 이미 담당한다). step === 0일
-  // 때만 발동하는 조건 자체가 "지금 보이는 게 정말 Q1인지"를 보장한다
-  // — 저장된 세션을 이어서 하다가(quizStep > 0) 새로고침해 이 컴포넌트가
-  // 다시 마운트돼도, Q1이 아닌 문항을 보고 있다면 다시 찍히지 않는다.
+  // quiz_start(FIRST CLICK MVP, 2026-08 / FIRST ACTION MVP, 2026-08 갱신) —
+  // "TopicQuiz 화면에서 실제 진행이 시작된 시점"에만 찍는다. 대부분의
+  // 주제는 이 시점이 곧 Q1 화면(step === 0)이지만, taste는 더 이상 아니다
+  // — Landing.tsx의 REAL Q1 히어로가 tasteMode(Q1)를 이미 답으로 받아
+  // TopicQuiz를 quizStep: 1(Q2)부터 마운트시키기 때문에, taste에서
+  // step === 0 조건은 영원히 참이 될 수 없다(그 세션에서 quiz_start가
+  // 아예 안 찍히는 구멍이 생김). QUIZ_START_STEP_BY_TOPIC으로 "어느
+  // step에서 찍을지"를 주제별로 결정한다 — taste만 1(Q2 도달), 나머지는
+  // 기존과 같은 0(Q1 도달). `/?start=taste` 딥링크처럼 히어로를 거치지
+  // 않고 곧장 quizStep 0으로 들어온 taste 세션도, 그 안에서 Q1을 답해
+  // step이 1이 되는 순간(=실질적으로 "Q2에 처음 진입") 정상적으로 한
+  // 번만 찍힌다 — 별도 세션 플래그 없이 이 규칙 하나로 두 진입 경로
+  // 모두 커버된다.
   // trackedRef는 React 18 StrictMode(개발 모드에서 마운트 직후 effect를
   // 한 번 더 실행)로 인한 중복 호출만 막는다 — 컴포넌트 인스턴스당 최대
-  // 1회만 보내면 되고, 뒤로 가기로 Q1에 다시 도달해도(이미 한 번
+  // 1회만 보내면 되고, 뒤로 가기로 그 step에 다시 도달해도(이미 한 번
   // 찍었으므로) 다시 찍지 않는다.
+  const quizStartStep = QUIZ_START_STEP_BY_TOPIC[topic.id] ?? 0;
   const quizStartTrackedRef = useRef(false);
   useEffect(() => {
-    if (quizStartTrackedRef.current || step !== 0) return;
+    if (quizStartTrackedRef.current || step !== quizStartStep) return;
     quizStartTrackedRef.current = true;
     track("quiz_start", { topicId: topic.id });
-  }, [step, topic.id]);
+  }, [step, topic.id, quizStartStep]);
 
   // axisId/selectedTopLevelLabels는 이 답변이 실제 TopicAxis(topics.ts)에
   // 묶여 있을 때만 넘어온다(마무리 질문 같은 자유 서술에는 없음) — 있을
   // 때만 session.quizAnswers에 기록해서 공유 태그(ideal-type-tags.ts)가
-  // 나중에 코드로 결정적으로 매핑할 수 있게 한다.
+  // 나중에 코드로 결정적으로 매핑할 수 있게 한다. 실제 변환 로직은
+  // engine/quiz-answer.ts의 applyQuizAnswer로 옮겨졌다 — Landing.tsx의
+  // REAL Q1 히어로도 같은 함수를 호출해서 이 화면과 완전히 같은 모양의
+  // 답변 데이터를 만든다(자세한 이유는 그 파일의 주석 참고).
   const commitAnswer = (questionText: string, answerText: string, axisId?: string, selectedTopLevelLabels?: string[]) => {
-    setSession((current) => {
-      const timestamp = now();
-      // "이전"으로 되돌아가 같은 axisId를 다시 답한 경우, 그 축의 예전
-      // 질문·답변 쌍을 먼저 지운다 — 남겨두면 자기성찰 블록(답변 교차
-      // 분석)이 옛 답과 새 답을 진짜 모순으로 착각할 수 있다. 나머지
-      // 메시지의 순서는 그대로 두고 해당 쌍만 제거·교체한다(quizAnswers가
-      // 이미 axisId로 덮어쓰는 것과 같은 방식).
-      const baseMessages = axisId ? current.messages.filter((message) => message.axisId !== axisId) : current.messages;
-      const nextMessages = answerText
-        ? [
-            ...baseMessages,
-            { id: createId("ai"), role: "ai" as const, provider: "local" as const, timestamp, text: questionText, axisId },
-            { id: createId("user"), role: "user" as const, timestamp, text: answerText, axisId },
-          ]
-        : baseMessages;
-      const nextQuizAnswers =
-        axisId && selectedTopLevelLabels && selectedTopLevelLabels.length > 0
-          ? { ...current.quizAnswers, [axisId]: selectedTopLevelLabels }
-          : current.quizAnswers;
-      const nextStep = (current.quizStep ?? 0) + 1;
-      // 방금 답한 축(axisId) 자체는 위에서 이미 교체했지만, 이전에 이보다
-      // 더 깊이 진행했다가 되돌아온 경우(예: 심화 문항까지 답한 뒤 필수
-      // 문항으로 돌아가 다시 답하는 경우) 그보다 뒤에 남아있는 옛 메시지도
-      // 함께 정리한다 — 사용자가 다시 그 지점까지 걸어가길 기다리지
-      // 않고 즉시 정리한다.
-      const pruned = pruneFromStep({ ...current, messages: nextMessages, quizAnswers: nextQuizAnswers }, nextStep, requiredAxes, optionalAxes);
-      return { ...pruned, quizStep: nextStep, updatedAt: timestamp };
-    });
+    setSession((current) => applyQuizAnswer(current, questionText, answerText, axisId, selectedTopLevelLabels, requiredAxes, optionalAxes));
   };
 
   const goBack = () => {
