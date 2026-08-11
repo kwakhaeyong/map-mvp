@@ -2,7 +2,7 @@
 
 이 문서는 특정 시점의 운영 현황을 기록합니다. 아래 "열려 있는 Draft PR"과 "다음 액션"만 예외적으로 가까운 계획을 담습니다. 그 외는 전부 "지금 실제로 그런 상태"만 적습니다.
 
-마지막 갱신: 2026-08-09. 이번 갱신은 2026-08-09 하루 동안 머지된 PR #227~#236(자기성찰 보완 필드 개수 조정·생성 예상 시간 문구 변경·레이트리밋 리스크 기록·공유 카드 상태 라벨 6개 주제 확장·나 소개 프롬프트의 일 맥락 정리·나 소개 문항 구성 변경·프로필 입력 화면 신설)을 코드 기준으로 반영하고, 그 과정에서 코드와 어긋나 있던 기존 서술(나 소개 문항 수, 공유 하루 한도, 생성 대기 문구, freeform 노출 여부)을 정정한 것입니다. 2026-08-06·2026-08-07 갱신 내용은 아래에 그대로 남아 있고, 이번에 사실과 어긋나게 된 부분만 고쳤습니다.
+마지막 갱신: 2026-08-11. 이번 갱신은 2026-08-11 진행된 세 가지 작업(work 주제 문항 업무 맥락 교체, 주제 전환 시 이전 결과 보존, 결과 화면 "다음 MAP 유도" 블록)과 FIRST CLICK MVP(랜딩 히어로를 취향 대표 콘텐츠로 재구성 + 애널리틱스 4개 이벤트 도입)를 코드 기준으로 반영한 것입니다 — 아래 "오늘(8/11) 진행된 작업"·"FIRST CLICK MVP" 두 섹션 참고. 이전 갱신 내용(2026-08-06·2026-08-07·2026-08-09)은 아래에 그대로 남아 있습니다.
 
 ## 코드
 
@@ -265,6 +265,54 @@
 - **#236** — 주제 선택 뒤 프로필 입력 화면 신설(위 "주제 선택 뒤 프로필 입력 화면" 참고). 후속 커밋으로 나이 선택지를 "14세 미만/10대/20대/30대/40대 이상" 5단계로 정리하고, work+학생 조합일 때 다른 주제를 고를지 묻는 안내를 추가.
 
 이 10개 PR 전부 공통으로: 실제 AI 출력 품질(selfReflection 문구·개수 변경이 실제 생성 결과에 미치는 효과 등)과 화면 시각 품질(프로필 화면·상태 라벨 레이아웃 등)은 이 개발 샌드박스에서 완전히 검증하지 못했습니다 — `ANTHROPIC_API_KEY` 부재, 프로덕션 도메인 접근 차단이 이유입니다.
+
+## 오늘(8/11) 진행된 작업
+
+- **work 주제 `experienceStressResponse` 문항 업무 맥락 교체(커밋 `6099f32`)** — "일할 때의 나"(work) 주제에 나 소개(selfIntro)의 사적 인간관계 문항("가까운 사람과 갈등이 있을 때...")이 지문·선택지 그대로 복사돼 있던 문제를 외부 검토로 지적받아 수정했습니다. 축 구조(직면/내면화/거리두기/공유 네 갈래)·`id`·`type`·`required`·문항 순서는 그대로 유지하고 질문·선택지 4개만 업무 갈등/압박 맥락으로 바꿨습니다. 라벨 문자열이 selfIntro·friendship과 더 이상 같지 않아, 태그(`ideal-type-tags.ts`의 `conflictPattern.mapping`)와 상태 라벨(`WORK_STATUS_LABELS`)에 work 전용 항목 4개를 새로 등록해 연결했습니다(기존 selfIntro·friendship 전용 항목은 그대로 둬서 영향 없음). work 답변 개수 검증 임계값(27)은 문항 개수가 바뀌지 않아 그대로입니다.
+- **주제를 바꿔도 이전 결과가 지워지지 않게 수정(커밋 `a3c8d97`)** — `MapDecisionProduct.tsx`의 `start()`가 `createSession(topicId)`로 완전히 새 세션을 만들면서, 두 번째 주제를 시작하는 순간(완료 전에도) 첫 번째 주제의 결과가 `localStorage`에서 사라지던 문제를 고쳤습니다. `MapSession` 타입 자체는 6개 완성형 주제 결과를 서로 다른 필드로 동시에 담을 수 있게 이미 설계돼 있었는데, 세션을 새로 만드는 코드가 그 필드들을 이어받지 않았을 뿐이었습니다. `engine/session.ts`의 `createSession()`에 `previousSession` 파라미터를 추가하고 `preserveCompletedResults()`가 이전 세션에서 "완료된 결과 본문(`*Result`)·서명(`*ResultSignature`)·심화 배지(`*QuizDepth`)"만 골라 새 세션에 이어붙입니다 — `messages`/`nodes`/`quizAnswers`/`quizStep`/`profile`은 그대로 리셋됩니다(profile을 승계하지 않는 기존 결정은 유지 — 주제마다 맥락이 달라 프로필을 새로 묻는 게 의도된 설계).
+- **결과 화면 하단 "다음 MAP 유도" 블록 추가(커밋 `51c60a9`, `NextMapPrompt.tsx` 신설)** — 결과를 본 뒤 끝나던 흐름에 두 번째 주제로 넘어가는 동선을 만들었습니다. 6개 완성형 주제 결과 화면(`*Card.tsx`) 전부에서 같은 위치("너도 만들어봐" 버튼과 정책 링크 사이)에 공통으로 삽입됩니다. `Landing.tsx`에서 이 컴포넌트가 재사용할 수 있도록 `VIRAL_TOPIC_IDS`·`TOPIC_HOOK`·`TOPIC_META`를 모듈 비공개 상수에서 export로 바꿨습니다 — 이 세 값은 지금 `NextMapPrompt.tsx`와 `Landing.tsx` 둘 다의 공유 소스입니다(아래 FIRST CLICK MVP 항목에서 이 배열을 건드리지 않은 이유 참고).
+
+## FIRST CLICK MVP — 랜딩 히어로를 "취향" 대표 콘텐츠로 재구성 (브랜치 `claude/map-mvp-first-click-mvp`)
+
+**2026-08-11 갱신: 아래 절의 Hero 구조(헤드라인 "나도 모르는 내 취향은?" → teaser → CTA 버튼 → microcopy)는 이후 FIRST ACTION MVP(같은 브랜치, 이 문서 아래 절 참고)로 대체됐습니다 — CTA를 누르고 나서 문항을 시작하는 방식에서, 히어로 자체가 실제 Q1이 되는 방식으로 바뀌었습니다. 애널리틱스 4개 이벤트 정의 중 `topic_select`·`quiz_start`의 taste 관련 서술도 아래 FIRST ACTION MVP 절의 내용으로 갱신됐습니다(`quiz_complete`·`result_view`는 그대로 유효). 이 절은 "히어로가 CTA 기반이었다가 실제 Q1 기반으로 바뀌었다"는 변경 이력 기록으로 남겨두고, 실제 하위 절은 지우지 않습니다.**
+
+- **목적**: 랜딩에 처음 들어온 사람이 "MAP이 뭔지 이해"하는 것보다, 취향 MAP을 한 번 눌러보고 싶어지는 것을 목표로 랜딩 히어로를 재구성했습니다. 6개 주제 중 취향(taste)을 대표 콘텐츠로 골라 히어로에 크게 노출하고, 그 외 5개는 "다른 MAP" 그리드로 아래에 배치했습니다.
+- **`Landing.tsx` 히어로 변경**: 기존에는 헤드라인 "16개 유형에 넣지 않아요" 하나와 서브카피만 있었습니다. 지금은 순서대로 브랜드(변경 없음) → 작아진 눈에보이기 문구 "16개 유형에 넣지 않아요"(삭제 아님, 강등) → 큰 헤드라인 "나도 모르는 / 내 취향은?" → 티저 2문단(자기 인식 vs 최근 실제 행동이라는 취향 주제의 구조를 반영) → CTA 버튼 "취향 확인해보기" → 마이크로카피 "약 5분 · 가입 없음 · 20문항" → 결과 티저 박스("이런 차이를 발견할 수 있어요" / "좋아한다고 생각한 것과 최근 실제로 고른 것은 다를 수도 있어요")입니다. 기존 서브카피("답한 나와 행동하는 나...")는 새 티저·마이크로카피와 내용이 겹쳐 제거했습니다.
+- **`TasteHeroBackdrop` 신규 SVG 컴포넌트**: 히어로 뒤에 옅게 깔리는 동심원 윤곽선 장식입니다. 기존 코드에 재사용할 만한 지도 윤곽 이미지·컴포넌트가 없어(`MapCanvas.tsx` 등 grep으로 확인) 순수 SVG로 하나 새로 만들었습니다. 색은 `currentColor`+`text-primary` 토큰만 쓰고(raw 색상 없음), 반투명은 Tailwind 슬래시 클래스가 아니라 SVG 고유의 `opacity` 속성으로 처리해 `design:check`의 금지 규칙에 걸리지 않습니다. 캐릭터·이모지·사진 없음.
+- **취향 카드 중복 노출 제거**: 취향이 히어로에 크게 나오므로 "다른 MAP" 그리드에서는 뺐습니다. **단, 이 제외는 `Landing.tsx` 렌더링 레벨의 로컬 파생 변수(`gridTopicIds = VIRAL_TOPIC_IDS.filter(...)`)로만 처리했고, export된 `VIRAL_TOPIC_IDS` 배열 자체는 건드리지 않았습니다** — 이 배열은 위 "다음 MAP 유도" 블록(`NextMapPrompt.tsx`)이 추천 후보를 고르는 데 그대로 쓰고 있어서, 여기서 taste를 빼면 아직 취향 MAP을 안 해본 사용자에게 다시는 취향이 추천되지 않는 부작용이 생기기 때문입니다.
+- **나머지 5개 카드(TopicCard)는 손대지 않았습니다** — 그리드가 6개에서 5개로 줄며 생기는 레이아웃 조정, 섹션 제목("다른 MAP")만 바꿨습니다. 카드별 비주얼 차별화는 이번 범위 밖입니다.
+- **애널리틱스 4개 신규 이벤트 추가**(이전까지 `track()` 호출 자체가 코드에 0건이었습니다 — `@vercel/analytics`의 `track()`을 처음 도입):
+  1. `topic_select` — `Landing.tsx`에서 주제 카드를 누른 시점. `{ topicId, source: "hero" | "grid" }`. 히어로 CTA는 `handleHeroStart()`, 그리드 카드는 `handleGridStart(topicId)`에서 발생. career·자유 서술(freeform)은 대상에서 제외(기존 `onStart` prop을 그대로 사용).
+  2. `quiz_start` — `TopicQuiz.tsx`에서 사용자가 실제로 1번 문항 화면에 도달한 시점(`step === 0`)에만 발생. `useRef` 가드로 React 18 StrictMode의 개발 모드 중복 실행을 막았습니다. `MapDecisionProduct.tsx`의 `start()` 안에는 넣지 않았습니다 — `start()`는 `ProfileStep`보다 먼저 실행돼 `topic_select`와 사실상 같은 시점이 되어 버리기 때문입니다.
+  3. `quiz_complete` — `TopicQuiz.tsx`의 `ClosingStep.onSubmit` 콜백(6개 주제 전부가 공유하는, 마지막 필수 답변을 제출하는 지점) 안에서 `onFinish()` 직전에 발생. 클릭 핸들러 안이라 클릭 한 번에 정확히 한 번만 실행되며 StrictMode 중복 실행 대상이 아닙니다.
+  4. `result_view` — `MapDecisionProduct.tsx`에 새로 추가한 `useEffect` 하나에서, `session.stage`가 `"result"`로 바뀌는 모든 진입 경로(퀴즈 완주·"이전 결과 보기"·popstate)를 공통으로 잡습니다. 6개 `*Card.tsx` 파일에 따로 넣지 않았습니다. `${topicId}:${startedAt}` 키로 재렌더링 중복을 막고, `hydrated` 게이트로 하이드레이션 전 SSR 기본값("landing") 오탐을 막습니다.
+  - 4개 이벤트 모두 `topicId`/`source` 외의 값(답변 내용, 나이·성별·직업 등 프로필, 자유서술 텍스트, 세션 키)은 전달하지 않습니다.
+  - **이 세션에서 확인 가능한 범위는 "코드에 `track()` 호출이 올바른 위치에 배선돼 있고 빌드가 정상"까지입니다. 실제 프로덕션에서 Vercel Analytics가 이 이벤트를 정상 수집하는지는 오너가 직접 확인해야 합니다.**
+- **손대지 않은 것**(지시받은 대로): `topics.ts`의 문항·선택지·문항 수·채점, `ideal-type-tags.ts`, `TAG_CATEGORIES`, AI 프롬프트/스키마, 결과 타입/블록, `PatternsSection`/`SelfReflectionSection`/`HeroHeader`, `/r/{id}`, `NextMapPrompt` 로직, 궁합, 생성 effort·레이트리밋·캐시, `ProfileStep.tsx`, 하이드레이션 동작, career 플로우, 가입/DB.
+
+## FIRST ACTION MVP — 랜딩 히어로를 taste의 실제 Q1(REAL Q1 LANDING)으로 교체 (브랜치 `claude/map-mvp-first-click-mvp` 계속)
+
+- **제품 목표**: "처음 들어온 사람이 MAP을 이해하기 전에 첫 행동을 하게 만들 수 있는가"를 검증하는 실험입니다. FIRST CLICK MVP의 "헤드라인 → teaser → CTA 클릭 → ProfileStep → Q1" 구조는 CTA를 누를지 판단하는 단계가 여전히 남아 있어, 히어로 자체를 취향(taste)의 실제 Q1 문항(axisId `tasteMode`, "혼자 있는 시간에 나는 주로 뭘 해?")으로 바꿨습니다. 문항 원문·option label(보는 편/듣는 편/읽는 편/만드는 편)은 `topics.ts`에서 그대로 읽어오고 이번 PR에서 수정하지 않았습니다 — 순서도 그대로입니다.
+- **일러스트 관련 정정**: 이번 실험은 일러스트를 쓰지 않지만, 이것이 MAP의 영구 디자인 원칙은 아닙니다. FIRST ACTION 효과가 검증되기 전까지 제작 비용이 큰 시각 요소에 기대지 않기 위한 이번 실험 한정 선택입니다 — 대표 콘텐츠의 시각적 초점이 여전히 부족하다고 판단되면 이후 별도로 재검토합니다.
+- **`Landing.tsx` 히어로 재구성**: 기존 헤드라인·teaser·"취향 확인해보기" CTA 버튼·microcopy·result-preview 한 줄을 전부 걷어내고, 브랜드 → 짧은 지시문("생각하지 말고, 지금의 나와 가까운 쪽을 골라보세요.") → 실제 Q1 문항 → 2×2 선택 카드(`HeroFirstQuestion`, 신규) → "16개 유형에 넣지 않아요"(삭제 아님, 선택 영역 아래로 이동) 순서로 바꿨습니다. `TasteHeroBackdrop`(등고선 배경 SVG)은 그대로 재사용했습니다 — 새 SVG 컴포넌트를 추가하지 않았습니다.
+- **답변 데이터 안전성 — 로직 공유 구조**: Landing의 REAL Q1 카드를 고른 시점과 `TopicQuiz.tsx`에서 같은 문항에 답할 때 서로 다른 모양의 데이터가 만들어질 위험을 없애기 위해, `TopicQuiz.tsx`의 `commitAnswer`가 하던 순수 변환 로직을 `src/map-decision-v1/engine/quiz-answer.ts`(신규)의 `applyQuizAnswer`/`pruneFromStep`으로 옮기고, `TopicQuiz.tsx`는 이 함수를 호출하도록 바꿨습니다(동작 자체는 이전과 완전히 동일 — 줄 그대로 이동). 같은 이유로 `TopicQuiz.tsx`의 `useAutoAdvance` 훅(선택 즉시 강조 후 약 250ms 뒤 자동 전환)도 `src/map-decision-v1/hooks/use-auto-advance.ts`(신규)로 옮겨 `Landing.tsx`와 `TopicQuiz.tsx` 둘 다 재사용합니다. `Landing.tsx`가 `TopicQuiz.tsx`를 직접 import하지 않도록(이미 `TopicQuiz.tsx`가 `Brand`를 가져오려 `Landing.tsx`를 import하고 있어, 반대 방향으로 또 import하면 순환 참조가 생김) 공유 코드를 두 개의 새 파일로 분리했습니다.
+- **`MapDecisionProduct.tsx`의 `startTasteFirstAnswer`(신규)**: Hero에서 카드를 고르면 이 함수가 `createSession("taste", undefined, session)`(기존 `start()`와 같은 패턴 — `preserveCompletedResults`로 다른 주제 완료 결과 보존)로 세션을 만들고, `applyQuizAnswer`로 그 답을 곧바로 기록한 뒤 `quizStep: 1`, `stage: "conversation"`으로 세팅합니다. `ProfileStep`(`stage: "profile"`)을 거치지 않고 바로 `TopicQuiz`가 Q2(`tasteRecent`)부터 이어받습니다. `hero_choice` 이벤트는 이 함수 안에서 발생합니다.
+- **taste 한정 ProfileStep 후치**: taste만 퀴즈(Q1~Q20+마무리 질문)를 전부 마친 뒤 결과 화면 대신 `ProfileStep`을 한 번 거치고, 완료·건너뛰기 후 결과 생성으로 이어집니다. 구현: `MapDecisionProduct.tsx`에서 taste의 `TopicQuiz`에만 `onFinish={goProfileAfterQuiz}`(신규, `stage: "profile"`로 전환)를 넘기고 나머지 5개 주제는 기존 `onFinish={goResult}` 그대로입니다. `ProfileStep` 렌더 지점에서 `isPostQuizProfile = topic.inputMode === "quiz" && (session.quizStep ?? 0) > 필수문항수`를 계산해, 참이면 `onContinue`를 `goResult`로, 아니면 기존처럼 `goConversation`으로 분기합니다 — 새 세션 필드를 추가하지 않고 이미 있는 `quizStep`만으로 "이번 profile 화면이 퀴즈 전인지 후인지"를 구분합니다. `ProfileStep.tsx` 자체(질문 3개·건너뛰기 동작)는 수정하지 않았습니다.
+- **`hero_choice`(신규 이벤트)**: `{ topicId: "taste", axisId: "tasteMode" }`만 전송(옵션 라벨·인덱스 없음). `MapDecisionProduct.tsx`의 `startTasteFirstAnswer` 안, 세션을 실제로 만드는 시점에 발생 — taste의 FIRST ACTION 계측점입니다. 히어로에서는 더 이상 `topic_select`를 찍지 않습니다(이전에는 히어로 CTA 클릭 시 `topic_select`를 찍었으나, CTA 자체가 없어졌습니다) — `topic_select`는 이제 "다른 MAP" 그리드 카드를 고를 때만 발생합니다(`handleGridStart`, 변경 없음).
+- **`quiz_complete`·`result_view`**: 정의·구현 위치 모두 변경 없음(FIRST CLICK MVP 절 참고). ProfileStep 완료는 `quiz_complete`로 보지 않습니다 — `quiz_complete`는 여전히 `ClosingStep.onSubmit` 안에서만 발생합니다.
+- **손대지 않은 것**(지시받은 대로): taste 문항·option label·축 순서·문항 수·채점, `ideal-type-tags.ts`, `TAG_CATEGORIES`, 각 생성기 SYSTEM_PROMPT, 결과 스키마/타입/블록, `NextMapPrompt` 로직, 생성 effort·캐시·레이트리밋, `/r/{id}`, 동적 OG, Cross-MAP, 로그인, DB, adaptive 문항, 나머지 5개 주제의 `ProfileStep` 순서(모두 기존 "Landing → ProfileStep → TopicQuiz" 그대로), `ProfileStep.tsx` 내부(질문 3개·문구·건너뛰기 동작).
+- **검증**: Playwright로 taste 전체 플로우(Landing REAL Q1 선택 → Q2 도달 → 20문항 완주 → ProfileStep 진입 → 건너뛰기 → 결과 생성 대기 화면 진입)를 실제로 끝까지 클릭해 확인했습니다(AI 실제 호출은 발생하지 않음 — 결과 생성 대기 화면까지만 확인, 이 샌드박스는 프로덕션 AI 키가 없습니다). 나머지 5개 주제(travelStyle·friendship·selfIntro·idealType·work)도 "Landing → ProfileStep → Q1" 흐름이 그대로 작동하는지 회귀 확인했습니다 — 5개 전부 정상.
+
+## FIRST ACTION MVP 보완 — NextMapPrompt → taste 진입 시 ProfileStep 중복 제거 (같은 브랜치, 후속 커밋)
+
+- **문제(바로 위 절에서 "알려진 한계"로 처음 기록됐던 것)**: taste ProfileStep 후치를 도입하면서, `MapDecisionProduct.tsx`의 `start()`(그리드 클릭·`NextMapPrompt`의 "다음 MAP 유도" 추천 클릭 등 taste의 일반 진입 경로)로 taste에 들어오면 `ProfileStep`(퀴즈 전, 기존 동작) → taste Q1~Q20 → `ProfileStep`(퀴즈 후, 이번에 새로 생김) 순으로 프로필 화면이 두 번 뜨는 회귀가 있었습니다. taste는 그리드에는 없지만 `VIRAL_TOPIC_IDS`를 그대로 쓰는 `NextMapPrompt`가 여전히 taste를 추천할 수 있어(다른 주제를 완료한 뒤 그 결과 화면에서), 이 경로가 실제로 존재했습니다.
+- **수정**: `MapDecisionProduct.tsx`의 `start(topicId)`에 `topicId === "taste"` 분기 하나만 추가했습니다 — taste면 `createSession()`이 만드는 기본값 `stage: "conversation"`을 그대로 두고(=`ProfileStep`을 거치지 않고 `TopicQuiz`가 실제 Q1부터 시작), 나머지 주제는 기존처럼 `stage: "profile"`로 덮어씁니다. taste의 `quizStep`은 `createSession()`의 기본값 0 그대로입니다(Landing REAL Q1 히어로처럼 1로 미리 올리지 않음) — 그래서 이 경로에서는 Q1(`tasteMode`)이 건너뛰어지지 않고 정상적으로 화면에 뜹니다. `NextMapPrompt.tsx`는 전혀 건드리지 않았습니다.
+- **`quiz_start` 판별 방식도 함께 바로잡았습니다**: 지난 커밋은 taste면 무조건 `quizStep === 1`(Q2)에서 찍도록 고정했는데, 이번에 진입 경로가 둘로 늘면서 그 고정값이 `start()` 경로(Q1부터 시작)에는 맞지 않게 됐습니다. `TopicQuiz.tsx`에서 `session.quizAnswers?.tasteMode`가 컴포넌트 마운트 시점에 이미 채워져 있는지로 두 경로를 구분합니다(새 세션 필드 추가 없음) — Landing 히어로 경로는 마운트 시점에 이미 채워져 있어(`startTasteFirstAnswer`가 세션 생성과 동시에 채움) `quizStep === 1`에서, `start()` 경로는 마운트 시점에 비어 있어 `quizStep === 0`(실제 Q1)에서 찍습니다. 나머지 5개 주제는 영향 없음(계속 `step === 0`).
+- **검증(Playwright, `window.va` 호출 큐를 직접 읽어 이벤트 이름·속성까지 확인)**:
+  - **Landing REAL Q1 히어로 경로**: `hero_choice{taste,tasteMode}` → `quiz_start{taste}`(Q2 도달 시) → `quiz_complete{taste}` → `result_view{taste}` 순으로 정확히 1회씩. `ProfileStep`은 퀴즈 완료 후 정확히 1회만 노출(재확인).
+  - **`start("taste")` 일반 경로(다른 주제를 완료한 뒤 `NextMapPrompt`가 taste를 추천하는 상황을 모사해 확인)**: `ProfileStep` 없이 곧장 실제 Q1("혼자 있는 시간에 나는 주로 뭘 해?", 진행률 "1/20")부터 시작 → `hero_choice`는 발생하지 않음(정상) → `quiz_start{taste}`가 Q1 도달 시 1회 → `quiz_complete{taste}` → `result_view{taste}`. `ProfileStep`은 퀴즈 완료 후 딱 1회만 노출 — 중복 제거 확인.
+  - **friendship 재확인**: `Landing → ProfileStep → Q1`("요즘 사람 만나는 게 어때?") 기존 그대로.
+- **답변 문자열/옵션 라벨은 여전히 analytics로 전송하지 않습니다.**
 
 ## 다음 액션
 

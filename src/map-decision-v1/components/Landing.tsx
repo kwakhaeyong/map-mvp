@@ -1,11 +1,129 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TOPICS, TopicConfig } from "../engine/topics";
+import { track } from "@vercel/analytics";
+import { TOPICS, TopicAxis, TopicChoice, TopicConfig } from "../engine/topics";
+import { useAutoAdvance } from "../hooks/use-auto-advance";
 import { Badge, Button, Toast } from "./ui/primitives";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+// FIRST CLICK 대표 콘텐츠(2026-08) — 순수 장식용 등고선 SVG. Living Map의
+// "아직 다 드러나지 않은 것을 탐색한다"는 정체성을 새 이미지 자산 없이
+// 재현한다(app/globals.css·design-tokens.css에 기존 등고선 이미지·SVG
+// 컴포넌트가 없어 새로 만들었다 — MapCanvas.tsx의 <svg>는 화살표 마커용
+// 정의라 재사용 대상이 아니다). raw 색상값이 아니라 text-primary 토큰
+// 색을 currentColor로 물려받고, 투명도는 Tailwind 슬래시 클래스가 아니라
+// SVG 자체의 opacity 속성(디자인 시스템 검사 대상이 아닌 속성)으로만
+// 준다. 텍스트 가독성을 해치지 않도록 헤더 텍스트보다 DOM에서 먼저
+// 그려 아래 레이어에 깔리게 하고, 부모(Hero 섹션)에는 aria-hidden으로
+// 스크린리더가 무시하게 한다.
+//
+// 2026-08-11 시각 보정(오너 검수 반려 사유: "정돈된 심리테스트 랜딩"에
+// 그쳐 "대표 콘텐츠 포스터" 수준의 시각적 존재감이 없다) — 아래 세
+// 가지로 존재감을 올렸다. 새 색상 토큰은 추가하지 않았다.
+// 1) 선 굵기(1.5→최대 2.5)·불투명도(최대 0.28→0.58)를 전반적으로
+//    올려 카드 위 옅은 장식이 아니라 그 자체로 눈에 띄는 그래픽이
+//    되게 했다 — 안쪽 원일수록 굵고 진하게 해 디자인 문법(§8)의
+//    "emphasized edge: 두꺼운 primary 선"과 같은 위계를 따른다.
+// 2) 두 등고선 군집을 잇는 점선 경로 하나를 추가했다 — 문법(§8)의
+//    "inferred edge: 점선, 확정된 edge보다 옅게"를 그대로 따라
+//    "아직 다 잇지 않은 관계"를 표현한다.
+// 3) 그 경로 위에 지도 노드 점 3개를 얹었다 — 새 색이 아니라
+//    fact/option/value(design-tokens.css 기존 MAP 노드 색, §8 "Fact/
+//    Option/Value node") 토큰을 fill-* 클래스로 그대로 쓴다. 취향
+//    콘텐츠 자체가 "선택 지점들을 지도로 본다"는 제품 은유와도
+//    맞아떨어진다.
+// 데스크톱(lg 그리드)에서 텍스트는 왼쪽 컬럼에, 이 SVG는 섹션 전체를
+// 덮는 절대 배치라 시각적으로는 비어 있는 오른쪽 컬럼에 걸쳐 보인다 —
+// 우측 군집의 중심(cx=300)을 오른쪽으로 치우쳐 둔 이유다.
+function TasteHeroBackdrop() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 400 300"
+      preserveAspectRatio="xMidYMid slice"
+      className="pointer-events-none absolute inset-0 size-full text-primary"
+    >
+      <circle cx="300" cy="90" r="150" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.18" />
+      <circle cx="300" cy="90" r="112" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
+      <circle cx="300" cy="90" r="76" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.44" />
+      <circle cx="300" cy="90" r="42" fill="none" stroke="currentColor" strokeWidth="2.5" opacity="0.58" />
+      <circle cx="50" cy="280" r="110" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.16" />
+      <circle cx="50" cy="280" r="76" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.26" />
+      <circle cx="50" cy="280" r="44" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
+      <path
+        d="M 92 248 Q 200 150 266 122"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeDasharray="2 7"
+        strokeLinecap="round"
+        opacity="0.42"
+      />
+      <circle cx="92" cy="248" r="6" className="fill-fact" opacity="0.9" />
+      <circle cx="180" cy="170" r="5" className="fill-option" opacity="0.9" />
+      <circle cx="266" cy="122" r="6" className="fill-value" opacity="0.9" />
+    </svg>
+  );
+}
+
+// FIRST ACTION MVP(2026-08) — 히어로 자체를 taste의 실제 Q1(tasteMode)
+// 문항으로 만드는 2×2 선택 카드. TopicQuiz.tsx의 QuickTapStep과 같은
+// 시각 언어(같은 카드 톤·같은 선택 강조 스타일)를 쓴다 — 여기서 고른
+// 뒤 곧바로 이어지는 실제 Q2 화면(QuickTapStep)과 느낌이 달라지면
+// "다른 화면으로 넘어갔다"는 인상을 줘 몰입이 끊긴다. 선택 즉시
+// 자동으로 다음(=취향 세션 시작)으로 넘어가는 감각은 QuickTapStep과
+// 같은 훅(hooks/use-auto-advance.ts)을 그대로 재사용해서 만든다 —
+// 로직을 새로 만들지 않았다. 이 컴포넌트 자체는 화면(마크업)만 담당
+// 하고, 답을 실제로 세션에 기록하는 일은 부모(MapDecisionProduct.tsx의
+// startTasteFirstAnswer, engine/quiz-answer.ts의 applyQuizAnswer)가
+// 전담한다 — TopicQuiz.tsx의 commitAnswer와 똑같은 함수를 호출하므로
+// 이 화면에서 만드는 답변 데이터가 퀴즈 화면의 것과 어긋날 수 없다.
+function HeroFirstQuestion({ axis, onAnswer }: { axis: TopicAxis; onAnswer: (choice: TopicChoice) => void }) {
+  const { pending, pick } = useAutoAdvance(onAnswer, false);
+  return (
+    <div className="mx-auto mt-5 grid max-w-sm grid-cols-2 gap-3 sm:max-w-md lg:mx-0">
+      {axis.options.map((option) => {
+        const isSelected = pending?.label === option.label;
+        const isLocked = pending !== null && !isSelected;
+        return (
+          <button
+            key={option.label}
+            type="button"
+            onClick={() => pick(option)}
+            disabled={isLocked}
+            className={cx(
+              "group flex flex-col items-center gap-1 rounded-large border px-4 py-6 text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+              isSelected
+                ? "border-primary bg-primary text-primary-foreground shadow-floating"
+                : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating",
+              isLocked && "opacity-40",
+            )}
+          >
+            <span
+              className={cx(
+                "text-base font-extrabold tracking-[-0.01em] sm:text-lg",
+                isSelected ? "text-primary-foreground" : "text-text-primary group-hover:text-primary-foreground",
+              )}
+            >
+              {option.label}
+            </span>
+            <span
+              className={cx(
+                "text-xs font-medium transition-colors duration-normal ease-emphasized",
+                isSelected ? "text-primary-foreground-soft" : "text-text-muted group-hover:text-primary-foreground-soft",
+              )}
+            >
+              {option.description}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function Brand() {
@@ -125,6 +243,21 @@ export const TOPIC_META: Record<string, { questions: number; minutes: number }> 
 // 아이콘 라이브러리가 전혀 없어(package.json 확인) 주제마다 SVG를
 // 새로 그려야 했는데, 렌더링 비교 결과 타이포만 남긴 쪽이 더
 // 담백하고 일관돼 이 안으로 확정했다.
+// 2026-08-11 시각 보정(오너 검수 지시 5번): 5개 카드가 완전히 동일해
+// "콘텐츠 플랫폼" 느낌이 약하다는 지적에 따라, 카드 구조는 그대로 두고
+// 맨 위에 가는 색 띠 하나만 얹었다. 새 색이 아니라 design-tokens.css의
+// 기존 MAP 노드 색 5개(fact/feeling/value/option/uncertainty, §8)를
+// 그대로 재사용한다 — 결과 화면 매트릭스·태그가 이미 쓰는 색과 같은
+// 어휘라 새 의미를 만들지 않는다. taste는 이 그리드에 없어(Hero로
+// 이동) 목록에서 뺐다.
+const TOPIC_ACCENT: Record<string, string> = {
+  travelStyle: "bg-fact",
+  friendship: "bg-feeling",
+  selfIntro: "bg-value",
+  idealType: "bg-option",
+  work: "bg-uncertainty",
+};
+
 function TopicCard({
   topic,
   onStart,
@@ -142,10 +275,13 @@ function TopicCard({
       aria-disabled={disabled}
       onClick={() => (disabled ? onLocked(topic) : onStart(topic.id))}
       className={cx(
-        "group relative flex min-h-[112px] flex-col items-start justify-center gap-2 rounded-large border border-border bg-surface p-4 text-left shadow-subtle transition duration-normal ease-emphasized",
+        "group relative flex min-h-[112px] flex-col items-start justify-center gap-2 overflow-hidden rounded-large border border-border bg-surface p-4 text-left shadow-subtle transition duration-normal ease-emphasized",
         disabled ? "opacity-60" : "hover:-translate-y-1 hover:border-border-strong hover:shadow-floating",
       )}
     >
+      {TOPIC_ACCENT[topic.id] ? (
+        <span aria-hidden="true" className={cx("absolute inset-x-0 top-0 h-1", TOPIC_ACCENT[topic.id])} />
+      ) : null}
       {disabled ? (
         <span className="absolute right-3 top-3 rounded-pill border border-border bg-surface-elevated px-2.5 py-1 text-[10px] font-black text-text-muted">
           준비 중
@@ -202,6 +338,7 @@ export function Landing({
   hasDraft,
   hasStaleResult,
   onStart,
+  onStartTasteFirstAnswer,
   onResume,
   onViewResult,
   onDemo,
@@ -218,6 +355,13 @@ export function Landing({
   // 보기"가 맞는 동작이라 hasStaleResult가 있으면 그쪽을 우선한다.
   hasStaleResult: boolean;
   onStart: (topicId?: string) => void;
+  // FIRST ACTION MVP(2026-08) — taste 전용. 히어로의 REAL Q1(tasteMode)
+  // 카드를 고른 순간 바로 호출된다(MapDecisionProduct.tsx의
+  // startTasteFirstAnswer). onStart와 별도 함수인 이유: onStart는
+  // "주제만 고르고 아직 아무 문항도 안 푼" 상태(ProfileStep으로 감)를
+  // 만들지만, 이건 "Q1까지 이미 답한" 상태(TopicQuiz Q2로 감)를 만든다
+  // — 서로 다른 세션 모양을 만드는 함수라 하나로 합치지 않았다.
+  onStartTasteFirstAnswer: (choice: TopicChoice) => void;
   onResume: () => void;
   onViewResult: () => void;
   onDemo: () => void;
@@ -240,7 +384,27 @@ export function Landing({
 
   const handleLocked = (topic: TopicConfig) => setNotice(`${topic.name}은(는) 아직 준비 중이에요. 곧 만나요!`);
   const safetyNetTopic = TOPICS[SAFETY_NET_TOPIC_ID];
-  const viralTopicIds = hideWorkTopic ? VIRAL_TOPIC_IDS.filter((id) => id !== "work") : VIRAL_TOPIC_IDS;
+  // FIRST CLICK 개편(2026-08): Hero가 taste를 대표 콘텐츠로 크게 보여주니
+  // 아래 그리드에서는 중복 노출을 피하려고 taste를 뺀다. VIRAL_TOPIC_IDS
+  // 배열 자체(순서·구성)는 건드리지 않는다 — 결과 화면 하단 "다음 MAP
+  // 유도"(NextMapPrompt.tsx)가 이 배열을 그대로 재사용해 다음 주제를
+  // 추천하는데, 여기서 원본 배열에서 taste를 지우면 그쪽 추천 로직도
+  // taste를 영영 추천 못 하게 되는 사고로 이어진다. 이 필터링은 이
+  // 컴포넌트의 "그리드에 무엇을 그릴지"에만 쓰는 화면 표시 선택이다.
+  const gridTopicIds = VIRAL_TOPIC_IDS.filter((id) => id !== "taste" && (!hideWorkTopic || id !== "work"));
+  // FIRST ACTION MVP(2026-08) — 히어로가 취향의 실제 Q1(tasteMode)을
+  // topics.ts에서 직접 읽는다. 문항 원문·option label을 이 파일에
+  // 따로 옮겨 적지 않는다 — 두 군데(topics.ts, Landing.tsx)에 같은
+  // 문장이 따로 존재하면 나중에 한쪽만 고쳐 서로 어긋나는 사고로
+  // 이어진다. tasteMode는 taste.axes[0]으로 항상 존재하므로(이번
+  // PR에서 문항 순서를 바꾸지 않았다), heroAxis가 없는 경우는 방어
+  // 코드일 뿐 실제로는 발생하지 않는다.
+  const heroAxis = (TOPICS.taste.axes ?? []).find((axis) => axis.id === "tasteMode");
+
+  const handleGridStart = (topicId: string) => {
+    track("topic_select", { topicId, source: "grid" });
+    onStart(topicId);
+  };
 
   return (
     <main className="min-h-screen px-4 py-4 text-text-primary sm:px-6 lg:px-8">
@@ -267,47 +431,89 @@ export function Landing({
         </div>
       </header>
 
-      {/* 헤드라인·서브카피 교체 배경: 기존 "말하면 정리되는 나의 MAP" +
-          6개 카드 설명이 전부 "~정리해요"로 끝나 "정리"라는 단어가
-          첫 화면에 반복됐는데, 실제로 이 결과가 주는 건 정리가 아니라
-          재해석(답변 사이 간극을 짚어주는 발견)이라 약속과 실제가
-          어긋나 있었다. 새 헤드라인은 MBTI 같은 기존 유형 분류를 정면
-          배제하는 포지셔닝이다 — MAP은 태그 조합이 매번 달라 애초에
-          "유형"이 존재하지 않으므로 사실에 근거한 주장이다. "로그인
-          없이"는 6개 주제·진로 전부에 공통으로 해당하는 사실이라
-          카드마다 반복하지 않고 이 자리에서 한 번만 말한다(로그인·
-          회원가입·이메일 요구 지점이 코드 전체에 없다는 건 별도
-          조사로 확인됨).
+      {/* FIRST ACTION MVP(2026-08, REAL Q1 LANDING) — 히어로 자체를
+          "설명 → CTA → 테스트"가 아니라 "선택 → 진행"으로 바꿨다. 오너
+          검수 지시: 처음 들어온 사람이 별도 설명이나 "테스트를 시작할지"
+          결정하는 단계 없이, 실제 taste 첫 문항(tasteMode, "혼자 있는
+          시간에 나는 주로 뭘 해?")에 곧바로 답하게 만드는 것이 이번
+          작업의 성공 기준이다("랜딩이 더 예뻐졌다"가 아니다).
 
-          이 위에 있던 "MAP Decision" kicker 텍스트(.kicker 클래스)는
-          2026-08에 없앴다 — 바로 위 헤더 로고에 이미 같은 글자가 있어
-          세로로 두 번 반복돼 보였다. 헤더는 모든 화면에 있는 고정
-          요소라 그대로 두고, 히어로 쪽만 지웠다. .kicker 클래스 자체는
-          진로 결과 화면(Result.tsx)과 마인드맵 캔버스(MapCanvas.tsx)가
-          여전히 쓰고 있어 지우지 않았다. */}
-      <section className="map-container pb-2 pt-8 text-center sm:pt-14">
-        <h1 className="text-balance break-keep text-[1.9rem] font-black leading-[1.18] tracking-[-0.04em] sm:text-4xl">
-          16개 유형에<br className="sm:hidden" /> 넣지 않아요
-        </h1>
-        <p className="mx-auto mt-3 max-w-md break-keep text-sm font-semibold leading-6 text-text-secondary sm:text-base">
-          답한 나와 행동하는 나, 그 차이를 봅니다 · 로그인 없이
-        </p>
+          이전 버전(FIRST CLICK MVP)의 "나도 모르는 내 취향은?" 헤드라인
+          + teaser + "취향 확인해보기" CTA + microcopy + result-preview
+          한 줄 구조를 전부 걷어내고, 그 자리에 실제 문항과 2×2 선택
+          카드(HeroFirstQuestion)를 놓았다. 문항 원문·option label은
+          topics.ts의 taste.axes[0](tasteMode)를 그대로 읽어온다 —
+          이 파일 안에 별도로 옮겨 적지 않는다(위 heroAxis 참고).
+
+          "16개 유형에 넣지 않아요" 포지셔닝 문구는 삭제하지 않고 선택
+          카드 아래로 내렸다 — 첫 시선(선택 영역)보다 앞에 두지 않되,
+          여전히 사실에 근거한 브랜드 문장이라 완전히 없애지는 않는다.
+
+          선택 즉시 동작(카드 강조 → 약 250ms → 전환)은 HeroFirstQuestion이
+          hooks/use-auto-advance.ts의 useAutoAdvance를 그대로 재사용해서
+          만든다 — TopicQuiz.tsx의 QuickTapStep과 같은 훅이라 새 로직이
+          아니다. 답을 실제 세션에 기록하는 일은 MapDecisionProduct.tsx의
+          startTasteFirstAnswer(engine/quiz-answer.ts의 applyQuizAnswer
+          호출)가 전담한다 — TopicQuiz.tsx의 commitAnswer와 완전히 같은
+          함수라 이 화면에서 만드는 답변 데이터가 퀴즈 화면의 것과
+          어긋날 수 없다.
+
+          hero_choice 이벤트는 이 컴포넌트가 아니라 startTasteFirstAnswer
+          안에서 찍는다(세션을 실제로 만드는 지점이 거기라서) — 이 화면은
+          onStartTasteFirstAnswer(choice)를 그대로 호출만 한다. 기존
+          topic_select는 이 히어로에서 더 이상 찍지 않는다 — hero_choice가
+          taste의 FIRST ACTION이고, topic_select는 아래 그리드에서 다른
+          주제를 고를 때만 남긴다(handleGridStart 참고).
+
+          TasteHeroBackdrop(등고선 배경)은 그대로 재사용한다 — 이번
+          화면의 주인공은 등고선이 아니라 문항·선택 카드이므로, 배경은
+          여전히 절대 배치로 뒤에 깔려 선택지 판독성을 방해하지 않는다
+          (카드 자체가 불투명한 배경색을 가지고 있어 텍스트 대비에
+          영향이 없다). 새 SVG를 추가하지 않았다. lg(1024px+) 2컬럼
+          구도(텍스트 왼쪽 · 등고선이 걸리는 오른쪽 여백)는 이전
+          버전에서 그대로 가져왔다 — 데스크톱에서 좁은 폼이 화면
+          가운데 떠 있는 느낌을 피하기 위해서다. */}
+      <section className="map-container relative overflow-hidden rounded-large border border-border bg-surface shadow-floating">
+        <TasteHeroBackdrop />
+        <div className="relative px-5 pb-8 pt-8 text-center sm:px-8 sm:pb-10 sm:pt-12 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:px-14 lg:py-16 lg:text-left">
+          <div className="lg:max-w-lg">
+            <p className="mx-auto max-w-xs break-keep text-sm font-semibold leading-6 text-text-secondary sm:max-w-sm sm:text-base lg:mx-0">
+              생각하지 말고,<br />지금의 나와 가까운 쪽을 골라보세요.
+            </p>
+            {heroAxis ? (
+              <>
+                <h1 className="mx-auto mt-3 max-w-sm text-balance break-keep text-[1.9rem] font-black leading-[1.22] tracking-[-0.03em] sm:text-[2.4rem] lg:mx-0 lg:max-w-none lg:text-[2.9rem]">
+                  {heroAxis.question}
+                </h1>
+                <HeroFirstQuestion axis={heroAxis} onAnswer={onStartTasteFirstAnswer} />
+              </>
+            ) : null}
+            <p className="mx-auto mt-6 max-w-xs break-keep text-xs font-black tracking-[-0.01em] text-text-muted sm:max-w-sm lg:mx-0">
+              16개 유형에 넣지 않아요
+            </p>
+          </div>
+        </div>
       </section>
 
-      {/* 홍보 유입의 주 목적지(완성된 이상형·나소개 등 6개)를 먼저
-          보여준다 — "무엇을 결정해야 할지"(현재 career 1개뿐)는 아래로
-          내렸다. 순서는 이 두 줄의 렌더링 순서로만 정해진다(공유
-          배열이 아니라 각자 자기 ids 배열을 가진 별개의 TopicSection
-          호출) — 섹션 내부 카드 순서(DEPTH_TOPIC_IDS/VIRAL_TOPIC_IDS)는
-          그대로다.
+      {/* 홍보 유입의 주 목적지(완성된 이상형·나소개 등)를 먼저 보여준다 —
+          "무엇을 결정해야 할지"(현재 career 1개뿐)는 아래로 내렸다.
+          순서는 이 두 줄의 렌더링 순서로만 정해진다(공유 배열이 아니라
+          각자 자기 ids 배열을 가진 별개의 TopicSection 호출) — 섹션
+          내부 카드 순서(DEPTH_TOPIC_IDS/VIRAL_TOPIC_IDS)는 그대로다.
 
           라벨 교체(2026-08): "가볍게, 빠르게"/"차근차근, 깊이 있게"는
           소요 방식(속도·깊이)만 말해서 두 그룹의 차이가 "빠른 것 vs
           느린 것"으로만 읽혔다("가볍게 빠르게가 무슨 말이에요?" 반응).
           "내가 어떤 사람인지"/"무엇을 결정해야 할지"는 각 그룹에서
           실제로 얻는 결과물(자기 이해 카드 vs 결정을 위한 정리)을
-          말한다. */}
-      <TopicSection kicker="내가 어떤 사람인지" ids={viralTopicIds} onStart={onStart} onLocked={handleLocked} />
+          말했었다.
+
+          라벨 재교체(2026-08, FIRST CLICK 개편): taste가 위 Hero로
+          올라가면서 이 섹션엔 taste를 뺀 나머지만 남는다 — "내가 어떤
+          사람인지"를 그대로 두면 taste가 빠진 게 아니라 처음부터 없던
+          것처럼 읽힌다. "다른 MAP"으로 바꿔 이 카드들이 위 Hero(taste)
+          말고도 더 있다는 걸 분명히 한다. */}
+      <TopicSection kicker="다른 MAP" ids={gridTopicIds} onStart={handleGridStart} onLocked={handleLocked} />
       <TopicSection
         kicker="무엇을 결정해야 할지"
         ids={DEPTH_TOPIC_IDS}
