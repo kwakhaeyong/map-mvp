@@ -20,6 +20,38 @@ export function isSessionStale(session: MapSession, referenceTime: number = Date
   return referenceTime - savedAt > STALE_SESSION_MS;
 }
 
+// 새 주제를 시작해도 이전에 완료해둔 다른 주제의 결과는 지우지 않기
+// 위한 목록 — MapSession 타입이 애초에 6개 주제 결과(idealTypeResult...
+// travelResult) + career 결과(result)를 동시에 담을 수 있게 설계돼
+// 있었는데(서로 다른 필드라 겹쳐 써도 안전), createSession()이 매번
+// 완전히 새 객체를 만들면서 이전 세션의 이 필드들을 그냥 버리고
+// 있었다. 여기 나열한 것 외에는 전부 "진행 중이던 것"(messages/nodes/
+// quizAnswers/quizStep/profile 등)이라 새 주제 것으로 리셋돼야 맞다 —
+// 이 목록에 진행 상태를 하나라도 섞으면 새 주제가 이전 주제의 흔적을
+// 이어받는 사고가 난다. 결과 본문(*Result)과 그 결과의 출처를 증명하는
+// 서명(*ResultSignature)·심화 배지(*QuizDepth)만 정확히 대상이다.
+function preserveCompletedResults(previousSession?: MapSession): Partial<MapSession> {
+  if (!previousSession) return {};
+  const preserved: Partial<MapSession> = {};
+  if (previousSession.result !== undefined) preserved.result = previousSession.result;
+  if (previousSession.resultBlockSignatures !== undefined) preserved.resultBlockSignatures = previousSession.resultBlockSignatures;
+  if (previousSession.idealTypeResult !== undefined) preserved.idealTypeResult = previousSession.idealTypeResult;
+  if (previousSession.idealTypeResultSignature !== undefined) preserved.idealTypeResultSignature = previousSession.idealTypeResultSignature;
+  if (previousSession.idealTypeQuizDepth !== undefined) preserved.idealTypeQuizDepth = previousSession.idealTypeQuizDepth;
+  if (previousSession.selfIntroResult !== undefined) preserved.selfIntroResult = previousSession.selfIntroResult;
+  if (previousSession.selfIntroResultSignature !== undefined) preserved.selfIntroResultSignature = previousSession.selfIntroResultSignature;
+  if (previousSession.selfIntroQuizDepth !== undefined) preserved.selfIntroQuizDepth = previousSession.selfIntroQuizDepth;
+  if (previousSession.friendshipResult !== undefined) preserved.friendshipResult = previousSession.friendshipResult;
+  if (previousSession.friendshipResultSignature !== undefined) preserved.friendshipResultSignature = previousSession.friendshipResultSignature;
+  if (previousSession.workResult !== undefined) preserved.workResult = previousSession.workResult;
+  if (previousSession.workResultSignature !== undefined) preserved.workResultSignature = previousSession.workResultSignature;
+  if (previousSession.tasteResult !== undefined) preserved.tasteResult = previousSession.tasteResult;
+  if (previousSession.tasteResultSignature !== undefined) preserved.tasteResultSignature = previousSession.tasteResultSignature;
+  if (previousSession.travelResult !== undefined) preserved.travelResult = previousSession.travelResult;
+  if (previousSession.travelResultSignature !== undefined) preserved.travelResultSignature = previousSession.travelResultSignature;
+  return preserved;
+}
+
 // topicId comes from a topic-picker card (e.g. "career"). Left undefined,
 // this stays the original topicless path — nothing defaults to career here
 // (that default only applies inside resolveTopic for the AI prompt, once a
@@ -27,7 +59,13 @@ export function isSessionStale(session: MapSession, referenceTime: number = Date
 // still resolves to career via resolveTopic, but the picker screen only
 // ever calls this with implemented topics, so that fallback shouldn't fire
 // in practice.
-export function createSession(topicId?: string, compareWithId?: string): MapSession {
+//
+// previousSession은 "이 세션이 새로 시작되기 직전, 화면에 떠 있던
+// 세션"이다 — 넘기면 그 세션에서 완료된 다른 주제 결과들만
+// preserveCompletedResults()로 골라 새 세션에 이어붙인다(profile은
+// 예전부터 이어받지 않는 결정이었고, 그대로 유지한다 — 위 함수 주석
+// 참고). 넘기지 않으면(데모 세션 등) 완전히 빈 새 세션이 된다.
+export function createSession(topicId?: string, compareWithId?: string, previousSession?: MapSession): MapSession {
   const timestamp = now();
   const topic = topicId ? resolveTopic(topicId) : undefined;
   const isQuiz = topic?.inputMode === "quiz";
@@ -60,6 +98,7 @@ export function createSession(topicId?: string, compareWithId?: string): MapSess
     updatedAt: timestamp,
     ...(isQuiz ? { quizStep: 0, quizVersion: topic?.quizVersion } : {}),
     ...(compareWithId ? { compareWithId } : {}),
+    ...preserveCompletedResults(previousSession),
   };
 }
 

@@ -124,7 +124,7 @@ export function MapDecisionProduct() {
     const compareWithId = withParam && /^[A-Za-z0-9_-]{16}$/.test(withParam) ? withParam : undefined;
     if (startTopic && !hasActiveSession) {
       setHasStaleResult(false);
-      setSession(createSession(startTopic, compareWithId));
+      setSession(createSession(startTopic, compareWithId, effective ?? undefined));
       window.history.replaceState({}, "", window.location.pathname);
     }
     setSaveState("saved");
@@ -189,9 +189,16 @@ export function MapDecisionProduct() {
   // 직장인이라 답했어도, 이어서 "친구·인간관계"를 고르면 그 답이 그대로
   // 맞으리라고 가정하지 않는다), 주제를 바꿀 때마다 프로필을 새로
   // 묻는 것은 의도된 설계이지 버그가 아니다.
+  //
+  // 다만 profile과 달리, 이미 완료해서 화면에 다 보여준 다른 주제의
+  // 결과(*Result)까지 같이 버릴 이유는 없다 — 지금 화면에 떠 있는
+  // session을 createSession()에 넘겨서, 그 세션에 남아있던 완료 결과만
+  // 새 세션에 이어붙인다(engine/session.ts의 preserveCompletedResults
+  // 참고). 진행 중이던 것(messages/nodes/quizAnswers 등)은 이 함수가
+  // 넘겨받지 않으므로 그대로 새 주제 것으로 리셋된다.
   const start = (topicId?: string) => {
     setHasStaleResult(false);
-    setSession({ ...createSession(topicId), stage: "profile" });
+    setSession({ ...createSession(topicId, undefined, session), stage: "profile" });
   };
   const startDemo = () => { setHasStaleResult(false); setSession(createDemoSession()); };
   const reset = () => { if (!session.isDemo) clearSession(); setHasSavedDraft(false); setHasStaleResult(false); setSaveState("saved"); setSession(createLandingSession()); };
