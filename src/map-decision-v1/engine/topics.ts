@@ -2390,20 +2390,27 @@ export const TOPICS: Record<string, TopicConfig> = {
         ],
       },
       // ── 4구간: 압박과 회복 ─────────────────────────────────────────
-      // experienceStressResponse: 나 소개(selfIntro)의 같은 id 문항을
-      // 지문·선택지·설명 그대로 복사했다(한 글자도 바꾸지 않음) — 위
-      // lifestyle과 같은 이유(태그 공유용 원문 일치). 태그 연결 자체는
-      // 다음 작업 범위다.
+      // experienceStressResponse: 원래는 나 소개(selfIntro)의 같은 id
+      // 문항을 지문·선택지·설명 그대로 복사했었다(태그 공유용 원문
+      // 일치 목적) — 그런데 그 결과 "일할 때의 나" 주제 안에 "가까운
+      // 사람과 갈등이 있을 때"라는 사적 인간관계 표현이 그대로 남아
+      // 업무 맥락과 어긋난다는 외부 검토 지적을 받았다(2026-08-10).
+      // 문항·선택지를 업무 맥락으로 바꾸되, 축 자체(직면/내면화/
+      // 거리두기/공유 네 갈래)는 그대로 유지한다 — id도 그대로 둔다.
+      // 라벨 문자열이 selfIntro·friendship과 더 이상 같지 않으므로,
+      // 태그·상태 라벨은 공유 사전이 아니라 work 전용 항목을 새로
+      // 등록해서 연결한다(ideal-type-tags.ts의 conflictPattern.mapping
+      // "일할 때의 나 전용" 블록, WORK_STATUS_LABELS 참고).
       {
         id: "experienceStressResponse",
         type: "experience",
         required: true,
-        question: "가까운 사람과 갈등이 있을 때, 스트레스를 어떻게 푸는 편이야?",
+        question: "일하다가 갈등이나 업무 압박을 느낄 때, 스트레스를 어떻게 푸는 편이야?",
         options: [
-          { label: "바로 이야기하는 편", description: "마음에 걸리면 바로 대화로 푸는 편이다" },
-          { label: "혼자 삭이는 편", description: "일단 혼자 정리한 뒤에 넘어가는 편이다" },
-          { label: "거리를 두는 편", description: "잠깐 떨어져서 감정을 가라앉히는 편이다" },
-          { label: "주변에 털어놓는 편", description: "다른 사람에게 얘기하며 정리하는 편이다" },
+          { label: "그 자리에서 얘기하는 편", description: "업무 중 부딪히는 부분이 생기면 바로 대화로 푸는 편이다" },
+          { label: "혼자 삭이고 넘기는 편", description: "일단 혼자 정리한 뒤에 다시 업무로 돌아가는 편이다" },
+          { label: "필요한 말만 하며 거리 두는 편", description: "감정이 가라앉을 때까지 업무에 필요한 말만 하는 편이다" },
+          { label: "동료에게 털어놓는 편", description: "동료나 주변에 얘기하며 정리하는 편이다" },
         ],
       },
       {
