@@ -150,26 +150,63 @@ function NewResultPreview({ result }: { result: TasteResult }) {
   );
 }
 
+// RESULT GENERATION FAILURE 조사(2026-08)로 추가한 실패 원인 라벨.
+// engine/taste-generator.ts의 FailureCategory 문자열과 그대로 맞춘다 —
+// 여기서 새로 만든 코드가 아니라 API 응답(app/api/review-taste-a/route.ts)이
+// 그대로 실어 보내는 값을 사람이 읽기 쉬운 한국어로 옮기기만 한다.
+const FAILURE_CATEGORY_LABEL: Record<string, string> = {
+  rate_limited: "Anthropic 429 (요청 과다)",
+  server_overloaded: "Anthropic 5xx (서버 과부하)",
+  network_error: "네트워크 연결 오류",
+  request_timeout: "요청 타임아웃",
+  auth_or_config: "인증/설정 오류 (401·403·404·409·422)",
+  bad_request: "400 (입력이 너무 김)",
+  empty_response: "빈 응답",
+  truncated: "max_tokens 잘림",
+  schema_invalid: "JSON/스키마 검증 실패",
+  unknown_error: "분류 안 된 오류",
+  blocked_in_production: "production에서는 이 도구를 쓸 수 없음",
+};
+
+function FailureDetail({ category, attempts }: { category: string | null; attempts: number }) {
+  const label = category ? (FAILURE_CATEGORY_LABEL[category] ?? category) : "알 수 없음";
+  return (
+    <p className="text-xs font-mono leading-5 text-text-muted">
+      category: {category ?? "null"} ({label}) · attempts: {attempts}
+    </p>
+  );
+}
+
 export function ResultWowReviewClient() {
   const [state, setState] = useState<RequestState>("idle");
   const [result, setResult] = useState<TasteResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [failureCategory, setFailureCategory] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState<number>(0);
 
   const generate = async () => {
     setState("loading");
     setErrorMessage(null);
+    setFailureCategory(null);
+    setAttempts(0);
     try {
       const response = await fetch("/api/review-taste-a", { method: "POST" });
       const data = await response.json();
-      if (!response.ok || !data.result) {
-        setErrorMessage(data.error === "not_found" ? "이 도구는 production에서 사용할 수 없어요." : "생성에 실패했어요. 다시 시도해주세요.");
+      if (!response.ok || !data.ok) {
+        setFailureCategory(typeof data.category === "string" ? data.category : "unknown_error");
+        setAttempts(typeof data.attempts === "number" ? data.attempts : 0);
+        setErrorMessage(
+          data.category === "blocked_in_production" ? "이 도구는 production에서 사용할 수 없어요." : "생성에 실패했어요. 아래 category를 확인하세요.",
+        );
         setState("error");
         return;
       }
+      setAttempts(typeof data.attempts === "number" ? data.attempts : 1);
       setResult(data.result);
       setState("success");
     } catch {
       setErrorMessage("요청 중 오류가 발생했어요. 네트워크 상태를 확인하고 다시 시도해주세요.");
+      setFailureCategory("network_error");
       setState("error");
     }
   };
@@ -184,11 +221,17 @@ export function ResultWowReviewClient() {
         disabled={state === "loading"}
         className={cx(state === "loading" && "opacity-70")}
       >
-        {state === "loading" ? "생성 중이에요 (최대 2~3분)…" : result ? "다시 생성" : "Persona A 결과 생성"}
+        {state === "loading" ? "생성 중이에요 (최대 2~3분, 재시도 포함 최대 2회)…" : result ? "다시 생성" : "Persona A 결과 생성"}
       </Button>
 
-      {state === "error" && errorMessage ? <p className="text-sm font-bold text-error">{errorMessage}</p> : null}
+      {state === "error" && errorMessage ? (
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-bold text-error">{errorMessage}</p>
+          <FailureDetail category={failureCategory} attempts={attempts} />
+        </div>
+      ) : null}
 
+      {result ? <p className="text-xs font-mono leading-5 text-text-muted">생성 시도 횟수: {attempts}{attempts > 1 ? " (재시도 있었음)" : ""}</p> : null}
       {result ? <NewResultPreview result={result} /> : null}
       {result ? <ResultView result={result} /> : null}
     </div>

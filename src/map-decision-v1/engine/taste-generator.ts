@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { MapSession, TasteMatrixPoint, TasteResult, TasteRoadmapPhase } from "../types";
 import { getGenerationEffort } from "./generation-config";
+import { MIN_TIME_BUDGET_FOR_GENERATION_MS } from "./generation-cache";
 import { isServerSideGenerationError } from "./generation-error";
 import { logGenerationAttempt } from "./generation-timing";
 import { getIdealTypeTags, getStatusLabel } from "./ideal-type-tags";
@@ -282,21 +283,87 @@ function capRoadmapPhases(phases: RawRoadmap["phases"]): TasteRoadmapPhase[] {
 }
 
 // 다른 다섯 주제와 같은 이유(Sonnet 5의 기본 사고 토큰이 max_tokens
-// 예산에 포함됨)로 같은 상한·재시도 방식을 그대로 쓴다 —
-// engine/ideal-type-generator.ts 참고.
+// 예산에 포함됨)로 같은 상한 방식을 그대로 쓴다 — engine/ideal-type-
+// generator.ts 참고.
 const TASTE_MAX_TOKENS = 16384;
-const TASTE_MAX_TOKENS_RETRY = 16384;
+
+// RESULT GENERATION FAILURE 조사(2026-08)로 추가한 실패 분류. 지금까지는
+// 모든 실패가 사용자에게도, 개발 로그에서도 "생성 실패" 하나로 뭉뚱그려
+// 보였다 — Vercel 로그에 status/type은 남기고 있었지만(아래
+// classifyApiError), 그 값을 "재시도할 가치가 있는가"라는 판단으로
+// 연결하지는 않았다. 이 분류는 그 판단(아래 RETRYABLE_CATEGORIES)과
+// Preview 진단 응답(app/api/review-taste-a/route.ts)에 그대로 쓰인다.
+export type FailureCategory =
+  | "rate_limited" // Anthropic 429
+  | "server_overloaded" // Anthropic 5xx(529 과부하 포함)
+  | "network_error" // 연결 실패(DNS·소켓 끊김 등, 타임아웃 제외)
+  | "request_timeout" // SDK 자체 요청 타임아웃(APIConnectionTimeoutError)
+  | "auth_or_config" // 401/403/404/409/422 — 계정·요청 구성 문제
+  | "bad_request" // 400 — 입력이 모델 컨텍스트 한도를 넘김
+  | "empty_response" // API 호출은 성공했지만 텍스트 블록이 없음
+  | "truncated" // max_tokens에 걸려 잘림
+  | "schema_invalid" // JSON 파싱 또는 TASTE_SCHEMA 검증 실패
+  | "unknown_error"; // 위 어디에도 안 걸리는, 분류 불가능한 예외
+
+// generation-error.ts(6개 주제가 공유하는 파일)의 isServerSideGenerationError는
+// "카운트할지(boolean)"만 판단한다 — 그 파일을 고치지 않고, 여기서
+// Anthropic SDK 예외 클래스를 더 세분화해서 재시도 판단에 쓴다. 이
+// 클래스 이름들은 @anthropic-ai/sdk/core/error.ts에 정의돼 있다.
+function classifyApiError(error: unknown): FailureCategory {
+  if (error instanceof Anthropic.APIConnectionTimeoutError) return "request_timeout";
+  if (error instanceof Anthropic.APIConnectionError) return "network_error";
+  if (error instanceof Anthropic.RateLimitError) return "rate_limited";
+  if (error instanceof Anthropic.InternalServerError) return "server_overloaded";
+  if (error instanceof Anthropic.BadRequestError) return "bad_request";
+  if (error instanceof Anthropic.APIError) return "auth_or_config";
+  return "unknown_error";
+}
+
+// "재시도해서 다른 결과가 나올 가능성이 실제로 있는가"만 기준으로 삼는다.
+// - rate_limited/server_overloaded/network_error: Anthropic 쪽의 일시적
+//   상태일 뿐, 같은 요청을 다시 보내면 성공할 가능성이 있다.
+// - empty_response/schema_invalid: 모델 응답 자체는 받았지만 내용이
+//   이상했던 경우 — 같은 입력이라도 모델 출력은 결정적이지 않으므로
+//   다시 시도하면 정상 JSON이 나올 가능성이 있다.
+// - truncated: 같은 max_tokens·같은 프롬프트로 다시 시도해도 같은
+//   지점에서 다시 잘릴 가능성이 높고(taste-generator.ts 기존 주석 —
+//   과거 이 이유로 재시도 자체를 없앴다), 이미 최대치까지 토큰을 쓴
+//   시도라 재시도할 시간 여유도 거의 안 남는다 — 재시도 안 함.
+// - request_timeout: "타임아웃 직전" 신호 그 자체다 — 재시도 안 함.
+// - auth_or_config/bad_request/unknown_error: 같은 요청이면 같은
+//   이유로 다시 실패한다(설정 문제거나 코드가 분류 못 한 예외) —
+//   재시도 안 함.
+const RETRYABLE_CATEGORIES: ReadonlySet<FailureCategory> = new Set([
+  "rate_limited",
+  "server_overloaded",
+  "network_error",
+  "empty_response",
+  "schema_invalid",
+]);
+
+// 429/5xx/network처럼 Anthropic 쪽이 일시적으로 붐빈 상황에서만 짧게
+// 쉬었다 다시 보낸다 — empty_response/schema_invalid는 혼잡과 무관한
+// 문제라 곧장 재시도한다.
+const BACKOFF_CATEGORIES: ReadonlySet<FailureCategory> = new Set(["rate_limited", "server_overloaded", "network_error"]);
+const RETRY_BACKOFF_MS = 1_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+type AttemptOutcome = { result: TasteResult | null; truncated: boolean; countsAsFailure: boolean; category: FailureCategory | null };
 
 // countsAsFailure: 이 실패를 rate-limit.ts의 세션당 실패 상한에 넣을지.
 // 서버 쪽 원인(engine/generation-error.ts)은 false, 빈 응답·스키마
-// 검증 실패는 항상 true — work-generator.ts와 같은 원칙이다.
+// 검증 실패는 항상 true — work-generator.ts와 같은 원칙이다. category는
+// 그와 별개로 "왜 실패했는지"만 구분한다(재시도 판단·Preview 진단용).
 async function attemptGeneration(
   client: Anthropic,
   session: MapSession,
   maxTokens: number,
   attempt: number,
   generationStartedAt: number,
-): Promise<{ result: TasteResult | null; truncated: boolean; countsAsFailure: boolean }> {
+): Promise<AttemptOutcome> {
   let responseText: string | undefined;
   let truncated = false;
   let outputTokens: number | null = null;
@@ -340,15 +407,17 @@ async function attemptGeneration(
     const status = error instanceof Anthropic.APIError ? error.status : undefined;
     const type = error instanceof Anthropic.APIError ? error.type : undefined;
     const serverSide = isServerSideGenerationError(error);
+    const category = classifyApiError(error);
     console.error("[taste-generator] Claude API call failed", {
       status,
       type,
+      category,
       name: error instanceof Error ? error.name : typeof error,
       message: error instanceof Error ? error.message : String(error),
       countsAsFailure: !serverSide,
     });
     logGenerationAttempt({ topic: "taste", attempt, generationStartedAt, effort, outcome: { kind: "api_error" } });
-    return { result: null, truncated, countsAsFailure: !serverSide };
+    return { result: null, truncated, countsAsFailure: !serverSide, category };
   }
 
   if (!responseText) {
@@ -360,7 +429,7 @@ async function attemptGeneration(
       effort,
       outcome: truncated ? { kind: "truncated", outputTokens, thinkingTokens } : { kind: "api_error" },
     });
-    return { result: null, truncated, countsAsFailure: true };
+    return { result: null, truncated, countsAsFailure: true, category: truncated ? "truncated" : "empty_response" };
   }
 
   const parsed = parseAndValidate(responseText);
@@ -373,7 +442,7 @@ async function attemptGeneration(
       effort,
       outcome: truncated ? { kind: "truncated", outputTokens, thinkingTokens } : { kind: "schema_invalid", outputTokens, thinkingTokens },
     });
-    return { result: null, truncated, countsAsFailure: true };
+    return { result: null, truncated, countsAsFailure: true, category: truncated ? "truncated" : "schema_invalid" };
   }
 
   const data = parsed.data;
@@ -414,44 +483,107 @@ async function attemptGeneration(
     statusLabel: getStatusLabel(session.quizAnswers, "taste"),
   };
   logGenerationAttempt({ topic: "taste", attempt, generationStartedAt, effort, outcome: { kind: "success", outputTokens, thinkingTokens } });
-  return { result, truncated, countsAsFailure: false };
+  return { result, truncated, countsAsFailure: false, category: null };
 }
 
-// 2회 재시도는 잘림(truncation)으로 실패한 요청을 "같은 max_tokens 상한"으로
-// 다시 돌리는 구조라 실제로 구제되는지 불확실한 반면(잘려서 실패한 이유가
-// 그대로면 재시도도 같은 이유로 다시 잘릴 수 있다), 1회당 실측 최대 151초
-// 걸리는 시도를 두 번 이어 돌리면 151×2=302초로 maxDuration(300초, Hobby +
-// Fluid Compute 상한이라 이 이상 올릴 수 없다)을 확실히 넘겨 504로 끊긴다
-// — 실제 프로덕션 타임아웃 2건이 정확히 이 패턴이었다. 불확실한 구제
-// 효과보다 확실한 타임아웃을 피하는 쪽을 택해 1로 낮춘다. 재시도 루프
-// 구조 자체는 그대로 남겨둔다 — 나중에 시간 예산이 늘어나면(예: 플랜
-// 업그레이드) 이 값만 다시 올리면 된다.
-const MAX_GENERATION_ATTEMPTS = 1;
+// RESULT GENERATION FAILURE 조사(2026-08) 이전에는 이 값이 2였다가, 실제
+// 프로덕션 504 타임아웃 2건(1차 시도 실패 → 2차 시도 진행 중 151×2=302초로
+// maxDuration(300초, Hobby + Fluid Compute 상한이라 더 못 올린다)을
+// 넘겨 끊긴 패턴)이 확인되면서 1로 낮췄던 값이다(git blame ff540ed 참고).
+// 그 조사 때는 "모든 실패를 무조건 재시도"가 전제였다 — 그 전제 자체가
+// 문제였다. 지금은 무조건 2회를 도는 게 아니라, 아래 shouldRetry()가
+// (1) 재시도할 가치가 있는 오류 종류인지, (2) 남은 시간 예산이 시도
+// 하나를 더 안전하게 마칠 만큼 남았는지를 매번 확인한 뒤에만 두 번째
+// 시도를 허용한다 — 그래서 상한 자체는 다시 2로 올려도 안전하다(위
+// 타임아웃 패턴은 "실패한 시도가 이미 151초 가까이 썼는데 그 사실을
+// 무시하고 또 151초짜리 시도를 무조건 돌린" 게 원인이었지, 상한이
+// 2였다는 것 자체가 원인이 아니다).
+const MAX_GENERATION_ATTEMPTS = 2;
 
-export type TasteGenerationOutcome = { result: TasteResult | null; countsAsFailure: boolean };
+// 시도 하나를 더 시작해도 안전한지 판단하는 기준. generation-cache.ts의
+// MIN_TIME_BUDGET_FOR_GENERATION_MS(170초 = 실측 최대 151초 + 20초 여유)를
+// 그대로 재사용한다 — API 라우트가 "생성을 시작해도 되는지" 판단할 때
+// 쓰는 것과 같은 기준을, "재시도를 시작해도 되는지" 판단에도 똑같이
+// 적용하는 것이다(생성-cache.ts를 고치지 않고 그 파일이 이미 export해둔
+// 값을 가져다 쓸 뿐이라 다른 5개 주제의 동작에는 아무 영향이 없다).
+function shouldRetry(category: FailureCategory | null, requestStartedAt: number): boolean {
+  if (!category || !RETRYABLE_CATEGORIES.has(category)) return false;
+  const remainingMs = ROUTE_MAX_DURATION_MS - (Date.now() - requestStartedAt);
+  return remainingMs >= MIN_TIME_BUDGET_FOR_GENERATION_MS;
+}
+
+// app/api/generate-taste-result/route.ts의 maxDuration과 같은 값이다(300초).
+// 그 값을 리터럴로 export할 수 없는 이유는 generation-cache.ts의
+// ROUTE_MAX_DURATION_MS 주석과 같다(Next.js가 각 route.ts 파일에서
+// `export const maxDuration = 300`을 직접 읽어야 한다) — 여기서도
+// 독립적으로 같은 값을 든다.
+const ROUTE_MAX_DURATION_MS = 300_000;
+
+export type TasteGenerationOutcome = {
+  result: TasteResult | null;
+  countsAsFailure: boolean;
+  // 아래 둘은 production 사용자 응답(app/api/generate-taste-result/route.ts)에는
+  // 노출하지 않는다 — Preview 전용 진단 라우트(app/api/review-taste-a/route.ts)와
+  // 서버 로그에서만 쓴다.
+  attempts: number;
+  category: FailureCategory | null;
+};
 
 // Server-side only: reads ANTHROPIC_API_KEY from the environment and must
 // never be imported from client components. The API route is the only caller.
 //
 // countsAsFailure(반환값): ideal-type-generator.ts의 같은 이름 값과
-// 같은 규칙 — 재시도 2회 중 하나라도 입력/출력 내용 때문에 실패했으면
+// 같은 규칙 — 시도 중 하나라도 입력/출력 내용 때문에 실패했으면
 // 최종적으로도 카운트한다.
-export async function generateTasteResult(session: MapSession): Promise<TasteGenerationOutcome> {
+//
+// requestStartedAt: 호출부(API 라우트)가 요청을 받은 시각. 재시도 여부를
+// 판단할 때 "이 함수가 시작된 시점"이 아니라 "라우트 전체가 시작된
+// 시점"부터 남은 시간을 봐야 한다 — 마커 대기(최대 45초) 등 이 함수
+// 호출 전에 이미 써버린 시간이 있을 수 있기 때문이다(app/api/
+// generate-taste-result/route.ts가 이미 hasSufficientTimeBudgetForGeneration로
+// 같은 기준을 써서 "생성을 시작할지"를 판단한다 — 여기서는 그 판단을
+// 한 번 더, "재시도할지"에 적용한다). 라우트 컨텍스트가 없는 호출부
+// (Preview 진단 라우트, CLI 스크립트)는 생략하면 이 함수 시작 시각을
+// 그대로 쓴다.
+export async function generateTasteResult(session: MapSession, options?: { requestStartedAt?: number }): Promise<TasteGenerationOutcome> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error("[taste-generator] ANTHROPIC_API_KEY not set");
-    return { result: null, countsAsFailure: false };
+    return { result: null, countsAsFailure: false, attempts: 0, category: null };
   }
 
   const client = new Anthropic({ apiKey });
   const generationStartedAt = Date.now();
-  let maxTokens = TASTE_MAX_TOKENS;
+  const requestStartedAt = options?.requestStartedAt ?? generationStartedAt;
   let countsAsFailure = false;
+  let lastCategory: FailureCategory | null = null;
+  let attemptsMade = 0;
+
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const outcome = await attemptGeneration(client, session, maxTokens, attempt, generationStartedAt);
-    if (outcome.result) return { result: outcome.result, countsAsFailure: false };
+    attemptsMade = attempt;
+    const outcome = await attemptGeneration(client, session, TASTE_MAX_TOKENS, attempt, generationStartedAt);
+    if (outcome.result) return { result: outcome.result, countsAsFailure: false, attempts: attempt, category: null };
     if (outcome.countsAsFailure) countsAsFailure = true;
-    if (outcome.truncated) maxTokens = TASTE_MAX_TOKENS_RETRY;
+    lastCategory = outcome.category;
+
+    const isFinalAttempt = attempt >= MAX_GENERATION_ATTEMPTS;
+    if (isFinalAttempt) {
+      console.log("[taste-generator] giving up", { attempt, category: lastCategory, reason: "max_attempts_reached" });
+      break;
+    }
+    if (!shouldRetry(outcome.category, requestStartedAt)) {
+      console.log("[taste-generator] not retrying", {
+        attempt,
+        category: outcome.category,
+        retryableCategory: outcome.category ? RETRYABLE_CATEGORIES.has(outcome.category) : false,
+        remainingMs: ROUTE_MAX_DURATION_MS - (Date.now() - requestStartedAt),
+      });
+      break;
+    }
+    console.log("[taste-generator] retrying", { nextAttempt: attempt + 1, category: outcome.category });
+    if (outcome.category && BACKOFF_CATEGORIES.has(outcome.category)) {
+      await sleep(RETRY_BACKOFF_MS);
+    }
   }
-  return { result: null, countsAsFailure };
+  return { result: null, countsAsFailure, attempts: attemptsMade, category: lastCategory };
 }

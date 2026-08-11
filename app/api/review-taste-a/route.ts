@@ -26,20 +26,28 @@ export const dynamic = "force-dynamic";
 // 사용자의 생성 횟수와 무관한 내부 검증 도구이기 때문이다. API 키는
 // generateTasteResult 내부(서버 전용 모듈)에서만 읽고, 이 라우트는 그
 // 값을 직접 다루지 않는다 — 응답 바디에도 키를 넣지 않는다.
+// RESULT GENERATION FAILURE 조사(2026-08)로 추가: 이 라우트는 애초에
+// production에서 막혀 있으니(isBlocked), 생성기가 왜 실패했는지(category)
+// ·몇 번 시도했는지(attempts)를 그대로 응답에 실어도 안전하다 — 오너가
+// Preview에서 "결과 생성에 실패했습니다" 한 줄 대신 실제 원인을 바로 볼
+// 수 있게 하는 게 이 진단 필드의 목적이다. production 사용자 라우트
+// (app/api/generate-taste-result/route.ts)는 이 필드들을 응답에 절대
+// 넣지 않는다 — 서버 로그로만 남긴다.
 export async function POST() {
   if (isBlocked()) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return NextResponse.json({ ok: false, category: "blocked_in_production" as const, attempts: 0 }, { status: 404 });
   }
 
+  const requestStartedAt = Date.now();
   const session = buildReviewPersonaSession("A");
-  const outcome = await generateTasteResult(session);
+  const outcome = await generateTasteResult(session, { requestStartedAt });
 
   if (!outcome.result) {
     return NextResponse.json(
-      { error: "generation_failed", countsAsFailure: outcome.countsAsFailure },
+      { ok: false, category: outcome.category, attempts: outcome.attempts, countsAsFailure: outcome.countsAsFailure },
       { status: 502 },
     );
   }
 
-  return NextResponse.json({ result: outcome.result });
+  return NextResponse.json({ ok: true, result: outcome.result, attempts: outcome.attempts });
 }

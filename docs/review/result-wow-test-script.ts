@@ -135,7 +135,7 @@ async function main() {
       "",
       "## 생성 실패",
       "",
-      `countsAsFailure=${outcome.countsAsFailure}. 콘솔 로그(스크립트 실행 터미널)를 참고하세요. 재시도하려면 같은 명령을 다시 실행하세요.`,
+      `category=${outcome.category ?? "null"}, attempts=${outcome.attempts}, countsAsFailure=${outcome.countsAsFailure}. 콘솔 로그(스크립트 실행 터미널)를 참고하세요. 재시도하려면 같은 명령을 다시 실행하세요.`,
       "",
     ].join("\n");
     fs.writeFileSync(mdPath, body, "utf-8");

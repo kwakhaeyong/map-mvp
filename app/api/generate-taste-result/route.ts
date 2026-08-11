@@ -212,9 +212,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { result, countsAsFailure } = await generateTasteResult(session);
+    const { result, countsAsFailure, attempts, category } = await generateTasteResult(session, { requestStartedAt });
     if (!result) {
       await releaseGenerationSlotOnFailure(ip, session.startedAt, countsAsFailure);
+      // category/attempts는 사용자 응답(BlockedResponse)에는 절대 넣지 않는다 —
+      // Vercel Runtime Logs에서 "왜 실패했는지"를 바로 구분하기 위한 서버
+      // 전용 로그다. attemptGeneration이 이미 시도별로 더 자세한 로그를
+      // 남기지만, 이 한 줄은 "최종적으로 이 요청이 어떻게 끝났는지"를
+      // 한눈에 보여준다(재시도가 있었다면 attempts>1).
+      console.error("[generate-taste-result] final failure", { attempts, category, countsAsFailure });
       logTiming("generation_failed");
       return NextResponse.json(
         { blocked: true, reason: "generation_failed", message: "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
