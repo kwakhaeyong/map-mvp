@@ -42,7 +42,12 @@ const DEPTH_TOPIC_IDS = ["career"];
 // 관계를 자기소개보다 먼저 배치하는 편이 카드 묶음 전체의 화제
 // 다양성(관계→나 자신→이상형→일)에도 맞다고 판단해 문항 수 하나만
 // 보고 정렬하지 않았다.
-const VIRAL_TOPIC_IDS = ["taste", "travelStyle", "friendship", "selfIntro", "idealType", "work"];
+// 결과 화면 하단 "다음 MAP 유도" 블록(NextMapPrompt.tsx)이 같은 순서·
+// 같은 카피로 다음 주제를 추천해야 해서 export한다 — 이 배열을 이
+// 파일에서 export하기 전에는 NextMapPrompt.tsx가 자기만의 사본을
+// 만들 뻔했는데, 그러면 여기서 순서를 바꿀 때마다 두 곳을 같이
+// 고쳐야 하는 문제가 생긴다.
+export const VIRAL_TOPIC_IDS = ["taste", "travelStyle", "friendship", "selfIntro", "idealType", "work"];
 const SAFETY_NET_TOPIC_ID = "freeform";
 
 // topics.ts의 topic.oneLiner("~를 한 장으로 정리해요")를 그대로 쓰지 않고
@@ -76,7 +81,9 @@ const SAFETY_NET_TOPIC_ID = "freeform";
 // 실제 문항("여행 중 계획이 틀어졌던 상황, 그때 나는 어떻게
 // 했어?" — 아래 topics.ts travelStyle 축 참고)에 나오는 구체적
 // 장면으로 바꿨다.
-const TOPIC_HOOK: Record<string, string> = {
+// 같은 이유(NextMapPrompt.tsx의 다음 주제 카드가 랜딩과 똑같은 훅
+// 문구를 써야 한다)로 이 상수도 export한다.
+export const TOPIC_HOOK: Record<string, string> = {
   idealType: "나는 왜 비슷한 사람에게 끌릴까요?",
   selfIntro: "내가 아는 나와 남이 보는 나는 같을까요?",
   friendship: "이 관계들 속에서 나는 어떤 자리에 있을까요?",
@@ -100,7 +107,9 @@ const TOPIC_HOOK: Record<string, string> = {
 // 추정치다 — 문항당 대략 14~15초로 잡고 반올림했다(실측 계측은 아직
 // 없다, docs/CURRENT_STATE.md·NASOGAE_DESIGN.md 조사 참고). career는
 // 자유 대화형이라 문항 수 개념이 없어 이 맵에 넣지 않는다.
-const TOPIC_META: Record<string, { questions: number; minutes: number }> = {
+// 같은 이유로 export — NextMapPrompt.tsx의 다음 주제 카드도 문항 수·
+// 예상 시간을 랜딩과 같은 값으로 보여준다.
+export const TOPIC_META: Record<string, { questions: number; minutes: number }> = {
   idealType: { questions: 38, minutes: 9 },
   selfIntro: { questions: 34, minutes: 8 },
   friendship: { questions: 30, minutes: 7 },

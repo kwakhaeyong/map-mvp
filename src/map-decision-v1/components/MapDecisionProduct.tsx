@@ -271,22 +271,22 @@ export function MapDecisionProduct() {
   if (session.stage === "result") {
     const resultTopic = resolveTopic(session.topicId);
     if (resultTopic.resultLayoutId === "idealType") {
-      return <IdealTypeCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
+      return <IdealTypeCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onStartTopic={start} />;
     }
     if (resultTopic.resultLayoutId === "selfIntro") {
-      return <SelfIntroCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
+      return <SelfIntroCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onStartTopic={start} />;
     }
     if (resultTopic.resultLayoutId === "friendship") {
-      return <FriendshipCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
+      return <FriendshipCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onStartTopic={start} />;
     }
     if (resultTopic.resultLayoutId === "work") {
-      return <WorkCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
+      return <WorkCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onStartTopic={start} />;
     }
     if (resultTopic.resultLayoutId === "taste") {
-      return <TasteCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
+      return <TasteCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onStartTopic={start} />;
     }
     if (resultTopic.resultLayoutId === "travelStyle") {
-      return <TravelCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} />;
+      return <TravelCard session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onStartTopic={start} />;
     }
     return <Result session={session} setSession={setSession} onContinue={goConversation} onReset={reset} onSelectType={selectType} onRealStart={exitDemoToReal} saveState={saveState} />;
   }

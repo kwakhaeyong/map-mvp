@@ -8,6 +8,7 @@ import { MapSession } from "../types";
 import { Brand } from "./Landing";
 import { GenerationWaitCard } from "./GenerationProgress";
 import { WorkResultBlocks } from "./WorkResultBlocks";
+import { NextMapPrompt } from "./NextMapPrompt";
 import { ShareStatusCard, useShareResult } from "./ShareResult";
 import { ImageSaveModal, useImageShare } from "./ImageShare";
 import { Button, Card } from "./ui/primitives";
@@ -28,10 +29,12 @@ function WorkCardBody({
   session,
   setSession,
   onReset,
+  onStartTopic,
 }: {
   session: MapSession;
   setSession: Dispatch<SetStateAction<MapSession>>;
   onReset: () => void;
+  onStartTopic: (topicId: string) => void;
 }) {
   const result = session.workResult!;
 
@@ -85,6 +88,7 @@ function WorkCardBody({
       <Button variant="primary" size="lg" onClick={onReset}>
         너도 만들어봐
       </Button>
+      <NextMapPrompt session={session} tags={result.tags} onStartTopic={onStartTopic} />
       <p className="text-center text-xs font-semibold text-text-muted">
         <a href="/privacy" className="underline underline-offset-2 hover:text-text-primary">
           개인정보처리방침
@@ -108,11 +112,13 @@ export function WorkCard({
   setSession,
   onContinue,
   onReset,
+  onStartTopic,
 }: {
   session: MapSession;
   setSession: Dispatch<SetStateAction<MapSession>>;
   onContinue: () => void;
   onReset: () => void;
+  onStartTopic: (topicId: string) => void;
 }) {
   const [generationState, setGenerationState] = useState<"idle" | "loading" | "error" | "fallback">("idle");
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -201,7 +207,7 @@ export function WorkCard({
           </button>
         </div>
         {session.workResult ? (
-          <WorkCardBody session={session} setSession={setSession} onReset={onReset} />
+          <WorkCardBody session={session} setSession={setSession} onReset={onReset} onStartTopic={onStartTopic} />
         ) : generationState === "loading" ? (
           <GenerationWaitCard
             key={attempt}
