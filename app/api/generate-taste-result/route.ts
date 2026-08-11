@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateTasteResult } from "../../../src/map-decision-v1/engine/taste-generator";
+import { generateTasteResult, hasSufficientTimeBudgetForTasteGeneration } from "../../../src/map-decision-v1/engine/taste-generator";
 import {
   acquireGenerationMarker,
   computeGenerationCacheKey,
   getCachedGeneration,
-  hasSufficientTimeBudgetForGeneration,
   releaseGenerationMarker,
   setCachedGeneration,
   waitForCachedGeneration,
@@ -168,10 +167,14 @@ export async function POST(request: NextRequest) {
     // 남은 시간 예산이 생성 1회를 안전하게 마치기에 부족하면 시작도 하지
     // 않는다 — 어차피 결과를 못 보고 Vercel에 강제 종료돼 사용자가 빈
     // 504만 보게 될 확률이 높은 시도라면, 차라리 기존 502
-    // generation_failed 응답을 바로 주는 편이 낫다(generation-cache.ts의
-    // hasSufficientTimeBudgetForGeneration 참고 — 마커 대기를 거쳤어도
-    // requestStartedAt 기준 남은 시간만 보므로 이 판단은 자동으로 맞다).
-    if (!hasSufficientTimeBudgetForGeneration(requestStartedAt)) {
+    // generation_failed 응답을 바로 주는 편이 낫다. GENERATION BUDGET
+    // 조사(2026-08)로 taste만 max_tokens를 20480으로 올렸기 때문에, 다른
+    // 5개 주제가 쓰는 공용 함수(generation-cache.ts의 hasSufficientTime
+    // BudgetForGeneration, 170초 기준)가 아니라 taste 전용 기준(220초,
+    // taste-generator.ts의 TASTE_MIN_TIME_BUDGET_FOR_GENERATION_MS 참고)을
+    // 쓴다 — 마커 대기를 거쳤어도 requestStartedAt 기준 남은 시간만
+    // 보므로 이 판단은 자동으로 맞다.
+    if (!hasSufficientTimeBudgetForTasteGeneration(requestStartedAt)) {
       logTiming("insufficient_time_budget");
       return NextResponse.json(
         { blocked: true, reason: "generation_failed", message: "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,
@@ -212,15 +215,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { result, countsAsFailure, attempts, category } = await generateTasteResult(session, { requestStartedAt });
+    const { result, countsAsFailure, attempts, category, diagnostics } = await generateTasteResult(session, { requestStartedAt });
     if (!result) {
       await releaseGenerationSlotOnFailure(ip, session.startedAt, countsAsFailure);
-      // category/attempts는 사용자 응답(BlockedResponse)에는 절대 넣지 않는다 —
-      // Vercel Runtime Logs에서 "왜 실패했는지"를 바로 구분하기 위한 서버
-      // 전용 로그다. attemptGeneration이 이미 시도별로 더 자세한 로그를
-      // 남기지만, 이 한 줄은 "최종적으로 이 요청이 어떻게 끝났는지"를
-      // 한눈에 보여준다(재시도가 있었다면 attempts>1).
-      console.error("[generate-taste-result] final failure", { attempts, category, countsAsFailure });
+      // category/attempts/diagnostics는 사용자 응답(BlockedResponse)에는 절대
+      // 넣지 않는다 — Vercel Runtime Logs에서 "왜 실패했는지"를 바로
+      // 구분하기 위한 서버 전용 로그다. attemptGeneration이 이미 시도별로
+      // 더 자세한 로그를 남기지만, 이 한 줄은 "최종적으로 이 요청이 어떻게
+      // 끝났는지"를 한눈에 보여준다(재시도가 있었다면 attempts>1).
+      console.error("[generate-taste-result] final failure", { attempts, category, countsAsFailure, diagnostics });
       logTiming("generation_failed");
       return NextResponse.json(
         { blocked: true, reason: "generation_failed", message: "지금은 카드를 만들 수 없어요. 잠시 후 다시 시도해 주세요." } satisfies BlockedResponse,

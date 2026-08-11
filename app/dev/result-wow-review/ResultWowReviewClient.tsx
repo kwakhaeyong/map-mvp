@@ -177,31 +177,90 @@ function FailureDetail({ category, attempts }: { category: string | null; attemp
   );
 }
 
+// GENERATION BUDGET 조사(2026-08)로 추가. app/api/review-taste-a/route.ts가
+// generateTasteResult의 마지막 시도 진단(engine/taste-generator.ts의
+// TasteGenerationDiagnostics)을 그대로 실어 보내는 값을 화면에 그대로
+// 편다 — 여기서 새로 계산하는 값은 없다. truncated 여부는 stop_reason이
+// "max_tokens"인지로 바로 판단할 수 있다(다시 truncated가 나오면 max_
+// tokens를 더 올려야 한다는 신호).
+type Diagnostics = {
+  stopReason: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  thinkingTokens: number | null;
+  effort: string;
+  attemptDurationMs: number;
+} | null;
+
+function formatMs(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined) return "-";
+  return `${(ms / 1000).toFixed(1)}초`;
+}
+
+function formatTokens(value: number | null | undefined): string {
+  return value === null || value === undefined ? "-" : value.toLocaleString("ko-KR");
+}
+
+function DiagnosticsPanel({ diagnostics, totalDurationMs, attempts }: { diagnostics: Diagnostics; totalDurationMs: number | null; attempts: number }) {
+  const stopReason = diagnostics?.stopReason ?? null;
+  return (
+    <Card className="flex flex-col gap-2">
+      <p className="text-xs font-black uppercase tracking-[0.08em] text-text-muted">generation diagnostics</p>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs font-mono leading-5 text-text-secondary">
+        <dt className="font-black text-text-muted">stop_reason</dt>
+        <dd className={cx(stopReason === "max_tokens" && "font-black text-error")}>{stopReason ?? "-"}</dd>
+        <dt className="font-black text-text-muted">input_tokens</dt>
+        <dd>{formatTokens(diagnostics?.inputTokens)}</dd>
+        <dt className="font-black text-text-muted">output_tokens</dt>
+        <dd>{formatTokens(diagnostics?.outputTokens)}</dd>
+        <dt className="font-black text-text-muted">thinking_tokens</dt>
+        <dd>{formatTokens(diagnostics?.thinkingTokens)}</dd>
+        <dt className="font-black text-text-muted">effort</dt>
+        <dd>{diagnostics?.effort ?? "-"}</dd>
+        <dt className="font-black text-text-muted">attempts</dt>
+        <dd>{attempts}</dd>
+        <dt className="font-black text-text-muted">마지막 시도 소요 시간</dt>
+        <dd>{formatMs(diagnostics?.attemptDurationMs)}</dd>
+        <dt className="font-black text-text-muted">전체 소요 시간</dt>
+        <dd>{formatMs(totalDurationMs)}</dd>
+      </dl>
+    </Card>
+  );
+}
+
 export function ResultWowReviewClient() {
   const [state, setState] = useState<RequestState>("idle");
   const [result, setResult] = useState<TasteResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [failureCategory, setFailureCategory] = useState<string | null>(null);
   const [attempts, setAttempts] = useState<number>(0);
+  const [diagnostics, setDiagnostics] = useState<Diagnostics>(null);
+  const [totalDurationMs, setTotalDurationMs] = useState<number | null>(null);
 
   const generate = async () => {
     setState("loading");
     setErrorMessage(null);
     setFailureCategory(null);
     setAttempts(0);
+    setDiagnostics(null);
+    setTotalDurationMs(null);
     try {
       const response = await fetch("/api/review-taste-a", { method: "POST" });
       const data = await response.json();
       if (!response.ok || !data.ok) {
         setFailureCategory(typeof data.category === "string" ? data.category : "unknown_error");
         setAttempts(typeof data.attempts === "number" ? data.attempts : 0);
+        setDiagnostics(data.diagnostics ?? null);
+        setTotalDurationMs(typeof data.totalDurationMs === "number" ? data.totalDurationMs : null);
         setErrorMessage(
-          data.category === "blocked_in_production" ? "이 도구는 production에서 사용할 수 없어요." : "생성에 실패했어요. 아래 category를 확인하세요.",
+          data.category === "blocked_in_production" ? "이 도구는 production에서 사용할 수 없어요." : "생성에 실패했어요. 아래 category와 diagnostics를 확인하세요.",
         );
         setState("error");
         return;
       }
       setAttempts(typeof data.attempts === "number" ? data.attempts : 1);
+      setDiagnostics(data.diagnostics ?? null);
+      setTotalDurationMs(typeof data.totalDurationMs === "number" ? data.totalDurationMs : null);
       setResult(data.result);
       setState("success");
     } catch {
@@ -225,13 +284,14 @@ export function ResultWowReviewClient() {
       </Button>
 
       {state === "error" && errorMessage ? (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2">
           <p className="text-sm font-bold text-error">{errorMessage}</p>
           <FailureDetail category={failureCategory} attempts={attempts} />
+          <DiagnosticsPanel diagnostics={diagnostics} totalDurationMs={totalDurationMs} attempts={attempts} />
         </div>
       ) : null}
 
-      {result ? <p className="text-xs font-mono leading-5 text-text-muted">생성 시도 횟수: {attempts}{attempts > 1 ? " (재시도 있었음)" : ""}</p> : null}
+      {result ? <DiagnosticsPanel diagnostics={diagnostics} totalDurationMs={totalDurationMs} attempts={attempts} /> : null}
       {result ? <NewResultPreview result={result} /> : null}
       {result ? <ResultView result={result} /> : null}
     </div>

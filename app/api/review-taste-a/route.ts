@@ -41,13 +41,25 @@ export async function POST() {
   const requestStartedAt = Date.now();
   const session = buildReviewPersonaSession("A");
   const outcome = await generateTasteResult(session, { requestStartedAt });
+  // GENERATION BUDGET 조사(2026-08)로 추가 — generateTasteResult가 반환한
+  // 진단 정보(마지막 시도의 stop_reason/토큰 수/effort)에, 이 라우트만
+  // 아는 값(전체 소요 시간 = 재시도·backoff까지 포함한 실제 체감 시간)을
+  // 더해 그대로 응답에 싣는다.
+  const totalDurationMs = Date.now() - requestStartedAt;
 
   if (!outcome.result) {
     return NextResponse.json(
-      { ok: false, category: outcome.category, attempts: outcome.attempts, countsAsFailure: outcome.countsAsFailure },
+      {
+        ok: false,
+        category: outcome.category,
+        attempts: outcome.attempts,
+        countsAsFailure: outcome.countsAsFailure,
+        diagnostics: outcome.diagnostics,
+        totalDurationMs,
+      },
       { status: 502 },
     );
   }
 
-  return NextResponse.json({ ok: true, result: outcome.result, attempts: outcome.attempts });
+  return NextResponse.json({ ok: true, result: outcome.result, attempts: outcome.attempts, diagnostics: outcome.diagnostics, totalDurationMs });
 }

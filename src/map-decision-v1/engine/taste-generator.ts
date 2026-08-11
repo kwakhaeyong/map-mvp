@@ -1,7 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { MapSession, TasteMatrixPoint, TasteResult, TasteRoadmapPhase } from "../types";
 import { getGenerationEffort } from "./generation-config";
-import { MIN_TIME_BUDGET_FOR_GENERATION_MS } from "./generation-cache";
 import { isServerSideGenerationError } from "./generation-error";
 import { logGenerationAttempt } from "./generation-timing";
 import { getIdealTypeTags, getStatusLabel } from "./ideal-type-tags";
@@ -282,10 +281,26 @@ function capRoadmapPhases(phases: RawRoadmap["phases"]): TasteRoadmapPhase[] {
   return capArray(phases, 4).map((phase) => ({ label: phase.label, actions: capArray(phase.actions, 4) }));
 }
 
-// 다른 다섯 주제와 같은 이유(Sonnet 5의 기본 사고 토큰이 max_tokens
-// 예산에 포함됨)로 같은 상한 방식을 그대로 쓴다 — engine/ideal-type-
-// generator.ts 참고.
-const TASTE_MAX_TOKENS = 16384;
+// GENERATION BUDGET 조사(2026-08)로 16384 → 20480(+4096, +25%)로 올렸다.
+// Preview에서 실제로 category=truncated(stop_reason="max_tokens")가
+// 확인됐다 — "추정"이 아니라 관측된 사실이다. 원인 후보 두 개를 비교했다:
+// (1) effort를 낮춘다 — thinking 토큰 소비를 줄여 최종 JSON에 남는
+//     여유를 늘릴 수 있지만, generation-config.ts에 이미 적어둔 대로
+//     Sonnet 5는 medium 밑으로 내리면 품질이 눈에 띄게 떨어질 수 있다는
+//     공식 문서 근거가 있다 — "결과 품질을 떨어뜨리지 마라"는 이번 조사
+//     지시와 정면으로 부딪힌다. 채택하지 않는다.
+// (2) max_tokens를 올린다 — thinking·최종 JSON 배분에는 손대지 않고
+//     그릇만 키운다. 이미 stop_reason="end_turn"으로 정상 종료되는
+//     생성은 max_tokens를 올려도 걸리는 시간이 그대로다(모델이 다 쓰고
+//     나면 알아서 멈춘다 — 상한까지 채우고서야 멈추는 게 아니다).
+//     길어지는 건 "이미 잘리고 있던" 케이스뿐이라, 상한을 25%만 올려도
+//     대부분의 truncation은 해소되면서 시간 예산에 주는 영향은 최소로
+//     유지된다. 채택.
+// 이 값과 짝을 이루는 시간 예산 조정은 아래 TASTE_MIN_TIME_BUDGET_FOR_
+// GENERATION_MS 주석 참고 — 두 값을 같이 안 바꾸면 "더 길게 쓰도록
+// 늘려준 예산" 때문에 라우트가 300초를 넘겨 504로 끊길 위험이 그대로
+// 남는다.
+const TASTE_MAX_TOKENS = 20480;
 
 // RESULT GENERATION FAILURE 조사(2026-08)로 추가한 실패 분류. 지금까지는
 // 모든 실패가 사용자에게도, 개발 로그에서도 "생성 실패" 하나로 뭉뚱그려
@@ -351,7 +366,26 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-type AttemptOutcome = { result: TasteResult | null; truncated: boolean; countsAsFailure: boolean; category: FailureCategory | null };
+// GENERATION BUDGET 조사(2026-08)로 추가 — Preview 진단 화면(app/dev/
+// result-wow-review)과 서버 로그에서 "실제로 무슨 일이 있었는지"를
+// 숫자로 보여준다. production 사용자 응답에는 넣지 않는다(TasteGeneration
+// Outcome 주석 참고).
+export type TasteGenerationDiagnostics = {
+  stopReason: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  thinkingTokens: number | null;
+  effort: string;
+  attemptDurationMs: number;
+};
+
+type AttemptOutcome = {
+  result: TasteResult | null;
+  truncated: boolean;
+  countsAsFailure: boolean;
+  category: FailureCategory | null;
+  diagnostics: TasteGenerationDiagnostics;
+};
 
 // countsAsFailure: 이 실패를 rate-limit.ts의 세션당 실패 상한에 넣을지.
 // 서버 쪽 원인(engine/generation-error.ts)은 false, 빈 응답·스키마
@@ -364,14 +398,25 @@ async function attemptGeneration(
   attempt: number,
   generationStartedAt: number,
 ): Promise<AttemptOutcome> {
+  const attemptStartedAt = Date.now();
   let responseText: string | undefined;
   let truncated = false;
+  let stopReason: string | null = null;
+  let inputTokens: number | null = null;
   let outputTokens: number | null = null;
   let thinkingTokens: number | null = null;
   // getGenerationEffort()는 호출될 때마다 "[generation] effort=..."를
   // 로그로 남긴다 — 아래 계측 로그에도 같은 값을 실어야 하니 한 번만
   // 불러 변수에 담아 재사용한다(두 번 부르면 그 로그도 두 번 남는다).
   const effort = getGenerationEffort();
+  const diagnostics = (): TasteGenerationDiagnostics => ({
+    stopReason,
+    inputTokens,
+    outputTokens,
+    thinkingTokens,
+    effort,
+    attemptDurationMs: Date.now() - attemptStartedAt,
+  });
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-5",
@@ -389,6 +434,8 @@ async function attemptGeneration(
       },
     });
     truncated = response.stop_reason === "max_tokens";
+    stopReason = response.stop_reason ?? null;
+    inputTokens = response.usage?.input_tokens ?? null;
     outputTokens = response.usage?.output_tokens ?? null;
     thinkingTokens = response.usage?.output_tokens_details?.thinking_tokens ?? null;
     if (truncated) {
@@ -417,7 +464,7 @@ async function attemptGeneration(
       countsAsFailure: !serverSide,
     });
     logGenerationAttempt({ topic: "taste", attempt, generationStartedAt, effort, outcome: { kind: "api_error" } });
-    return { result: null, truncated, countsAsFailure: !serverSide, category };
+    return { result: null, truncated, countsAsFailure: !serverSide, category, diagnostics: diagnostics() };
   }
 
   if (!responseText) {
@@ -429,7 +476,7 @@ async function attemptGeneration(
       effort,
       outcome: truncated ? { kind: "truncated", outputTokens, thinkingTokens } : { kind: "api_error" },
     });
-    return { result: null, truncated, countsAsFailure: true, category: truncated ? "truncated" : "empty_response" };
+    return { result: null, truncated, countsAsFailure: true, category: truncated ? "truncated" : "empty_response", diagnostics: diagnostics() };
   }
 
   const parsed = parseAndValidate(responseText);
@@ -442,7 +489,7 @@ async function attemptGeneration(
       effort,
       outcome: truncated ? { kind: "truncated", outputTokens, thinkingTokens } : { kind: "schema_invalid", outputTokens, thinkingTokens },
     });
-    return { result: null, truncated, countsAsFailure: true, category: truncated ? "truncated" : "schema_invalid" };
+    return { result: null, truncated, countsAsFailure: true, category: truncated ? "truncated" : "schema_invalid", diagnostics: diagnostics() };
   }
 
   const data = parsed.data;
@@ -483,7 +530,7 @@ async function attemptGeneration(
     statusLabel: getStatusLabel(session.quizAnswers, "taste"),
   };
   logGenerationAttempt({ topic: "taste", attempt, generationStartedAt, effort, outcome: { kind: "success", outputTokens, thinkingTokens } });
-  return { result, truncated, countsAsFailure: false, category: null };
+  return { result, truncated, countsAsFailure: false, category: null, diagnostics: diagnostics() };
 }
 
 // RESULT GENERATION FAILURE 조사(2026-08) 이전에는 이 값이 2였다가, 실제
@@ -500,33 +547,60 @@ async function attemptGeneration(
 // 2였다는 것 자체가 원인이 아니다).
 const MAX_GENERATION_ATTEMPTS = 2;
 
-// 시도 하나를 더 시작해도 안전한지 판단하는 기준. generation-cache.ts의
-// MIN_TIME_BUDGET_FOR_GENERATION_MS(170초 = 실측 최대 151초 + 20초 여유)를
-// 그대로 재사용한다 — API 라우트가 "생성을 시작해도 되는지" 판단할 때
-// 쓰는 것과 같은 기준을, "재시도를 시작해도 되는지" 판단에도 똑같이
-// 적용하는 것이다(생성-cache.ts를 고치지 않고 그 파일이 이미 export해둔
-// 값을 가져다 쓸 뿐이라 다른 5개 주제의 동작에는 아무 영향이 없다).
-function shouldRetry(category: FailureCategory | null, requestStartedAt: number): boolean {
-  if (!category || !RETRYABLE_CATEGORIES.has(category)) return false;
-  const remainingMs = ROUTE_MAX_DURATION_MS - (Date.now() - requestStartedAt);
-  return remainingMs >= MIN_TIME_BUDGET_FOR_GENERATION_MS;
-}
-
 // app/api/generate-taste-result/route.ts의 maxDuration과 같은 값이다(300초).
 // 그 값을 리터럴로 export할 수 없는 이유는 generation-cache.ts의
 // ROUTE_MAX_DURATION_MS 주석과 같다(Next.js가 각 route.ts 파일에서
 // `export const maxDuration = 300`을 직접 읽어야 한다) — 여기서도
 // 독립적으로 같은 값을 든다.
-const ROUTE_MAX_DURATION_MS = 300_000;
+export const TASTE_ROUTE_MAX_DURATION_MS = 300_000;
+
+// GENERATION BUDGET 조사(2026-08)로 generation-cache.ts의 공용 상수
+// (MIN_TIME_BUDGET_FOR_GENERATION_MS=170초, TASTE_MAX_TOKENS=16384 시절의
+// 실측 최대 151초+20초 여유) 대신 taste 전용 값을 따로 둔다 — max_tokens를
+// 20480으로 올린 이상 그 옛 151초 기준을 그대로 쓰면 실제로는 더 길어질
+// 수 있는 시도를 "안전하다"고 잘못 판단할 위험이 있다(다른 5개 주제는
+// max_tokens를 그대로 뒀으니 generation-cache.ts의 공용 값이 여전히
+// 맞다 — 그 파일은 고치지 않는다).
+//
+// 계산 근거: 16384 토큰 시도의 실측 최대 151초에서 "토큰당 처리 시간"을
+// 역산하면 151,000ms ÷ 16,384 ≈ 9.2ms/토큰. max_tokens를 20480으로
+// 4,096 늘렸으니 최악의 경우 최대 +4,096 × 9.2ms ≈ +38초가 더 걸릴 수
+// 있다고 보수적으로 잡는다(성공적으로 끝나는 대부분의 생성은 상한을
+// 다 안 쓰고 stop_reason="end_turn"으로 먼저 멈추므로 이 값은 최악의
+// 경우만 가정한 추정치다 — 실측이 아니다. 아래 Preview 진단(duration)
+// 으로 실제 값을 확인하고, 필요하면 이 상수도 같이 조정한다).
+// 151초 + 38초 ≈ 189초에 20초 여유를 더해 반올림한 값이다.
+export const TASTE_MIN_TIME_BUDGET_FOR_GENERATION_MS = 220_000;
+
+// 시도 하나를 더 시작해도(재시도든, 라우트의 최초 생성 시작이든) 안전한지
+// 판단하는 공통 기준.
+function hasSufficientTimeBudget(requestStartedAt: number): boolean {
+  const remainingMs = TASTE_ROUTE_MAX_DURATION_MS - (Date.now() - requestStartedAt);
+  return remainingMs >= TASTE_MIN_TIME_BUDGET_FOR_GENERATION_MS;
+}
+
+// app/api/generate-taste-result/route.ts가 "생성을 시작해도 되는지"
+// 판단할 때 쓴다 — generation-cache.ts의 hasSufficientTimeBudgetForGeneration
+// (공용, 170초 기준)이 아니라 이 함수(taste 전용, 220초 기준)를 대신
+// 쓴다. 다른 5개 주제의 route.ts는 여전히 공용 함수를 그대로 쓴다.
+export function hasSufficientTimeBudgetForTasteGeneration(requestStartedAt: number): boolean {
+  return hasSufficientTimeBudget(requestStartedAt);
+}
+
+function shouldRetry(category: FailureCategory | null, requestStartedAt: number): boolean {
+  if (!category || !RETRYABLE_CATEGORIES.has(category)) return false;
+  return hasSufficientTimeBudget(requestStartedAt);
+}
 
 export type TasteGenerationOutcome = {
   result: TasteResult | null;
   countsAsFailure: boolean;
-  // 아래 둘은 production 사용자 응답(app/api/generate-taste-result/route.ts)에는
+  // 아래 셋은 production 사용자 응답(app/api/generate-taste-result/route.ts)에는
   // 노출하지 않는다 — Preview 전용 진단 라우트(app/api/review-taste-a/route.ts)와
   // 서버 로그에서만 쓴다.
   attempts: number;
   category: FailureCategory | null;
+  diagnostics: TasteGenerationDiagnostics | null;
 };
 
 // Server-side only: reads ANTHROPIC_API_KEY from the environment and must
@@ -549,7 +623,7 @@ export async function generateTasteResult(session: MapSession, options?: { reque
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error("[taste-generator] ANTHROPIC_API_KEY not set");
-    return { result: null, countsAsFailure: false, attempts: 0, category: null };
+    return { result: null, countsAsFailure: false, attempts: 0, category: null, diagnostics: null };
   }
 
   const client = new Anthropic({ apiKey });
@@ -557,12 +631,16 @@ export async function generateTasteResult(session: MapSession, options?: { reque
   const requestStartedAt = options?.requestStartedAt ?? generationStartedAt;
   let countsAsFailure = false;
   let lastCategory: FailureCategory | null = null;
+  let lastDiagnostics: TasteGenerationDiagnostics | null = null;
   let attemptsMade = 0;
 
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
     attemptsMade = attempt;
     const outcome = await attemptGeneration(client, session, TASTE_MAX_TOKENS, attempt, generationStartedAt);
-    if (outcome.result) return { result: outcome.result, countsAsFailure: false, attempts: attempt, category: null };
+    lastDiagnostics = outcome.diagnostics;
+    if (outcome.result) {
+      return { result: outcome.result, countsAsFailure: false, attempts: attempt, category: null, diagnostics: outcome.diagnostics };
+    }
     if (outcome.countsAsFailure) countsAsFailure = true;
     lastCategory = outcome.category;
 
@@ -576,7 +654,7 @@ export async function generateTasteResult(session: MapSession, options?: { reque
         attempt,
         category: outcome.category,
         retryableCategory: outcome.category ? RETRYABLE_CATEGORIES.has(outcome.category) : false,
-        remainingMs: ROUTE_MAX_DURATION_MS - (Date.now() - requestStartedAt),
+        remainingMs: TASTE_ROUTE_MAX_DURATION_MS - (Date.now() - requestStartedAt),
       });
       break;
     }
@@ -585,5 +663,5 @@ export async function generateTasteResult(session: MapSession, options?: { reque
       await sleep(RETRY_BACKOFF_MS);
     }
   }
-  return { result: null, countsAsFailure, attempts: attemptsMade, category: lastCategory };
+  return { result: null, countsAsFailure, attempts: attemptsMade, category: lastCategory, diagnostics: lastDiagnostics };
 }
