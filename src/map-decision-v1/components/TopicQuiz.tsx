@@ -817,14 +817,6 @@ const DEPTH_FIELD_BY_TOPIC: Partial<Record<string, "selfIntroQuizDepth" | "ideal
   selfIntro: "selfIntroQuizDepth",
 };
 
-// quiz_start를 어느 step에서 찍을지 — 대부분의 주제는 Q1 화면(0)이지만,
-// taste는 Landing.tsx의 REAL Q1 히어로가 tasteMode(Q1)를 이미 답으로
-// 받아 TopicQuiz를 quizStep: 1(Q2)부터 마운트시키므로 1이다. 자세한
-// 이유는 아래 quizStartTrackedRef 근처 주석 참고.
-const QUIZ_START_STEP_BY_TOPIC: Partial<Record<string, number>> = {
-  taste: 1,
-};
-
 // 기본은 접힌 한 줄 요약 — 문항을 밀어내지 않으면서 "완주하면 이만큼
 // 받는다"는 걸 계속 인지시킨다. 펼치면 블록 이름을 그대로 보여준다.
 //
@@ -908,24 +900,34 @@ export function TopicQuiz({
   const step = isStaleQuizProgress ? 0 : (session.quizStep ?? 0);
   const phase = resolvePhase(step, requiredAxes, optionalAxes);
 
-  // quiz_start(FIRST CLICK MVP, 2026-08 / FIRST ACTION MVP, 2026-08 갱신) —
+  // quiz_start(FIRST CLICK MVP, 2026-08 / FIRST ACTION MVP 보완, 2026-08) —
   // "TopicQuiz 화면에서 실제 진행이 시작된 시점"에만 찍는다. 대부분의
-  // 주제는 이 시점이 곧 Q1 화면(step === 0)이지만, taste는 더 이상 아니다
-  // — Landing.tsx의 REAL Q1 히어로가 tasteMode(Q1)를 이미 답으로 받아
-  // TopicQuiz를 quizStep: 1(Q2)부터 마운트시키기 때문에, taste에서
-  // step === 0 조건은 영원히 참이 될 수 없다(그 세션에서 quiz_start가
-  // 아예 안 찍히는 구멍이 생김). QUIZ_START_STEP_BY_TOPIC으로 "어느
-  // step에서 찍을지"를 주제별로 결정한다 — taste만 1(Q2 도달), 나머지는
-  // 기존과 같은 0(Q1 도달). `/?start=taste` 딥링크처럼 히어로를 거치지
-  // 않고 곧장 quizStep 0으로 들어온 taste 세션도, 그 안에서 Q1을 답해
-  // step이 1이 되는 순간(=실질적으로 "Q2에 처음 진입") 정상적으로 한
-  // 번만 찍힌다 — 별도 세션 플래그 없이 이 규칙 하나로 두 진입 경로
-  // 모두 커버된다.
+  // 주제는 이 시점이 곧 Q1 화면(step === 0)이지만, taste는 진입 경로가
+  // 둘이라 하나의 고정 step으로 정할 수 없다:
+  //   1) Landing.tsx REAL Q1 히어로 — tasteMode(Q1)를 이미 답으로 받아
+  //      TopicQuiz가 quizStep: 1(Q2)부터 마운트된다. 이 경로에서는 Q2
+  //      화면(step === 1)이 "TopicQuiz에서 실제로 진행이 시작된 시점"이다.
+  //      Q1은 이미 랜딩에서 답했으니 Q1에서 다시 찍으면 이중 계산이 된다.
+  //   2) MapDecisionProduct.tsx의 generic start("taste")(그리드 클릭·
+  //      NextMapPrompt "다음 MAP 유도" 추천 등) — ProfileStep을 거치지
+  //      않고 TopicQuiz가 실제 Q1(tasteMode)부터 정상적으로 시작한다
+  //      (start() 함수 근처 주석 참고). 이 경로에서는 Q1 화면
+  //      (step === 0)이 진행 시작 시점이다 — 나머지 5개 주제와 동일.
+  // 새 session 필드를 추가하지 않고, 이미 있는
+  // session.quizAnswers["tasteMode"] 존재 여부로 두 경로를 구분한다 —
+  // 1번 경로는 마운트 시점에 이미 그 값이 채워져 있고(Landing의
+  // startTasteFirstAnswer가 quizStep과 quizAnswers를 함께 세팅), 2번
+  // 경로는 마운트 시점에 비어 있다(아직 아무것도 안 답함). 컴포넌트가
+  // 처음 렌더될 때의 이 값으로 quizStartStep을 정하므로, 사용자가 그
+  // 뒤 실제로 Q1에 답해 quizAnswers.tasteMode가 채워지더라도(2번 경로)
+  // 이미 한 번 찍은 뒤라 재계산이 다시 영향을 주지 않는다(아래
+  // trackedRef 가드).
   // trackedRef는 React 18 StrictMode(개발 모드에서 마운트 직후 effect를
   // 한 번 더 실행)로 인한 중복 호출만 막는다 — 컴포넌트 인스턴스당 최대
   // 1회만 보내면 되고, 뒤로 가기로 그 step에 다시 도달해도(이미 한 번
   // 찍었으므로) 다시 찍지 않는다.
-  const quizStartStep = QUIZ_START_STEP_BY_TOPIC[topic.id] ?? 0;
+  const tasteAnsweredViaHero = topic.id === "taste" && Boolean(session.quizAnswers?.tasteMode);
+  const quizStartStep = topic.id === "taste" ? (tasteAnsweredViaHero ? 1 : 0) : 0;
   const quizStartTrackedRef = useRef(false);
   useEffect(() => {
     if (quizStartTrackedRef.current || step !== quizStartStep) return;

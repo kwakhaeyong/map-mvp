@@ -222,9 +222,23 @@ export function MapDecisionProduct() {
   // 새 세션에 이어붙인다(engine/session.ts의 preserveCompletedResults
   // 참고). 진행 중이던 것(messages/nodes/quizAnswers 등)은 이 함수가
   // 넘겨받지 않으므로 그대로 새 주제 것으로 리셋된다.
+  // FIRST ACTION MVP 보완(2026-08) — taste만 예외로 profile 화면을
+  // "퀴즈 전"이 아니라 "퀴즈 후"에 한 번만 보여준다. 이 예외가 없으면
+  // NextMapPrompt("다음 MAP 유도")가 taste를 추천해 이 함수로 들어오는
+  // 경로에서 ProfileStep → taste Q1~Q20 → (goProfileAfterQuiz가 다시)
+  // ProfileStep 순으로 profile 화면이 두 번 뜨는 회귀가 있었다(taste
+  // ProfileStep 후치를 도입하면서 새로 생긴 문제 — Landing REAL Q1
+  // 히어로가 아닌 다른 진입로가 있다는 걸 놓쳤다). createSession()이
+  // 만드는 세션은 stage:"conversation"이 기본값이라(session.ts), taste는
+  // 그 기본값을 그대로 두면 된다 — 다른 5개 주제는 지금처럼 stage를
+  // "profile"로 덮어써 퀴즈 전에 먼저 보여준다. taste의 quizStep은
+  // createSession()이 만드는 기본값 0 그대로라(Landing REAL Q1 히어로의
+  // startTasteFirstAnswer처럼 1로 미리 올리지 않는다), TopicQuiz가 실제
+  // Q1(tasteMode)부터 정상적으로 시작한다 — Q1을 건너뛰지 않는다.
   const start = (topicId?: string) => {
     setHasStaleResult(false);
-    setSession({ ...createSession(topicId, undefined, session), stage: "profile" });
+    const base = createSession(topicId, undefined, session);
+    setSession(topicId === "taste" ? base : { ...base, stage: "profile" });
   };
   // FIRST ACTION MVP(2026-08) — taste 전용. Landing.tsx의 REAL Q1
   // 히어로에서 사용자가 tasteMode(Q1)에 직접 답하면, "주제 고르기"와
