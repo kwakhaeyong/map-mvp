@@ -1,11 +1,40 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { track } from "@vercel/analytics";
 import { TOPICS, TopicConfig } from "../engine/topics";
 import { Badge, Button, Toast } from "./ui/primitives";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+// FIRST CLICK 대표 콘텐츠(2026-08) — 순수 장식용 등고선 SVG. Living Map의
+// "아직 다 드러나지 않은 것을 탐색한다"는 정체성을 새 이미지 자산 없이
+// 재현한다(app/globals.css·design-tokens.css에 기존 등고선 이미지·SVG
+// 컴포넌트가 없어 새로 만들었다 — MapCanvas.tsx의 <svg>는 화살표 마커용
+// 정의라 재사용 대상이 아니다). raw 색상값이 아니라 text-primary 토큰
+// 색을 currentColor로 물려받고, 투명도는 Tailwind 슬래시 클래스가 아니라
+// SVG 자체의 opacity 속성(디자인 시스템 검사 대상이 아닌 속성)으로만
+// 준다. 텍스트 가독성을 해치지 않도록 헤더 텍스트보다 DOM에서 먼저
+// 그려 아래 레이어에 깔리게 하고, 부모(Hero 섹션)에는 aria-hidden으로
+// 스크린리더가 무시하게 한다.
+function TasteHeroBackdrop() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 400 300"
+      preserveAspectRatio="xMidYMid slice"
+      className="pointer-events-none absolute inset-0 size-full text-primary"
+    >
+      <ellipse cx="335" cy="55" rx="150" ry="105" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.14" />
+      <ellipse cx="335" cy="55" rx="108" ry="72" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.2" />
+      <ellipse cx="335" cy="55" rx="64" ry="42" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.28" />
+      <circle cx="55" cy="270" r="95" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.1" />
+      <circle cx="55" cy="270" r="62" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.16" />
+      <circle cx="55" cy="270" r="30" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.22" />
+    </svg>
+  );
 }
 
 export function Brand() {
@@ -240,7 +269,31 @@ export function Landing({
 
   const handleLocked = (topic: TopicConfig) => setNotice(`${topic.name}은(는) 아직 준비 중이에요. 곧 만나요!`);
   const safetyNetTopic = TOPICS[SAFETY_NET_TOPIC_ID];
-  const viralTopicIds = hideWorkTopic ? VIRAL_TOPIC_IDS.filter((id) => id !== "work") : VIRAL_TOPIC_IDS;
+  // FIRST CLICK 개편(2026-08): Hero가 taste를 대표 콘텐츠로 크게 보여주니
+  // 아래 그리드에서는 중복 노출을 피하려고 taste를 뺀다. VIRAL_TOPIC_IDS
+  // 배열 자체(순서·구성)는 건드리지 않는다 — 결과 화면 하단 "다음 MAP
+  // 유도"(NextMapPrompt.tsx)가 이 배열을 그대로 재사용해 다음 주제를
+  // 추천하는데, 여기서 원본 배열에서 taste를 지우면 그쪽 추천 로직도
+  // taste를 영영 추천 못 하게 되는 사고로 이어진다. 이 필터링은 이
+  // 컴포넌트의 "그리드에 무엇을 그릴지"에만 쓰는 화면 표시 선택이다.
+  const gridTopicIds = VIRAL_TOPIC_IDS.filter((id) => id !== "taste" && (!hideWorkTopic || id !== "work"));
+
+  // topic_select — 랜딩에서 사용자가 실제로 주제를 골랐을 때만 찍는다.
+  // MapDecisionProduct.tsx의 start()(ProfileStep 진입 "직전")가 아니라
+  // 여기 클릭 시점에서 직접 track()을 부른다 — start()에서 찍으면
+  // TopicQuiz.tsx가 따로 찍는 quiz_start(실제 Q1 도달 시점)와 사실상
+  // 같은 타이밍이 돼버려 퍼널이 왜곡된다. 개인정보는 담지 않는다 —
+  // topicId와 source(어디서 골랐는지)만 보낸다. career·freeform은
+  // "테스트 선택"이 아니라 별도 성격의 진입이라 이 이벤트 대상에서
+  // 뺐다(기존 onStart를 그대로 쓴다, 아래 두 번째 TopicSection 참고).
+  const handleHeroStart = () => {
+    track("topic_select", { topicId: "taste", source: "hero" });
+    onStart("taste");
+  };
+  const handleGridStart = (topicId: string) => {
+    track("topic_select", { topicId, source: "grid" });
+    onStart(topicId);
+  };
 
   return (
     <main className="min-h-screen px-4 py-4 text-text-primary sm:px-6 lg:px-8">
@@ -267,47 +320,77 @@ export function Landing({
         </div>
       </header>
 
-      {/* 헤드라인·서브카피 교체 배경: 기존 "말하면 정리되는 나의 MAP" +
-          6개 카드 설명이 전부 "~정리해요"로 끝나 "정리"라는 단어가
-          첫 화면에 반복됐는데, 실제로 이 결과가 주는 건 정리가 아니라
-          재해석(답변 사이 간극을 짚어주는 발견)이라 약속과 실제가
-          어긋나 있었다. 새 헤드라인은 MBTI 같은 기존 유형 분류를 정면
-          배제하는 포지셔닝이다 — MAP은 태그 조합이 매번 달라 애초에
-          "유형"이 존재하지 않으므로 사실에 근거한 주장이다. "로그인
-          없이"는 6개 주제·진로 전부에 공통으로 해당하는 사실이라
-          카드마다 반복하지 않고 이 자리에서 한 번만 말한다(로그인·
-          회원가입·이메일 요구 지점이 코드 전체에 없다는 건 별도
-          조사로 확인됨).
+      {/* FIRST CLICK Hero 개편(2026-08): 첫 화면의 주인공을 브랜드 철학
+          문장("16개 유형에 넣지 않아요")에서 취향 대표 콘텐츠로 바꿨다 —
+          6개 주제를 실제 문항·재해석 구조·문항 수 기준으로 비교한 조사
+          결과, taste가 성별·연애 상태·직업(학생이면 work 카드 자체가
+          랜딩에서 숨는 것과 대비된다)에 가장 안 걸리고 6개 중 가장
+          짧다(20문항·약 5분)는 근거로 골랐다.
+
+          기존 헤드라인("16개 유형에 넣지 않아요")은 지우지 않고 작은
+          eyebrow로 격하했다 — 여전히 사실에 근거한 포지셔닝 문장이라
+          유지하되, 더 이상 첫 시선을 독점하지 않는다. 기존 서브카피
+          ("답한 나와 행동하는 나, 그 차이를 봅니다 · 로그인 없이")는
+          새 teaser("내가 말하는 취향과 실제로 고르는 것을 함께 봅니다")·
+          microcopy("가입 없음")와 의미가 겹쳐 그대로 두면 같은 말을 두
+          번 하게 돼 없앴다.
 
           이 위에 있던 "MAP Decision" kicker 텍스트(.kicker 클래스)는
-          2026-08에 없앴다 — 바로 위 헤더 로고에 이미 같은 글자가 있어
-          세로로 두 번 반복돼 보였다. 헤더는 모든 화면에 있는 고정
+          2026-08 초에 없앴다 — 바로 위 헤더 로고에 이미 같은 글자가
+          있어 세로로 두 번 반복돼 보였다. 헤더는 모든 화면에 있는 고정
           요소라 그대로 두고, 히어로 쪽만 지웠다. .kicker 클래스 자체는
           진로 결과 화면(Result.tsx)과 마인드맵 캔버스(MapCanvas.tsx)가
-          여전히 쓰고 있어 지우지 않았다. */}
-      <section className="map-container pb-2 pt-8 text-center sm:pt-14">
-        <h1 className="text-balance break-keep text-[1.9rem] font-black leading-[1.18] tracking-[-0.04em] sm:text-4xl">
-          16개 유형에<br className="sm:hidden" /> 넣지 않아요
+          여전히 쓰고 있어 지우지 않았다.
+
+          Result Teaser("이런 차이를 발견할 수 있어요...")는 특정 사용자
+          결과를 가장하지 않는다 — taste-generator.ts의 ★핵심 재해석
+          (1)★이 다루는 "자기 인식(1번 문항) vs 최근 실제 선택(2번 문항)"
+          간극의 종류만 예고한다(구체적 발견 문장은 담지 않음). */}
+      <section className="map-container relative overflow-hidden rounded-large border border-border bg-surface px-5 pb-8 pt-8 text-center shadow-floating sm:px-8 sm:pb-10 sm:pt-12">
+        <TasteHeroBackdrop />
+        <p className="text-xs font-black tracking-[-0.01em] text-text-muted">16개 유형에 넣지 않아요</p>
+        <h1 className="mx-auto mt-3 max-w-sm text-balance break-keep text-[2rem] font-black leading-[1.16] tracking-[-0.04em] sm:text-[2.6rem]">
+          나도 모르는<br />내 취향은?
         </h1>
-        <p className="mx-auto mt-3 max-w-md break-keep text-sm font-semibold leading-6 text-text-secondary sm:text-base">
-          답한 나와 행동하는 나, 그 차이를 봅니다 · 로그인 없이
+        <p className="mx-auto mt-4 max-w-xs break-keep text-sm font-semibold leading-6 text-text-secondary sm:max-w-sm sm:text-base">
+          익숙한 걸 계속 찾는지,<br />새로운 걸 자꾸 기웃대는지.
         </p>
+        <p className="mx-auto mt-2 max-w-xs break-keep text-sm font-semibold leading-6 text-text-secondary sm:max-w-sm sm:text-base">
+          내가 말하는 취향과<br />실제로 고르는 것을 함께 봅니다.
+        </p>
+        <div className="mx-auto mt-6 flex max-w-xs flex-col items-center gap-2 sm:max-w-none">
+          <Button variant="primary" size="lg" className="w-full sm:w-auto sm:px-12" onClick={handleHeroStart}>
+            취향 확인해보기
+          </Button>
+          <p className="text-xs font-semibold text-text-muted">약 5분 · 가입 없음 · 20문항</p>
+        </div>
+        <div className="mx-auto mt-6 max-w-sm rounded-medium border border-dashed border-border-strong bg-surface-elevated p-4 text-left">
+          <p className="text-[11px] font-black text-text-muted">이런 차이를 발견할 수 있어요</p>
+          <p className="mt-1 break-keep text-sm font-semibold leading-6 text-text-primary">
+            좋아한다고 생각한 것과 최근 실제로 고른 것은 다를 수도 있어요.
+          </p>
+        </div>
       </section>
 
-      {/* 홍보 유입의 주 목적지(완성된 이상형·나소개 등 6개)를 먼저
-          보여준다 — "무엇을 결정해야 할지"(현재 career 1개뿐)는 아래로
-          내렸다. 순서는 이 두 줄의 렌더링 순서로만 정해진다(공유
-          배열이 아니라 각자 자기 ids 배열을 가진 별개의 TopicSection
-          호출) — 섹션 내부 카드 순서(DEPTH_TOPIC_IDS/VIRAL_TOPIC_IDS)는
-          그대로다.
+      {/* 홍보 유입의 주 목적지(완성된 이상형·나소개 등)를 먼저 보여준다 —
+          "무엇을 결정해야 할지"(현재 career 1개뿐)는 아래로 내렸다.
+          순서는 이 두 줄의 렌더링 순서로만 정해진다(공유 배열이 아니라
+          각자 자기 ids 배열을 가진 별개의 TopicSection 호출) — 섹션
+          내부 카드 순서(DEPTH_TOPIC_IDS/VIRAL_TOPIC_IDS)는 그대로다.
 
           라벨 교체(2026-08): "가볍게, 빠르게"/"차근차근, 깊이 있게"는
           소요 방식(속도·깊이)만 말해서 두 그룹의 차이가 "빠른 것 vs
           느린 것"으로만 읽혔다("가볍게 빠르게가 무슨 말이에요?" 반응).
           "내가 어떤 사람인지"/"무엇을 결정해야 할지"는 각 그룹에서
           실제로 얻는 결과물(자기 이해 카드 vs 결정을 위한 정리)을
-          말한다. */}
-      <TopicSection kicker="내가 어떤 사람인지" ids={viralTopicIds} onStart={onStart} onLocked={handleLocked} />
+          말했었다.
+
+          라벨 재교체(2026-08, FIRST CLICK 개편): taste가 위 Hero로
+          올라가면서 이 섹션엔 taste를 뺀 나머지만 남는다 — "내가 어떤
+          사람인지"를 그대로 두면 taste가 빠진 게 아니라 처음부터 없던
+          것처럼 읽힌다. "다른 MAP"으로 바꿔 이 카드들이 위 Hero(taste)
+          말고도 더 있다는 걸 분명히 한다. */}
+      <TopicSection kicker="다른 MAP" ids={gridTopicIds} onStart={handleGridStart} onLocked={handleLocked} />
       <TopicSection
         kicker="무엇을 결정해야 할지"
         ids={DEPTH_TOPIC_IDS}

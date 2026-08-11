@@ -1,6 +1,7 @@
 "use client";
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { createId, now } from "../engine/session";
 import { resolveTopic, TopicAxis, TopicChoice, TopicOption } from "../engine/topics";
 import { MapSession } from "../types";
@@ -979,6 +980,23 @@ export function TopicQuiz({
   const step = isStaleQuizProgress ? 0 : (session.quizStep ?? 0);
   const phase = resolvePhase(step, requiredAxes, optionalAxes);
 
+  // quiz_start(FIRST CLICK MVP, 2026-08) — "실제로 Q1 화면에 도달한
+  // 시점"에만 찍는다(랜딩 카드 클릭이나 ProfileStep 진입 시점이 아니다
+  // — 그건 Landing.tsx의 topic_select가 이미 담당한다). step === 0일
+  // 때만 발동하는 조건 자체가 "지금 보이는 게 정말 Q1인지"를 보장한다
+  // — 저장된 세션을 이어서 하다가(quizStep > 0) 새로고침해 이 컴포넌트가
+  // 다시 마운트돼도, Q1이 아닌 문항을 보고 있다면 다시 찍히지 않는다.
+  // trackedRef는 React 18 StrictMode(개발 모드에서 마운트 직후 effect를
+  // 한 번 더 실행)로 인한 중복 호출만 막는다 — 컴포넌트 인스턴스당 최대
+  // 1회만 보내면 되고, 뒤로 가기로 Q1에 다시 도달해도(이미 한 번
+  // 찍었으므로) 다시 찍지 않는다.
+  const quizStartTrackedRef = useRef(false);
+  useEffect(() => {
+    if (quizStartTrackedRef.current || step !== 0) return;
+    quizStartTrackedRef.current = true;
+    track("quiz_start", { topicId: topic.id });
+  }, [step, topic.id]);
+
   // axisId/selectedTopLevelLabels는 이 답변이 실제 TopicAxis(topics.ts)에
   // 묶여 있을 때만 넘어온다(마무리 질문 같은 자유 서술에는 없음) — 있을
   // 때만 session.quizAnswers에 기록해서 공유 태그(ideal-type-tags.ts)가
@@ -1102,6 +1120,13 @@ export function TopicQuiz({
                 const depth = step === requiredAxes.length + 1 ? "quick" : "deep";
                 setSession((current) => ({ ...current, [depthField]: depth }));
               }
+              // quiz_complete(FIRST CLICK MVP, 2026-08) — 마무리 질문
+              // 제출 버튼 클릭이라 클릭 한 번당 정확히 한 번만 실행된다
+              // (useEffect가 아니라 이벤트 핸들러라 StrictMode 이중 호출
+              // 대상이 아니다). 6개 완성형 퀴즈 주제 전부 심화 구간이
+              // 없어(optionalAxes 항상 빈 배열) closing이 유일한 종료
+              // 지점이다 — career는 이 컴포넌트를 쓰지 않아 대상이 아니다.
+              track("quiz_complete", { topicId: topic.id });
               onFinish();
             }}
           />

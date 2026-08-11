@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { createLandingSession, createSession, isSessionStale, now } from "../engine/session";
 import { resolveTopic } from "../engine/topics";
 import { clearSession, loadSession, saveSession } from "../storage/session-storage";
@@ -171,6 +172,30 @@ export function MapDecisionProduct() {
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
+
+  // result_view(FIRST CLICK MVP, 2026-08) — "실제 결과 stage에 도달한"
+  // 시점에 1회 찍는다. 6개 *Card.tsx에 각각 심지 않고 여기 한 곳에서만
+  // 담당한다 — stage가 "result"로 바뀌는 진입점이 여러 곳(퀴즈 완주,
+  // "이전 결과 보기", popstate 복귀 등)이라 각 컴포넌트마다 심으면 같은
+  // 진입을 두 번 셀 위험이 있는데, session.stage 자체를 감시하면 그
+  // 여러 경로를 전부 한곳에서 커버한다. 콘텐츠(로딩/완성)와 무관하게
+  // "결과 stage 진입" 자체를 잰다 — 로딩 화면과 완성된 결과를 구분해서
+  // 세려면 6개 *Card.tsx의 생성 상태까지 참조해야 해서 억지로 여기서
+  // 추상화하지 않는다(지시문 13번 참고). 의존성 배열이 session.stage
+  // 값 자체의 "변화"에만 반응하므로(useEffect 규칙), 같은 stage에
+  // 머무르는 동안의 재렌더(자동저장, workResult 도착 등)로는 다시
+  // 실행되지 않는다 — 이미 topicId+startedAt 키로 한 번 더 막는 것은
+  // React 18 StrictMode(개발 모드 마운트 시 effect 이중 실행) 대비다.
+  // 세션 복원 전(hydrated=false) 잠깐 SSR 기본값("landing")이 보였다가
+  // 바뀌는 순간은 세지 않는다.
+  const resultViewTrackedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hydrated || session.stage !== "result") return;
+    const key = `${session.topicId ?? "unknown"}:${session.startedAt}`;
+    if (resultViewTrackedKeyRef.current === key) return;
+    resultViewTrackedKeyRef.current = key;
+    track("result_view", { topicId: session.topicId ?? "unknown" });
+  }, [hydrated, session.stage, session.topicId, session.startedAt]);
 
   // 아래 네 곳 모두 세션을 통째로 새로 만든다 — 복원 시 계산해둔
   // hasStaleResult는 그 예전 세션 얘기라 새 세션에는 더 이상 맞지
