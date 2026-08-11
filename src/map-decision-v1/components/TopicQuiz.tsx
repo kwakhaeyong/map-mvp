@@ -74,19 +74,12 @@ function OptionChip({
   isDisabled,
   compact,
   onClick,
-  orderNumber,
 }: {
   choice: TopicChoice;
   isSelected: boolean;
   isDisabled: boolean;
   compact?: boolean;
   onClick: () => void;
-  // undefined면 기존과 완전히 동일(배지 없음) — BinaryStep과 AxisStep의
-  // 나머지 호출부는 전부 이 값을 넘기지 않아 그대로다. Q2(tasteRecent)의
-  // Reality Check Stack에서만 number(뽑힌 순서) | null(아직 안 뽑힘)을
-  // 넘겨서, 뽑히기 전부터 자리를 고정해 두고("빈 원") 뽑히면 숫자가
-  // 채워지는 식으로 레이아웃이 흔들리지 않게 한다.
-  orderNumber?: number | null;
 }) {
   return (
     <button
@@ -94,33 +87,80 @@ function OptionChip({
       onClick={onClick}
       disabled={isDisabled}
       className={cx(
-        "relative flex flex-col items-start gap-0.5 rounded-large border text-left transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+        "flex flex-col items-start gap-0.5 rounded-large border px-4 text-left transition-all duration-normal ease-emphasized disabled:pointer-events-none",
         compact ? "py-2" : "py-3",
-        orderNumber !== undefined ? (compact ? "pl-9 pr-4" : "pl-11 pr-4") : "px-4",
         isSelected
           ? "border-primary bg-primary text-primary-foreground shadow-subtle"
           : "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-border-strong hover:shadow-floating",
         isDisabled && !isSelected && "opacity-40",
       )}
     >
-      {orderNumber !== undefined ? (
-        <span
-          aria-hidden="true"
-          className={cx(
-            "absolute left-3 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full border text-[11px] font-black transition-all duration-normal ease-emphasized",
-            orderNumber
-              ? "border-primary-foreground-wash bg-primary-foreground-wash text-primary-foreground"
-              : "border-border-strong bg-surface text-transparent",
-          )}
-        >
-          {orderNumber ?? ""}
-        </span>
-      ) : null}
       <span className={cx("font-extrabold tracking-[-0.01em]", compact ? "text-sm" : "text-base")}>{choice.label}</span>
       <span className={cx("text-xs font-medium", isSelected ? "text-primary-foreground-soft" : "text-text-muted")}>{choice.description}</span>
     </button>
   );
 }
+
+// FIRST FUN 2차 보완(2026-08) — taste의 Stack(다중 선택) 문항 7개
+// 전용 카드. 기존 OptionChip(왼쪽 정렬 목록 행)과 달리 선택 전에도
+// 면적이 큰 카드로 보여주고, 뽑힌 순서는 카드 모서리에 붙는 숫자
+// 스티커로만 표시한다 — checkbox 원 대신이라 "설문 체크리스트"보다
+// "카드를 쌓는" 인상에 가깝다. 뽑히기 전에는 배지 자체를 렌더링하지
+// 않는다(절대 위치라 카드 높이에 영향 없음).
+function StackCard({
+  choice,
+  isSelected,
+  isDisabled,
+  orderNumber,
+  onClick,
+}: {
+  choice: TopicChoice;
+  isSelected: boolean;
+  isDisabled: boolean;
+  orderNumber: number | null;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isDisabled}
+      className={cx(
+        "relative flex flex-col items-start gap-1 rounded-large border px-4 py-5 text-left transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+        isSelected
+          ? "scale-[1.02] border-primary bg-primary text-primary-foreground shadow-floating"
+          : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:scale-[1.01] hover:border-border-strong hover:shadow-floating",
+        isDisabled && !isSelected && "opacity-40",
+      )}
+    >
+      {orderNumber ? (
+        <span
+          aria-hidden="true"
+          className="absolute -left-2 -top-2 flex size-7 items-center justify-center rounded-full border-2 border-primary bg-primary-foreground text-sm font-black text-primary shadow-subtle"
+        >
+          {orderNumber}
+        </span>
+      ) : null}
+      <span className="text-base font-extrabold tracking-[-0.01em]">{choice.label}</span>
+      <span className={cx("text-xs font-medium", isSelected ? "text-primary-foreground-soft" : "text-text-muted")}>{choice.description}</span>
+    </button>
+  );
+}
+
+// 카드를 2열로 늘어놔도 읽기 불편하지 않은 질문만 2열로 두고, 선택지
+// 설명이 긴 질문(lifestyle·tasteGuilty)은 1열로 남긴다 — "무조건
+// 2열로 강제하지 않는다"는 지시에 따른 문항별 고정값. 글자 수를 매
+// 렌더마다 계산하는 대신 이미 확정된 7문항 각각을 직접 판단해 표로
+// 박아뒀다 — 문항이 바뀌지 않는 한 다시 계산할 이유가 없다.
+const STACK_CARD_COLUMNS: Record<string, 1 | 2> = {
+  tasteRecent: 2,
+  tasteMood: 2,
+  tasteSpace: 2,
+  tasteAesthetic: 2,
+  lifestyle: 1,
+  tasteGuilty: 1,
+  tasteWhy: 2,
+};
 
 // 3개를 다 고른 뒤 자동으로 넘긴다 — 단, 아래 조건을 모두 만족할 때만.
 // 하나라도 어긋나면 "다음"을 직접 눌러야 한다.
@@ -143,6 +183,7 @@ function AxisStep({
   aboutSelf,
   requireConfirm,
   realityCheck,
+  stackColumns,
 }: {
   question: string;
   options: TopicOption[];
@@ -156,13 +197,17 @@ function AxisStep({
   // 이상형·나 소개 둘 다 심화 경로 자체를 없애며 그 흐름이 제거됨),
   // prop 자체는 재사용 가능하게 남겨둔다.
   requireConfirm: boolean;
-  // FIRST FUN MVP(2026-08) — taste의 tasteRecent(Q2) 하나에만 켜지는
-  // "Reality Check Stack" 표현. AxisStep 자체(다중 선택·자동 진행·
-  // 커스텀 입력 로직)는 전혀 바꾸지 않고, 위에 전환 라벨을 붙이고
-  // 고른 순서를 작은 숫자 배지로 보여주는 표시만 얹는다. 다른 6개
-  // AxisStep 호출부(Q6·Q8·Q10·Q11·Q15·Q18 및 타 5개 주제)는 이 값을
-  // 넘기지 않아 기존 화면 그대로다.
+  // FIRST FUN MVP(2026-08) — taste의 tasteRecent(Q2)에만 켜지는 전환
+  // 라벨("이번엔 실제로")만 담당한다. 카드 표현 자체는 stackColumns가
+  // 맡는다(2차 보완 이후).
   realityCheck?: boolean;
+  // FIRST FUN 2차 보완(2026-08) — taste의 Stack 문항 7개(tasteRecent·
+  // tasteMood·tasteSpace·tasteAesthetic·lifestyle·tasteGuilty·tasteWhy)
+  // 에만 켜진다. 1이면 세로 카드 1열, 2면 2열 그리드로 StackCard를
+  // 그린다. undefined면(다른 5개 주제 전부 + 위 7개가 아닌 호출부)
+  // 기존 OptionChip 세로 목록 그대로다 — 다중 선택·자동 진행(650ms)·
+  // 커스텀 입력·subOptions 로직은 이 값과 무관하게 전혀 바뀌지 않는다.
+  stackColumns?: 1 | 2;
 }) {
   const [selected, setSelected] = useState<TopicChoice[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -212,52 +257,69 @@ function AxisStep({
       <p className="text-xs font-black text-text-muted">
         최대 {MAX_SELECTIONS}개까지 고를 수 있어요 · 먼저 고른 게 더 중요해요 · {selected.length}/{MAX_SELECTIONS} 선택
       </p>
-      <div className="flex flex-col gap-3">
-        {options.map((option) => {
-          const isSelected = isChoiceSelected(option);
-          const isExpanded = expanded[option.label] ?? false;
-          const selectionIndex = selected.findIndex((item) => item.label === option.label);
-          const orderNumber = realityCheck ? (selectionIndex === -1 ? null : selectionIndex + 1) : undefined;
-          return (
-            <div key={option.label} className="flex flex-col gap-2">
-              <div className="flex items-stretch gap-2">
-                <div className="flex-1">
-                  <OptionChip
-                    choice={option}
-                    isSelected={isSelected}
-                    isDisabled={atCap && !isSelected}
-                    onClick={() => toggle(option)}
-                    orderNumber={orderNumber}
-                  />
+      {stackColumns ? (
+        <div className={cx("grid gap-3", stackColumns === 2 ? "grid-cols-2" : "grid-cols-1")}>
+          {options.map((option) => {
+            const isSelected = isChoiceSelected(option);
+            const selectionIndex = selected.findIndex((item) => item.label === option.label);
+            const orderNumber = selectionIndex === -1 ? null : selectionIndex + 1;
+            return (
+              <StackCard
+                key={option.label}
+                choice={option}
+                isSelected={isSelected}
+                isDisabled={atCap && !isSelected}
+                orderNumber={orderNumber}
+                onClick={() => toggle(option)}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {options.map((option) => {
+            const isSelected = isChoiceSelected(option);
+            const isExpanded = expanded[option.label] ?? false;
+            return (
+              <div key={option.label} className="flex flex-col gap-2">
+                <div className="flex items-stretch gap-2">
+                  <div className="flex-1">
+                    <OptionChip
+                      choice={option}
+                      isSelected={isSelected}
+                      isDisabled={atCap && !isSelected}
+                      onClick={() => toggle(option)}
+                    />
+                  </div>
+                  {option.subOptions && option.subOptions.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((current) => ({ ...current, [option.label]: !isExpanded }))}
+                      className="shrink-0 rounded-large border border-border bg-surface px-3 text-xs font-black text-text-muted hover:border-border-strong hover:text-text-primary"
+                    >
+                      {isExpanded ? "접기 ▲" : "더보기 ▾"}
+                    </button>
+                  ) : null}
                 </div>
-                {option.subOptions && option.subOptions.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setExpanded((current) => ({ ...current, [option.label]: !isExpanded }))}
-                    className="shrink-0 rounded-large border border-border bg-surface px-3 text-xs font-black text-text-muted hover:border-border-strong hover:text-text-primary"
-                  >
-                    {isExpanded ? "접기 ▲" : "더보기 ▾"}
-                  </button>
+                {isExpanded && option.subOptions ? (
+                  <div className="ml-3 flex flex-col gap-2 border-l-2 border-border pl-3">
+                    {option.subOptions.map((sub) => (
+                      <OptionChip
+                        key={sub.label}
+                        choice={sub}
+                        isSelected={isChoiceSelected(sub)}
+                        isDisabled={atCap && !isChoiceSelected(sub)}
+                        compact
+                        onClick={() => toggle(sub)}
+                      />
+                    ))}
+                  </div>
                 ) : null}
               </div>
-              {isExpanded && option.subOptions ? (
-                <div className="ml-3 flex flex-col gap-2 border-l-2 border-border pl-3">
-                  {option.subOptions.map((sub) => (
-                    <OptionChip
-                      key={sub.label}
-                      choice={sub}
-                      isSelected={isChoiceSelected(sub)}
-                      isDisabled={atCap && !isChoiceSelected(sub)}
-                      compact
-                      onClick={() => toggle(sub)}
-                    />
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
       {showCustom ? (
         <Textarea
           autoFocus
@@ -1284,6 +1346,7 @@ export function TopicQuiz({
             aboutSelf={currentAxis.aboutSelf}
             requireConfirm={false}
             realityCheck={topic.id === "taste" && currentAxis.id === "tasteRecent"}
+            stackColumns={topic.id === "taste" ? STACK_CARD_COLUMNS[currentAxis.id] : undefined}
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
