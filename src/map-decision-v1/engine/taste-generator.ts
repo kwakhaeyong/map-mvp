@@ -1,6 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { MapSession, TasteMatrixPoint, TasteResult, TasteRoadmapPhase } from "../types";
-import { getGenerationEffort } from "./generation-config";
 import { isServerSideGenerationError } from "./generation-error";
 import { logGenerationAttempt } from "./generation-timing";
 import { getIdealTypeTags, getStatusLabel } from "./ideal-type-tags";
@@ -302,6 +301,20 @@ function capRoadmapPhases(phases: RawRoadmap["phases"]): TasteRoadmapPhase[] {
 // 남는다.
 const TASTE_MAX_TOKENS = 20480;
 
+// TASTE 생성 안정화 후속(2026-08) — 위 truncated 조사 때는 "effort를
+// 낮추면 품질이 떨어질 수 있다"는 문서 근거만으로 medium을 유지한다고
+// 판단했는데, 실제로는 그 "유지"가 안 되고 있었다: 다른 5개 주제와
+// 공유하는 generation-config.ts의 getGenerationEffort()는 Vercel의
+// ANTHROPIC_GENERATION_EFFORT 환경변수를 우선하고, 그 환경변수가 이미
+// high로 설정돼 있어(6개 주제 공통 값) taste도 매 호출마다 high로
+// 돌고 있었다 — 코드가 "기본은 medium"이라고 말하는 것과 실제 동작이
+// 달랐다. high는 사고 토큰을 더 많이 써서 truncated 위험을 그만큼
+// 키운다. taste만은 이 환경변수와 무관하게 medium을 그대로 강제한다
+// — 리터럴 상수를 직접 쓰고 getGenerationEffort()를 호출하지 않는다.
+// 다른 5개 주제는 계속 getGenerationEffort()(환경변수 우선)를 쓴다 —
+// generation-config.ts와 그 5개 파일은 고치지 않는다.
+const TASTE_GENERATION_EFFORT = "medium";
+
 // RESULT GENERATION FAILURE 조사(2026-08)로 추가한 실패 분류. 지금까지는
 // 모든 실패가 사용자에게도, 개발 로그에서도 "생성 실패" 하나로 뭉뚱그려
 // 보였다 — Vercel 로그에 status/type은 남기고 있었지만(아래
@@ -405,10 +418,11 @@ async function attemptGeneration(
   let inputTokens: number | null = null;
   let outputTokens: number | null = null;
   let thinkingTokens: number | null = null;
-  // getGenerationEffort()는 호출될 때마다 "[generation] effort=..."를
-  // 로그로 남긴다 — 아래 계측 로그에도 같은 값을 실어야 하니 한 번만
-  // 불러 변수에 담아 재사용한다(두 번 부르면 그 로그도 두 번 남는다).
-  const effort = getGenerationEffort();
+  // 공용 getGenerationEffort()(환경변수 우선)를 부르지 않는다 — 위
+  // TASTE_GENERATION_EFFORT 주석 참고. diagnostics()에도 이 실제 적용값을
+  // 그대로 싣는다(Preview 화면에서 "medium이 진짜로 적용됐는지"를 값
+  // 하나로 바로 확인할 수 있게).
+  const effort = TASTE_GENERATION_EFFORT;
   const diagnostics = (): TasteGenerationDiagnostics => ({
     stopReason,
     inputTokens,
