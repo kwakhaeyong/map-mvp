@@ -314,6 +314,13 @@
   - **friendship 재확인**: `Landing → ProfileStep → Q1`("요즘 사람 만나는 게 어때?") 기존 그대로.
 - **답변 문자열/옵션 라벨은 여전히 analytics로 전송하지 않습니다.**
 
+## RESULT WOW — 결과 프롬프트 개선 + 재생성 테스트 도구 (같은 브랜치, PR #255)
+
+- **목적**: taste 결과가 20문항+Q17을 답한 만큼의 보상감을 주는지 실제 생성 결과로 검증하고, `taste-generator.ts`의 `SYSTEM_PROMPT`를 개선하는 작업. FIRST ACTION/FIRST FUN(위 절들)과 이어지는 세 번째 단계입니다.
+- **프롬프트 개선 2건** — `taste-generator.ts`의 `SYSTEM_PROMPT`만 수정(schema·타입·UI·질문/선택지·다른 5개 주제는 미변경): (1) 교차 분석·구체성·블록 간 반복 금지 원칙 강화, Q17을 "결과 성립의 필수 조건이 아님"으로 재정의(커밋 `1e15c1c`), (2) 실제 Persona A 결과를 근거로 oneLiner를 "여러 교차 insight 중 가장 강한 하나"로 재정의하고, selfReflection 각 항목을 1~2문장으로 압축하는 지시 추가(커밋 `bdeb118`).
+- **⚠️ baseline 정정(중요)**: 오너가 production `mapdecision.com`에서 확인한 "우연히 발견에 끌리는 사람" 결과는 **PR #255(Preview)의 개선 결과가 아니라 기존 production baseline**입니다. main에는 아직 이 브랜치의 RESULT WOW 프롬프트 변경이 반영돼 있지 않으므로(PR #255가 아직 merge되지 않음), 이 production 결과를 커밋 `bdeb118`(또는 `1e15c1c`)의 효과를 판정하는 자료로 쓸 수 없습니다. `bdeb118` 이후의 실제 효과를 보려면 PR #255의 Vercel Preview에서 다시 테스트하거나, 아래 재생성 테스트 도구를 사용해야 합니다.
+- **RESULT WOW 재생성 테스트 도구 신설(`docs/review/result-wow-test-script.ts`, 개발 전용 CLI)**: 프롬프트를 고칠 때마다 사람이 20문항을 다시 입력하지 않고, 고정된 Persona A/B/C 입력으로 `generateTasteResult()`(현재 브랜치의 실제 생성기, mock 아님)만 반복 실행할 수 있게 하는 스크립트입니다. `npm run review:taste:a`(b/c도 동일)로 실행하며, `topics.ts`의 실제 option label과 `applyQuizAnswer`로 production과 동일한 `MapSession`을 만듭니다. `ANTHROPIC_API_KEY`가 없으면 세션 구성까지만 확인하고 명확한 에러로 종료합니다(키를 로그에 남기지 않음). 결과는 `docs/review/result-wow-current-{a,b,c}.json`(원문)과 `.md`(사람이 읽기 쉬운 요약)로 저장됩니다 — production 사용자 화면·라우트에는 전혀 노출되지 않는 순수 개발 도구입니다.
+
 ## 다음 액션
 
 1. **알려진 기술 부채 우선순위 판단** — 위 "알려진 기술 부채" 목록 중 어느 것부터 정리할지 결정(항목 4·7은 해소 확인됨, 항목 8·9는 이번에 새로 추가됨, 나머지는 여전히 열려 있음).

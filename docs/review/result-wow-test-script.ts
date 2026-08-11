@@ -1,25 +1,39 @@
-// RESULT WOW 실제 출력 검증용 1회성 스크립트 (2026-08).
+// RESULT WOW 재생성 테스트 도구 (2026-08).
 //
-// 목적: taste-generator.ts의 SYSTEM_PROMPT를 고치기 전에, 성격이 뚜렷이
-// 다른 가상 사용자 3명(A/B/C)의 실제 생성 결과를 확인한다. 이 파일은
-// production 코드가 아니다 — 앱 어디에서도 import되지 않고, 빌드에도
-// 포함되지 않는다. 검증이 끝나면 지워도 무방하다.
+// 목적: taste-generator.ts의 SYSTEM_PROMPT를 고칠 때마다 Persona A/B/C를
+// 사람이 20문항 다시 입력하지 않고, 같은 고정 입력으로 결과 생성만
+// 반복 실행하기 위한 개발/검증 전용 CLI 스크립트다. 이 파일은 production
+// 코드가 아니다 — 앱 어디에서도 import되지 않고, 빌드에도 포함되지
+// 않는다. package.json의 review:taste:a/b/c 스크립트로만 실행한다.
 //
 // 세션은 임의 프롬프트 문자열을 직접 만드는 게 아니라, 실제 화면
 // 컴포넌트(QuickTapStep/BinaryStep/AxisStep/ReflectionStep)가 만드는 것과
 // 정확히 같은 모양으로 engine/quiz-answer.ts의 applyQuizAnswer를 그대로
 // 호출해서 만든다 — topics.ts의 실제 axis.options에서 label로 찾은
 // option만 쓰므로, 오타가 있으면 "label not found"로 즉시 실패한다.
+// closingPrompt(마무리 질문)는 답하지 않는다 — 20문항+Q17까지만 채운
+// 세션이 생성 API가 실제로 받는 최소 형태이고(생성기는 closingPrompt
+// 답변을 읽지 않는다), 세 페르소나 모두 "건너뛴 것"과 동일하게 둔다.
 //
 // 실행 방법 (저장소 루트에서):
-//   ANTHROPIC_API_KEY=sk-ant-... npx tsx docs/review/result-wow-test-script.ts
+//   npm run review:taste:a   # Persona A만 재생성
+//   npm run review:taste:b   # Persona B만
+//   npm run review:taste:c   # Persona C만
+// 또는 직접:
+//   ANTHROPIC_API_KEY=sk-ant-... npx tsx docs/review/result-wow-test-script.ts A
 //
 // 키를 이 파일이나 다른 어떤 파일에도 저장하지 않는다 — 환경변수로만
-// 넘긴다. 커밋에도 절대 포함하지 않는다.
+// 넘긴다. 로그에도 키 값을 절대 출력하지 않는다(존재 여부만 확인).
+// ANTHROPIC_API_KEY가 없으면 세션은 만들어 검증하되(라벨 오타 확인),
+// API를 호출하지 않고 명확한 에러 메시지만 남기고 종료한다(exit 1).
 //
-// 결과는 docs/review/result-wow-taste-{a,b,c}.md에 그대로(재작성 없이)
-// 저장된다. 실패하면(파싱 오류 등) 해당 페르소나만 실패 사유를 적고
-// 계속 진행한다 — 3명 중 하나가 실패해도 나머지는 계속 시도한다.
+// 결과는 docs/review/result-wow-current-{a,b,c}.json(원문 그대로) +
+// docs/review/result-wow-current-{a,b,c}.md(사람이 읽기 쉬운 요약) 두
+// 형태로 저장한다. "current"라는 이름은 "지금 이 브랜치의 generator로
+// 방금 생성한 결과"라는 뜻이다 — production mapdecision.com에서 사람이
+// 직접 만든 결과와 구분하기 위해 의도적으로 다른 이름을 썼다(그런
+// production 결과는 이 브랜치의 프롬프트 변경 효과 판정 자료로 쓸 수
+// 없다 — docs/CURRENT_STATE.md의 RESULT WOW 절 참고).
 
 import * as fs from "fs";
 import * as path from "path";
@@ -27,7 +41,7 @@ import { createSession } from "../../src/map-decision-v1/engine/session";
 import { applyQuizAnswer } from "../../src/map-decision-v1/engine/quiz-answer";
 import { resolveTopic, TopicOption } from "../../src/map-decision-v1/engine/topics";
 import { generateTasteResult } from "../../src/map-decision-v1/engine/taste-generator";
-import { MapSession } from "../../src/map-decision-v1/types";
+import { MapSession, TasteResult } from "../../src/map-decision-v1/types";
 
 // 단일 선택(quickTap/binary/scenario)은 label 문자열 하나, 다중 선택
 // (preference/experience → Stack)은 "고른 순서대로" label 배열(최대 3개).
@@ -44,9 +58,11 @@ type PersonaSpec = {
 
 // 세 페르소나의 실제 옵션 라벨은 전부 topics.ts의 taste.axes 원문에서
 // 그대로 가져왔다 — 여기서 새로 만든 문구는 없다(reflectionText 자유
-// 서술 제외, 이건 사용자 지시에 있던 예시 문장을 그대로 썼다).
-const PERSONAS: PersonaSpec[] = [
-  {
+// 서술 제외, 이건 사용자 지시에 있던 예시 문장을 그대로 썼다). 프롬프트를
+// 바꿔도 이 표는 절대 다시 쓰지 않는다 — 바뀌면 "같은 입력으로 비교"라는
+// 이 도구의 전제가 깨진다.
+const PERSONAS: Record<"A" | "B" | "C", PersonaSpec> = {
+  A: {
     id: "A",
     theme: "새로운 것을 좋아한다고 생각하지만 실제 최근 행동은 반복적",
     reflectionText:
@@ -73,7 +89,7 @@ const PERSONAS: PersonaSpec[] = [
       tasteSelfView: "그런 편인 것 같다",
     },
   },
-  {
+  B: {
     id: "B",
     theme: "익숙한 것을 깊게 파고 반복하는 몰입형",
     reflectionText:
@@ -100,7 +116,7 @@ const PERSONAS: PersonaSpec[] = [
       tasteSelfView: "그런 편인 것 같다",
     },
   },
-  {
+  C: {
     id: "C",
     theme: "사람을 통해 취향을 발견하고 대중적인 것을 자연스럽게 받아들이는 편",
     reflectionText: "", // Q17 건너뜀 — ReflectionStep의 "건너뛰기"와 동일
@@ -126,7 +142,7 @@ const PERSONAS: PersonaSpec[] = [
       tasteSelfView: "잘 모르겠다",
     },
   },
-];
+};
 
 function findOption(options: TopicOption[], label: string): TopicOption {
   const found = options.find((option) => option.label === label);
@@ -188,62 +204,131 @@ function formatInputSummary(persona: PersonaSpec): string {
   ].join("\n");
 }
 
+// raw JSON을 그대로 옮기지 않고, 8개 필드(title/oneLiner/tasteCore/
+// patterns/matrix/tasteMap/selfReflection/roadmap) + tags/statusLabel을
+// 사람이 훑어보기 쉬운 문서 형태로 편집한다. 문장 자체는 절대 고치지
+// 않는다 — 배열을 목록으로, 객체를 소제목으로 펼치기만 한다.
+function formatResultMarkdown(personaId: string, result: TasteResult): string {
+  const lines: string[] = [];
+  lines.push(`# RESULT WOW 재생성 결과 — Persona ${personaId}`, "");
+  lines.push(`- 생성 시각: ${result.generatedAt}`, `- 모델: ${result.model}`, "");
+
+  lines.push("## title", "", result.title, "");
+  lines.push("## oneLiner", "", result.oneLiner, "");
+  if (result.statusLabel) lines.push("## statusLabel", "", result.statusLabel, "");
+  if (result.tags && result.tags.length > 0) lines.push("## tags", "", result.tags.map((t) => `- ${t}`).join("\n"), "");
+
+  lines.push("## tasteCore", "");
+  lines.push("**certain**", result.tasteCore.certain.map((i) => `- ${i}`).join("\n"), "");
+  lines.push("**conditional**", result.tasteCore.conditional.map((i) => `- ${i}`).join("\n"), "");
+  lines.push("**indifferent**", result.tasteCore.indifferent.map((i) => `- ${i}`).join("\n"), "");
+
+  lines.push("## patterns", "", result.patterns.map((i) => `- ${i}`).join("\n"), "");
+
+  lines.push("## matrix", "");
+  lines.push(`- x축: ${result.matrix.xAxisLabel.low} ↔ ${result.matrix.xAxisLabel.high}`);
+  lines.push(`- y축: ${result.matrix.yAxisLabel.low} ↔ ${result.matrix.yAxisLabel.high}`, "");
+  lines.push(
+    result.matrix.types.map((t) => `- **${t.label}** (x=${t.x}, y=${t.y}) — ${t.description}`).join("\n"),
+    "",
+  );
+
+  lines.push("## tasteMap", "");
+  lines.push("**넓혀볼 방향(expand)**", result.tasteMap.expand.map((i) => `- ${i}`).join("\n"), "");
+  lines.push("**안 맞을 방향(avoid)**", result.tasteMap.avoid.map((i) => `- ${i}`).join("\n"), "");
+
+  lines.push("## selfReflection", "");
+  lines.push("**awareness**", result.selfReflection.awareness.map((i) => `- ${i}`).join("\n"), "");
+  lines.push("**blindSpots**", result.selfReflection.blindSpots.map((i) => `- ${i}`).join("\n"), "");
+
+  lines.push("## roadmap", "");
+  lines.push(`**firstAction**: ${result.roadmap.firstAction}`, "");
+  for (const phase of result.roadmap.phases) {
+    lines.push(`**${phase.label}**`, phase.actions.map((a) => `- ${a}`).join("\n"), "");
+  }
+
+  return lines.join("\n");
+}
+
+function parsePersonaArg(): "A" | "B" | "C" {
+  const arg = (process.argv[2] ?? "").trim().toUpperCase();
+  if (arg === "A" || arg === "B" || arg === "C") return arg;
+  console.error(
+    [
+      "사용법: npx tsx docs/review/result-wow-test-script.ts <A|B|C>",
+      "또는: npm run review:taste:a  (b / c도 동일)",
+      `받은 값: "${process.argv[2] ?? "(없음)"}"`,
+    ].join("\n"),
+  );
+  process.exit(1);
+}
+
 async function main() {
+  const personaId = parsePersonaArg();
+  const persona = PERSONAS[personaId];
   const outDir = path.join(__dirname);
-  const hasKey = Boolean(process.env.ANTHROPIC_API_KEY);
-  if (!hasKey) {
-    console.log("ANTHROPIC_API_KEY not set — building sessions only, stopping before any API call.\n");
+
+  console.log(`=== persona ${persona.id} ===`);
+  const session = buildSession(persona);
+  console.log(`session built OK — messages=${session.messages.length}, quizAnswers keys=${Object.keys(session.quizAnswers ?? {}).length}`);
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error(
+      [
+        "",
+        "❌ ANTHROPIC_API_KEY 환경변수가 설정돼 있지 않습니다.",
+        "실제 생성 결과를 만들려면 키를 환경변수로 넘긴 뒤 다시 실행하세요:",
+        `  ANTHROPIC_API_KEY=sk-ant-... npm run review:taste:${persona.id.toLowerCase()}`,
+        "(세션 구성 자체는 정상입니다 — 위 'session built OK' 로그 참고. API 호출 직전에만 멈췄습니다.)",
+      ].join("\n"),
+    );
+    process.exit(1);
   }
 
-  for (const persona of PERSONAS) {
-    console.log(`\n=== persona ${persona.id} ===`);
-    const session = buildSession(persona);
-    console.log(`session built OK — messages=${session.messages.length}, quizAnswers keys=${Object.keys(session.quizAnswers ?? {}).length}`);
+  const outcome = await generateTasteResult(session);
+  const inputSummary = formatInputSummary(persona);
 
-    if (!hasKey) {
-      console.log(`(dry run) would call generateTasteResult(session) for persona ${persona.id} here.`);
-      continue;
-    }
-
-    const outcome = await generateTasteResult(session);
-    const outPath = path.join(outDir, `result-wow-taste-${persona.id.toLowerCase()}.md`);
-    const inputSummary = formatInputSummary(persona);
-
-    const body = outcome.result
-      ? [
-          `# RESULT WOW 실제 출력 검증 — 사용자 ${persona.id}`,
-          "",
-          "## 테스트용 입력 요약",
-          "",
-          "```",
-          inputSummary,
-          "```",
-          "",
-          "## 실제 AI 생성 결과 (원문 그대로, JSON)",
-          "",
-          "```json",
-          JSON.stringify(outcome.result, null, 2),
-          "```",
-          "",
-        ].join("\n")
-      : [
-          `# RESULT WOW 실제 출력 검증 — 사용자 ${persona.id}`,
-          "",
-          "## 테스트용 입력 요약",
-          "",
-          "```",
-          inputSummary,
-          "```",
-          "",
-          `## 생성 실패`,
-          "",
-          `countsAsFailure=${outcome.countsAsFailure}. 콘솔 로그(스크립트 실행 터미널)를 참고하세요.`,
-          "",
-        ].join("\n");
-
-    fs.writeFileSync(outPath, body, "utf-8");
-    console.log(`wrote ${outPath}`);
+  if (!outcome.result) {
+    const mdPath = path.join(outDir, `result-wow-current-${persona.id.toLowerCase()}.md`);
+    const body = [
+      `# RESULT WOW 재생성 결과 — Persona ${persona.id}`,
+      "",
+      "## 테스트용 입력 요약",
+      "",
+      "```",
+      inputSummary,
+      "```",
+      "",
+      "## 생성 실패",
+      "",
+      `countsAsFailure=${outcome.countsAsFailure}. 콘솔 로그(스크립트 실행 터미널)를 참고하세요. 재시도하려면 같은 명령을 다시 실행하세요.`,
+      "",
+    ].join("\n");
+    fs.writeFileSync(mdPath, body, "utf-8");
+    console.error(`생성 실패 — ${mdPath}에 사유만 기록했습니다.`);
+    process.exit(1);
   }
+
+  const jsonPath = path.join(outDir, `result-wow-current-${persona.id.toLowerCase()}.json`);
+  const mdPath = path.join(outDir, `result-wow-current-${persona.id.toLowerCase()}.md`);
+
+  fs.writeFileSync(jsonPath, JSON.stringify(outcome.result, null, 2), "utf-8");
+
+  const md = [
+    formatResultMarkdown(persona.id, outcome.result),
+    "---",
+    "",
+    "## 테스트용 입력 요약",
+    "",
+    "```",
+    inputSummary,
+    "```",
+    "",
+  ].join("\n");
+  fs.writeFileSync(mdPath, md, "utf-8");
+
+  console.log(`wrote ${jsonPath}`);
+  console.log(`wrote ${mdPath}`);
 }
 
 main().catch((error) => {
