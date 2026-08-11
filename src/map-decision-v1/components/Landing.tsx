@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ReactElement, useEffect, useState } from "react";
 import { track } from "@vercel/analytics";
 import { TOPICS, TopicAxis, TopicChoice, TopicConfig } from "../engine/topics";
 import { useAutoAdvance } from "../hooks/use-auto-advance";
@@ -21,24 +21,16 @@ function cx(...classes: Array<string | false | null | undefined>) {
 // 그려 아래 레이어에 깔리게 하고, 부모(Hero 섹션)에는 aria-hidden으로
 // 스크린리더가 무시하게 한다.
 //
-// 2026-08-11 시각 보정(오너 검수 반려 사유: "정돈된 심리테스트 랜딩"에
-// 그쳐 "대표 콘텐츠 포스터" 수준의 시각적 존재감이 없다) — 아래 세
-// 가지로 존재감을 올렸다. 새 색상 토큰은 추가하지 않았다.
-// 1) 선 굵기(1.5→최대 2.5)·불투명도(최대 0.28→0.58)를 전반적으로
-//    올려 카드 위 옅은 장식이 아니라 그 자체로 눈에 띄는 그래픽이
-//    되게 했다 — 안쪽 원일수록 굵고 진하게 해 디자인 문법(§8)의
-//    "emphasized edge: 두꺼운 primary 선"과 같은 위계를 따른다.
-// 2) 두 등고선 군집을 잇는 점선 경로 하나를 추가했다 — 문법(§8)의
-//    "inferred edge: 점선, 확정된 edge보다 옅게"를 그대로 따라
-//    "아직 다 잇지 않은 관계"를 표현한다.
-// 3) 그 경로 위에 지도 노드 점 3개를 얹었다 — 새 색이 아니라
-//    fact/option/value(design-tokens.css 기존 MAP 노드 색, §8 "Fact/
-//    Option/Value node") 토큰을 fill-* 클래스로 그대로 쓴다. 취향
-//    콘텐츠 자체가 "선택 지점들을 지도로 본다"는 제품 은유와도
-//    맞아떨어진다.
-// 데스크톱(lg 그리드)에서 텍스트는 왼쪽 컬럼에, 이 SVG는 섹션 전체를
-// 덮는 절대 배치라 시각적으로는 비어 있는 오른쪽 컬럼에 걸쳐 보인다 —
-// 우측 군집의 중심(cx=300)을 오른쪽으로 치우쳐 둔 이유다.
+// 2026-08-11 시각 행동 유도 보정(오너 검수 반려 사유: 선택지 4개는 흰
+// 버튼처럼 보여 누르고 싶은 유인이 약한데, 반대로 등고선은 너무 크고
+// 진해서 첫 시선을 이 배경이 가져가 버린다) — 등고선을 다시
+// "브랜드 background texture"로 격하시켰다. 지난 시각 보정에서 올렸던
+// 선 굵기·불투명도·점선 경로·지도 노드 점 3개를 전부 되돌리고, 얇고
+// 아주 옅은(0.06~0.12) 원 4개만 남겼다 — 시선 순서가 반드시 "질문 →
+// 선택지 4개"가 되어야 하고, 등고선 자체가 눈에 먼저 들어오면 실패이기
+// 때문이다("색만 진하게 해서 해결했다고 판단하지 말 것"이라는 지시를
+// 반대 방향으로 적용했다 — 이번엔 옅게 하는 것이 해결책이다). 색은
+// 여전히 raw 값이 아니라 text-primary 토큰의 currentColor다.
 function TasteHeroBackdrop() {
   return (
     <svg
@@ -47,28 +39,80 @@ function TasteHeroBackdrop() {
       preserveAspectRatio="xMidYMid slice"
       className="pointer-events-none absolute inset-0 size-full text-primary"
     >
-      <circle cx="300" cy="90" r="150" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.18" />
-      <circle cx="300" cy="90" r="112" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
-      <circle cx="300" cy="90" r="76" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.44" />
-      <circle cx="300" cy="90" r="42" fill="none" stroke="currentColor" strokeWidth="2.5" opacity="0.58" />
-      <circle cx="50" cy="280" r="110" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.16" />
-      <circle cx="50" cy="280" r="76" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.26" />
-      <circle cx="50" cy="280" r="44" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.4" />
-      <path
-        d="M 92 248 Q 200 150 266 122"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeDasharray="2 7"
-        strokeLinecap="round"
-        opacity="0.42"
-      />
-      <circle cx="92" cy="248" r="6" className="fill-fact" opacity="0.9" />
-      <circle cx="180" cy="170" r="5" className="fill-option" opacity="0.9" />
-      <circle cx="266" cy="122" r="6" className="fill-value" opacity="0.9" />
+      <circle cx="340" cy="20" r="170" fill="none" stroke="currentColor" strokeWidth="1.25" opacity="0.07" />
+      <circle cx="340" cy="20" r="120" fill="none" stroke="currentColor" strokeWidth="1.25" opacity="0.1" />
+      <circle cx="30" cy="310" r="150" fill="none" stroke="currentColor" strokeWidth="1.25" opacity="0.06" />
+      <circle cx="30" cy="310" r="100" fill="none" stroke="currentColor" strokeWidth="1.25" opacity="0.09" />
     </svg>
   );
 }
+
+// 2026-08-11 시각 행동 유도 보정 — REAL Q1 선택지 4개를 "누르고 싶은
+// 콘텐츠 타일"로 만들기 위한 작은 추상 아이콘 4개. Lucide 같은 범용
+// 아이콘 세트를 붙이는 대신(지시: "일반적인 아이콘을 단순히 붙이는
+// 방식은 피한다"), MAP Decision 안에서만 통하는 최소한의 기하학적
+// 표식을 새로 그렸다 — 이미지·일러스트가 아니라 순수 SVG 선/도형이다.
+// 각 문항 라벨이 은유하는 감각을 직역했다: 보는 편=화면/초점(프레임+원),
+// 듣는 편=파형(굵기가 다른 세로선 4개), 읽는 편=페이지의 글줄(가로선
+// 3개), 만드는 편=서로 이어붙이는 조각(대각선으로 연결된 점 4개 —
+// Living Map의 "점을 잇는다"는 은유와도 맞닿는다). 색은 currentColor로
+// 부모(아이콘을 감싸는 원형 배지)의 text 색을 그대로 물려받는다 —
+// 아이콘 자체에 색을 고정하지 않아 선택 상태에 따라 부모가 색만
+// 바꿔주면 된다.
+function ViewIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" className={className}>
+      <rect x="5" y="8" width="22" height="15" rx="3" stroke="currentColor" strokeWidth="2" />
+      <circle cx="16" cy="15.5" r="3.2" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+function ListenIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" className={className}>
+      <line x1="7" y1="13" x2="7" y2="19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="13" y1="8" x2="13" y2="24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="19" y1="11" x2="19" y2="21" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="25" y1="14" x2="25" y2="18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+function ReadIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" className={className}>
+      <line x1="6" y1="11" x2="26" y2="11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="6" y1="16" x2="21" y2="16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="6" y1="21" x2="24" y2="21" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+function MakeIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" className={className}>
+      <line x1="9" y1="9" x2="23" y2="23" stroke="currentColor" strokeWidth="1.5" opacity="0.5" />
+      <line x1="23" y1="9" x2="9" y2="23" stroke="currentColor" strokeWidth="1.5" opacity="0.5" />
+      <circle cx="9" cy="9" r="3" fill="currentColor" />
+      <circle cx="23" cy="9" r="3" fill="currentColor" />
+      <circle cx="9" cy="23" r="3" fill="currentColor" />
+      <circle cx="23" cy="23" r="3" fill="currentColor" />
+    </svg>
+  );
+}
+
+// 옵션 라벨(topics.ts 원문, 변경하지 않음) → 아이콘 + 배지 배경색.
+// 배경색은 새 토큰이 아니라 design-tokens.css의 기존 MAP 노드 색
+// 4개(fact/feeling/value/option, §8)를 그대로 쓴다 — TopicCard의 accent
+// bar·결과 화면 매트릭스가 이미 쓰는 어휘라 새 의미를 만들지 않는다.
+// 4개 타일이 서로 다른 배지색을 가져야 "서로 다른 시각적 성격"이
+// 생긴다는 지시를 이 방식으로 만족한다. 옵션 라벨이 이 표에 없으면
+// (topics.ts가 바뀌는 등 예상 밖 상황) 아이콘 없이 텍스트만 보여준다 —
+// 방어적으로 화면이 깨지지 않게만 한다.
+const HERO_OPTION_VISUAL: Record<string, { badge: string; Icon: (props: { className?: string }) => ReactElement }> = {
+  "보는 편": { badge: "bg-fact", Icon: ViewIcon },
+  "듣는 편": { badge: "bg-feeling", Icon: ListenIcon },
+  "읽는 편": { badge: "bg-value", Icon: ReadIcon },
+  "만드는 편": { badge: "bg-option", Icon: MakeIcon },
+};
 
 // FIRST ACTION MVP(2026-08) — 히어로 자체를 taste의 실제 Q1(tasteMode)
 // 문항으로 만드는 2×2 선택 카드. TopicQuiz.tsx의 QuickTapStep과 같은
@@ -82,13 +126,24 @@ function TasteHeroBackdrop() {
 // startTasteFirstAnswer, engine/quiz-answer.ts의 applyQuizAnswer)가
 // 전담한다 — TopicQuiz.tsx의 commitAnswer와 똑같은 함수를 호출하므로
 // 이 화면에서 만드는 답변 데이터가 퀴즈 화면의 것과 어긋날 수 없다.
+// 2026-08-11 시각 행동 유도 보정 — 선택지 4개를 "작은 흰 버튼"이 아니라
+// "누르고 싶은 콘텐츠 타일"로 다시 만들었다. 바뀐 것: (1) 위에 배지형
+// 아이콘을 얹어 타일마다 다른 시각적 성격을 준다(위 HERO_OPTION_VISUAL
+// 참고), (2) 안쪽 여백·글자 크기를 키워 타일 자체의 무게감을 올린다,
+// (3) 선택 순간 타일이 살짝 확대되고(scale) 아이콘 배지가 반전되고
+// (색 반전 자체가 "반응"이다) 오른쪽 위에 작은 점 하나가 나타난다 —
+// "눌렀다 → 오? → Q2"라는 짧은 피드백을 250ms 자동 전환 시간 안에서만
+// 준다(새 지연을 추가하지 않는다). 선택·전환 로직(useAutoAdvance,
+// 250ms) 자체는 그대로다 — 이번 보정은 순수 시각(className)만 바꿨다.
 function HeroFirstQuestion({ axis, onAnswer }: { axis: TopicAxis; onAnswer: (choice: TopicChoice) => void }) {
   const { pending, pick } = useAutoAdvance(onAnswer, false);
   return (
-    <div className="mx-auto mt-5 grid max-w-sm grid-cols-2 gap-3 sm:max-w-md lg:mx-0">
+    <div className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-3 sm:gap-4 lg:max-w-none lg:grid-cols-4 lg:gap-5">
       {axis.options.map((option) => {
         const isSelected = pending?.label === option.label;
         const isLocked = pending !== null && !isSelected;
+        const visual = HERO_OPTION_VISUAL[option.label];
+        const Icon = visual?.Icon;
         return (
           <button
             key={option.label}
@@ -96,13 +151,39 @@ function HeroFirstQuestion({ axis, onAnswer }: { axis: TopicAxis; onAnswer: (cho
             onClick={() => pick(option)}
             disabled={isLocked}
             className={cx(
-              "group flex flex-col items-center gap-1 rounded-large border px-4 py-6 text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+              "group relative flex flex-col items-center gap-2.5 rounded-large border px-4 py-7 text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none sm:py-8",
               isSelected
-                ? "border-primary bg-primary text-primary-foreground shadow-floating"
-                : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating",
+                ? "scale-[1.03] border-primary bg-primary text-primary-foreground shadow-floating"
+                : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-1 hover:scale-[1.02] hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating",
               isLocked && "opacity-40",
             )}
           >
+            {/* 선택 순간 나타나는 작은 점 — "MAP 점 하나가 나타난다"는 FIRST
+                FUN 반응. 항상 DOM에 있고 opacity/scale만 바뀌므로 별도
+                애니메이션 라이브러리 없이 기존 transition 유틸로 충분하다. */}
+            <span
+              aria-hidden="true"
+              className={cx(
+                "absolute right-3 top-3 size-2 rounded-full bg-primary-foreground transition-all duration-normal ease-emphasized",
+                isSelected ? "scale-100 opacity-100" : "scale-0 opacity-0",
+              )}
+            />
+            {Icon ? (
+              <span
+                className={cx(
+                  "flex size-11 items-center justify-center rounded-medium transition-all duration-normal ease-emphasized sm:size-12",
+                  isSelected ? "scale-110 bg-primary-foreground-wash" : visual.badge,
+                  !isSelected && "group-hover:bg-primary-foreground-wash",
+                )}
+              >
+                <Icon
+                  className={cx(
+                    "size-5 sm:size-6",
+                    isSelected ? "text-primary-foreground" : "text-text-primary group-hover:text-primary-foreground",
+                  )}
+                />
+              </span>
+            ) : null}
             <span
               className={cx(
                 "text-base font-extrabold tracking-[-0.01em] sm:text-lg",
@@ -465,33 +546,42 @@ export function Landing({
           taste의 FIRST ACTION이고, topic_select는 아래 그리드에서 다른
           주제를 고를 때만 남긴다(handleGridStart 참고).
 
-          TasteHeroBackdrop(등고선 배경)은 그대로 재사용한다 — 이번
-          화면의 주인공은 등고선이 아니라 문항·선택 카드이므로, 배경은
-          여전히 절대 배치로 뒤에 깔려 선택지 판독성을 방해하지 않는다
-          (카드 자체가 불투명한 배경색을 가지고 있어 텍스트 대비에
-          영향이 없다). 새 SVG를 추가하지 않았다. lg(1024px+) 2컬럼
-          구도(텍스트 왼쪽 · 등고선이 걸리는 오른쪽 여백)는 이전
-          버전에서 그대로 가져왔다 — 데스크톱에서 좁은 폼이 화면
-          가운데 떠 있는 느낌을 피하기 위해서다. */}
+          2026-08-11 시각 행동 유도 보정(오너 검수 반려 사유: 구조는
+          맞지만 선택지 4개가 흰 폼처럼 보여 누르고 싶은 유인이 약하고,
+          반대로 등고선이 너무 크고 진해 첫 시선을 가져간다) — 두 가지를
+          바꿨다.
+          1) 지난 시각 보정에서 데스크톱 전용으로 만든 lg 2컬럼 구도
+             (텍스트 왼쪽 · 등고선이 걸리는 빈 오른쪽 컬럼)를 없앴다 —
+             그 구도는 "빈 등고선 영역"을 만드는 것 자체가 이번 지시의
+             문제였다. 대신 브랜드부터 eyebrow까지 하나의 중앙 정렬
+             컬럼으로 통일하되, 데스크톱에서는 이 컬럼 자체의
+             최대너비(max-w)를 넓혀(lg:max-w-3xl) 질문·선택지가 더 넓은
+             폭을 차지하게 했다 — "단순히 max-width만 키우지 말라"는
+             지시에 따라 그 안의 선택지 그리드도 lg부터 2×2에서 4열
+             한 줄로 바꿔(아래 HeroFirstQuestion 참고) 선택지 자체가
+             데스크톱에서도 Hero의 핵심 콘텐츠가 되게 했다.
+          2) TasteHeroBackdrop을 "브랜드 background texture" 수준으로
+             다시 낮췄다(그 컴포넌트 주석 참고) — 시선 순서가 항상
+             "질문 → 선택지 4개"가 되어야 하고 등고선이 먼저 보이면
+             실패이기 때문이다. 새 SVG는 추가하지 않았다(기존 컴포넌트
+             내부 수치만 조정). */}
       <section className="map-container relative overflow-hidden rounded-large border border-border bg-surface shadow-floating">
         <TasteHeroBackdrop />
-        <div className="relative px-5 pb-8 pt-8 text-center sm:px-8 sm:pb-10 sm:pt-12 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:px-14 lg:py-16 lg:text-left">
-          <div className="lg:max-w-lg">
-            <p className="mx-auto max-w-xs break-keep text-sm font-semibold leading-6 text-text-secondary sm:max-w-sm sm:text-base lg:mx-0">
-              생각하지 말고,<br />지금의 나와 가까운 쪽을 골라보세요.
-            </p>
-            {heroAxis ? (
-              <>
-                <h1 className="mx-auto mt-3 max-w-sm text-balance break-keep text-[1.9rem] font-black leading-[1.22] tracking-[-0.03em] sm:text-[2.4rem] lg:mx-0 lg:max-w-none lg:text-[2.9rem]">
-                  {heroAxis.question}
-                </h1>
-                <HeroFirstQuestion axis={heroAxis} onAnswer={onStartTasteFirstAnswer} />
-              </>
-            ) : null}
-            <p className="mx-auto mt-6 max-w-xs break-keep text-xs font-black tracking-[-0.01em] text-text-muted sm:max-w-sm lg:mx-0">
-              16개 유형에 넣지 않아요
-            </p>
-          </div>
+        <div className="relative mx-auto max-w-lg px-5 pb-8 pt-8 text-center sm:max-w-xl sm:px-8 sm:pb-10 sm:pt-12 lg:max-w-3xl lg:px-10 lg:py-16">
+          <p className="mx-auto max-w-xs break-keep text-sm font-semibold leading-6 text-text-secondary sm:max-w-sm sm:text-base">
+            생각하지 말고,<br />지금의 나와 가까운 쪽을 골라보세요.
+          </p>
+          {heroAxis ? (
+            <>
+              <h1 className="mx-auto mt-3 max-w-sm text-balance break-keep text-[1.9rem] font-black leading-[1.22] tracking-[-0.03em] sm:max-w-md sm:text-[2.3rem] lg:max-w-xl lg:text-[2.5rem]">
+                {heroAxis.question}
+              </h1>
+              <HeroFirstQuestion axis={heroAxis} onAnswer={onStartTasteFirstAnswer} />
+            </>
+          ) : null}
+          <p className="mx-auto mt-6 max-w-xs break-keep text-xs font-black tracking-[-0.01em] text-text-muted sm:max-w-sm">
+            16개 유형에 넣지 않아요
+          </p>
         </div>
       </section>
 
