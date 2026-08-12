@@ -1,8 +1,79 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { TagRow } from "./IdealTypeResultBlocks";
 import { Button, Card } from "./ui/primitives";
+
+// VISUAL & VIRAL REFOUNDATION(2026-08) — 예전엔 이 화면이 태그 카드 +
+// 문구 카드뿐이라 "그냥 로딩 중"으로 읽혔다. 결과 화면의 Living MY
+// MAP(TasteResultBlocks.tsx의 LivingMapChart — 4개 지점 + 감싸는 등고선)과
+// 정확히 같은 시각 언어를 미리 아주 단순화해서 보여준다: 문항 단계가
+// 넘어갈 때마다 점이 하나씩 나타나고, 점 2개 이상이면 그 사이를 옅은
+// 점선으로 잇는다. 사용자가 "내 답변에서 뭔가 만들어지고 있다"를
+// 눈으로 보게 하려는 것이지 실제 진행률이 아니다 — 그래서 좌표는
+// 완전히 고정값(4개, 비정형 배치)이고 stages 배열의 실제 개수/순서를
+// 그대로 따를 뿐 %를 계산하거나 표시하지 않는다. 마지막 점까지 나타나면
+// (=마지막 문구 단계) 아주 옅은 채움을 한 번 더해 "거의 다 됐다"는
+// 느낌만 준다 — 이것도 숫자가 아니라 순수 시각 신호다. transition만
+// 쓰고 새 애니메이션 라이브러리는 없으므로 prefers-reduced-motion
+// 전역 규칙(app/globals.css)이 그대로 적용된다.
+const FORMING_POINTS = [
+  { x: 78, y: 62 },
+  { x: 24, y: 40 },
+  { x: 35, y: 82 },
+  { x: 66, y: 22 },
+];
+
+function FormingMapVisual({ stageIndex, totalStages }: { stageIndex: number; totalStages: number }) {
+  const filterId = useId();
+  const revealCount = Math.min(FORMING_POINTS.length, Math.ceil(((stageIndex + 1) / Math.max(1, totalStages)) * FORMING_POINTS.length));
+  const revealed = FORMING_POINTS.slice(0, revealCount);
+  const isComplete = revealCount === FORMING_POINTS.length;
+  const pathD = revealed.length >= 2 ? `M ${revealed.map((p) => `${p.x} ${p.y}`).join(" L ")}` : "";
+
+  return (
+    <div className="mx-auto aspect-[4/3] w-full max-w-[220px]" aria-hidden="true">
+      <svg viewBox="0 0 100 75" className="size-full">
+        <defs>
+          <filter id={`forming-glow-${filterId}`} x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="3.5" />
+          </filter>
+        </defs>
+        {pathD ? (
+          <path
+            d={pathD}
+            className="fill-none stroke-primary transition-opacity duration-slow ease-standard"
+            strokeWidth="0.8"
+            strokeDasharray="1.2 2.4"
+            strokeLinecap="round"
+            opacity={isComplete ? 0.5 : 0.35}
+          />
+        ) : null}
+        {isComplete ? (
+          <path d={`M ${revealed.map((p) => `${p.x} ${p.y}`).join(" L ")} Z`} className="fill-primary transition-opacity duration-slow ease-standard" fillOpacity={0.12} filter={`url(#forming-glow-${filterId})`} />
+        ) : null}
+        {FORMING_POINTS.map((point, index) => {
+          const isRevealed = index < revealCount;
+          return (
+            <circle
+              key={index}
+              cx={point.x}
+              cy={point.y}
+              r={isRevealed ? 3.2 : 1.4}
+              className={cx2("transition-all duration-slow ease-emphasized", isRevealed ? "fill-primary" : "fill-none stroke-border-strong")}
+              strokeWidth={isRevealed ? 0 : 0.8}
+              opacity={isRevealed ? 1 : 0.5}
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function cx2(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
 
 // AI 생성 중에는 실제 진행률(%)을 알 방법이 없다 — 시간 기반으로 숫자를
 // 올리면 사용자가 금방 눈치채고 오히려 못 믿게 된다. 그래서 숫자 대신,
@@ -112,7 +183,8 @@ export function GenerationWaitCard({
           ) : null}
         </Card>
       ) : null}
-      <Card className="flex flex-col items-center gap-3 py-10 text-center">
+      <Card className="flex flex-col items-center gap-3 py-8 text-center">
+        {resuming ? null : <FormingMapVisual stageIndex={stageIndex} totalStages={stages.length} />}
         <p className="text-sm font-extrabold text-text-secondary">{resuming ? RESUMING_TEXT : stages[stageIndex]}</p>
         <p className="text-xs font-semibold text-text-muted">{isDelayed ? DELAYED_TEXT : GENERATION_ESTIMATE_TEXT}</p>
         <p className="text-[11px] font-medium text-text-muted">{SAVED_REASSURANCE_TEXT}</p>

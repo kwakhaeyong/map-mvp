@@ -153,6 +153,28 @@ function pickSignaturePair(points: TasteMatrixPoint[]): [TasteMatrixPoint, Taste
   return best;
 }
 
+// VISUAL & VIRAL REFOUNDATION(2026-08) — 위 계산 결과를 보여주는 칩을
+// HeroHeader 전용이 아니라 독립 컴포넌트로 뺐다. 이유: 라이브 결과
+// 화면(showHero=true)뿐 아니라 /r/[id] 공유 화면(showHero=false, 카드
+// 이미지가 이미 title을 담당해 HeroHeader 자체를 안 그리는 경로)에도
+// 똑같은 발견을 보여줘야 "친구가 개인 MAP을 받았다"는 느낌이 생긴다는
+// 지시 때문이다 — 이전 라운드(RESULT IDENTITY & CLARITY PASS)에서는
+// 이 칩이 HeroHeader 안에만 있어서 공유 화면에는 안 보이는 공백이
+// 있었다(그 라운드 완료 보고에 남은 약점으로 기록했다). export해서
+// app/r/[id]/page.tsx의 taste 분기에서도 그대로 재사용한다.
+export function TasteSignatureChip({ result, className }: { result: TasteResult; className?: string }) {
+  const signaturePair = pickSignaturePair(result.matrix.types);
+  if (!signaturePair) return null;
+  return (
+    <div className={cx("inline-flex w-fit items-center gap-2 rounded-medium border border-primary-border-soft bg-ink-wash px-3 py-2", className)}>
+      <span className="font-serif text-[10px] font-bold uppercase tracking-[0.14em] text-primary">Pattern</span>
+      <span className="text-lg font-black tracking-[-0.01em] text-primary">
+        {signaturePair[0].label} <span aria-hidden="true" className="text-text-muted">→</span> {signaturePair[1].label}
+      </span>
+    </div>
+  );
+}
+
 // STEP 1 RESULT CARD. title/oneLiner/statusLabel/tags는 예전 HeroHeader와
 // 동일하게 그대로 재사용한다 — 새로 추가한 건 (1) heroAction 슬롯(공유
 // 버튼을 카드 "안"에 넣어, 카드 자체가 공유 가능한 완결된 단위처럼
@@ -162,7 +184,6 @@ function pickSignaturePair(points: TasteMatrixPoint[]): [TasteMatrixPoint, Taste
 // 보이게), (3) 위 CardSignature뿐이다. 정보량 자체(필드 종류)는 늘리지
 // 않았다.
 function HeroHeader({ result, heroAction }: { result: TasteResult; heroAction?: ReactNode }) {
-  const signaturePair = pickSignaturePair(result.matrix.types);
   return (
     <Card className="relative overflow-hidden p-5">
       <CardSignature />
@@ -200,19 +221,19 @@ function HeroHeader({ result, heroAction }: { result: TasteResult; heroAction?: 
           (masthead 아래 헤드라인)처럼 가르는 얇은 선 하나. 새 정보는
           아니고 순수 구분선이라 스크린리더에서 의미를 갖지 않는다. */}
       <div aria-hidden="true" className="my-3 h-px w-full bg-border" />
-      <h1 className="text-balance break-keep text-3xl font-black leading-9 tracking-[-0.03em] text-text-primary">{result.title}</h1>
+      {/* VISUAL & VIRAL REFOUNDATION(2026-08) — 결과 화면의 "첫 5초"는
+          스크롤 없이 보이는 이 카드 안에서 끝나야 한다는 원칙에 따라
+          제목을 한 단계 키웠다(text-3xl→4xl). 문장 자체는 그대로다. */}
+      <h1 className="text-balance break-keep text-4xl font-black leading-10 tracking-[-0.03em] text-text-primary">{result.title}</h1>
       <p className="mt-2 text-sm font-bold leading-6 text-text-primary">{result.oneLiner}</p>
       {result.statusLabel ? (
         <p className="mt-2 text-xs font-semibold leading-5 text-text-secondary">{result.statusLabel}</p>
       ) : null}
-      {signaturePair ? (
-        <p className="mt-3 flex items-center gap-2 text-base font-black tracking-[-0.01em] text-primary">
-          <span className="font-serif text-[10px] font-bold uppercase tracking-[0.14em] text-text-muted">Pattern</span>
-          <span>
-            {signaturePair[0].label} <span aria-hidden="true" className="text-text-muted">→</span> {signaturePair[1].label}
-          </span>
-        </p>
-      ) : null}
+      {/* 스크롤 없이 보이는 첫 화면 안에서 title 다음으로 눈에 띄는 두
+          번째 "어?" 포인트. 값 자체는 그대로(matrix.types에서 계산한
+          기존 값), 시각적 무게만 올렸다. 공유 화면과 정확히 같은
+          컴포넌트를 쓴다(아래 TasteSignatureChip 정의 참고). */}
+      <TasteSignatureChip result={result} className="mt-3" />
       <TasteTagRow tags={result.tags ?? []} className="mt-3" />
       {heroAction ? <div className="mt-4">{heroAction}</div> : null}
     </Card>
@@ -265,11 +286,18 @@ function dropFirst<T>(items: T[]): T[] {
 // 3번째("내가 놓친 나")가 자연스럽게 climax가 되게 한다 — 새 색을
 // 추가하지 않고 기존 토큰(border/border-strong/primary, surface-elevated/
 // ink-wash)만으로 3단계를 만든다.
+// VISUAL & VIRAL REFOUNDATION(2026-08) — ①②는 그대로 옅은 카드지만,
+// ③(내가 놓친 나 — 세 발견 중 가장 "어떻게 알았지?"에 가까운 것)은
+// 테두리만 진해지는 정도가 아니라 배경을 통째로 채운 잉크 카드로
+// 바꿔서 진짜 climax처럼 시선이 멈추게 한다. 이상형·나 소개 결과의
+// 자기성찰 다크 블록과 같은, 이미 이 프로젝트에 있던 "채운 배경"
+// 어휘를 재사용한 것뿐이라 새 색은 없다. 문장·순서·데이터는 그대로다.
 const DISCOVERY_TIER_CLASS = [
   "border border-border bg-surface-elevated shadow-subtle",
   "border border-border-strong bg-ink-wash shadow-subtle",
-  "border-2 border-primary bg-ink-wash shadow-floating",
+  "border-0 bg-primary shadow-floating",
 ];
+const DISCOVERY_BADGE_CLASS = ["bg-primary text-primary-foreground", "bg-primary text-primary-foreground", "bg-primary-foreground text-primary"];
 // RESULT IDENTITY & CLARITY PASS(2026-08) — "번호+분류명+긴 문장"이
 // 리포트처럼 읽힌다는 피드백 대응. 문장(discovery.text)은 한 글자도
 // 자르거나 새로 쓰지 않는다 — role(예: "내가 아는 나")과 text(실제
@@ -281,11 +309,15 @@ const DISCOVERY_TIER_CLASS = [
 // 세 마디다), text는 그 헤드라인을 뒷받침하는 설명으로 한 단계
 // 가라앉는다. tier(카드 배경·테두리 진하기)는 그대로라 ③(내가 놓친
 // 나)이 여전히 가장 무겁게 읽힌다.
-const DISCOVERY_ROLE_CLASS = "text-sm font-black tracking-[-0.01em] text-text-primary";
+const DISCOVERY_ROLE_CLASS = [
+  "text-sm font-black tracking-[-0.01em] text-text-primary",
+  "text-sm font-black tracking-[-0.01em] text-text-primary",
+  "text-sm font-black tracking-[-0.01em] text-primary-foreground",
+];
 const DISCOVERY_TEXT_CLASS = [
   "text-sm font-semibold leading-6 text-text-secondary",
   "text-sm font-semibold leading-6 text-text-secondary",
-  "text-base font-bold leading-7 text-text-primary",
+  "text-lg font-black leading-7 text-primary-foreground",
 ];
 
 function DiscoveriesSection({ result }: { result: TasteResult }) {
@@ -298,10 +330,10 @@ function DiscoveriesSection({ result }: { result: TasteResult }) {
         {discoveries.map((discovery, index) => (
           <div key={discovery.role} className={cx("flex flex-col gap-1.5 rounded-large p-4", DISCOVERY_TIER_CLASS[index % DISCOVERY_TIER_CLASS.length])}>
             <div className="flex items-center gap-2">
-              <span className="grid size-6 shrink-0 place-items-center rounded-pill bg-primary text-xs font-black text-primary-foreground">
+              <span className={cx("grid size-6 shrink-0 place-items-center rounded-pill text-xs font-black", DISCOVERY_BADGE_CLASS[index % DISCOVERY_BADGE_CLASS.length])}>
                 {index + 1}
               </span>
-              <p className={DISCOVERY_ROLE_CLASS}>{discovery.role}</p>
+              <p className={DISCOVERY_ROLE_CLASS[index % DISCOVERY_ROLE_CLASS.length]}>{discovery.role}</p>
             </div>
             <p className={DISCOVERY_TEXT_CLASS[index % DISCOVERY_TEXT_CLASS.length]}>{discovery.text}</p>
           </div>
@@ -609,6 +641,12 @@ function MyMapSection({ matrix }: { matrix: TasteMatrix }) {
           </li>
         ))}
       </ul>
+      {/* VISUAL & VIRAL REFOUNDATION(2026-08) — MY MAP이 "예쁜 지도"에서
+          끝나지 않고 "비교하고 싶다"는 생각까지 이어지게 하는 한 줄.
+          새 기능(실제 비교 화면)을 만드는 게 아니라, 카드 안에 이미
+          있는 heroAction(공유 버튼) 위로 그 생각을 유도하는 문구만
+          얹는다 — 데이터·계산·좌표는 전혀 손대지 않았다. */}
+      <p className="text-center text-xs font-semibold text-text-muted">이 지형은 나만의 것이에요. 친구는 완전히 다르게 나와요.</p>
     </Card>
   );
 }

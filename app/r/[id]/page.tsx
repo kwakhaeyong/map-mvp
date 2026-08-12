@@ -5,7 +5,7 @@ import { IdealTypeResultBlocks, TagRow } from "../../../src/map-decision-v1/comp
 import { SelfIntroResultBlocks, SelfIntroTagRow } from "../../../src/map-decision-v1/components/SelfIntroResultBlocks";
 import { FriendshipResultBlocks, FriendshipTagRow } from "../../../src/map-decision-v1/components/FriendshipResultBlocks";
 import { WorkResultBlocks, WorkTagRow } from "../../../src/map-decision-v1/components/WorkResultBlocks";
-import { TasteResultDetails, TasteResultHighlights, TasteRoadmapDisclosure, TasteTagRow } from "../../../src/map-decision-v1/components/TasteResultBlocks";
+import { TasteResultDetails, TasteResultHighlights, TasteRoadmapDisclosure, TasteSignatureChip, TasteTagRow } from "../../../src/map-decision-v1/components/TasteResultBlocks";
 import { TravelResultBlocks, TravelTagRow } from "../../../src/map-decision-v1/components/TravelResultBlocks";
 import { FinalResultSectionReadOnly } from "../../../src/map-decision-v1/components/FinalResultBlocks";
 import { ShareCardImage } from "../../../src/map-decision-v1/components/ShareCardImage";
@@ -378,6 +378,14 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                 </div>
               }
             />
+            {/* VISUAL & VIRAL REFOUNDATION(2026-08) — 라이브 결과 화면
+                (HeroHeader)에만 있던 "PATTERN A → B" 발견 신호를 공유
+                화면에도 그대로 노출한다. 이전 라운드(RESULT IDENTITY &
+                CLARITY PASS)에서는 이 칩이 showHero=true 경로에만 있어
+                친구가 보는 화면에는 안 보이는 공백이 있었다 — 그 라운드
+                완료 보고에 남은 약점으로 적어뒀던 부분을 여기서 메운다.
+                새 계산이 아니라 같은 TasteSignatureChip을 그대로 재사용한다. */}
+            <TasteSignatureChip result={renderable.result} className="mx-auto" />
             <div className="h-px w-full bg-border" />
             {/* RESULT EXPERIENCE REBUILD(2026-08): 라이브 결과 화면과
                 마찬가지로 "MAP이 발견한 3가지"·MY MAP은 접지 않고 바로
