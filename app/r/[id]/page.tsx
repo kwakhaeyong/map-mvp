@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Brand } from "../../../src/map-decision-v1/components/Landing";
+import { Brand, PRODUCT_DEFINITION } from "../../../src/map-decision-v1/components/Landing";
 import { MidResultCta, PRIMARY_CTA_CLASS, ShareViewTracker, TryItCta } from "../../../src/map-decision-v1/components/SharedResultCta";
 import { IdealTypeResultBlocks, TagRow } from "../../../src/map-decision-v1/components/IdealTypeResultBlocks";
 import { SelfIntroResultBlocks, SelfIntroTagRow } from "../../../src/map-decision-v1/components/SelfIntroResultBlocks";
@@ -503,6 +503,16 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
         <div className="flex items-center px-1">
           <Brand />
         </div>
+        {/* RESULT IDENTITY & CLARITY PASS(2026-08) — 공유 링크를 처음 여는
+            사람이 맥락을 이해하는 지점. Landing.tsx의 PRODUCT_DEFINITION과
+            똑같은 한 문장을 그대로 재사용한다(새 문구를 따로 만들지
+            않는다 — 한 서비스에 정체성 문장은 하나여야 한다). 실제 결과
+            카드가 있는 6개 퀴즈형 주제(isInvitationBackground와 같은
+            조건)에서만 보여준다 — 만료·장애·미지원 화면이나 진로(자유
+            대화형, "고르고 쓰다"라는 표현이 안 맞음)에는 넣지 않는다. */}
+        {isInvitationBackground ? (
+          <p className="px-1 text-xs font-semibold leading-5 text-text-muted">{PRODUCT_DEFINITION}</p>
+        ) : null}
         {share.status === "ok" ? <DeleteShareSection id={id}>{cardContent}</DeleteShareSection> : cardContent}
       </div>
     </main>

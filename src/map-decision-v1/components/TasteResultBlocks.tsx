@@ -122,6 +122,37 @@ function CardSignature() {
   );
 }
 
+// RESULT IDENTITY & CLARITY PASS(2026-08) — "결과가 기억에 남지 않는다"는
+// 테스터 피드백(1명, 상대평가) 대응. 새 AI 필드를 만들지 않고, 이미
+// 생성된 result.matrix.types(정확히는 그 배열 안의 label 필드 — AI가
+// 이미 2~4단어로 지어둔 "취향 속 모습" 이름)에서만 값을 뽑는다. 네
+// 지점 중 서로 가장 멀리 떨어진(=이 사람의 지형에서 가장 대비되는)
+// 두 지점의 label을 "A → B"로 붙여, 브리핑에서 예시로 든 "탐험 →
+// 회귀" 같은 짧고 기억 가능한 신호를 매 사용자마다 다르게, 결정적으로
+// 만든다. 화살표 방향은 배열에 먼저 등장한 순서를 그대로 따른다 —
+// x/y가 사용자마다 다른 임의의 두 축이라 "어느 쪽이 시작이고 어느
+// 쪽이 도착인지"를 코드가 함부로 판단하면 사실과 다른 서사를 지어내는
+// 셈이 되기 때문이다(예: 실제로는 안 그런데 "탐험에서 회귀로 향한다"고
+// 단정하는 것). 점이 2개 미만이면(스키마상 가능성만 있음, capMatrixPoints
+// 참고) null을 돌려주고 화면은 그 경우 이 줄 자체를 생략한다 — MY MAP
+// 섹션(LivingMapChart)이 이미 3개 미만일 때 폐곡선을 안 그리는 것과
+// 같은 방어 원칙이다.
+function pickSignaturePair(points: TasteMatrixPoint[]): [TasteMatrixPoint, TasteMatrixPoint] | null {
+  if (points.length < 2) return null;
+  let best: [TasteMatrixPoint, TasteMatrixPoint] | null = null;
+  let bestDistance = -1;
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i + 1; j < points.length; j++) {
+      const distance = Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y);
+      if (distance > bestDistance) {
+        bestDistance = distance;
+        best = [points[i], points[j]];
+      }
+    }
+  }
+  return best;
+}
+
 // STEP 1 RESULT CARD. title/oneLiner/statusLabel/tags는 예전 HeroHeader와
 // 동일하게 그대로 재사용한다 — 새로 추가한 건 (1) heroAction 슬롯(공유
 // 버튼을 카드 "안"에 넣어, 카드 자체가 공유 가능한 완결된 단위처럼
@@ -131,6 +162,7 @@ function CardSignature() {
 // 보이게), (3) 위 CardSignature뿐이다. 정보량 자체(필드 종류)는 늘리지
 // 않았다.
 function HeroHeader({ result, heroAction }: { result: TasteResult; heroAction?: ReactNode }) {
+  const signaturePair = pickSignaturePair(result.matrix.types);
   return (
     <Card className="relative overflow-hidden p-5">
       <CardSignature />
@@ -172,6 +204,14 @@ function HeroHeader({ result, heroAction }: { result: TasteResult; heroAction?: 
       <p className="mt-2 text-sm font-bold leading-6 text-text-primary">{result.oneLiner}</p>
       {result.statusLabel ? (
         <p className="mt-2 text-xs font-semibold leading-5 text-text-secondary">{result.statusLabel}</p>
+      ) : null}
+      {signaturePair ? (
+        <p className="mt-3 flex items-center gap-2 text-base font-black tracking-[-0.01em] text-primary">
+          <span className="font-serif text-[10px] font-bold uppercase tracking-[0.14em] text-text-muted">Pattern</span>
+          <span>
+            {signaturePair[0].label} <span aria-hidden="true" className="text-text-muted">→</span> {signaturePair[1].label}
+          </span>
+        </p>
       ) : null}
       <TasteTagRow tags={result.tags ?? []} className="mt-3" />
       {heroAction ? <div className="mt-4">{heroAction}</div> : null}
@@ -230,10 +270,22 @@ const DISCOVERY_TIER_CLASS = [
   "border border-border-strong bg-ink-wash shadow-subtle",
   "border-2 border-primary bg-ink-wash shadow-floating",
 ];
+// RESULT IDENTITY & CLARITY PASS(2026-08) — "번호+분류명+긴 문장"이
+// 리포트처럼 읽힌다는 피드백 대응. 문장(discovery.text)은 한 글자도
+// 자르거나 새로 쓰지 않는다 — role(예: "내가 아는 나")과 text(실제
+// 문장)의 시각적 무게만 뒤집었다. 예전엔 role이 작은 회색 대문자
+// eyebrow였고 text가 카드의 진짜 "제목"처럼 크고 진했다 — 그래서
+// 매번 긴 문장부터 읽어야 뭘 발견했는지 알 수 있었다. 이제 role이
+// 먼저 눈에 들어오는 짧은 헤드라인이 되고(기억하고 돌아서서 말할 수
+// 있는 건 결국 "내가 아는 나"/"반복되는 나"/"내가 놓친 나"라는 이
+// 세 마디다), text는 그 헤드라인을 뒷받침하는 설명으로 한 단계
+// 가라앉는다. tier(카드 배경·테두리 진하기)는 그대로라 ③(내가 놓친
+// 나)이 여전히 가장 무겁게 읽힌다.
+const DISCOVERY_ROLE_CLASS = "text-sm font-black tracking-[-0.01em] text-text-primary";
 const DISCOVERY_TEXT_CLASS = [
+  "text-sm font-semibold leading-6 text-text-secondary",
+  "text-sm font-semibold leading-6 text-text-secondary",
   "text-base font-bold leading-7 text-text-primary",
-  "text-base font-bold leading-7 text-text-primary",
-  "text-lg font-black leading-7 text-text-primary",
 ];
 
 function DiscoveriesSection({ result }: { result: TasteResult }) {
@@ -249,7 +301,7 @@ function DiscoveriesSection({ result }: { result: TasteResult }) {
               <span className="grid size-6 shrink-0 place-items-center rounded-pill bg-primary text-xs font-black text-primary-foreground">
                 {index + 1}
               </span>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-text-muted">{discovery.role}</p>
+              <p className={DISCOVERY_ROLE_CLASS}>{discovery.role}</p>
             </div>
             <p className={DISCOVERY_TEXT_CLASS[index % DISCOVERY_TEXT_CLASS.length]}>{discovery.text}</p>
           </div>
