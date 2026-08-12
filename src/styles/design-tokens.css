@@ -69,6 +69,15 @@
      디자인"으로 읽히지 않는다 — 새 팔레트가 아니라 기존 off-white/
      ink/teal 구조에 아주 옅게 곁들이는 디테일 색 하나뿐이다. */
   --color-accent-bronze: #a9814f;
+  /* PERSONAL MAGAZINE CONCEPT PROTOTYPE(2026-08) — /dev/personal-magazine
+     전용 에디토리얼 액센트 2개. production 화면(Result/Landing/Quiz)
+     어디에서도 참조하지 않는다 — 이 두 토큰이 존재해도 기존 화면은
+     픽셀 하나 안 바뀐다. "취향" 소재(음식/여행/공예)에서 가져온
+     채도 낮은 톤이라 무지개 성격테스트·보라파랑 AI 그라디언트와는
+     거리를 둔다. 오너가 이 방향을 채택하면 그때 실제 production
+     토큰으로 승격할지 결정한다 — 지금은 프로토타입 전용.*/
+  --color-editorial-clay: #b5673f;
+  --color-editorial-moss: #4a5d43;
   --radius-small: 12px;
   --radius-medium: 18px;
   --radius-large: 28px;

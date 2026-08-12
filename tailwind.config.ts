@@ -37,6 +37,8 @@ const config: Config = {
         "error-soft-border": "var(--color-error-soft-border)",
         "primary-border-soft": "var(--color-primary-border-soft)",
         "accent-bronze": "var(--color-accent-bronze)",
+        "editorial-clay": "var(--color-editorial-clay)",
+        "editorial-moss": "var(--color-editorial-moss)",
       },
       borderRadius: {
         small: "var(--radius-small)",
