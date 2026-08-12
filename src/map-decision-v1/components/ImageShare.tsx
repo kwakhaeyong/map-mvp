@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { isAbortError, logShareDiagnostic, stripTrailingUrl } from "./ShareResult";
 import { Button } from "./ui/primitives";
 
 // "이미지로 저장" 버튼 — 인스타 스토리에 올릴 수 있는 PNG(카드)를
@@ -42,6 +43,12 @@ export function useImageShare({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileRef = useRef<File | null>(null);
   const shareTextRef = useRef<string>("");
+  // FINAL SHARE E2E BUG FIX(2026-08) — 파일 공유가 (canShare 확인은
+  // 통과했지만) 실제 navigator.share() 호출에서 거부되는 경우, 이미지
+  // 없이 링크만이라도 공유하는 다음 단계(shareUrlFallback)로 넘어가려면
+  // 원본 URL이 따로 필요하다. shareTextRef는 이미 "문구+URL"이 합쳐진
+  // 문자열이라 여기서 URL만 다시 꺼낼 수 없어 별도로 기억해둔다.
+  const shareUrlRef = useRef<string | null>(null);
   const preparingRef = useRef(false);
 
   useEffect(() => {
@@ -63,6 +70,7 @@ export function useImageShare({
         setImageState("error");
         return;
       }
+      shareUrlRef.current = shareUrl;
       shareTextRef.current = buildShareText(shareUrl);
       setImageState("preparing-image");
       const response = await fetch(`${shareUrl}/card.png`);
@@ -83,18 +91,52 @@ export function useImageShare({
   // File이 이미 준비된 분기에서는 아무것도 await하지 않고 그 안에서 바로
   // navigator.share()를 호출해서, 탭에서 생긴 사용자 활성화가 호출
   // 시점까지 그대로 살아있게 한다.
+  // canShareFiles가 애초에 false인 경우(그 브라우저는 파일 공유 자체를
+  // 지원하지 않는다고 스스로 밝힌 경우)는 그대로 모달(길게 눌러 저장)로
+  // 보낸다 — 이건 버그가 아니라 원래 있던, 잘 동작하는 대체 경로라
+  // 손대지 않는다. 이번에 고친 건 canShareFiles가 true인데도 실제
+  // navigator.share() 호출이 거부되는, 지금까지 조용히 무시되던 경우뿐이다.
   const handleTap = () => {
     const file = fileRef.current;
     if (file) {
       const canShareFiles = typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
       if (canShareFiles) {
-        navigator.share({ title: shareTitle, text: shareTextRef.current, files: [file] }).catch(() => {});
+        navigator.share({ title: shareTitle, text: shareTextRef.current, files: [file] }).catch((error) => {
+          if (isAbortError(error)) return; // 사용자가 취소 — 오류 아님
+          logShareDiagnostic("navigator.share(files)", error);
+          void shareUrlFallback();
+        });
       } else {
         setModalOpen(true);
       }
       return;
     }
     void prepareImage();
+  };
+
+  // 파일 공유가 (지원 확인은 통과했지만) 실제로는 거부된 다음 단계 —
+  // 이미지 없이 링크만 공유한다(진행 원칙 B). 그것도 실패하면 마지막으로
+  // 클립보드에 링크를 복사하고(원칙 C), 그마저 안 되면 이미지 저장
+  // 모달로 보낸다 — 사용자가 아무 것도 못 얻고 끝나는 경우가 없게 한다.
+  const shareUrlFallback = async () => {
+    const shareUrl = shareUrlRef.current;
+    const fullText = shareTextRef.current;
+    if (!shareUrl) {
+      setModalOpen(true);
+      return;
+    }
+    try {
+      await navigator.share({ title: shareTitle, text: stripTrailingUrl(fullText, shareUrl), url: shareUrl });
+    } catch (error) {
+      if (isAbortError(error)) return;
+      logShareDiagnostic("navigator.share(url) fallback", error);
+      try {
+        await navigator.clipboard.writeText(fullText);
+      } catch (clipboardError) {
+        logShareDiagnostic("clipboard fallback", clipboardError);
+        setModalOpen(true);
+      }
+    }
   };
 
   return {

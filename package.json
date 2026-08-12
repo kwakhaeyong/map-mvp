@@ -11,7 +11,10 @@
     "design:check": "node scripts/design-check.mjs",
     "visual:test": "playwright test",
     "visual:update": "playwright test --update-snapshots",
-    "visual:install": "playwright install --with-deps chromium"
+    "visual:install": "playwright install --with-deps chromium",
+    "review:taste:a": "npx tsx docs/review/result-wow-test-script.ts A",
+    "review:taste:b": "npx tsx docs/review/result-wow-test-script.ts B",
+    "review:taste:c": "npx tsx docs/review/result-wow-test-script.ts C"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",

@@ -23,6 +23,16 @@ function SelfQuestionLabel() {
   return <p className="text-[11px] font-black uppercase tracking-[0.08em] text-text-muted">나에 대해</p>;
 }
 
+// FIRST FUN MVP(2026-08) — taste의 tasteRecent(Q2) 문항 전용 전환 라벨.
+// Q1(tasteMode, Landing Hero)이 "생각"을 묻고 바로 다음인 이 문항이
+// "실제 행동"을 묻는다는 관계만 짧게 짚어준다 — 답변을 해석하거나
+// 성격을 판단하는 문장은 아니다. SelfQuestionLabel과 같은 자리·같은
+// 역할(문항 위 작은 라벨)이지만, taste 전용이라는 걸 구분하려고
+// text-primary로 톤만 다르게 뒀다.
+function RealityCheckLabel() {
+  return <p className="text-[11px] font-black uppercase tracking-[0.08em] text-primary">이번엔 실제로</p>;
+}
+
 const MAX_SELECTIONS = 3;
 
 // 세부 선택지(subOptions)를 골랐어도 태그 매핑(ideal-type-tags.ts)은
@@ -91,6 +101,67 @@ function OptionChip({
   );
 }
 
+// FIRST FUN 2차 보완(2026-08) — taste의 Stack(다중 선택) 문항 7개
+// 전용 카드. 기존 OptionChip(왼쪽 정렬 목록 행)과 달리 선택 전에도
+// 면적이 큰 카드로 보여주고, 뽑힌 순서는 카드 모서리에 붙는 숫자
+// 스티커로만 표시한다 — checkbox 원 대신이라 "설문 체크리스트"보다
+// "카드를 쌓는" 인상에 가깝다. 뽑히기 전에는 배지 자체를 렌더링하지
+// 않는다(절대 위치라 카드 높이에 영향 없음).
+function StackCard({
+  choice,
+  isSelected,
+  isDisabled,
+  orderNumber,
+  onClick,
+}: {
+  choice: TopicChoice;
+  isSelected: boolean;
+  isDisabled: boolean;
+  orderNumber: number | null;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isDisabled}
+      className={cx(
+        "relative flex flex-col items-start gap-1 rounded-large border px-4 py-5 text-left transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+        isSelected
+          ? "scale-[1.02] border-primary bg-primary text-primary-foreground shadow-floating"
+          : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:scale-[1.01] hover:border-border-strong hover:shadow-floating",
+        isDisabled && !isSelected && "opacity-40",
+      )}
+    >
+      {orderNumber ? (
+        <span
+          aria-hidden="true"
+          className="absolute -left-2 -top-2 flex size-7 items-center justify-center rounded-full border-2 border-primary bg-primary-foreground text-sm font-black text-primary shadow-subtle"
+        >
+          {orderNumber}
+        </span>
+      ) : null}
+      <span className="text-base font-extrabold tracking-[-0.01em]">{choice.label}</span>
+      <span className={cx("text-xs font-medium", isSelected ? "text-primary-foreground-soft" : "text-text-muted")}>{choice.description}</span>
+    </button>
+  );
+}
+
+// 카드를 2열로 늘어놔도 읽기 불편하지 않은 질문만 2열로 두고, 선택지
+// 설명이 긴 질문(lifestyle·tasteGuilty)은 1열로 남긴다 — "무조건
+// 2열로 강제하지 않는다"는 지시에 따른 문항별 고정값. 글자 수를 매
+// 렌더마다 계산하는 대신 이미 확정된 7문항 각각을 직접 판단해 표로
+// 박아뒀다 — 문항이 바뀌지 않는 한 다시 계산할 이유가 없다.
+const STACK_CARD_COLUMNS: Record<string, 1 | 2> = {
+  tasteRecent: 2,
+  tasteMood: 2,
+  tasteSpace: 2,
+  tasteAesthetic: 2,
+  lifestyle: 1,
+  tasteGuilty: 1,
+  tasteWhy: 2,
+};
+
 // 3개를 다 고른 뒤 자동으로 넘긴다 — 단, 아래 조건을 모두 만족할 때만.
 // 하나라도 어긋나면 "다음"을 직접 눌러야 한다.
 //   1) 선택 개수가 MAX_SELECTIONS(3)에 도달했을 때
@@ -111,6 +182,8 @@ function AxisStep({
   showBack,
   aboutSelf,
   requireConfirm,
+  realityCheck,
+  stackColumns,
 }: {
   question: string;
   options: TopicOption[];
@@ -124,6 +197,17 @@ function AxisStep({
   // 이상형·나 소개 둘 다 심화 경로 자체를 없애며 그 흐름이 제거됨),
   // prop 자체는 재사용 가능하게 남겨둔다.
   requireConfirm: boolean;
+  // FIRST FUN MVP(2026-08) — taste의 tasteRecent(Q2)에만 켜지는 전환
+  // 라벨("이번엔 실제로")만 담당한다. 카드 표현 자체는 stackColumns가
+  // 맡는다(2차 보완 이후).
+  realityCheck?: boolean;
+  // FIRST FUN 2차 보완(2026-08) — taste의 Stack 문항 7개(tasteRecent·
+  // tasteMood·tasteSpace·tasteAesthetic·lifestyle·tasteGuilty·tasteWhy)
+  // 에만 켜진다. 1이면 세로 카드 1열, 2면 2열 그리드로 StackCard를
+  // 그린다. undefined면(다른 5개 주제 전부 + 위 7개가 아닌 호출부)
+  // 기존 OptionChip 세로 목록 그대로다 — 다중 선택·자동 진행(650ms)·
+  // 커스텀 입력·subOptions 로직은 이 값과 무관하게 전혀 바뀌지 않는다.
+  stackColumns?: 1 | 2;
 }) {
   const [selected, setSelected] = useState<TopicChoice[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -168,48 +252,74 @@ function AxisStep({
   return (
     <div className="flex w-full flex-col gap-5">
       {aboutSelf ? <SelfQuestionLabel /> : null}
+      {realityCheck ? <RealityCheckLabel /> : null}
       <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
       <p className="text-xs font-black text-text-muted">
         최대 {MAX_SELECTIONS}개까지 고를 수 있어요 · 먼저 고른 게 더 중요해요 · {selected.length}/{MAX_SELECTIONS} 선택
       </p>
-      <div className="flex flex-col gap-3">
-        {options.map((option) => {
-          const isSelected = isChoiceSelected(option);
-          const isExpanded = expanded[option.label] ?? false;
-          return (
-            <div key={option.label} className="flex flex-col gap-2">
-              <div className="flex items-stretch gap-2">
-                <div className="flex-1">
-                  <OptionChip choice={option} isSelected={isSelected} isDisabled={atCap && !isSelected} onClick={() => toggle(option)} />
+      {stackColumns ? (
+        <div className={cx("grid gap-3", stackColumns === 2 ? "grid-cols-2" : "grid-cols-1")}>
+          {options.map((option) => {
+            const isSelected = isChoiceSelected(option);
+            const selectionIndex = selected.findIndex((item) => item.label === option.label);
+            const orderNumber = selectionIndex === -1 ? null : selectionIndex + 1;
+            return (
+              <StackCard
+                key={option.label}
+                choice={option}
+                isSelected={isSelected}
+                isDisabled={atCap && !isSelected}
+                orderNumber={orderNumber}
+                onClick={() => toggle(option)}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {options.map((option) => {
+            const isSelected = isChoiceSelected(option);
+            const isExpanded = expanded[option.label] ?? false;
+            return (
+              <div key={option.label} className="flex flex-col gap-2">
+                <div className="flex items-stretch gap-2">
+                  <div className="flex-1">
+                    <OptionChip
+                      choice={option}
+                      isSelected={isSelected}
+                      isDisabled={atCap && !isSelected}
+                      onClick={() => toggle(option)}
+                    />
+                  </div>
+                  {option.subOptions && option.subOptions.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((current) => ({ ...current, [option.label]: !isExpanded }))}
+                      className="shrink-0 rounded-large border border-border bg-surface px-3 text-xs font-black text-text-muted hover:border-border-strong hover:text-text-primary"
+                    >
+                      {isExpanded ? "접기 ▲" : "더보기 ▾"}
+                    </button>
+                  ) : null}
                 </div>
-                {option.subOptions && option.subOptions.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setExpanded((current) => ({ ...current, [option.label]: !isExpanded }))}
-                    className="shrink-0 rounded-large border border-border bg-surface px-3 text-xs font-black text-text-muted hover:border-border-strong hover:text-text-primary"
-                  >
-                    {isExpanded ? "접기 ▲" : "더보기 ▾"}
-                  </button>
+                {isExpanded && option.subOptions ? (
+                  <div className="ml-3 flex flex-col gap-2 border-l-2 border-border pl-3">
+                    {option.subOptions.map((sub) => (
+                      <OptionChip
+                        key={sub.label}
+                        choice={sub}
+                        isSelected={isChoiceSelected(sub)}
+                        isDisabled={atCap && !isChoiceSelected(sub)}
+                        compact
+                        onClick={() => toggle(sub)}
+                      />
+                    ))}
+                  </div>
                 ) : null}
               </div>
-              {isExpanded && option.subOptions ? (
-                <div className="ml-3 flex flex-col gap-2 border-l-2 border-border pl-3">
-                  {option.subOptions.map((sub) => (
-                    <OptionChip
-                      key={sub.label}
-                      choice={sub}
-                      isSelected={isChoiceSelected(sub)}
-                      isDisabled={atCap && !isChoiceSelected(sub)}
-                      compact
-                      onClick={() => toggle(sub)}
-                    />
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
       {showCustom ? (
         <Textarea
           autoFocus
@@ -239,6 +349,42 @@ function AxisStep({
   );
 }
 
+// FIRST FUN MVP(2026-08) — BinaryStep의 "Versus" 표현에서만 쓰는 큰
+// 대결형 블록. 기존 OptionChip(왼쪽 정렬 목록형)과 달리 가운데 정렬 +
+// 큰 패딩으로 "둘 중 하나"라는 긴장감을 준다. pick만 받고 선택/자동
+// 진행 로직은 그대로 BinaryStep의 useAutoAdvance가 갖고 있다.
+function VersusOption({
+  choice,
+  isSelected,
+  isDisabled,
+  onClick,
+}: {
+  choice: TopicChoice;
+  isSelected: boolean;
+  isDisabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isDisabled}
+      className={cx(
+        "flex flex-col items-center gap-1 rounded-large border px-5 py-6 text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none sm:py-7",
+        isSelected
+          ? "scale-[1.02] border-primary bg-primary text-primary-foreground shadow-floating"
+          : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:border-border-strong hover:shadow-floating",
+        isDisabled && !isSelected && "opacity-40",
+      )}
+    >
+      <span className={cx("text-base font-extrabold tracking-[-0.01em] sm:text-lg", isSelected ? "text-primary-foreground" : "text-text-primary")}>
+        {choice.label}
+      </span>
+      <span className={cx("text-xs font-medium", isSelected ? "text-primary-foreground-soft" : "text-text-muted")}>{choice.description}</span>
+    </button>
+  );
+}
+
 // 양자택일형은 우선순위를 가려내는 게 목적이라 복수 선택을 허용하면
 // 의미가 없어진다 — AxisStep과 달리 딱 하나만 고를 수 있고, 세부
 // 선택지도 없다(둘 중 하나를 강제하는 질문에 "더 자세히"가 끼어들면
@@ -250,6 +396,7 @@ function BinaryStep({
   onBack,
   showBack,
   requireConfirm,
+  versus,
 }: {
   question: string;
   options: TopicOption[];
@@ -259,11 +406,55 @@ function BinaryStep({
   // 지금은 호출부가 항상 false만 넘긴다 — AxisStep의 같은 이름 prop
   // 주석 참고.
   requireConfirm: boolean;
+  // FIRST FUN MVP(2026-08) — taste 전용 "Versus" 표현. 선택/자동 진행
+  // 로직(useAutoAdvance, 250ms)은 그대로 두고 레이아웃만 위아래 대결
+  // 구도로 바꾼다. taste가 아닌 다른 5개 주제 호출부는 이 값을 넘기지
+  // 않아 기존 세로 목록 그대로다.
+  versus?: boolean;
 }) {
   const { pending, pick, confirm } = useAutoAdvance(
     (choice) => onSubmit(`${choice.label} — ${choice.description}`, [choice.label]),
     requireConfirm,
   );
+
+  if (versus && options.length === 2) {
+    const [left, right] = options;
+    return (
+      <div className="flex w-full flex-col gap-5">
+        <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
+        <p className="text-xs font-black text-text-muted">둘 중 하나만 골라주세요</p>
+        <div className="flex flex-col gap-3">
+          <VersusOption
+            choice={left}
+            isSelected={pending?.label === left.label}
+            isDisabled={pending !== null && pending.label !== left.label}
+            onClick={() => pick(left)}
+          />
+          <div aria-hidden="true" className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-xs font-black tracking-[0.14em] text-text-muted">VS</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <VersusOption
+            choice={right}
+            isSelected={pending?.label === right.label}
+            isDisabled={pending !== null && pending.label !== right.label}
+            onClick={() => pick(right)}
+          />
+        </div>
+        {requireConfirm ? (
+          <div className="mt-1 flex items-center justify-between gap-3">
+            {showBack ? <EnhancedBackButton onBack={onBack} /> : <span />}
+            <Button type="button" variant="primary" size="lg" onClick={confirm} disabled={!pending}>
+              다음
+            </Button>
+          </div>
+        ) : showBack ? (
+          <EnhancedBackButton onBack={onBack} />
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -307,6 +498,7 @@ function QuickTapStep({
   showBack,
   aboutSelf,
   requireConfirm,
+  tasteVariant,
 }: {
   question: string;
   options: TopicOption[];
@@ -315,6 +507,12 @@ function QuickTapStep({
   showBack: boolean;
   aboutSelf?: boolean;
   requireConfirm: boolean;
+  // FIRST FUN MVP(2026-08) — Landing.tsx REAL Q1 히어로에서 검증된
+  // "누르고 싶은 타일" 톤(패딩 확대·선택 시 확대+코너 점)을 taste의
+  // 본 퀴즈 QuickTapStep에도 입힌다. 새 아이콘은 추가하지 않는다(이번
+  // 라운드에서 그래픽 자산은 늘리지 않기로 함). taste가 아닌 다른 5개
+  // 주제 호출부는 이 값을 넘기지 않아 기존 2열 그리드 그대로다.
+  tasteVariant?: boolean;
 }) {
   const { pending, pick, confirm } = useAutoAdvance(
     (choice) => onSubmit(`${choice.label} — ${choice.description}`, [choice.label]),
@@ -336,19 +534,38 @@ function QuickTapStep({
               onClick={() => pick(option)}
               disabled={isLocked}
               className={cx(
-                "group flex flex-col items-center gap-0.5 rounded-large border px-4 py-4 text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+                "group relative flex flex-col items-center text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+                tasteVariant ? "gap-1.5 rounded-large border px-4 py-6 sm:py-7" : "gap-0.5 rounded-large border px-4 py-4",
                 isSelected
-                  ? "border-primary bg-primary text-primary-foreground shadow-subtle"
-                  : "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating",
+                  ? cx("border-primary bg-primary text-primary-foreground shadow-subtle", tasteVariant && "scale-[1.03] shadow-floating")
+                  : cx(
+                      "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating",
+                      tasteVariant && "hover:scale-[1.01]",
+                    ),
                 isLocked && "opacity-40",
               )}
             >
-              <span className={cx("text-sm font-extrabold tracking-[-0.01em]", isSelected ? "text-primary-foreground" : "text-text-primary group-hover:text-primary-foreground")}>
+              {tasteVariant ? (
+                <span
+                  aria-hidden="true"
+                  className={cx(
+                    "absolute right-3 top-3 size-2 rounded-full bg-primary-foreground transition-all duration-normal ease-emphasized",
+                    isSelected ? "scale-100 opacity-100" : "scale-0 opacity-0",
+                  )}
+                />
+              ) : null}
+              <span
+                className={cx(
+                  tasteVariant ? "text-base font-extrabold tracking-[-0.01em] sm:text-lg" : "text-sm font-extrabold tracking-[-0.01em]",
+                  isSelected ? "text-primary-foreground" : "text-text-primary group-hover:text-primary-foreground",
+                )}
+              >
                 {option.label}
               </span>
               <span
                 className={cx(
-                  "text-[11px] font-medium transition-colors duration-normal ease-emphasized",
+                  tasteVariant ? "text-xs font-medium" : "text-[11px] font-medium",
+                  "transition-colors duration-normal ease-emphasized",
                   isSelected ? "text-primary-foreground-soft" : "text-text-muted group-hover:text-primary-foreground-soft",
                 )}
               >
@@ -1053,6 +1270,7 @@ export function TopicQuiz({
             onBack={goBack}
             aboutSelf={currentAxis.aboutSelf}
             requireConfirm={false}
+            tasteVariant={topic.id === "taste"}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
             }}
@@ -1065,6 +1283,7 @@ export function TopicQuiz({
             showBack={step > 0}
             onBack={goBack}
             requireConfirm={false}
+            versus={topic.id === "taste"}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);
             }}
@@ -1126,6 +1345,8 @@ export function TopicQuiz({
             showBack={step > 0}
             aboutSelf={currentAxis.aboutSelf}
             requireConfirm={false}
+            realityCheck={topic.id === "taste" && currentAxis.id === "tasteRecent"}
+            stackColumns={topic.id === "taste" ? STACK_CARD_COLUMNS[currentAxis.id] : undefined}
             onBack={goBack}
             onSubmit={(answerText, selectedTopLevelLabels) => {
               commitAnswer(currentAxis.question, answerText, currentAxis.id, selectedTopLevelLabels);

@@ -1,6 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { MapSession, TasteMatrixPoint, TasteResult, TasteRoadmapPhase } from "../types";
-import { getGenerationEffort } from "./generation-config";
 import { isServerSideGenerationError } from "./generation-error";
 import { logGenerationAttempt } from "./generation-timing";
 import { getIdealTypeTags, getStatusLabel } from "./ideal-type-tags";
@@ -19,7 +18,7 @@ import { now } from "./session";
 
 const SYSTEM_PROMPT = `너는 MAP Decision의 "취향 발견 엔진"이다. 사용자가 취향 퀴즈에서 고른 선택지와 직접 적은 말을 재료로, 낱개 선택으로는 안 보이던 취향의 결을 종합해서 보여준다.
 
-퀴즈는 총 20문항이고 전부 필수다. 이상형·나 소개·친구·인간관계·일할 때의 나(30~38문항)보다 훨씬 짧다 — 그만큼 근거가 적다는 뜻이다. 확신에 찬 단정을 피하고, 여러 답변이 같은 방향을 가리킬 때만 뚜렷하게 쓰고 그렇지 않으면 조심스럽게 짚어라. 문항은 시간을 쓰는 방식(혼자 있는 시간·최근 일주일 실제 사용·몰입 방식·발견 경로·여윳돈의 행방)·무엇에 끌리는가(분위기·이야기에서 중요한 것·편한 공간·음식 앞에서의 태도·눈이 가는 스타일과 4개 축 중 하나인 생활 습관)·취향의 온도(공유하는 태도·유행에 대한 태도·반복 감상·남들에게 말 못할 취향·변화 양상)·취향과 나(자유 서술·취향의 의미·잘 맞는 사람과의 만남·마지막 자기평가)까지 4개 구간으로 이어진다. 자유 서술은 17번("최근에 뭔가에 푹 빠졌던 게 언제였어요? 그게 뭐였고 왜 좋았는지 적어주세요") 하나뿐이다 — 다른 다섯 주제는 자유 서술이 2~3개씩 있는데, taste는 1개뿐이라 이 답변의 비중이 상대적으로 크다. 답했다면(건너뛸 수 있다) 가장 근거가 확실한 재료이니 tasteCore·patterns·selfReflection에서 반드시 활용하라. 건너뛰었다면 그 사실을 지적하지 말고 다른 답변만으로 자연스럽게 채워라.
+퀴즈는 총 20문항이고 전부 필수다. 이상형·나 소개·친구·인간관계·일할 때의 나(30~38문항)보다 훨씬 짧다 — 그만큼 근거가 적다는 뜻이다. 확신에 찬 단정을 피하고, 여러 답변이 같은 방향을 가리킬 때만 뚜렷하게 쓰고 그렇지 않으면 조심스럽게 짚어라. 문항은 시간을 쓰는 방식(혼자 있는 시간·최근 일주일 실제 사용·몰입 방식·발견 경로·여윳돈의 행방)·무엇에 끌리는가(분위기·이야기에서 중요한 것·편한 공간·음식 앞에서의 태도·눈이 가는 스타일과 4개 축 중 하나인 생활 습관)·취향의 온도(공유하는 태도·유행에 대한 태도·반복 감상·남들에게 말 못할 취향·변화 양상)·취향과 나(자유 서술·취향의 의미·잘 맞는 사람과의 만남·마지막 자기평가)까지 4개 구간으로 이어진다. 자유 서술은 17번("최근에 뭔가에 푹 빠졌던 게 언제였어요? 그게 뭐였고 왜 좋았는지 적어주세요") 하나뿐이다 — 다른 다섯 주제는 자유 서술이 2~3개씩 있는데, taste는 1개뿐이라 이 답변의 비중이 상대적으로 크다. 답했다면, 선택형 답변만으로는 알 수 없는 구체적인 맥락과 동기를 밝혀주는 고해상도 재료로 다뤄라 — tasteCore·patterns·selfReflection 중 근거로 쓰기에 자연스러운 곳에 연결하되, 내용을 그대로 옮기지 마라("뜨개질을 좋아한다"가 아니라, 그 답이 다른 선택형 답변들과 함께 무엇을 보여주는지 한 단계 더 들어간 해석으로 써라). 건너뛰었다면 그 사실을 지적하지 말고, 결과가 부족하다는 인상도 주지 말고, 나머지 19개 선택형 답변을 교차 분석해서 답했을 때와 같은 구조·같은 밀도의 결과를 만들어라 — 17번은 결과가 성립하기 위한 필수 조건이 아니다. 17번 답변을 근거로 한 곳에서 강하게 해석했다면, 다른 블록에서 같은 내용을 다시 인용하거나 풀어 쓰지 마라 — 한 번 확실하게 쓰고 넘어가라.
 
 이 중 4개 축("혼자 있는 시간에 나는 주로 뭘 해?", "평소 생활에서, 나와 더 가까운 모습은?", "예전과 비교하면 내 취향은?", "좋아하는 게 생기면 나는 어느 쪽이야?")은 이 결과와 별개로 코드가 "공유 태그"를 결정하는 데도 쓰인다 — 이상형·나 소개·친구·인간관계·일할 때의 나 결과와 태그 체계 일부를 공유해서, 태그로 궁합을 비교하는 기능의 재료다. 이 네 문항 중 "평소 생활에서..." 하나만 최대 3개까지 고를 수 있어 답변에 "1순위/2순위/3순위"로 우선순위가 표시되어 있다(태그는 그중 1순위 하나로만 정해진다 — 사용자에게도 화면에서 "먼저 고른 게 더 중요해요"라고 이미 안내했다). 나머지 세 문항("혼자 있는 시간에...", "예전과 비교하면...", "좋아하는 게 생기면...")은 전부 하나만 고르는 단일 선택이라 우선순위 개념 자체가 없다 — 고른 답 하나가 전부다. 결과 서술에 "1순위", "2순위", "3순위", "태그", "공유 태그", "궁합"이라는 단어를 그대로 쓰지 마라 — 사용자는 이런 구조를 모른다. 대신 "가장 먼저 꼽은", "먼저 고른", "무엇보다" 같은 자연스러운 표현으로 풀어 써라.
 
@@ -37,17 +36,21 @@ const SYSTEM_PROMPT = `너는 MAP Decision의 "취향 발견 엔진"이다. 사�
 
 ★가장 중요한 원칙★: 사용자가 답한 내용을 그대로 되풀이하지 마라. 사용자가 "혼자 간직하는 편"을 골랐다고 해서 "당신은 혼자 간직하는 편이군요"라고 쓰면 실패다. 대신 "왜 그런 태도가 반복되는지", "그게 다른 상황에서는 어떻게 나타나는지", "본인의 취향이 실제로 어떤 결일 가능성이 높은지"까지 한 걸음 더 들어가야 한다.
 
-★새 원칙 — 반복 금지★: 같은 발견을 여러 블록에서 반복해서 쓰지 마라. 여섯 블록은 서로 다른 역할을 맡는다 — tasteCore는 답변 전체를 근거로 무엇에 확실히/상황에 따라/무관심하게 끌리는지를 나눠 분류하고, patterns는 서로 다른 구간의 답변을 교차했을 때 왜 그런 결이 반복되는지를 해석하고, matrix는 그 결이 여러 상황(새로운 것을 접할 때·몰입할 때·나눌 때·유행 앞에서 등)에서 어떻게 다르게 나타나는지를 위치로 보여주고, tasteMap은 그 결을 바탕으로 앞으로 넓혀볼 만한 방향과 안 맞을 방향을 짚고, selfReflection은 사용자가 스스로 아는 것·모르는 것과 실제 답변 사이의 간극 또는 일치를 다루고, roadmap은 그래서 무엇을 해볼지 구체적인 행동을 담는다. 특히 patterns와 selfReflection이 겹치기 가장 쉽다 — patterns에서 이미 짚은 결(예: "혼자 간직하는 편이다", "분위기가 기준이다")을 selfReflection에서 같은 근거·같은 문장으로 다시 쓰지 마라. 최종 결론이 두 블록에서 겹치더라도 그 결론에 도달하는 근거나 적용 범위는 블록마다 달라야 한다 — patterns에 이미 쓴 결이라면 selfReflection에서는 아예 다른 답변 조합에서 나온 다른 결을 찾아 써라.
+★새 원칙 — 구체성★: title에 적용하는 구체성 기준(일반적인 형용사만으로 채우지 않기, 다른 사람의 결과에는 그대로 안 붙을 표현 만들기)을 oneLiner·patterns·selfReflection·tasteMap에도 그대로 적용하라. "새로운 것을 좋아하지만 익숙한 것도 중요하게 생각합니다"처럼 누구에게나 붙일 수 있는 대구 문장은 쓰지 마라. 좋은 문장은 왜 이 사용자에게 그런 패턴이 나타났는지를 실제 답변 조합으로 설명할 수 있어야 한다 — 모든 문장에 "왜냐하면"을 달라는 뜻이 아니라, 그 문장이 이 사용자의 답변 조합이 아니면 나올 수 없는 문장이어야 한다는 뜻이다.
+
+★새 원칙 — 교차 분석★: 목표는 "몇 개 문항을 언급했는지"가 아니라 "얼마나 많은 정보를 실제로 연결했는지"다. 서로 다른 축의 답변을 적극적으로 교차 분석하라. 하나의 insight는 가능하면 서로 다른 2개 이상의 답변을 근거로 만들어라 — 답변 하나를 다른 말로 바꿔 쓴 문장은 insight가 아니다. patterns는 특히 서로 다른 구간(시간을 쓰는 방식·무엇에 끌리는가·취향의 온도·취향과 나)의 답변을 연결해야 한다. 결과 어디에서도 아직 쓰이지 않은 답변 중에 새로운 해석을 만들 수 있는 게 있다면 그것부터 우선 찾아 활용하라 — 이미 쓴 답변이라도 다른 답변과 새로 조합하면 다른 발견이 될 수 있다. 반대로 20개를 전부 결과 문장에 등장시키려 하지 마라 — 언급 개수를 채우려는 티가 나는 문장, 답변을 나열만 하는 문장은 실패다. 결과 전체가 소수의 눈에 띄는 답변(자유 서술, 마지막 자기평가 등)만 반복해서 우려먹지 않도록, 실제로 어떤 답변들을 근거로 썼는지 스스로 점검하며 써라.
+
+★새 원칙 — 반복 금지★: 같은 발견을 여러 블록에서 반복해서 쓰지 마라. 여섯 블록은 서로 다른 역할을 맡고, 한 블록에서 이미 충분히 말한 insight는 다른 블록에서 문장만 바꿔 다시 쓰지 않는다 — tasteCore는 답변 전체를 근거로 무엇에 확실히/상황에 따라/무관심하게 끌리는지를 나눠 성향의 구조를 정리하는 것 자체가 역할이다. patterns는 서로 다른 구간의 답변을 연결했을 때 반복되는 행동 원리를 해석한다 — 단순히 취향을 나열하는 목록이 되면 실패다. matrix는 그 결이 여러 상황(새로운 것을 접할 때·몰입할 때·나눌 때·유행 앞에서 등)에서 어떻게 다르게 나타나는지를 위치로 보여준다. tasteMap은 tasteCore·patterns·selfReflection에서 이미 정리한 결을 요약해서 되풀이하지 않고, 그 결을 바탕으로 앞으로 넓혀볼 만한 방향과 안 맞을 방향만 짚는다 — 방향 자체가 새로운 정보여야 한다. selfReflection은 사용자가 스스로는 알아채기 어려웠던 간극·일치·의외성을 다루는, 가장 높은 수준의 해석이다. roadmap은 앞에서 이미 나온 성향 설명을 다시 요약하지 않고, 그 해석을 실제로 해볼 수 있는 행동으로만 번역한다. 특히 patterns와 selfReflection이 겹치기 가장 쉽다 — patterns에서 이미 짚은 결(예: "혼자 간직하는 편이다", "분위기가 기준이다")을 selfReflection에서 같은 근거·같은 문장으로 다시 쓰지 마라. 최종 결론이 두 블록에서 겹치더라도 그 결론에 도달하는 근거나 적용 범위는 블록마다 달라야 한다 — patterns에 이미 쓴 결이라면 selfReflection에서는 아예 다른 답변 조합에서 나온 다른 결을 찾아 써라. 사용자가 위에서 아래로 읽어 내려갈 때마다 새 블록에서 처음 보는 정보를 만나야 한다 — 이미 읽은 말의 상세 버전이 아니라 새로운 발견이어야 한다. 다만 이 원칙 때문에 억지로 모든 답변을 끌어다 쓰지는 마라 — 새로운 의미가 있을 때만 그렇게 하라.
 
 각 항목 작성 원칙:
-- title: "내 취향은 한마디로 ___"라는 문장에 그대로 넣었을 때 자연스러운, 사용자의 취향을 짧게 서술하는 말이다. 공백 포함 16자 이내로 쓰고, 가능하면 12자 이내를 목표로 한다. "감성적인", "다양한" 같은 일반적인 형용사만으로 채우지 마라 — 누구에게나 붙일 수 있는 말은 그 사람을 가리키지 못한다. 답변에 나온 구체적인 분위기·경로·태도를 반영해서, 다른 사람의 결과에는 그대로 붙지 않을 표현을 만들어라. 형용사를 3개 이상 나열하지 않는다. 추상적인 비유나 조어를 쓰지 말고 일상적으로 쓰는 말로 표현한다. title은 반드시 명사 또는 명사구로 끝나야 한다 — "내 취향은 한마디로 ___"에 그대로 넣었을 때 문장이 완결돼야 하기 때문이다. "~는", "~한", "~던"처럼 관형절로 끝나서 뒤에 명사가 빠진 채 마무리되면 안 된다. 좋은 예: "한번 꽂히면 끝까지 파는 몰입러", "낯선 것에 먼저 손 가는 탐험가". 나쁜 예: "한번 꽂히면 끝까지 파는"(뒤에 명사가 없어 문장이 안 끝난다), "낯선 것에 먼저 손 가는"(마찬가지).
-- oneLiner: 공유하고 싶어지는 한 줄 압축 요약.
-- tasteCore(certain/conditional/indifferent): 사용자의 취향을 세 단계로 나눈다. certain은 답변에서 일관되게 드러나는, 확실히 끌리는 것. conditional은 답변에 따라 상황(기분·맥락)에 따라 달라지는 것. indifferent는 답변에서 딱히 끌리지 않거나 무관심하게 나타난 것. 사용자가 직접 말한 적 없는, 답변을 근거로 종합한 결과여야 한다. 각 2~4개.
+- title: "내 취향은 한마디로 ___"라는 문장에 그대로 넣었을 때 자연스러운, 사용자의 취향을 짧게 서술하는 말이다. 공백 포함 16자 이내로 쓰고, 가능하면 12자 이내를 목표로 한다. "감성적인", "다양한" 같은 일반적인 형용사만으로 채우지 마라 — 누구에게나 붙일 수 있는 말은 그 사람을 가리키지 못한다. 답변에 나온 구체적인 분위기·경로·태도를 반영해서, 다른 사람의 결과에는 그대로 붙지 않을 표현을 만들어라. 형용사를 3개 이상 나열하지 않는다. 추상적인 비유나 조어를 쓰지 말고 일상적으로 쓰는 말로 표현한다. title은 반드시 명사 또는 명사구로 끝나야 한다 — "내 취향은 한마디로 ___"에 그대로 넣었을 때 문장이 완결돼야 하기 때문이다. "~는", "~한", "~던"처럼 관형절로 끝나서 뒤에 명사가 빠진 채 마무리되면 안 된다. 좋은 예: "한번 꽂히면 끝까지 파는 몰입러", "낯선 것에 먼저 손 가는 탐험가". 나쁜 예: "한번 꽂히면 끝까지 파는"(뒤에 명사가 없어 문장이 안 끝난다), "낯선 것에 먼저 손 가는"(마찬가지). 제목이 "탐험가"·"수집가"·"관찰자"·"감성가"처럼 흔히 쓰는 유형 명사로 끝나더라도, 그 앞의 수식어가 이 사용자의 답변에서만 나올 수 있는 구체적 표현이어야 한다 — 수식어가 흐릿하면 유형 명사만 남아 다른 사람에게도 그대로 붙는다.
+- oneLiner: RESULT WOW의 첫 문장이다 — 단순한 취향 요약이 아니라, 이 사용자의 답변 전체에서 찾을 수 있는 여러 교차 insight 중 가장 강한 하나를 압축한다. 후보를 고를 때 다음을 우선 순위로 검토한다: (1) 자기인식과 실제 행동의 간극(★핵심 재해석(1)★), (2) 자기평가와 전체 답변의 간극(★핵심 재해석(2)★), (3) 서로 다른 질문 구간에서 반복되는 공통 패턴, (4) 예상 밖이지만 답변 근거가 뚜렷한 조합 — 이 중 근거가 가장 뚜렷하고 구체적인 것 하나만 고른다. 억지로 모순을 만들지 마라 — 답변이 실제로 일치한다면 그 대신 "왜 이렇게 일관되는지"를 압축해도 된다. 나쁜 예: "새로움을 좋아하면서도 익숙한 것을 소중히 여기는 사람"(누구에게나 붙는 문장). 좋은 예: "새로운 건 우연히 만나지만, 정말 남는 건 시간이 지나 다시 돌아가 깊게 파는 편"(이 사용자의 답변 조합이 아니면 나올 수 없는 문장). oneLiner에서 이미 압축한 발견은 다른 블록(특히 patterns·selfReflection)에서 같은 근거로 다시 풀어 쓰지 마라 — 다른 블록은 이 발견과는 다른 조합에서 나온 발견을 다뤄야 한다.
+- tasteCore(certain/conditional/indifferent): 사용자의 취향을 세 단계로 나눈다. certain은 답변에서 일관되게 드러나는, 확실히 끌리는 것. conditional은 답변에 따라 상황(기분·맥락)에 따라 달라지는 것. indifferent는 답변에서 딱히 끌리지 않거나 무관심하게 나타난 것. 사용자가 직접 말한 적 없는, 답변을 근거로 종합한 결과여야 한다. conditional은 "상황에 따라 다르다", "균형 잡혀 있다"처럼 안전하게 도피하는 문장이 되면 안 된다 — 어떤 조건에서 어떻게 달라지는지가 답변 근거로 드러나야 한다(예: "혼자 있을 땐 조용한 쪽을, 사람들과 있을 땐 북적이는 쪽을 고르는 식으로 갈린다"). 그런 조건을 답변에서 실제로 찾을 수 없다면 억지로 conditional 항목을 채우지 말고, certain이나 indifferent로 옮기거나 더 적은 개수만 남겨라. 각 2~4개.
 - patterns: ★핵심★. 사용자가 고른 선택지들을 가로질러 반복되는 취향의 결을 짚어준다. 단순 요약이 아니라 "왜 그런 결이 반복되는지"에 대한 해석을 담는다. 서로 다른 구간(시간 사용·끌림·온도·자기인식 등)의 답변을 최소 2개 이상 교차해서 나온 패턴을 최소 1개는 반드시 반영한다. 항목마다 문장을 시작하는 골격이 겹치지 않게 접근 방식을 섞어라 — 두 답을 대조하듯 가르는 간극형 문장으로만 채우지 말고, 반복되는 태도 자체를 짚는 문장, 상황에 따라 달라지는 모습을 짚는 문장, 서로 다른 답변을 연결한 문장처럼 관점을 다양하게 써라. 간극을 짚을 때도 두 모습이 공존하는 것으로 자연스럽게 풀어 써라. 2~4개. 위 ★반복 금지★ 원칙이 이 골격 다양화 지시보다 우선한다 — 먼저 반복 금지 원칙에 따라 이 블록에 남길 결을 추린 뒤, 그렇게 남은 항목들 사이에서만 문장 골격을 다양화하라. 골격을 다양하게 채우겠다고 selfReflection에 넘겨야 할 결(자기인식과의 간극)을 이 블록에 욱여넣지 마라.
 - matrix: 사용자의 답변에서 도출한 2개 축으로 4사분면을 만들고(예: "익숙함"↔"낯섦", "혼자"↔"같이" 같이 사용자 답변에 맞는 축을 매번 새로 골라라), 그 위에 사용자의 여러 취향 모습(예: 새로운 걸 접할 때의 나 / 몰입할 때의 나 / 남과 취향을 나눌 때의 나 / 유행 앞에서의 나)을 각각 하나의 사분면에 배치한다. x/y는 0~100 사이 값. 정확히 4개를 만들되, 배열 개수를 강제하는 스키마 규칙이 아니라 이 지시문으로만 유도한다.
-- tasteMap(expand/avoid): 사용자의 답변 패턴을 근거로 "넓혀볼 만한 방향" / "안 맞을 방향"을 짚는다. 위 ★중요★(우열 금지) 원칙을 반드시 지켜라 — "넓혀볼 만한 방향"은 더 나은 취향이 아니라 지금 결과 자연스럽게 이어질 법한, 아직 안 가본 결이라는 톤으로 쓰고, "안 맞을 방향"도 부족하다는 뉘앙스 없이 그냥 지금 결과 안 맞을 뿐이라는 톤으로 쓴다. 구체적인 브랜드·작품명이 아니라 범주로 서술한다. 각 2~4개.
-- selfReflection(awareness/blindSpots): ★가장 중요한 항목★. awareness는 patterns에서 이미 다룬 결 자체나 그 이유를 다시 확인해주는 자리가 아니다 — patterns가 "무엇이 반복되는지"를 다뤘다면, awareness는 그 결이 이 사람에게 실제로 어떤 역할을 하는지, 즉 그 결이 채워주는 심리적·실용적 필요(예: 안정감, 통제감, 몰입, 회복, 정체성 표현, 관계에서의 안전거리 등)를 답변을 근거로 짚는다. "그런 편이죠", "이미 느끼고 있을 습관이다"처럼 이미 아는 내용을 확인해주는 문장으로 끝내지 마라 — patterns와 다른 질문("그게 왜 이 사람에게 필요한지")에 답해야 한다. blindSpots는 여러 답변을 교차했을 때 드러나는, 본인은 잘 모를 수 있는 결이다 — 위 ★핵심 재해석 (1)★과 ★핵심 재해석 (2)★ 중 최소 하나는 반드시 포함한다. awareness는 정확히 2개, blindSpots는 정확히 3개 — 각각 가장 강한 발견만 고른다. ★대조 구문 금지★: patterns와 selfReflection 어디에서도 "~라고 답했지만", "~라고 했지만", "~인데 정작", "~지만 실제로는"처럼 앞 문장의 내용을 뒤 문장이 뒤집는 대조 접속 구조를 쓰지 마라 — 답변자를 모순된 사람으로 단정하는 인상을 준다. 간극을 짚으라는 지시 자체는 그대로다 — 대신 두 모습을 각각 병렬로 서술한 뒤, 그 둘이 어떻게 함께 있을 수 있는지를 설명하는 방식으로 써라(예: "A인 것과 B인 것은 다른 얘기다"처럼, 어느 한쪽도 부정하지 않고 두 사실이 동시에 성립하는 이유를 짚는다).
-- roadmap: firstAction은 24시간 안에 시도해볼 수 있는 아주 구체적인 행동 하나(예: "오늘, 평소라면 안 골랐을 분위기의 콘텐츠 하나만 틀어보기"). phases는 취향을 조금씩 넓혀보거나 지금 결을 더 즐기는 방법을 30일 동안 단계별로 담는다("1주 이내", "2주 이내", "한 달 이내" 등) 2~4단계, 각 단계에 실행 항목 2~3개.
+- tasteMap(expand/avoid): 사용자의 답변 패턴을 근거로 "넓혀볼 만한 방향" / "안 맞을 방향"을 짚는다. 위 ★중요★(우열 금지) 원칙을 반드시 지켜라 — "넓혀볼 만한 방향"은 더 나은 취향이 아니라 지금 결과 자연스럽게 이어질 법한, 아직 안 가본 결이라는 톤으로 쓰고, "안 맞을 방향"도 부족하다는 뉘앙스 없이 그냥 지금 결과 안 맞을 뿐이라는 톤으로 쓴다. 구체적인 브랜드·작품명이 아니라 범주로 서술한다. tasteCore·patterns·selfReflection에서 이미 정리한 결을 요약해서 되풀이하지 마라 — 방향 자체가 앞에서 안 나온 새로운 정보여야 한다. 각 2~4개.
+- selfReflection(awareness/blindSpots): ★가장 중요한 항목★. awareness는 patterns에서 이미 다룬 결 자체나 그 이유를 다시 확인해주는 자리가 아니다 — patterns가 "무엇이 반복되는지"를 다뤘다면, awareness는 그 결이 이 사람에게 실제로 어떤 역할을 하는지, 즉 그 결이 채워주는 심리적·실용적 필요(예: 안정감, 통제감, 몰입, 회복, 정체성 표현, 관계에서의 안전거리 등)를 답변을 근거로 짚는다. "그런 편이죠", "이미 느끼고 있을 습관이다"처럼 이미 아는 내용을 확인해주는 문장으로 끝내지 마라 — patterns와 다른 질문("그게 왜 이 사람에게 필요한지")에 답해야 한다. blindSpots는 여러 답변을 교차했을 때 드러나는, 본인은 잘 모를 수 있는 결이다 — 위 ★핵심 재해석 (1)★과 ★핵심 재해석 (2)★ 중 최소 하나는 반드시 포함한다. awareness는 정확히 2개, blindSpots는 정확히 3개 — 각각 가장 강한 발견만 고른다. 항목 하나하나는 1~2문장으로 끝내라 — 문단이 되면 안 된다. 뒷받침 설명을 덧붙이느라 문장을 늘리지 말고, 발견 자체를 정확한 한두 문장으로 압축하라(내용을 줄이라는 뜻이 아니라, 같은 발견을 더 짧고 정확한 문장에 담으라는 뜻이다). ★대조 구문 금지★: patterns와 selfReflection 어디에서도 "~라고 답했지만", "~라고 했지만", "~인데 정작", "~지만 실제로는"처럼 앞 문장의 내용을 뒤 문장이 뒤집는 대조 접속 구조를 쓰지 마라 — 답변자를 모순된 사람으로 단정하는 인상을 준다. 간극을 짚으라는 지시 자체는 그대로다 — 대신 두 모습을 각각 병렬로 서술한 뒤, 그 둘이 어떻게 함께 있을 수 있는지를 설명하는 방식으로 써라(예: "A인 것과 B인 것은 다른 얘기다"처럼, 어느 한쪽도 부정하지 않고 두 사실이 동시에 성립하는 이유를 짚는다).
+- roadmap: firstAction은 24시간 안에 시도해볼 수 있는 아주 구체적인 행동 하나(예: "오늘, 평소라면 안 골랐을 분위기의 콘텐츠 하나만 틀어보기"). phases는 취향을 조금씩 넓혀보거나 지금 결을 더 즐기는 방법을 30일 동안 단계별로 담는다("1주 이내", "2주 이내", "한 달 이내" 등) 2~4단계, 각 단계에 실행 항목 2~3개. 앞 블록에서 이미 쓴 성향 설명을 다시 요약하지 마라 — 그 해석을 실제로 해볼 수 있는 행동으로만 번역한다.
 - 사용자 프로필(나이대·신분·성별)이 주어지면, 그 정보를 결과 문장에 그대로 언급하거나 인용하지 마라 — 예시나 어조가 그 나이대·상황에 맞는지 표현 수위를 조정하는 데만 참고 자료로 써라.
 - 사용자가 어떤 항목을 건너뛰었으면(선택지도 직접입력도 없으면) 그 항목은 자연스럽고 무난한 내용으로 채운다 — 절대 "답변 없음"이나 빈 배열로 두지 않는다.
 - 문장 끝맺음을 다양하게 쓴다. 기본 어조는 "해요체"(예: "반복돼요", "가능성이 높아요")지만, 같은 어미가 연속 3번 이상 나오면 안 된다 — 특히 "~예요"/"~이에요"/"~거예요"가 줄줄이 이어지지 않게, 평서형 종결(예: "반복된다", "그게 결이다"), 명사형 마무리(예: "~하는 편", "~라는 신호"), 짧은 단정(예: "이유는 이거다.")을 같은 블록 안에서 의도적으로 섞어 쓴다 — title/oneLiner/tasteCore/patterns/matrix의 설명/tasteMap/selfReflection/roadmap 전부 예외 없이 해당된다. 표현의 리듬을 다양하게 하라는 것이지 내용을 부드럽게 하라는 뜻이 아니다 — 불편한 내용이라도 완곡하게 순화하지 말고 정확하게 쓰되, 어미만 다채롭게 쓴다.
@@ -277,30 +280,157 @@ function capRoadmapPhases(phases: RawRoadmap["phases"]): TasteRoadmapPhase[] {
   return capArray(phases, 4).map((phase) => ({ label: phase.label, actions: capArray(phase.actions, 4) }));
 }
 
-// 다른 다섯 주제와 같은 이유(Sonnet 5의 기본 사고 토큰이 max_tokens
-// 예산에 포함됨)로 같은 상한·재시도 방식을 그대로 쓴다 —
-// engine/ideal-type-generator.ts 참고.
-const TASTE_MAX_TOKENS = 16384;
-const TASTE_MAX_TOKENS_RETRY = 16384;
+// GENERATION BUDGET 조사(2026-08)로 16384 → 20480(+4096, +25%)로 올렸다.
+// Preview에서 실제로 category=truncated(stop_reason="max_tokens")가
+// 확인됐다 — "추정"이 아니라 관측된 사실이다. 원인 후보 두 개를 비교했다:
+// (1) effort를 낮춘다 — thinking 토큰 소비를 줄여 최종 JSON에 남는
+//     여유를 늘릴 수 있지만, generation-config.ts에 이미 적어둔 대로
+//     Sonnet 5는 medium 밑으로 내리면 품질이 눈에 띄게 떨어질 수 있다는
+//     공식 문서 근거가 있다 — "결과 품질을 떨어뜨리지 마라"는 이번 조사
+//     지시와 정면으로 부딪힌다. 채택하지 않는다.
+// (2) max_tokens를 올린다 — thinking·최종 JSON 배분에는 손대지 않고
+//     그릇만 키운다. 이미 stop_reason="end_turn"으로 정상 종료되는
+//     생성은 max_tokens를 올려도 걸리는 시간이 그대로다(모델이 다 쓰고
+//     나면 알아서 멈춘다 — 상한까지 채우고서야 멈추는 게 아니다).
+//     길어지는 건 "이미 잘리고 있던" 케이스뿐이라, 상한을 25%만 올려도
+//     대부분의 truncation은 해소되면서 시간 예산에 주는 영향은 최소로
+//     유지된다. 채택.
+// 이 값과 짝을 이루는 시간 예산 조정은 아래 TASTE_MIN_TIME_BUDGET_FOR_
+// GENERATION_MS 주석 참고 — 두 값을 같이 안 바꾸면 "더 길게 쓰도록
+// 늘려준 예산" 때문에 라우트가 300초를 넘겨 504로 끊길 위험이 그대로
+// 남는다.
+const TASTE_MAX_TOKENS = 20480;
+
+// TASTE 생성 안정화 후속(2026-08) — 위 truncated 조사 때는 "effort를
+// 낮추면 품질이 떨어질 수 있다"는 문서 근거만으로 medium을 유지한다고
+// 판단했는데, 실제로는 그 "유지"가 안 되고 있었다: 다른 5개 주제와
+// 공유하는 generation-config.ts의 getGenerationEffort()는 Vercel의
+// ANTHROPIC_GENERATION_EFFORT 환경변수를 우선하고, 그 환경변수가 이미
+// high로 설정돼 있어(6개 주제 공통 값) taste도 매 호출마다 high로
+// 돌고 있었다 — 코드가 "기본은 medium"이라고 말하는 것과 실제 동작이
+// 달랐다. high는 사고 토큰을 더 많이 써서 truncated 위험을 그만큼
+// 키운다. taste만은 이 환경변수와 무관하게 medium을 그대로 강제한다
+// — 리터럴 상수를 직접 쓰고 getGenerationEffort()를 호출하지 않는다.
+// 다른 5개 주제는 계속 getGenerationEffort()(환경변수 우선)를 쓴다 —
+// generation-config.ts와 그 5개 파일은 고치지 않는다.
+const TASTE_GENERATION_EFFORT = "medium";
+
+// RESULT GENERATION FAILURE 조사(2026-08)로 추가한 실패 분류. 지금까지는
+// 모든 실패가 사용자에게도, 개발 로그에서도 "생성 실패" 하나로 뭉뚱그려
+// 보였다 — Vercel 로그에 status/type은 남기고 있었지만(아래
+// classifyApiError), 그 값을 "재시도할 가치가 있는가"라는 판단으로
+// 연결하지는 않았다. 이 분류는 그 판단(아래 RETRYABLE_CATEGORIES)과
+// Preview 진단 응답(app/api/review-taste-a/route.ts)에 그대로 쓰인다.
+export type FailureCategory =
+  | "rate_limited" // Anthropic 429
+  | "server_overloaded" // Anthropic 5xx(529 과부하 포함)
+  | "network_error" // 연결 실패(DNS·소켓 끊김 등, 타임아웃 제외)
+  | "request_timeout" // SDK 자체 요청 타임아웃(APIConnectionTimeoutError)
+  | "auth_or_config" // 401/403/404/409/422 — 계정·요청 구성 문제
+  | "bad_request" // 400 — 입력이 모델 컨텍스트 한도를 넘김
+  | "empty_response" // API 호출은 성공했지만 텍스트 블록이 없음
+  | "truncated" // max_tokens에 걸려 잘림
+  | "schema_invalid" // JSON 파싱 또는 TASTE_SCHEMA 검증 실패
+  | "unknown_error"; // 위 어디에도 안 걸리는, 분류 불가능한 예외
+
+// generation-error.ts(6개 주제가 공유하는 파일)의 isServerSideGenerationError는
+// "카운트할지(boolean)"만 판단한다 — 그 파일을 고치지 않고, 여기서
+// Anthropic SDK 예외 클래스를 더 세분화해서 재시도 판단에 쓴다. 이
+// 클래스 이름들은 @anthropic-ai/sdk/core/error.ts에 정의돼 있다.
+function classifyApiError(error: unknown): FailureCategory {
+  if (error instanceof Anthropic.APIConnectionTimeoutError) return "request_timeout";
+  if (error instanceof Anthropic.APIConnectionError) return "network_error";
+  if (error instanceof Anthropic.RateLimitError) return "rate_limited";
+  if (error instanceof Anthropic.InternalServerError) return "server_overloaded";
+  if (error instanceof Anthropic.BadRequestError) return "bad_request";
+  if (error instanceof Anthropic.APIError) return "auth_or_config";
+  return "unknown_error";
+}
+
+// "재시도해서 다른 결과가 나올 가능성이 실제로 있는가"만 기준으로 삼는다.
+// - rate_limited/server_overloaded/network_error: Anthropic 쪽의 일시적
+//   상태일 뿐, 같은 요청을 다시 보내면 성공할 가능성이 있다.
+// - empty_response/schema_invalid: 모델 응답 자체는 받았지만 내용이
+//   이상했던 경우 — 같은 입력이라도 모델 출력은 결정적이지 않으므로
+//   다시 시도하면 정상 JSON이 나올 가능성이 있다.
+// - truncated: 같은 max_tokens·같은 프롬프트로 다시 시도해도 같은
+//   지점에서 다시 잘릴 가능성이 높고(taste-generator.ts 기존 주석 —
+//   과거 이 이유로 재시도 자체를 없앴다), 이미 최대치까지 토큰을 쓴
+//   시도라 재시도할 시간 여유도 거의 안 남는다 — 재시도 안 함.
+// - request_timeout: "타임아웃 직전" 신호 그 자체다 — 재시도 안 함.
+// - auth_or_config/bad_request/unknown_error: 같은 요청이면 같은
+//   이유로 다시 실패한다(설정 문제거나 코드가 분류 못 한 예외) —
+//   재시도 안 함.
+const RETRYABLE_CATEGORIES: ReadonlySet<FailureCategory> = new Set([
+  "rate_limited",
+  "server_overloaded",
+  "network_error",
+  "empty_response",
+  "schema_invalid",
+]);
+
+// 429/5xx/network처럼 Anthropic 쪽이 일시적으로 붐빈 상황에서만 짧게
+// 쉬었다 다시 보낸다 — empty_response/schema_invalid는 혼잡과 무관한
+// 문제라 곧장 재시도한다.
+const BACKOFF_CATEGORIES: ReadonlySet<FailureCategory> = new Set(["rate_limited", "server_overloaded", "network_error"]);
+const RETRY_BACKOFF_MS = 1_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// GENERATION BUDGET 조사(2026-08)로 추가 — Preview 진단 화면(app/dev/
+// result-wow-review)과 서버 로그에서 "실제로 무슨 일이 있었는지"를
+// 숫자로 보여준다. production 사용자 응답에는 넣지 않는다(TasteGeneration
+// Outcome 주석 참고).
+export type TasteGenerationDiagnostics = {
+  stopReason: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  thinkingTokens: number | null;
+  effort: string;
+  attemptDurationMs: number;
+};
+
+type AttemptOutcome = {
+  result: TasteResult | null;
+  truncated: boolean;
+  countsAsFailure: boolean;
+  category: FailureCategory | null;
+  diagnostics: TasteGenerationDiagnostics;
+};
 
 // countsAsFailure: 이 실패를 rate-limit.ts의 세션당 실패 상한에 넣을지.
 // 서버 쪽 원인(engine/generation-error.ts)은 false, 빈 응답·스키마
-// 검증 실패는 항상 true — work-generator.ts와 같은 원칙이다.
+// 검증 실패는 항상 true — work-generator.ts와 같은 원칙이다. category는
+// 그와 별개로 "왜 실패했는지"만 구분한다(재시도 판단·Preview 진단용).
 async function attemptGeneration(
   client: Anthropic,
   session: MapSession,
   maxTokens: number,
   attempt: number,
   generationStartedAt: number,
-): Promise<{ result: TasteResult | null; truncated: boolean; countsAsFailure: boolean }> {
+): Promise<AttemptOutcome> {
+  const attemptStartedAt = Date.now();
   let responseText: string | undefined;
   let truncated = false;
+  let stopReason: string | null = null;
+  let inputTokens: number | null = null;
   let outputTokens: number | null = null;
   let thinkingTokens: number | null = null;
-  // getGenerationEffort()는 호출될 때마다 "[generation] effort=..."를
-  // 로그로 남긴다 — 아래 계측 로그에도 같은 값을 실어야 하니 한 번만
-  // 불러 변수에 담아 재사용한다(두 번 부르면 그 로그도 두 번 남는다).
-  const effort = getGenerationEffort();
+  // 공용 getGenerationEffort()(환경변수 우선)를 부르지 않는다 — 위
+  // TASTE_GENERATION_EFFORT 주석 참고. diagnostics()에도 이 실제 적용값을
+  // 그대로 싣는다(Preview 화면에서 "medium이 진짜로 적용됐는지"를 값
+  // 하나로 바로 확인할 수 있게).
+  const effort = TASTE_GENERATION_EFFORT;
+  const diagnostics = (): TasteGenerationDiagnostics => ({
+    stopReason,
+    inputTokens,
+    outputTokens,
+    thinkingTokens,
+    effort,
+    attemptDurationMs: Date.now() - attemptStartedAt,
+  });
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-5",
@@ -318,6 +448,8 @@ async function attemptGeneration(
       },
     });
     truncated = response.stop_reason === "max_tokens";
+    stopReason = response.stop_reason ?? null;
+    inputTokens = response.usage?.input_tokens ?? null;
     outputTokens = response.usage?.output_tokens ?? null;
     thinkingTokens = response.usage?.output_tokens_details?.thinking_tokens ?? null;
     if (truncated) {
@@ -336,15 +468,17 @@ async function attemptGeneration(
     const status = error instanceof Anthropic.APIError ? error.status : undefined;
     const type = error instanceof Anthropic.APIError ? error.type : undefined;
     const serverSide = isServerSideGenerationError(error);
+    const category = classifyApiError(error);
     console.error("[taste-generator] Claude API call failed", {
       status,
       type,
+      category,
       name: error instanceof Error ? error.name : typeof error,
       message: error instanceof Error ? error.message : String(error),
       countsAsFailure: !serverSide,
     });
     logGenerationAttempt({ topic: "taste", attempt, generationStartedAt, effort, outcome: { kind: "api_error" } });
-    return { result: null, truncated, countsAsFailure: !serverSide };
+    return { result: null, truncated, countsAsFailure: !serverSide, category, diagnostics: diagnostics() };
   }
 
   if (!responseText) {
@@ -356,7 +490,7 @@ async function attemptGeneration(
       effort,
       outcome: truncated ? { kind: "truncated", outputTokens, thinkingTokens } : { kind: "api_error" },
     });
-    return { result: null, truncated, countsAsFailure: true };
+    return { result: null, truncated, countsAsFailure: true, category: truncated ? "truncated" : "empty_response", diagnostics: diagnostics() };
   }
 
   const parsed = parseAndValidate(responseText);
@@ -369,7 +503,7 @@ async function attemptGeneration(
       effort,
       outcome: truncated ? { kind: "truncated", outputTokens, thinkingTokens } : { kind: "schema_invalid", outputTokens, thinkingTokens },
     });
-    return { result: null, truncated, countsAsFailure: true };
+    return { result: null, truncated, countsAsFailure: true, category: truncated ? "truncated" : "schema_invalid", diagnostics: diagnostics() };
   }
 
   const data = parsed.data;
@@ -410,44 +544,138 @@ async function attemptGeneration(
     statusLabel: getStatusLabel(session.quizAnswers, "taste"),
   };
   logGenerationAttempt({ topic: "taste", attempt, generationStartedAt, effort, outcome: { kind: "success", outputTokens, thinkingTokens } });
-  return { result, truncated, countsAsFailure: false };
+  return { result, truncated, countsAsFailure: false, category: null, diagnostics: diagnostics() };
 }
 
-// 2회 재시도는 잘림(truncation)으로 실패한 요청을 "같은 max_tokens 상한"으로
-// 다시 돌리는 구조라 실제로 구제되는지 불확실한 반면(잘려서 실패한 이유가
-// 그대로면 재시도도 같은 이유로 다시 잘릴 수 있다), 1회당 실측 최대 151초
-// 걸리는 시도를 두 번 이어 돌리면 151×2=302초로 maxDuration(300초, Hobby +
-// Fluid Compute 상한이라 이 이상 올릴 수 없다)을 확실히 넘겨 504로 끊긴다
-// — 실제 프로덕션 타임아웃 2건이 정확히 이 패턴이었다. 불확실한 구제
-// 효과보다 확실한 타임아웃을 피하는 쪽을 택해 1로 낮춘다. 재시도 루프
-// 구조 자체는 그대로 남겨둔다 — 나중에 시간 예산이 늘어나면(예: 플랜
-// 업그레이드) 이 값만 다시 올리면 된다.
-const MAX_GENERATION_ATTEMPTS = 1;
+// RESULT GENERATION FAILURE 조사(2026-08) 이전에는 이 값이 2였다가, 실제
+// 프로덕션 504 타임아웃 2건(1차 시도 실패 → 2차 시도 진행 중 151×2=302초로
+// maxDuration(300초, Hobby + Fluid Compute 상한이라 더 못 올린다)을
+// 넘겨 끊긴 패턴)이 확인되면서 1로 낮췄던 값이다(git blame ff540ed 참고).
+// 그 조사 때는 "모든 실패를 무조건 재시도"가 전제였다 — 그 전제 자체가
+// 문제였다. 지금은 무조건 2회를 도는 게 아니라, 아래 shouldRetry()가
+// (1) 재시도할 가치가 있는 오류 종류인지, (2) 남은 시간 예산이 시도
+// 하나를 더 안전하게 마칠 만큼 남았는지를 매번 확인한 뒤에만 두 번째
+// 시도를 허용한다 — 그래서 상한 자체는 다시 2로 올려도 안전하다(위
+// 타임아웃 패턴은 "실패한 시도가 이미 151초 가까이 썼는데 그 사실을
+// 무시하고 또 151초짜리 시도를 무조건 돌린" 게 원인이었지, 상한이
+// 2였다는 것 자체가 원인이 아니다).
+const MAX_GENERATION_ATTEMPTS = 2;
 
-export type TasteGenerationOutcome = { result: TasteResult | null; countsAsFailure: boolean };
+// app/api/generate-taste-result/route.ts의 maxDuration과 같은 값이다(300초).
+// 그 값을 리터럴로 export할 수 없는 이유는 generation-cache.ts의
+// ROUTE_MAX_DURATION_MS 주석과 같다(Next.js가 각 route.ts 파일에서
+// `export const maxDuration = 300`을 직접 읽어야 한다) — 여기서도
+// 독립적으로 같은 값을 든다.
+export const TASTE_ROUTE_MAX_DURATION_MS = 300_000;
+
+// GENERATION BUDGET 조사(2026-08)로 generation-cache.ts의 공용 상수
+// (MIN_TIME_BUDGET_FOR_GENERATION_MS=170초, TASTE_MAX_TOKENS=16384 시절의
+// 실측 최대 151초+20초 여유) 대신 taste 전용 값을 따로 둔다 — max_tokens를
+// 20480으로 올린 이상 그 옛 151초 기준을 그대로 쓰면 실제로는 더 길어질
+// 수 있는 시도를 "안전하다"고 잘못 판단할 위험이 있다(다른 5개 주제는
+// max_tokens를 그대로 뒀으니 generation-cache.ts의 공용 값이 여전히
+// 맞다 — 그 파일은 고치지 않는다).
+//
+// 계산 근거: 16384 토큰 시도의 실측 최대 151초에서 "토큰당 처리 시간"을
+// 역산하면 151,000ms ÷ 16,384 ≈ 9.2ms/토큰. max_tokens를 20480으로
+// 4,096 늘렸으니 최악의 경우 최대 +4,096 × 9.2ms ≈ +38초가 더 걸릴 수
+// 있다고 보수적으로 잡는다(성공적으로 끝나는 대부분의 생성은 상한을
+// 다 안 쓰고 stop_reason="end_turn"으로 먼저 멈추므로 이 값은 최악의
+// 경우만 가정한 추정치다 — 실측이 아니다. 아래 Preview 진단(duration)
+// 으로 실제 값을 확인하고, 필요하면 이 상수도 같이 조정한다).
+// 151초 + 38초 ≈ 189초에 20초 여유를 더해 반올림한 값이다.
+export const TASTE_MIN_TIME_BUDGET_FOR_GENERATION_MS = 220_000;
+
+// 시도 하나를 더 시작해도(재시도든, 라우트의 최초 생성 시작이든) 안전한지
+// 판단하는 공통 기준.
+function hasSufficientTimeBudget(requestStartedAt: number): boolean {
+  const remainingMs = TASTE_ROUTE_MAX_DURATION_MS - (Date.now() - requestStartedAt);
+  return remainingMs >= TASTE_MIN_TIME_BUDGET_FOR_GENERATION_MS;
+}
+
+// app/api/generate-taste-result/route.ts가 "생성을 시작해도 되는지"
+// 판단할 때 쓴다 — generation-cache.ts의 hasSufficientTimeBudgetForGeneration
+// (공용, 170초 기준)이 아니라 이 함수(taste 전용, 220초 기준)를 대신
+// 쓴다. 다른 5개 주제의 route.ts는 여전히 공용 함수를 그대로 쓴다.
+export function hasSufficientTimeBudgetForTasteGeneration(requestStartedAt: number): boolean {
+  return hasSufficientTimeBudget(requestStartedAt);
+}
+
+function shouldRetry(category: FailureCategory | null, requestStartedAt: number): boolean {
+  if (!category || !RETRYABLE_CATEGORIES.has(category)) return false;
+  return hasSufficientTimeBudget(requestStartedAt);
+}
+
+export type TasteGenerationOutcome = {
+  result: TasteResult | null;
+  countsAsFailure: boolean;
+  // 아래 셋은 production 사용자 응답(app/api/generate-taste-result/route.ts)에는
+  // 노출하지 않는다 — Preview 전용 진단 라우트(app/api/review-taste-a/route.ts)와
+  // 서버 로그에서만 쓴다.
+  attempts: number;
+  category: FailureCategory | null;
+  diagnostics: TasteGenerationDiagnostics | null;
+};
 
 // Server-side only: reads ANTHROPIC_API_KEY from the environment and must
 // never be imported from client components. The API route is the only caller.
 //
 // countsAsFailure(반환값): ideal-type-generator.ts의 같은 이름 값과
-// 같은 규칙 — 재시도 2회 중 하나라도 입력/출력 내용 때문에 실패했으면
+// 같은 규칙 — 시도 중 하나라도 입력/출력 내용 때문에 실패했으면
 // 최종적으로도 카운트한다.
-export async function generateTasteResult(session: MapSession): Promise<TasteGenerationOutcome> {
+//
+// requestStartedAt: 호출부(API 라우트)가 요청을 받은 시각. 재시도 여부를
+// 판단할 때 "이 함수가 시작된 시점"이 아니라 "라우트 전체가 시작된
+// 시점"부터 남은 시간을 봐야 한다 — 마커 대기(최대 45초) 등 이 함수
+// 호출 전에 이미 써버린 시간이 있을 수 있기 때문이다(app/api/
+// generate-taste-result/route.ts가 이미 hasSufficientTimeBudgetForGeneration로
+// 같은 기준을 써서 "생성을 시작할지"를 판단한다 — 여기서는 그 판단을
+// 한 번 더, "재시도할지"에 적용한다). 라우트 컨텍스트가 없는 호출부
+// (Preview 진단 라우트, CLI 스크립트)는 생략하면 이 함수 시작 시각을
+// 그대로 쓴다.
+export async function generateTasteResult(session: MapSession, options?: { requestStartedAt?: number }): Promise<TasteGenerationOutcome> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error("[taste-generator] ANTHROPIC_API_KEY not set");
-    return { result: null, countsAsFailure: false };
+    return { result: null, countsAsFailure: false, attempts: 0, category: null, diagnostics: null };
   }
 
   const client = new Anthropic({ apiKey });
   const generationStartedAt = Date.now();
-  let maxTokens = TASTE_MAX_TOKENS;
+  const requestStartedAt = options?.requestStartedAt ?? generationStartedAt;
   let countsAsFailure = false;
+  let lastCategory: FailureCategory | null = null;
+  let lastDiagnostics: TasteGenerationDiagnostics | null = null;
+  let attemptsMade = 0;
+
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const outcome = await attemptGeneration(client, session, maxTokens, attempt, generationStartedAt);
-    if (outcome.result) return { result: outcome.result, countsAsFailure: false };
+    attemptsMade = attempt;
+    const outcome = await attemptGeneration(client, session, TASTE_MAX_TOKENS, attempt, generationStartedAt);
+    lastDiagnostics = outcome.diagnostics;
+    if (outcome.result) {
+      return { result: outcome.result, countsAsFailure: false, attempts: attempt, category: null, diagnostics: outcome.diagnostics };
+    }
     if (outcome.countsAsFailure) countsAsFailure = true;
-    if (outcome.truncated) maxTokens = TASTE_MAX_TOKENS_RETRY;
+    lastCategory = outcome.category;
+
+    const isFinalAttempt = attempt >= MAX_GENERATION_ATTEMPTS;
+    if (isFinalAttempt) {
+      console.log("[taste-generator] giving up", { attempt, category: lastCategory, reason: "max_attempts_reached" });
+      break;
+    }
+    if (!shouldRetry(outcome.category, requestStartedAt)) {
+      console.log("[taste-generator] not retrying", {
+        attempt,
+        category: outcome.category,
+        retryableCategory: outcome.category ? RETRYABLE_CATEGORIES.has(outcome.category) : false,
+        remainingMs: TASTE_ROUTE_MAX_DURATION_MS - (Date.now() - requestStartedAt),
+      });
+      break;
+    }
+    console.log("[taste-generator] retrying", { nextAttempt: attempt + 1, category: outcome.category });
+    if (outcome.category && BACKOFF_CATEGORIES.has(outcome.category)) {
+      await sleep(RETRY_BACKOFF_MS);
+    }
   }
-  return { result: null, countsAsFailure };
+  return { result: null, countsAsFailure, attempts: attemptsMade, category: lastCategory, diagnostics: lastDiagnostics };
 }
