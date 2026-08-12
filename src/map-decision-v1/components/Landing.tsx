@@ -182,7 +182,11 @@ function HeroFirstQuestion({ axis, onAnswer }: { axis: TopicAxis; onAnswer: (cho
             onClick={() => pick(option)}
             disabled={isLocked}
             className={cx(
-              "group relative flex flex-col items-center gap-2.5 rounded-large border px-4 py-7 text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none sm:py-8",
+              // LANDING HOOK & QUIZ FUN PASS(2026-08) — active:scale 하나만
+              // 추가한다. hover는 마우스 전용이라 모바일(실제 사용자 대다수)
+              // 에서는 탭해도 아무 즉각 피드백이 없었다 — 손끝이 닿는 순간
+              // 살짝 눌리는 감각이 "tactile feeling" 지시가 요구한 전부다.
+              "group relative flex flex-col items-center gap-2.5 rounded-large border px-4 py-7 text-center transition-all duration-normal ease-emphasized active:scale-[0.97] disabled:pointer-events-none sm:py-8",
               isSelected
                 ? "scale-[1.03] border-primary bg-primary text-primary-foreground shadow-floating"
                 : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-1 hover:scale-[1.02] hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating",
@@ -397,10 +401,18 @@ function TopicCard({
   topic,
   onStart,
   onLocked,
+  compact,
 }: {
   topic: TopicConfig;
   onStart: (topicId: string) => void;
   onLocked: (topic: TopicConfig) => void;
+  // LANDING HOOK & QUIZ FUN PASS(2026-08) — "다른 MAP" 그리드가 REAL Q1
+  // 히어로와 시각적 무게를 다투면 첫 행동을 방해한다는 지시에 따라,
+  // 이 그리드에서만 카드를 더 작고 조용하게(최소 높이·글자 크기·여백을
+  // 낮춘다) 만든다. "무엇을 결정해야 할지"(진로 1장)는 원래 크기를
+  // 유지한다 — 그쪽은 그리드 형태도 아니고 히어로와 경쟁하는 자리도
+  // 아니다. 클릭 대상·문구·카드 개수는 전혀 바뀌지 않는다.
+  compact?: boolean;
 }) {
   const disabled = !topic.implemented;
   const meta = TOPIC_META[topic.id];
@@ -417,7 +429,8 @@ function TopicCard({
         // 보이게 하고, 평상시 그림자를 없애 화면이 "카드가 여러 장 떠
         // 있다"가 아니라 "인쇄된 색인 목록"처럼 차분하게 가라앉게 한다.
         // 정보 구조·문구·클릭 동작은 전혀 바뀌지 않는다.
-        "group relative flex min-h-[112px] flex-col items-start justify-center gap-2 overflow-hidden rounded-large border border-border bg-surface py-4 pl-5 pr-4 text-left transition duration-normal ease-emphasized",
+        "group relative flex flex-col items-start justify-center gap-2 overflow-hidden rounded-large border border-border bg-surface text-left transition duration-normal ease-emphasized",
+        compact ? "min-h-[88px] py-3 pl-4 pr-3" : "min-h-[112px] py-4 pl-5 pr-4",
         disabled ? "opacity-60" : "hover:-translate-y-0.5 hover:border-primary-border-soft hover:bg-ink-wash hover:shadow-subtle",
       )}
     >
@@ -429,8 +442,10 @@ function TopicCard({
           준비 중
         </span>
       ) : null}
-      <span className="break-keep text-base font-black tracking-[-0.02em]">{topic.name}</span>
-      <span className="break-keep text-xs font-semibold leading-5 text-text-secondary">{TOPIC_HOOK[topic.id] ?? topic.oneLiner}</span>
+      <span className={cx("break-keep font-black tracking-[-0.02em]", compact ? "text-sm" : "text-base")}>{topic.name}</span>
+      <span className={cx("break-keep font-semibold leading-5 text-text-secondary", compact ? "text-[11px]" : "text-xs")}>
+        {TOPIC_HOOK[topic.id] ?? topic.oneLiner}
+      </span>
       {meta ? (
         <span className="break-keep text-[11px] font-semibold text-text-muted">
           {meta.questions}문항 · 약 {meta.minutes}분
@@ -446,30 +461,32 @@ function TopicSection({
   onStart,
   onLocked,
   showCount = true,
+  compact = false,
 }: {
   kicker: string;
   ids: string[];
   onStart: (topicId: string) => void;
   onLocked: (topic: TopicConfig) => void;
   showCount?: boolean;
+  compact?: boolean;
 }) {
   // 카드가 1개뿐이면(현재 "무엇을 결정해야 할지") 2~3열 그리드에 넣지
   // 않고 전폭 1열로 그린다 — 그리드 칸이 남아 오른쪽이 비어 보이는
   // 문제를 없앤다. 카드가 여러 개면 기존 2~3열 그대로다.
   const isSingle = ids.length === 1;
   return (
-    <section className="map-container py-4">
+    <section className={cx("map-container", compact ? "py-3" : "py-4")}>
       {/* 배지 숫자는 ids.length에서 계산한다 — VIRAL_TOPIC_IDS/DEPTH_TOPIC_IDS에
           주제가 추가·삭제돼도 따로 고칠 값이 늘지 않는다. showCount=false인
           섹션(현재 "무엇을 결정해야 할지")은 배지 자체를 렌더링하지 않는다 —
           "6개"와 "1개"가 나란히 있으면 후자가 미완성처럼 보이기 때문. */}
-      <div className="mb-4 flex items-center gap-2 px-1">
-        <p className="text-lg font-black tracking-[-0.02em] text-text-primary">{kicker}</p>
+      <div className={cx("flex items-center gap-2 px-1", compact ? "mb-2.5" : "mb-4")}>
+        <p className={cx("font-black tracking-[-0.02em] text-text-secondary", compact ? "text-sm" : "text-lg text-text-primary")}>{kicker}</p>
         {showCount ? <Badge>{ids.length}개</Badge> : null}
       </div>
-      <div className={cx("grid gap-4", isSingle ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3")}>
+      <div className={cx("grid", compact ? "gap-2.5" : "gap-4", isSingle ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3")}>
         {ids.map((id) => (
-          <TopicCard key={id} topic={TOPICS[id]} onStart={onStart} onLocked={onLocked} />
+          <TopicCard key={id} topic={TOPICS[id]} onStart={onStart} onLocked={onLocked} compact={compact} />
         ))}
       </div>
     </section>
@@ -672,7 +689,7 @@ export function Landing({
           사람인지"를 그대로 두면 taste가 빠진 게 아니라 처음부터 없던
           것처럼 읽힌다. "다른 MAP"으로 바꿔 이 카드들이 위 Hero(taste)
           말고도 더 있다는 걸 분명히 한다. */}
-      <TopicSection kicker="다른 MAP" ids={gridTopicIds} onStart={handleGridStart} onLocked={handleLocked} />
+      <TopicSection kicker="다른 MAP" ids={gridTopicIds} onStart={handleGridStart} onLocked={handleLocked} compact />
       <TopicSection
         kicker="무엇을 결정해야 할지"
         ids={DEPTH_TOPIC_IDS}
