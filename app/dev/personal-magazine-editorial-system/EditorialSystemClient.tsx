@@ -216,38 +216,44 @@ function MeStory() {
 }
 
 // TYPE B — EDITORIAL COLLAGE (TASTE)
+// TASTE VISUAL INTEGRATION(2026-08) — 실제 GPT editorial 이미지 4장(HERO/
+// PLACE/OBJECT/DETAIL)을 그대로 꽂았다. 4장은 절대 하나로 합성하지 않고
+// 끝까지 독립된 <img> 4개로 유지한다 — 각각 나중에 사용자 데이터 기반으로
+// 따로 교체될 자산이기 때문이다. HERO는 이미 CHAPTER 02/TASTE 타이틀과
+// PLACE·OBJECT·DETAIL·RITUAL 미리보기까지 포함한 완성된 chapter opening이라
+// Kicker/FeatureTitle/Deck처럼 그 내용을 HTML로 다시 말하는 텍스트는 전부
+// 걷어냈다. 4장의 프레임 폭·여백·이미지 사이 간격을 의도적으로 다르게 줘서
+// "사람이 있는 세계(HERO) → 내가 머무는 공간(PLACE) → 내가 쥔 물건(OBJECT) →
+// 하루의 작은 순간(DETAIL)"으로 시야가 점점 좁아지는 리듬을 만든다 — 4장을
+// 같은 크기로 반복 나열하지 않는다.
 function TasteCollage() {
   const f = FEATURES.taste;
+  const taste = magazineVisualAssets.taste;
+
+  function frame(asset: (typeof taste)[keyof typeof taste]) {
+    const [w, h] = asset.aspectRatio.split(":").map(Number);
+    return (
+      <div className="relative w-full overflow-hidden" style={{ aspectRatio: `${w} / ${h}` }}>
+        <img src={asset.src} alt={asset.alt} className="size-full object-contain" style={{ objectPosition: asset.objectPositionMobile }} />
+      </div>
+    );
+  }
+
   return (
     <section id={`feature-${f.id}`} className="pb-14">
       <PageHeader folio={f.folio} />
-      <div className="px-5 pt-3">
-        <Kicker accent>{f.kicker}</Kicker>
-        <FeatureTitle lines={f.titleLines} className="mt-1" />
-        <Deck className="mt-2">{f.deck}</Deck>
-      </div>
 
-      <div className="mt-6 flex items-start gap-3 px-5">
-        <div className={cx("flex flex-col gap-1.5", WIDTH_L)}>
-          <EditorialImageFrame ratio="4:5" label="HERO · 4:5" />
-          <CaptionText>필름 카메라로 기록한 순간들</CaptionText>
-        </div>
-        <div className={cx("flex flex-col gap-1.5", WIDTH_XS)}>
-          <EditorialImageFrame ratio="1:1" label="DETAIL · 1:1" labelSize="small" />
-          <CaptionText>레코드판 한 장</CaptionText>
-        </div>
-      </div>
+      {/* HERO — 챕터를 여는 세계 전체. 여백 없이 가장 크게, 가장 먼저. */}
+      <div className="mt-4">{frame(taste.hero)}</div>
 
-      <div className="mt-8 flex items-end gap-3 px-5">
-        <div className={cx("flex flex-col gap-1.5", WIDTH_S)}>
-          <EditorialImageFrame ratio="2:3" label="OBJECT · 2:3" />
-          <CaptionText>오래된 물건 하나</CaptionText>
-        </div>
-        <div className={cx("mb-4 flex flex-col gap-1.5", WIDTH_M)}>
-          <EditorialImageFrame ratio="3:2" label="PLACE · 3:2" />
-          <CaptionText>자주 가는 조용한 자리</CaptionText>
-        </div>
-      </div>
+      {/* PLACE — 그 세계 안, 내가 머무는 공간. 살짝 여백을 둬 시야가 좁아지기 시작한다. */}
+      <div className="mt-10 px-5">{frame(taste.place)}</div>
+
+      {/* OBJECT — 공간에서 다시 물건으로. 여백을 더 주고 폭도 살짝 좁혀 시선이 계속 좁아진다. */}
+      <div className="mt-14 px-8">{frame(taste.object)}</div>
+
+      {/* DETAIL — 챕터의 마지막, 하루의 가장 작은 순간. 가장 좁게, 가장 안쪽으로. */}
+      <div className="mt-14 px-12 pb-2">{frame(taste.detail)}</div>
     </section>
   );
 }
