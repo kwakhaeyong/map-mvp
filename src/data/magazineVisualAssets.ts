@@ -88,10 +88,19 @@ export const magazineVisualAssets = {
   },
 
   travel: {
-    // TRAVEL은 아직 Art Direction이 확정되지 않아 실제 이미지 파일이
-    // 없다. 없는 파일을 import해서 build를 깨뜨리지 않도록 null로
-    // 비워둔다 — 이미지가 오면 taste.hero와 같은 구조의
-    // MagazineVisualAsset 객체를 그대로 채워 넣기만 하면 된다.
-    hero: null as MagazineVisualAsset | null,
+    // TRAVEL 챕터 오프닝 — CHAPTER 03 · TRAVEL · 내가 사랑하는 여행의
+    // 순간들 타이틀과 아말피 해안을 바라보는 인물 뒷모습, 하단에
+    // CITY/NATURE/PEOPLE/MOMENT 4분할 미리보기까지 이미 하나의 완성된
+    // chapter opening spread로 들어있다. TASTE(HERO→PLACE→OBJECT→
+    // DETAIL로 점점 좁아지는 구조)와 달리 TRAVEL은 지금 Hero 한 장만
+    // 검증한다 — TASTE의 프레임 문법을 그대로 복사하지 않는다.
+    hero: {
+      src: "/magazine/travel/travel-hero.png",
+      alt: "TRAVEL 챕터 오프닝 스프레드 — CHAPTER 03 · TRAVEL · 내가 사랑하는 여행의 순간들 · THE PLACES THAT CHANGE ME 타이틀, 아말피 해안 절벽에서 바다와 마을을 내려다보는 인물 뒷모습, 하단에 CITY · NATURE · PEOPLE · MOMENT 4분할 미리보기.",
+      aspectRatio: "1024:1536",
+      objectPositionMobile: "center top",
+      objectPositionDesktop: "center center",
+      role: "travel-chapter-opening-hero",
+    } satisfies MagazineVisualAsset,
   },
 };
