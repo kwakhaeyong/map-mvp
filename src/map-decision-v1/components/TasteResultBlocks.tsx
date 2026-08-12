@@ -36,7 +36,15 @@ function cx(...classes: Array<string | false | null | undefined>) {
 function SectionHeader({ title, description }: { title: string; description: string }) {
   return (
     <div>
-      <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary" />
+      {/* VISUAL DESIGN PASS v1(2026-08) — 단순 색 바를 "선 + 점" 두 조각으로
+          나눴다. 위 CardSignature(카드 우상단 경로 서명)와 같은 언어(선을
+          따라가다 점에 닿는다)를 아주 작게 반복해서, 섹션을 넘길 때마다
+          이 카드가 "경로 위의 한 지점"이라는 인상이 옅게 쌓이게 한다 —
+          새 색·새 의미는 아니고 기존 bg-primary 토큰 하나만 쓴다. */}
+      <span aria-hidden="true" className="mb-2 flex items-center gap-1.5">
+        <span className="h-1 w-6 rounded-pill bg-primary" />
+        <span className="size-1 rounded-full bg-primary" />
+      </span>
       <h2 className="text-base font-black tracking-[-0.02em] text-text-primary">{title}</h2>
       <p className="mt-0.5 text-xs font-semibold leading-5 text-text-secondary">{description}</p>
     </div>
@@ -226,10 +234,17 @@ function DiscoveriesSection({ result }: { result: TasteResult }) {
 // CollapsibleFriendResult.tsx·위 Disclosure와 같은 토글 발상이지만,
 // "메뉴 목록" 느낌을 내려고 더 얇고 리스트에 가깝게 만들었다(더
 // 깊게 보기 자체를 여는 Disclosure보다 한 단계 더 가벼운 톤).
+// VISUAL DESIGN PASS v1(2026-08) — 예전엔 항목마다 각자 테두리·radius·
+// shadow를 가진 독립된 흰 박스였다(4장이 세로로 쌓여 "폼 필드 리스트"에
+// 가깝게 보였다). 이제 이 컴포넌트 자체는 자기 테두리를 갖지 않고,
+// 아래 TasteResultDetails가 4개를 하나의 그룹 컨테이너(테두리 1개 +
+// divide-y 구분선)로 감싼다 — "카드 4장"이 아니라 "메뉴 한 판" 인상을
+// 준다. 펼치기·접기 로직, 각 항목이 독립적으로 열리는 동작, 문구는
+// 전혀 바뀌지 않는다.
 function DeepDiveDisclosureItem({ title, children }: { title: string; children: ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="overflow-hidden rounded-large border border-border bg-surface-elevated shadow-subtle">
+    <div>
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
@@ -706,7 +721,7 @@ export function TasteResultDetails({ result }: { result: TasteResult }) {
 
   return (
     <Disclosure closedLabel="더 깊게 보기" openLabel="접기">
-      <div className="flex flex-col gap-2.5">
+      <div className="divide-y divide-border overflow-hidden rounded-large border border-border bg-surface-elevated shadow-subtle">
         <DeepDiveDisclosureItem title="내가 확실히 끌리는 것">
           <HeroEvidence items={result.tasteCore.certain} maxEvidence={2} maxMore={2} />
           {patternsRest.length > 0 ? (

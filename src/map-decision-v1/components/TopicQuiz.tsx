@@ -87,11 +87,16 @@ function OptionChip({
       onClick={onClick}
       disabled={isDisabled}
       className={cx(
+        // VISUAL DESIGN PASS v1(2026-08) — Landing의 TopicCard 호버
+        // 톤(옅은 ink-wash 틴트 + primary-border-soft 테두리, 강한
+        // shadow-floating 대신 shadow-subtle)과 맞춰서, 랜딩에서 퀴즈로
+        // 넘어와도 "다른 사람이 만든 화면"처럼 느껴지지 않게 한다. 선택
+        // 로직·문구·비활성 처리는 그대로다.
         "flex flex-col items-start gap-0.5 rounded-large border px-4 text-left transition-all duration-normal ease-emphasized disabled:pointer-events-none",
         compact ? "py-2" : "py-3",
         isSelected
           ? "border-primary bg-primary text-primary-foreground shadow-subtle"
-          : "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-border-strong hover:shadow-floating",
+          : "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-primary-border-soft hover:bg-ink-wash hover:shadow-subtle",
         isDisabled && !isSelected && "opacity-40",
       )}
     >
@@ -126,10 +131,12 @@ function StackCard({
       onClick={onClick}
       disabled={isDisabled}
       className={cx(
+        // VISUAL DESIGN PASS v1(2026-08) — OptionChip과 같은 이유로 호버
+        // 톤을 ink-wash/primary-border-soft로 맞춘다.
         "relative flex flex-col items-start gap-1 rounded-large border px-4 py-5 text-left transition-all duration-normal ease-emphasized disabled:pointer-events-none",
         isSelected
           ? "scale-[1.02] border-primary bg-primary text-primary-foreground shadow-floating"
-          : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:scale-[1.01] hover:border-border-strong hover:shadow-floating",
+          : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:scale-[1.01] hover:border-primary-border-soft hover:bg-ink-wash hover:shadow-subtle",
         isDisabled && !isSelected && "opacity-40",
       )}
     >

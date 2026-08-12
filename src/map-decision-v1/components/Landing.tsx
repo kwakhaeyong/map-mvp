@@ -356,12 +356,19 @@ function TopicCard({
       aria-disabled={disabled}
       onClick={() => (disabled ? onLocked(topic) : onStart(topic.id))}
       className={cx(
-        "group relative flex min-h-[112px] flex-col items-start justify-center gap-2 overflow-hidden rounded-large border border-border bg-surface p-4 text-left shadow-subtle transition duration-normal ease-emphasized",
-        disabled ? "opacity-60" : "hover:-translate-y-1 hover:border-border-strong hover:shadow-floating",
+        // VISUAL DESIGN PASS v1(2026-08) — 상단 통짜 색 바 + 흰 배경 +
+        // shadow-subtle 조합("카드마다 회색 테두리 + 흰 배경"의 전형적인
+        // SaaS 기능 카드 패턴)을 지도 "범례 색인" 톤으로 낮춘다. 색 바를
+        // 위쪽 전체 폭이 아니라 왼쪽에 짧게 세워 지도 범례의 색 표식처럼
+        // 보이게 하고, 평상시 그림자를 없애 화면이 "카드가 여러 장 떠
+        // 있다"가 아니라 "인쇄된 색인 목록"처럼 차분하게 가라앉게 한다.
+        // 정보 구조·문구·클릭 동작은 전혀 바뀌지 않는다.
+        "group relative flex min-h-[112px] flex-col items-start justify-center gap-2 overflow-hidden rounded-large border border-border bg-surface py-4 pl-5 pr-4 text-left transition duration-normal ease-emphasized",
+        disabled ? "opacity-60" : "hover:-translate-y-0.5 hover:border-primary-border-soft hover:bg-ink-wash hover:shadow-subtle",
       )}
     >
       {TOPIC_ACCENT[topic.id] ? (
-        <span aria-hidden="true" className={cx("absolute inset-x-0 top-0 h-1", TOPIC_ACCENT[topic.id])} />
+        <span aria-hidden="true" className={cx("absolute inset-y-4 left-0 w-1 rounded-pill", TOPIC_ACCENT[topic.id])} />
       ) : null}
       {disabled ? (
         <span className="absolute right-3 top-3 rounded-pill border border-border bg-surface-elevated px-2.5 py-1 text-[10px] font-black text-text-muted">
