@@ -36,6 +36,7 @@ const config: Config = {
         "primary-foreground-wash": "var(--color-primary-foreground-wash)",
         "error-soft-border": "var(--color-error-soft-border)",
         "primary-border-soft": "var(--color-primary-border-soft)",
+        "accent-bronze": "var(--color-accent-bronze)",
       },
       borderRadius: {
         small: "var(--radius-small)",

@@ -63,6 +63,12 @@
      미리 계산해 넣는다. */
   --color-error-soft-border: rgba(185, 75, 67, 0.3); /* danger 버튼 테두리(현재 앱 어디서도 쓰이지 않는 변형) */
   --color-primary-border-soft: rgba(62, 107, 112, 0.4); /* Landing.tsx 안전망 카드의 hover 테두리 강조, primary 기준 */
+  /* BRAND IDENTITY PASS v2(2026-08) — "Invitation" 축의 유일한 신규 토큰.
+     메인 색이 아니라 RESULT CARD 안에서 극히 작은 면적(카드 서명의 점
+     하나)에만 쓰는 절제된 액센트다. 채도를 낮춘 청동색이라 "금색
+     디자인"으로 읽히지 않는다 — 새 팔레트가 아니라 기존 off-white/
+     ink/teal 구조에 아주 옅게 곁들이는 디테일 색 하나뿐이다. */
+  --color-accent-bronze: #a9814f;
   --radius-small: 12px;
   --radius-medium: 18px;
   --radius-large: 28px;

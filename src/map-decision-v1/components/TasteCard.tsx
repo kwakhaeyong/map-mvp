@@ -121,7 +121,13 @@ function TasteCardBody({
               : "이미지로 저장"}
       </Button>
       {imageError ? <p className="text-center text-xs font-bold text-error">{imageError}</p> : null}
-      <Button variant="outline" size="lg" onClick={onReset}>
+      {/* BRAND IDENTITY PASS v2(2026-08) — CTA 위계 재점검(§11). outline
+          (테두리만, 존재감 최약)은 이 결과 화면의 실질적인 바이럴
+          핵심 CTA("너도 만들어봐")보다 정보 토글에 더 어울리는
+          강도였다 — secondary(테두리+채운 배경)로 한 단계 올려서
+          "이미지로 저장"(대기 중엔 secondary, 준비되면 primary)과
+          같은 기준선에 놓는다. 문구·클릭 동작·analytics는 그대로다. */}
+      <Button variant="secondary" size="lg" onClick={onReset}>
         너도 만들어봐
       </Button>
       <NextMapPrompt session={session} tags={result.tags} onStartTopic={onStartTopic} />

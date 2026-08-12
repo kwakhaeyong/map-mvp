@@ -53,6 +53,13 @@ function SectionHeader({ title, description }: { title: string; description: str
 
 // CollapsibleFriendResult.tsx와 똑같은 토글 버튼 스타일을 재사용한다 —
 // "더 깊게 보기"/"행동으로 이어보기" 둘 다 이 컴포넌트로 만든다.
+//
+// BRAND IDENTITY PASS v2(2026-08) — 알약 모양 + shadow-subtle(둥실 뜬
+// 흰 버튼) 조합을 "모든 걸 rounded card에 담는" 패턴에서 빼기 위해
+// radius-small(12px)·그림자 없음·투명 배경의 얇은 테두리 행으로
+// 낮췄다. 결과 CTA(친구에게 보여주기 등, 진짜 버튼)와 이 정보 토글이
+// 한눈에 다른 위계로 읽히게 하는 목적도 겸한다. 펼치기/접기 동작,
+// 문구, 클릭 대상은 전혀 바뀌지 않는다.
 function Disclosure({ closedLabel, openLabel, children }: { closedLabel: string; openLabel: string; children: ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   return (
@@ -61,7 +68,7 @@ function Disclosure({ closedLabel, openLabel, children }: { closedLabel: string;
         type="button"
         onClick={() => setExpanded((current) => !current)}
         aria-expanded={expanded}
-        className="flex w-full items-center justify-between rounded-pill border border-border bg-surface-elevated px-4 py-3 text-sm font-extrabold text-text-primary shadow-subtle transition-colors hover:border-border-strong"
+        className="flex w-full items-center justify-between rounded-small border border-border bg-transparent px-4 py-3 text-sm font-extrabold text-text-primary transition-colors hover:border-border-strong hover:bg-ink-wash"
       >
         <span>{expanded ? openLabel : closedLabel}</span>
         <span aria-hidden="true">{expanded ? "▲" : "▾"}</span>
@@ -106,7 +113,11 @@ function CardSignature() {
       />
       <circle cx="8" cy="44" r="3" className="fill-primary" />
       <circle cx="40" cy="18" r="2.4" className="fill-primary" />
-      <circle cx="56" cy="8" r="3" className="fill-primary" />
+      {/* BRAND IDENTITY PASS v2(2026-08) — 경로의 "도착점"만 청동으로
+          구분한다. 새 시각화가 아니라 기존 점 3개 중 하나의 색만
+          바꾼 것 — "이 카드가 지금 도착해 있는 지점"이라는 인상을
+          아주 작게(반경 3px) 더한다. 전체 카드 면적 대비 5% 미만. */}
+      <circle cx="56" cy="8" r="3" className="fill-accent-bronze" />
     </svg>
   );
 }
@@ -125,16 +136,39 @@ function HeroHeader({ result, heroAction }: { result: TasteResult; heroAction?: 
       <CardSignature />
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5" aria-hidden="true">
-          <span className="grid size-5 place-items-center rounded-medium border border-primary bg-surface-elevated text-[10px] font-black text-primary">
+          {/* BRAND IDENTITY PASS v2(2026-08) — "M + irregular contour" 지시를
+              반영해, 완벽한 원/정사각형 대신 손으로 찍은 봉인처럼 약간
+              비정형인 윤곽(비대칭 border-radius)과 미세한 기울임을 준다.
+              Living MY MAP의 "완벽한 도형이 아닌 유기적 윤곽" 언어를 이
+              작은 배지 하나에도 그대로 반복한 것뿐 — 새 색·새 아이콘
+              세트는 아니다. 밀랍 인장처럼 두껍게 만들지 않도록 테두리는
+              1px, 크기는 기존과 거의 같게 유지했다. */}
+          <span
+            className="grid size-6 place-items-center border border-primary bg-surface-elevated text-[10px] font-black text-primary"
+            style={{ borderRadius: "42% 58% 53% 47% / 48% 42% 58% 52%", transform: "rotate(-4deg)" }}
+          >
             M
           </span>
-          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-text-muted">MAP Decision</span>
+          {/* "MAP Decision"은 라틴 문자뿐이라 시스템 세리프(font-serif,
+              Tailwind 기본 스택 — 새 폰트 파일을 받지 않는다)를 입혀도
+              추가 전송량이 0바이트다. 실제 결과 제목(한글, AI가 만든
+              임의 문장)에는 세리프를 적용하지 않았다 — 이유는 이 파일의
+              결과 보고에 별도로 남긴다(요약: 이 프로젝트가 이미 Pretendard를
+              92개 유니코드 조각으로 나눠 쓰는 이유와 같은 이유로, 결과
+              제목처럼 글자 구성을 예측할 수 없는 자리에 새 한글 세리프
+              전체(웹 폰트 2.4MB급)를 무조건 올리는 건 이번 라운드의
+              "가볍게" 원칙과 맞지 않는다). */}
+          <span className="font-serif text-[10px] font-black uppercase tracking-[0.14em] text-text-muted">MAP Decision</span>
         </div>
         <span className="inline-flex items-center rounded-pill bg-tag-fill px-3 py-1 text-xs font-extrabold text-text-primary">
           나의 취향 MAP
         </span>
       </div>
-      <h1 className="mt-4 text-balance break-keep text-3xl font-black leading-9 tracking-[-0.03em] text-text-primary">{result.title}</h1>
+      {/* masthead rule — "브랜드 표기"와 "제목"을 필드가 아니라 지면
+          (masthead 아래 헤드라인)처럼 가르는 얇은 선 하나. 새 정보는
+          아니고 순수 구분선이라 스크린리더에서 의미를 갖지 않는다. */}
+      <div aria-hidden="true" className="my-3 h-px w-full bg-border" />
+      <h1 className="text-balance break-keep text-3xl font-black leading-9 tracking-[-0.03em] text-text-primary">{result.title}</h1>
       <p className="mt-2 text-sm font-bold leading-6 text-text-primary">{result.oneLiner}</p>
       {result.statusLabel ? (
         <p className="mt-2 text-xs font-semibold leading-5 text-text-secondary">{result.statusLabel}</p>
@@ -721,7 +755,7 @@ export function TasteResultDetails({ result }: { result: TasteResult }) {
 
   return (
     <Disclosure closedLabel="더 깊게 보기" openLabel="접기">
-      <div className="divide-y divide-border overflow-hidden rounded-large border border-border bg-surface-elevated shadow-subtle">
+      <div className="divide-y divide-border overflow-hidden rounded-large border border-border bg-surface-elevated">
         <DeepDiveDisclosureItem title="내가 확실히 끌리는 것">
           <HeroEvidence items={result.tasteCore.certain} maxEvidence={2} maxMore={2} />
           {patternsRest.length > 0 ? (

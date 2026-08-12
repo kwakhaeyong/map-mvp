@@ -135,10 +135,41 @@ const HERO_OPTION_VISUAL: Record<string, { badge: string; Icon: (props: { classN
 // "눌렀다 → 오? → Q2"라는 짧은 피드백을 250ms 자동 전환 시간 안에서만
 // 준다(새 지연을 추가하지 않는다). 선택·전환 로직(useAutoAdvance,
 // 250ms) 자체는 그대로다 — 이번 보정은 순수 시각(className)만 바꿨다.
+// BRAND IDENTITY PASS v2(2026-08) — "4지선다 설문"이 아니라 "내 지도의
+// 첫 위치를 찍는다"는 인상을 아주 옅게 더하는 배경 하나. 실제 좌표·축·
+// 숫자는 전혀 없다(그러면 chart가 된다) — 그냥 지면 위를 지나가는
+// 경로 한 가닥과 옅은 점 하나뿐이다. 타일 4개의 실제 중심 좌표에
+// 정확히 맞추지 않는다 — 이 그리드는 375px에서 2×2, lg 이상에서
+// 1×4로 완전히 다른 배치가 되므로, 특정 타일에 선을 정확히 연결하면
+// 한쪽 레이아웃에서는 어긋난다. 대신 두 레이아웃 모두에서 자연스러운
+// 추상적인 "경로 조각"으로만 존재한다. TasteHeroBackdrop과 같은 원칙
+// (currentColor + opacity 속성, raw 색상값 아님)을 그대로 따른다.
+function FirstPointBackdrop() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 100 60"
+      preserveAspectRatio="none"
+      className="pointer-events-none absolute inset-0 -z-10 size-full text-primary"
+    >
+      <path
+        d="M4 50 C 22 34, 30 46, 48 30 S 74 14, 96 10"
+        className="fill-none stroke-current"
+        strokeWidth="0.6"
+        strokeDasharray="0.5 3.2"
+        strokeLinecap="round"
+        opacity="0.14"
+      />
+      <circle cx="4" cy="50" r="1.1" className="fill-current" opacity="0.18" />
+    </svg>
+  );
+}
+
 function HeroFirstQuestion({ axis, onAnswer }: { axis: TopicAxis; onAnswer: (choice: TopicChoice) => void }) {
   const { pending, pick } = useAutoAdvance(onAnswer, false);
   return (
-    <div className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-3 sm:gap-4 lg:max-w-none lg:grid-cols-4 lg:gap-5">
+    <div className="relative mx-auto mt-6 grid max-w-md grid-cols-2 gap-3 sm:gap-4 lg:max-w-none lg:grid-cols-4 lg:gap-5">
+      <FirstPointBackdrop />
       {axis.options.map((option) => {
         const isSelected = pending?.label === option.label;
         const isLocked = pending !== null && !isSelected;
