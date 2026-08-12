@@ -1,8 +1,7 @@
 "use client";
 
 import { useId, useState, type ReactNode } from "react";
-import { TasteMap, TasteMatrix, TasteMatrixPoint, TasteResult, TasteRoadmap, TasteSelfReflection } from "../types";
-import { CollapsibleItems } from "./CollapsibleItems";
+import { TasteMap, TasteMatrix, TasteMatrixPoint, TasteResult, TasteRoadmap } from "../types";
 import { Card } from "./ui/primitives";
 
 // 취향 결과를 "보여주기만" 하는 순수 프레젠테이션 컴포넌트 모음.
@@ -218,62 +217,61 @@ function DiscoveriesSection({ result }: { result: TasteResult }) {
   );
 }
 
-type CoreTone = "strong" | "medium" | "light";
-const CORE_TIER_CLASS: Record<CoreTone, string> = {
-  strong: "border-primary bg-ink-wash",
-  medium: "border-border-strong bg-ink-wash",
-  light: "border-dashed border-border bg-surface",
-};
+// DEEP DIVE EXPERIENCE(2026-08) — "더 깊게 보기"를 열면 한 번에 모든
+// 분석이 쏟아지던 예전 4블록(취향의 중심·반복되는 패턴·방향·자기성찰)을
+// 없애고, 그 아래 4개의 독립 토글 메뉴로 바꾼다. 아래 세 컴포넌트가
+// 그 메뉴 하나하나를 만드는 공용 부품이다.
 
-function CoreTier({ label, items, tone }: { label: string; items: string[]; tone: CoreTone }) {
+// 메뉴 행 하나 — 기본은 닫혀 있고, 눌러야 그 항목의 분석만 펼쳐진다.
+// CollapsibleFriendResult.tsx·위 Disclosure와 같은 토글 발상이지만,
+// "메뉴 목록" 느낌을 내려고 더 얇고 리스트에 가깝게 만들었다(더
+// 깊게 보기 자체를 여는 Disclosure보다 한 단계 더 가벼운 톤).
+function DeepDiveDisclosureItem({ title, children }: { title: string; children: ReactNode }) {
+  const [expanded, setExpanded] = useState(false);
   return (
-    <div className={cx("rounded-medium border p-3", CORE_TIER_CLASS[tone])}>
-      <p className="text-xs font-black text-text-primary">{label}</p>
-      <ul className="mt-1.5 space-y-1">
-        {items.map((item, index) => (
-          <li key={index} className="text-xs font-bold leading-5 text-text-primary">
-            · {item}
-          </li>
-        ))}
-      </ul>
+    <div className="overflow-hidden rounded-large border border-border bg-surface-elevated shadow-subtle">
+      <button
+        type="button"
+        onClick={() => setExpanded((current) => !current)}
+        aria-expanded={expanded}
+        className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-extrabold text-text-primary"
+      >
+        <span>{title}</span>
+        <span aria-hidden="true" className="shrink-0 text-text-muted">
+          {expanded ? "▲" : "▾"}
+        </span>
+      </button>
+      {expanded ? <div className="flex flex-col gap-3 border-t border-border px-4 py-4">{children}</div> : null}
     </div>
   );
 }
 
-// sm:grid-cols-3를 뺐다(2026-08) — 이 결과 화면 전체가 max-w-sm(384px)
-// 고정폭 컨테이너 안에서만 그려지는데, Tailwind의 sm: 접두사는 컨테이너
-// 폭이 아니라 뷰포트 폭(640px) 기준이라 데스크톱 브라우저에서는 이
-// 좁은 카드 안에 3열이 강제로 눌려 칸마다 줄바꿈 수가 달라지고 박스
-// 높이가 들쭉날쭉해 보였다(테스터 피드백, 실측 확인). 항상 1열로
-// 세로 나열한다 — MAP_DESIGN_SYSTEM.md의 반응형 접두사 금지 규칙 참고.
-function TasteCoreSection({ tasteCore }: { tasteCore: TasteResult["tasteCore"] }) {
-  return (
-    <Card className="flex flex-col gap-4">
-      <SectionHeader title="취향의 중심" description="답변에서 드러난 확실함의 정도를 세 단계로 나눠봤어요." />
-      <div className="grid gap-3">
-        <CoreTier label="확실한 것" items={tasteCore.certain} tone="strong" />
-        <CoreTier label="상황 따라 다른 것" items={tasteCore.conditional} tone="medium" />
-        <CoreTier label="안 끌리는 것" items={tasteCore.indifferent} tone="light" />
-      </div>
-    </Card>
-  );
+// 메뉴 안의 작은 소제목(예: "답변 사이에서 반복된 것") — 새 색 없이
+// 기존 SelfReflectionSection이 쓰던 것과 같은 톤(작고 옅은 대문자
+// eyebrow)을 재사용한다.
+function SubLabel({ children }: { children: ReactNode }) {
+  return <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-text-muted">{children}</p>;
 }
 
-function PatternsSection({ items }: { items: string[] }) {
-  // dropFirst 이후 항목이 하나도 안 남는 경우(이론상만 가능 — patterns는
-  // 프롬프트 규칙상 2~4개다)에는 빈 카드를 보여주지 않는다.
+// 문장을 새로 쓰거나 요약하지 않는다 — 배열의 첫 번째 항목을 그대로
+// "대표 문장"으로 크게, 나머지는 작은 불릿 목록으로 보여줘서 시각
+// 위계만 만든다(데이터 변형 없음, UI hierarchy만 적용).
+function HeroSecondaryList({ items }: { items: string[] }) {
   if (items.length === 0) return null;
+  const [hero, ...rest] = items;
   return (
-    <Card className="flex flex-col gap-3">
-      <SectionHeader title="반복되는 패턴" description="답변을 가로질러 반복되는 결이에요." />
-      <CollapsibleItems
-        items={items.map((item, index) => (
-          <blockquote key={index} className="rounded-medium border border-border border-l-4 border-l-primary bg-surface-elevated p-3 text-sm font-bold leading-6 text-text-primary">
-            {item}
-          </blockquote>
-        ))}
-      />
-    </Card>
+    <div className="flex flex-col gap-2">
+      <p className="text-base font-bold leading-7 text-text-primary">{hero}</p>
+      {rest.length > 0 ? (
+        <ul className="flex flex-col gap-1.5">
+          {rest.map((item, index) => (
+            <li key={index} className="text-sm font-semibold leading-6 text-text-secondary">
+              · {item}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 
@@ -444,79 +442,39 @@ function MyMapSection({ matrix }: { matrix: TasteMatrix }) {
   );
 }
 
-function TasteMapSection({ tasteMap }: { tasteMap: TasteMap }) {
+// DEEP DIVE 항목 ③ "넓혀볼 것 / 굳이 안 맞출 것"의 본문. 예전
+// TasteMapSection에서 Card·SectionHeader(바깥 틀)만 뺐다 — DeepDive
+// DisclosureItem이 이미 그 틀을 대신 준다. expand/avoid 두 목록이
+// success/error 색으로 이미 구분돼 있어(hero/secondary 위계를 굳이
+// 더 얹지 않아도 두 묶음이 한눈에 갈린다), 여기서는 항목 순서를
+// 그대로 둔다 — 데이터도 그대로다.
+function ExpandAvoidGrid({ tasteMap }: { tasteMap: TasteMap }) {
   return (
-    <Card className="flex flex-col gap-4">
-      <SectionHeader title="넓혀볼 방향, 안 맞을 방향" description="답변 패턴을 근거로 짚어본 방향이에요." />
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
-          <p className="flex items-center gap-1.5 text-xs font-black text-success">
-            <span className="size-2 rounded-full bg-success" aria-hidden="true" />
-            넓혀볼 만한 방향
-          </p>
-          <ul className="mt-1.5 space-y-1">
-            {tasteMap.expand.map((item, index) => (
-              <li key={index} className="flex items-start gap-1.5 text-xs font-bold leading-5 text-text-primary">
-                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-success" aria-hidden="true" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
-          <p className="flex items-center gap-1.5 text-xs font-black text-error">
-            <span className="size-2 rounded-full bg-error" aria-hidden="true" />
-            안 맞을 방향
-          </p>
-          <ul className="mt-1.5 space-y-1">
-            {tasteMap.avoid.map((item, index) => (
-              <li key={index} className="flex items-start gap-1.5 text-xs font-bold leading-5 text-text-primary">
-                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-error" aria-hidden="true" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-// 다른 네 주제의 SelfReflectionSection과 완전히 같은 발상(반전 배경으로
-// 강조)이라 시각 스타일도 그대로 가져왔다.
-// 항목(li)의 sm:text-lg sm:leading-8을 뺐다(2026-08) — 이유는 바로 위
-// TasteCoreSection 주석과 같다(뷰포트 640px 기준 접두사가 384px 고정폭
-// 카드 안에서 켜지는 문제). 이 블록은 페이지 안에서 가장 큰 본문
-// 글자였는데, 데스크톱에서 그 위에 sm:text-lg까지 얹히니 "결과 아래쪽
-// 줄글 폰트가 너무 크다"는 테스터 피드백으로 이어졌다. 패딩(sm:p-5/
-// sm:p-6)·제목 크기(sm:text-xl)는 384px 안에서도 줄바꿈이나 정렬
-// 파손을 일으키지 않아(단순 여백·크기 차이일 뿐) 그대로 둔다.
-function SelfReflectionSection({ selfReflection }: { selfReflection: TasteSelfReflection }) {
-  return (
-    <div
-      className="flex flex-col gap-7 rounded-large border-2 border-primary bg-surface-elevated p-5 text-text-primary shadow-floating backdrop-blur-xl transition-shadow duration-normal ease-standard sm:p-6"
-    >
-      <div>
-        <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary" />
-        <h2 className="text-lg font-black tracking-[-0.02em] text-text-primary sm:text-xl">조금 더 들여다본 나</h2>
-        <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">답변을 모아서 본 나의 취향이에요.</p>
-      </div>
-      <div className="flex flex-col gap-3">
-        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-text-secondary">내가 알아채고 있는 것</p>
-        <ul className="flex flex-col gap-4 rounded-medium border border-border-strong bg-ink-wash p-4 sm:p-5">
-          {selfReflection.awareness.map((item, index) => (
-            <li key={index} className="text-base font-semibold leading-7 text-text-primary">
-              {item}
+    <div className="grid grid-cols-2 gap-3">
+      <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
+        <p className="flex items-center gap-1.5 text-xs font-black text-success">
+          <span className="size-2 rounded-full bg-success" aria-hidden="true" />
+          넓혀볼 만한 방향
+        </p>
+        <ul className="mt-1.5 space-y-1">
+          {tasteMap.expand.map((item, index) => (
+            <li key={index} className="flex items-start gap-1.5 text-xs font-bold leading-5 text-text-primary">
+              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-success" aria-hidden="true" />
+              <span>{item}</span>
             </li>
           ))}
         </ul>
       </div>
-      <div className="flex flex-col gap-3">
-        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-text-secondary">잘 안 보이는 부분</p>
-        <ul className="flex flex-col gap-4 rounded-medium border border-border-strong p-4 sm:p-5">
-          {selfReflection.blindSpots.map((item, index) => (
-            <li key={index} className="text-base font-semibold leading-7 text-text-primary">
-              {item}
+      <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
+        <p className="flex items-center gap-1.5 text-xs font-black text-error">
+          <span className="size-2 rounded-full bg-error" aria-hidden="true" />
+          안 맞을 방향
+        </p>
+        <ul className="mt-1.5 space-y-1">
+          {tasteMap.avoid.map((item, index) => (
+            <li key={index} className="flex items-start gap-1.5 text-xs font-bold leading-5 text-text-primary">
+              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-error" aria-hidden="true" />
+              <span>{item}</span>
             </li>
           ))}
         </ul>
@@ -593,25 +551,88 @@ export function TasteResultHighlights({
   );
 }
 
-// STEP 4 "더 깊게 보기". 기존 4블록(중심·패턴·방향·자기성찰)을 하나도
-// 지우지 않고 그대로 담되, 기본은 접어둔다 — 펼치면 예전과 똑같은
-// 깊이가 그대로 나온다. RESULT VIRAL EXPERIENCE(2026-08)로 patterns·
-// awareness·blindSpots는 dropFirst로 0번째(위 "MAP이 발견한 3가지"가
-// 이미 쓴 항목)만 건너뛴다 — 배열 자체(result.patterns 등)는 그대로고,
-// 화면에 넘기기 직전에만 슬라이스한다. tasteCore·tasteMap은 발견
-// 3가지에서 쓰지 않는 필드라 그대로 전달한다.
+// STEP 4 "더 깊게 보기" — DEEP DIVE EXPERIENCE(2026-08). 예전엔 열자마자
+// 4블록(중심·패턴·방향·자기성찰)이 전부 한 번에 펼쳐져 "긴 AI 리포트"로
+// 읽혔다. 지금은 열어도 4개의 닫힌 메뉴만 보이고, 사용자가 고른 것만
+// 그 안의 분석이 펼쳐진다(Progressive Disclosure). 여러 개를 동시에
+// 열 수 있다 — true accordion(하나 열면 나머지 자동으로 닫힘)으로
+// 만들지 않았다: 방금 펼쳐 읽던 내용이 다른 메뉴를 눌렀다고 갑자기
+// 사라지면 탐색 경험에서 오히려 불편하고, 각 메뉴 안 내용을 이미
+// hero/secondary 위계로 짧게 다듬어놔서 여러 개를 동시에 열어도
+// 화면이 감당 못 할 만큼 길어지지 않는다(기본은 4개 다 닫힘 —
+// "가볍다"는 원칙은 그대로 지켜진다). 이 파일의 다른 Disclosure들
+// (CollapsibleFriendResult 포함)도 전부 같은 독립 토글 방식이라
+// 인터랙션 패턴도 일관된다.
+//
+// 데이터 매핑 (전부 기존 필드 재배치일 뿐, 새 필드·새 AI 호출 없음):
+// ① 내가 확실히 끌리는 것 = tasteCore.certain + (아래 patterns 처리 참고)
+// ② 상황에 따라 달라지는 나 = tasteCore.conditional + tasteCore.indifferent(보조)
+// ③ 넓혀볼 것 / 굳이 안 맞출 것 = tasteMap.expand + tasteMap.avoid
+// ④ 내가 미처 몰랐던 나 = selfReflection.awareness + selfReflection.blindSpots
+//
+// patterns 처리: patterns[0]은 STEP 2 "반복되는 나"에서 이미 썼다.
+// 나머지(dropFirst)를 위해 5번째 메뉴를 새로 만들지 않았다 — patterns는
+// "여러 답변에 걸쳐 반복되는, 이미 확실해 보이는 결"을 다루므로 의미상
+// ①(확실히 끌리는 것)에 가장 가깝다고 판단해 ① 안의 작은 subsection
+// ("답변 사이에서 반복된 것")으로 붙였다. 정보 손실 없이 4개 메뉴
+// 안에서 자연스럽게 흡수되는 경우라 5번째 메뉴는 필요하지 않았다.
+//
+// awareness/blindSpots도 STEP 2에서 0번째를 이미 썼으므로 dropFirst로
+// 건너뛴다 — awareness는 프롬프트상 정확히 2개, blindSpots는 정확히
+// 3개라 dropFirst 뒤에도 항상 1개·2개가 남는다(빈 섹션이 되지 않는다).
 export function TasteResultDetails({ result }: { result: TasteResult }) {
+  const patternsRest = dropFirst(result.patterns);
+  const awarenessRest = dropFirst(result.selfReflection.awareness);
+  const blindSpotsRest = dropFirst(result.selfReflection.blindSpots);
+
   return (
     <Disclosure closedLabel="더 깊게 보기" openLabel="접기">
-      <TasteCoreSection tasteCore={result.tasteCore} />
-      <PatternsSection items={dropFirst(result.patterns)} />
-      <TasteMapSection tasteMap={result.tasteMap} />
-      <SelfReflectionSection
-        selfReflection={{
-          awareness: dropFirst(result.selfReflection.awareness),
-          blindSpots: dropFirst(result.selfReflection.blindSpots),
-        }}
-      />
+      <div className="flex flex-col gap-2.5">
+        <DeepDiveDisclosureItem title="내가 확실히 끌리는 것">
+          <HeroSecondaryList items={result.tasteCore.certain} />
+          {patternsRest.length > 0 ? (
+            <div className="flex flex-col gap-2 border-t border-border pt-3">
+              <SubLabel>답변 사이에서 반복된 것</SubLabel>
+              <HeroSecondaryList items={patternsRest} />
+            </div>
+          ) : null}
+        </DeepDiveDisclosureItem>
+
+        <DeepDiveDisclosureItem title="상황에 따라 달라지는 나">
+          <HeroSecondaryList items={result.tasteCore.conditional} />
+          {result.tasteCore.indifferent.length > 0 ? (
+            <div className="flex flex-col gap-2 border-t border-border pt-3">
+              <SubLabel>딱히 안 끌리는 것</SubLabel>
+              <ul className="flex flex-col gap-1.5">
+                {result.tasteCore.indifferent.map((item, index) => (
+                  <li key={index} className="text-xs font-semibold leading-5 text-text-muted">
+                    · {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </DeepDiveDisclosureItem>
+
+        <DeepDiveDisclosureItem title="넓혀볼 것 / 굳이 안 맞출 것">
+          <ExpandAvoidGrid tasteMap={result.tasteMap} />
+        </DeepDiveDisclosureItem>
+
+        <DeepDiveDisclosureItem title="내가 미처 몰랐던 나">
+          {awarenessRest.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              <SubLabel>내가 알고 있던 나</SubLabel>
+              <HeroSecondaryList items={awarenessRest} />
+            </div>
+          ) : null}
+          {blindSpotsRest.length > 0 ? (
+            <div className={cx("flex flex-col gap-2", awarenessRest.length > 0 && "border-t border-border pt-3")}>
+              <SubLabel>내가 놓치고 있던 나</SubLabel>
+              <HeroSecondaryList items={blindSpotsRest} />
+            </div>
+          ) : null}
+        </DeepDiveDisclosureItem>
+      </div>
     </Disclosure>
   );
 }
