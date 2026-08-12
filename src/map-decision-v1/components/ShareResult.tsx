@@ -12,6 +12,41 @@ export const SHARE_NOTICE = "링크를 아는 사람은 누구나 볼 수 있어
 
 export type ShareState = "idle" | "creating" | "copied" | "shared" | "error";
 
+// 사용자가 공유 시트를 그냥 닫은 경우(취소) — 실패가 아니다. 오류
+// 메시지를 띄우지 않고 조용히 idle로 돌아가야 한다. 브라우저별로
+// DOMException 또는 평범한 Error로 올 수 있어 name만 본다.
+// ImageShare.tsx도 파일 공유 실패 처리에 이 판정을 그대로 재사용한다.
+export function isAbortError(error: unknown): boolean {
+  return (error instanceof DOMException || error instanceof Error) && error.name === "AbortError";
+}
+
+// FINAL SHARE E2E BUG FIX(2026-08) — Preview/개발 환경에서만 실패
+// 단계·error.name/message를 콘솔에 남긴다. production 사용자에게는
+// 어떤 개발 정보도 노출하지 않는다 — production 판별 기준은
+// app/layout.tsx의 metadataBase와 동일하게 mapdecision.com 여부다
+// (클라이언트 전용 판별이라 새 환경변수를 추가하지 않는다).
+export function logShareDiagnostic(step: string, error: unknown): void {
+  if (typeof window === "undefined" || window.location.hostname === "mapdecision.com") return;
+  const name = error instanceof Error ? error.name : typeof error;
+  const message = error instanceof Error ? error.message : String(error);
+  // eslint-disable-next-line no-console
+  console.warn(`[share] ${step} failed: ${name} — ${message}`);
+}
+
+// navigator.share()에 url을 별도 필드로 넘길 때 text 안에 같은 링크가
+// 또 들어 있으면, 안드로이드 시스템 공유 시트가 "다시 시도하세요.
+// 공유할 수 있는 일부 방법만 표시됩니다" 경고와 함께 대상 앱 목록을
+// 필터링한다(문서화된 Web Share API 동작 — url과 text에 링크가
+// 중복되면 링크를 못 받는 앱까지 걸러내려다 이렇게 된다). 이 함수는
+// buildShareText(url)의 결과에서 끝에 붙은 url만 떼어 title/본문
+// 텍스트만 남긴다 — 링크는 url 필드 하나로만 전달하기 위해서다.
+// buildShareText가 다른 이유로 필요한 곳(clipboard 복사, 파일 공유의
+// text — 둘 다 별도 url 필드가 없어 링크가 텍스트 안에 있어야 한다)은
+// 그대로 fullText를 쓴다.
+export function stripTrailingUrl(fullText: string, url: string): string {
+  return fullText.endsWith(url) ? fullText.slice(0, fullText.length - url.length).trimEnd() : fullText;
+}
+
 // navigator.share()는 사용자 탭(클릭)으로 생긴 "일시적 활성화"가 살아있는
 // 동안 호출해야 브라우저가 공유 시트를 띄운다. 링크를 매번 새로 만들면
 // 그 앞에 fetch 왕복(느릴 때는 활성화가 만료될 수 있음)이 매번 끼어들고,
@@ -104,15 +139,32 @@ export function useShareResult({
   const share = async () => {
     const url = await ensureShareUrl();
     if (!url) return;
+    const fullText = buildShareText(url);
     try {
-      await navigator.share({ title: shareTitle, text: buildShareText(url), url });
+      // url을 text에 중복해서 넣지 않는다 — 위 stripTrailingUrl 주석 참고.
+      await navigator.share({ title: shareTitle, text: stripTrailingUrl(fullText, url), url });
       setShareState("shared");
-    } catch {
-      // 사용자가 시트를 닫았거나 호출이 막힌 경우 — 링크는 이미 만들어져
-      // 있으니 버튼을 그대로 다시 누르면(재사용 경로라 서버 호출 없이)
-      // 바로 재시도된다. 조용히 클립보드로 대체하지 않는다(복사는 별도
-      // 버튼의 역할).
-      setShareState("idle");
+    } catch (error) {
+      if (isAbortError(error)) {
+        // 사용자가 시트를 닫은 것 — 오류가 아니다. 링크는 이미 만들어져
+        // 있으니 버튼을 그대로 다시 누르면(재사용 경로라 서버 호출 없이)
+        // 바로 재시도된다.
+        setShareState("idle");
+        return;
+      }
+      logShareDiagnostic("navigator.share(url)", error);
+      // 네이티브 공유 자체가 실패했다 — 사용자를 빈손으로 남기지 않고
+      // 링크 복사로 안전하게 대체한다(진행 원칙 C: URL 공유도 실패하면
+      // 링크 복사로 대체).
+      try {
+        await navigator.clipboard.writeText(fullText);
+        setShareState("copied");
+        window.setTimeout(() => setShareState("idle"), 2000);
+      } catch (clipboardError) {
+        logShareDiagnostic("clipboard fallback", clipboardError);
+        setShareError("공유하지 못했어요. 위 링크를 직접 복사해 주세요.");
+        setShareState("error");
+      }
     }
   };
 
