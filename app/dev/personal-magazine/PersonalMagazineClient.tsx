@@ -527,7 +527,7 @@ export function PersonalMagazinePrototype() {
 
   return (
     <div className="min-h-dvh bg-background text-text-primary">
-      <div className="sticky top-0 z-50 border-b border-dashed border-border-strong bg-background-subtle/95 px-3 py-2 text-center text-[11px] font-bold text-text-muted backdrop-blur">
+      <div className="sticky top-0 z-50 border-b border-dashed border-border-strong bg-background-subtle px-3 py-2 text-center text-[11px] font-bold text-text-muted backdrop-blur">
         DEV PROTOTYPE — PERSONAL MAGAZINE CONCEPT (production 미연결)
       </div>
       <div className="mx-auto max-w-md">

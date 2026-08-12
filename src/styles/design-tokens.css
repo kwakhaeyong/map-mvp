@@ -78,6 +78,17 @@
      토큰으로 승격할지 결정한다 — 지금은 프로토타입 전용.*/
   --color-editorial-clay: #b5673f;
   --color-editorial-moss: #4a5d43;
+  /* PERSONAL MAGAZINE — FAST PRODUCT CONCEPT(2026-08) — /dev/personal-magazine-system
+     전용. 위 clay/moss와 같은 목적(주제별 절제된 액센트)의 확장 4개다.
+     production 어디에서도 참조하지 않는다. 무지개 성격테스트·보라파랑
+     AI 그라디언트를 피하려고 각 주제 소재에서 채도를 낮춰 가져왔다:
+     FOOD=강황/타지 향신료, TRAVEL=저녁 하늘·흙, LOVE=와인/자단,
+     WORK=그래파이트 감도는 네이비. 이 방향을 채택하면 그때 실제
+     production 토큰 승격 여부를 결정한다 — 지금은 프로토타입 전용.*/
+  --color-editorial-turmeric: #c48a2e;
+  --color-editorial-slate: #4f6b7a;
+  --color-editorial-burgundy: #7a2e3a;
+  --color-editorial-navy: #2b3648;
   --radius-small: 12px;
   --radius-medium: 18px;
   --radius-large: 28px;
