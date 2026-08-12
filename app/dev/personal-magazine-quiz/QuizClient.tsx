@@ -11,10 +11,11 @@ import { magazineVisualAssets } from "../../../src/data/magazineVisualAssets";
 //
 // 가장 중요한 원칙: 질문/선택지/진행률/YOUR PAGE 전부 HTML이다. 사진
 // 위에 텍스트를 박아 넣은 합성 이미지를 쓰지 않는다 — IMAGE + INTERACTIVE
-// UI 구조를 지킨다. 이번 라운드에는 전달받은 참고 이미지가 없어 A/B
-// 사진 자리는 EditorialImageFrame 회색 placeholder를 쓴다(연결 구조만
-// 완성 — 실제 사진은 magazineVisualAssets.quiz.taste.q01에 넣으면
-// 바로 교체된다).
+// UI 구조를 지킨다. A/B 사진은 magazineVisualAssets.quiz.taste.q01에서
+// 실제 이미지를 읽어온다(2026-08 라운드에 연결). 카드 프레임 비율을
+// 이미지의 실제 비율(3:2)과 맞춰서 object-cover를 써도 잘리는 부분 없이
+// 원본 전체가 보인다 — EditorialImageFrame은 asset이 비어 있을 때를
+// 대비한 fallback으로 남겨둔다.
 //
 // 사용자 정신모델은 "문제를 푼다"가 아니라 "내 Magazine을 만든다"다.
 // 화면 언어에서 TEST/ASSESSMENT/심리검사 대신 PAGE IN PROGRESS·YOUR
@@ -132,7 +133,7 @@ function ChoiceCard({
     >
       {asset ? (
         <div className="relative w-full overflow-hidden" style={{ aspectRatio: asset.aspectRatio.replace(":", " / ") }}>
-          <img src={asset.src} alt={asset.alt} className="size-full object-cover" />
+          <img src={asset.src} alt={asset.alt} className="size-full object-cover" style={{ objectPosition: asset.objectPositionMobile }} />
         </div>
       ) : (
         <EditorialImageFrame ratio="4:5" label={`IMAGE ${choiceKey}`} />

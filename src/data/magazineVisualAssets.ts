@@ -107,14 +107,27 @@ export const magazineVisualAssets = {
   quiz: {
     taste: {
       // TASTE 1번 문항(쉬는 오후, 더 마음이 가는 장면은?)의 A/B 선택지
-      // 사진. 이번 라운드에는 전달받은 참고 이미지가 없어 실제 사진
-      // 없이 구조만 준비한다 — null이면 화면에서 EditorialImageFrame
-      // 회색 placeholder로 대체된다. 실제 사진이 오면 taste.hero와
-      // 같은 구조의 MagazineVisualAsset 객체를 여기 채워 넣기만 하면
-      // 된다.
+      // 사진. 카드 프레임을 이미지의 실제 비율(3:2)로 맞춰서 렌더링
+      // 하기 때문에 object-cover를 써도 잘리는 부분 없이 원본 전체가
+      // 그대로 보인다 — "몰입감 있게 크게, 그러나 피사체는 안 잘리게"
+      // 요구를 프레임 비율을 원본과 맞추는 방식으로 만족시켰다.
       q01: {
-        a: null as MagazineVisualAsset | null,
-        b: null as MagazineVisualAsset | null,
+        a: {
+          src: "/magazine/quiz/taste/taste-quiz-01-a.png",
+          alt: "햇살이 드는 조용한 카페 창가에서 책과 커피를 곁에 두고 바깥을 바라보는 여성의 뒷모습.",
+          aspectRatio: "1536:1024",
+          objectPositionMobile: "center center",
+          objectPositionDesktop: "center center",
+          role: "taste-quiz-choice",
+        } satisfies MagazineVisualAsset,
+        b: {
+          src: "/magazine/quiz/taste/taste-quiz-01-b.png",
+          alt: "저녁 도시의 활기찬 바 거리에서 와인잔을 들고 사람들 사이에 서 있는 여성의 뒷모습.",
+          aspectRatio: "1536:1024",
+          objectPositionMobile: "center center",
+          objectPositionDesktop: "center center",
+          role: "taste-quiz-choice",
+        } satisfies MagazineVisualAsset,
       },
     },
   },
