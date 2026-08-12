@@ -294,19 +294,30 @@ function MoreDisclosure({ children }: { children: ReactNode }) {
 // maxEvidence=0으로 부르면(패턴·자기성찰처럼 "1개만 먼저" 보여줘야 하는
 // 곳) 대표 문장 하나만 남고 나머지 전부가 조금 더 보기로 들어간다 —
 // 같은 부품을 재사용해 별도 컴포넌트를 새로 만들지 않았다.
+//
+// DEEP DIVE LAST DENSITY FIX(2026-08) — "조금 더 보기"를 펼쳐도 여전히
+// 남은 문장이 전부(최대치 없이) 쏟아져 "다시 작은 리포트"처럼 보인다는
+// 실제 Persona A 모바일 피드백. maxMore를 추가해 "조금 더 보기"가 펼치는
+// 개수 자체를 제한한다 — undefined(기본값)면 예전과 완전히 동일하게
+// 나머지 전부를 보여준다. ④ 내가 미처 몰랐던 나는 이번 라운드에서 건드리지
+// 않기로 했으므로 그 두 호출부는 maxMore를 넘기지 않아 동작이 그대로다.
+// data는 여전히 items 그대로 전부 받는다 — 잘라내는 건 렌더링 개수뿐이고
+// 원본 배열/문장은 하나도 지우지 않는다.
 function HeroEvidence({
   items,
   maxEvidence = 2,
+  maxMore,
   heroClassName = "text-base font-bold leading-7 text-text-primary",
 }: {
   items: string[];
   maxEvidence?: number;
+  maxMore?: number;
   heroClassName?: string;
 }) {
   if (items.length === 0) return null;
   const [hero, ...rest] = items;
   const evidence = rest.slice(0, maxEvidence);
-  const more = rest.slice(maxEvidence);
+  const more = maxMore === undefined ? rest.slice(maxEvidence) : rest.slice(maxEvidence, maxEvidence + maxMore);
   return (
     <div className="flex flex-col gap-2">
       <p className={heroClassName}>{hero}</p>
@@ -509,10 +520,8 @@ function MyMapSection({ matrix }: { matrix: TasteMatrix }) {
 // 그대로 둔다 — 데이터도 그대로다.
 //
 // DEEP DIVE FINAL TRIM(2026-08) — 예전엔 두 목록을 전부 보여줬다. 이제
-// 각 방향 최대 2개까지만 먼저 보여주고, 그 이상은 같은 2열 구조 그대로
-// MoreDisclosure 안에 접어 넣는다 — expand/avoid가 한 쌍으로 같이
-// 읽히는 내용이라 항목별로 따로 접지 않고 하나의 "조금 더 보기"로
-// 묶었다.
+// 각 방향 최대 2개까지만 먼저 이 카드 형태로 보여준다(기본 노출은 이번
+// LAST DENSITY FIX에서도 그대로 유지 — 아래 ExpandAvoidGrid 참고).
 function ExpandAvoidColumn({ label, items, tone }: { label: string; items: string[]; tone: "success" | "error" }) {
   if (items.length === 0) return null;
   return (
@@ -533,13 +542,39 @@ function ExpandAvoidColumn({ label, items, tone }: { label: string; items: strin
   );
 }
 
+// DEEP DIVE LAST DENSITY FIX(2026-08) — "조금 더 보기"를 누르면 위
+// ExpandAvoidColumn(테두리+배경 있는 카드)이 통째로 한 번 더 나와
+// "카드 2세트"처럼 무거워 보인다는 실제 Persona A 모바일 피드백. 새
+// 카드/박스를 만들지 않고, 기존 카드 색 점(success/error) 토큰만 재사용해
+// 순수 텍스트 불릿으로 남은 항목을 보여준다 — 배경·테두리 없음.
+function ExpandAvoidMoreColumn({ label, items, tone }: { label: string; items: string[]; tone: "success" | "error" }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <p className={cx("flex items-center gap-1.5 text-xs font-black", tone === "success" ? "text-success" : "text-error")}>
+        <span className={cx("size-2 rounded-full", tone === "success" ? "bg-success" : "bg-error")} aria-hidden="true" />
+        {label}
+      </p>
+      <ul className="mt-1.5 space-y-1">
+        {items.map((item, index) => (
+          <li key={index} className="flex items-start gap-1.5 text-xs font-bold leading-5 text-text-primary">
+            <span className={cx("mt-1.5 size-1.5 shrink-0 rounded-full", tone === "success" ? "bg-success" : "bg-error")} aria-hidden="true" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 const EXPAND_AVOID_SHOWN_COUNT = 2;
+const EXPAND_AVOID_MORE_COUNT = 2;
 
 function ExpandAvoidGrid({ tasteMap }: { tasteMap: TasteMap }) {
   const expandShown = tasteMap.expand.slice(0, EXPAND_AVOID_SHOWN_COUNT);
-  const expandMore = tasteMap.expand.slice(EXPAND_AVOID_SHOWN_COUNT);
+  const expandMore = tasteMap.expand.slice(EXPAND_AVOID_SHOWN_COUNT, EXPAND_AVOID_SHOWN_COUNT + EXPAND_AVOID_MORE_COUNT);
   const avoidShown = tasteMap.avoid.slice(0, EXPAND_AVOID_SHOWN_COUNT);
-  const avoidMore = tasteMap.avoid.slice(EXPAND_AVOID_SHOWN_COUNT);
+  const avoidMore = tasteMap.avoid.slice(EXPAND_AVOID_SHOWN_COUNT, EXPAND_AVOID_SHOWN_COUNT + EXPAND_AVOID_MORE_COUNT);
   const hasMore = expandMore.length > 0 || avoidMore.length > 0;
   return (
     <div className="flex flex-col gap-3">
@@ -550,8 +585,8 @@ function ExpandAvoidGrid({ tasteMap }: { tasteMap: TasteMap }) {
       {hasMore ? (
         <MoreDisclosure>
           <div className="grid grid-cols-2 gap-3">
-            <ExpandAvoidColumn label="넓혀볼 만한 방향" items={expandMore} tone="success" />
-            <ExpandAvoidColumn label="안 맞을 방향" items={avoidMore} tone="error" />
+            <ExpandAvoidMoreColumn label="넓혀볼 만한 방향" items={expandMore} tone="success" />
+            <ExpandAvoidMoreColumn label="안 맞을 방향" items={avoidMore} tone="error" />
           </div>
         </MoreDisclosure>
       ) : null}
@@ -673,25 +708,26 @@ export function TasteResultDetails({ result }: { result: TasteResult }) {
     <Disclosure closedLabel="더 깊게 보기" openLabel="접기">
       <div className="flex flex-col gap-2.5">
         <DeepDiveDisclosureItem title="내가 확실히 끌리는 것">
-          <HeroEvidence items={result.tasteCore.certain} maxEvidence={2} />
+          <HeroEvidence items={result.tasteCore.certain} maxEvidence={2} maxMore={2} />
           {patternsRest.length > 0 ? (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
               <SubLabel>답변 사이에서 반복된 것</SubLabel>
               {/* 패턴은 "핵심+근거"가 아니라 "가장 먼저 연결되는 결 1개만"이
-                  기본이다 — maxEvidence=0이라 나머지는 전부 조금 더 보기로. */}
-              <HeroEvidence items={patternsRest} maxEvidence={0} />
+                  기본이다 — maxEvidence=0이라 나머지는 조금 더 보기로(최대 2개). */}
+              <HeroEvidence items={patternsRest} maxEvidence={0} maxMore={2} />
             </div>
           ) : null}
         </DeepDiveDisclosureItem>
 
         <DeepDiveDisclosureItem title="상황에 따라 달라지는 나">
-          <HeroEvidence items={result.tasteCore.conditional} maxEvidence={2} />
+          <HeroEvidence items={result.tasteCore.conditional} maxEvidence={2} maxMore={2} />
           {result.tasteCore.indifferent.length > 0 ? (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
               <SubLabel>딱히 안 끌리는 것</SubLabel>
               <HeroEvidence
                 items={result.tasteCore.indifferent}
                 maxEvidence={0}
+                maxMore={2}
                 heroClassName="text-sm font-semibold leading-6 text-text-muted"
               />
             </div>
