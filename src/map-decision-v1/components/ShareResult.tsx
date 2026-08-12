@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { Card } from "./ui/primitives";
 
 // 공유 버튼을 쓰는 화면(이상형 카드, 진로 결과)이 늘어나면서 "서버에
@@ -137,18 +138,31 @@ export function useShareResult({
   };
 
   const share = async () => {
+    // share_attempt(NEXT CYCLE — MINIMUM PRODUCT ANALYTICS, 2026-08) —
+    // 이 함수는 canNativeShare가 true일 때만 버튼에 연결되므로(각
+    // *Card.tsx의 onClick={canNativeShare ? share : copyLink} 참고)
+    // method는 항상 "native"다. 결과(성공/실패)와 무관하게 "시도했다"는
+    // 사실 자체를 남긴다 — 링크 생성(ensureShareUrl) 전에 찍어서 링크
+    // 생성이 실패해도 "시도"는 셈에 들어간다.
+    track("share_attempt", { topicId, method: "native" });
     const url = await ensureShareUrl();
     if (!url) return;
     const fullText = buildShareText(url);
     try {
       // url을 text에 중복해서 넣지 않는다 — 위 stripTrailingUrl 주석 참고.
       await navigator.share({ title: shareTitle, text: stripTrailingUrl(fullText, url), url });
+      // share_success — navigator.share()가 reject 없이 끝났다는 뜻이다.
+      // 이게 "상대방이 실제로 열어봤다"까지 보장하진 않는다 — 브라우저가
+      // "공유 동작이 끝났다"고 판단한 시점일 뿐이라는 한계를 그대로
+      // 알린다(과장하지 않는다).
+      track("share_success", { topicId, method: "native" });
       setShareState("shared");
     } catch (error) {
       if (isAbortError(error)) {
-        // 사용자가 시트를 닫은 것 — 오류가 아니다. 링크는 이미 만들어져
-        // 있으니 버튼을 그대로 다시 누르면(재사용 경로라 서버 호출 없이)
-        // 바로 재시도된다.
+        // 사용자가 시트를 닫은 것 — 오류가 아니다. share_success도 찍지
+        // 않는다(성공이 아니므로) — 링크는 이미 만들어져 있으니 버튼을
+        // 그대로 다시 누르면(재사용 경로라 서버 호출 없이) 바로
+        // 재시도된다.
         setShareState("idle");
         return;
       }
@@ -158,6 +172,10 @@ export function useShareResult({
       // 링크 복사로 대체).
       try {
         await navigator.clipboard.writeText(fullText);
+        // 여기서는 method를 "copy"로 남긴다 — 실제로 성공한 수단이
+        // native가 아니라 클립보드 복사이기 때문이다(성공을 과장하지
+        // 않는다는 원칙 — 시도한 수단과 실제 성공한 수단이 다를 수 있다).
+        track("share_success", { topicId, method: "copy" });
         setShareState("copied");
         window.setTimeout(() => setShareState("idle"), 2000);
       } catch (clipboardError) {
@@ -169,15 +187,22 @@ export function useShareResult({
   };
 
   const copyLink = async () => {
+    // share_attempt — copyLink는 canNativeShare가 false일 때(또는 "링크
+    // 복사" 보조 버튼으로) 쓰이므로 method는 항상 "copy"다.
+    track("share_attempt", { topicId, method: "copy" });
     const url = await ensureShareUrl();
     if (!url) return;
     try {
       await navigator.clipboard.writeText(buildShareText(url));
+      // share_success — clipboard.writeText()가 resolve했다는 것은 실제로
+      // 클립보드에 써졌다는 뜻이라, native 공유와 달리 모호함이 없다.
+      track("share_success", { topicId, method: "copy" });
       setShareState("copied");
       window.setTimeout(() => setShareState("idle"), 2000);
     } catch {
       // 클립보드 API 자체를 못 쓰는 환경 — sharedUrl이 이미 화면에
       // 선택 가능한 텍스트로 노출되므로(ShareStatusCard) 직접 복사할 수 있다.
+      // 여기서는 success를 찍지 않는다(실제 복사가 확정되지 않았으므로).
       setShareState("idle");
     }
   };

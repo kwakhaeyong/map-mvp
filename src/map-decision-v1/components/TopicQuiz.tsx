@@ -1152,6 +1152,26 @@ export function TopicQuiz({
     track("quiz_start", { topicId: topic.id });
   }, [step, topic.id, quizStartStep]);
 
+  // quiz_progress(NEXT CYCLE — MINIMUM PRODUCT ANALYTICS, 2026-08) — 문항마다
+  // 찍지 않고 25/50/75% 세 지점만 본다(30~100명 규모 테스트에 그 이상은
+  // 과하다는 지시). 진행률은 하드코딩된 문항 수가 아니라 requiredAxes.length
+  // 대비 step 비율로 계산한다 — 6개 완성형 퀴즈 주제 전부 optionalAxes가
+  // 항상 빈 배열이라(topics.ts 전수 확인) "필수만 있는 진행률"이 곧 실제
+  // 진행률과 같다. trackedThresholdsRef가 한 번 찍은 지점을 기억해 뒤로
+  // 갔다 다시 진행해도(= step이 줄었다 다시 늘어도) 중복 발생하지 않는다
+  // (quizStartTrackedRef와 같은, 이 파일에 이미 있던 방식 그대로).
+  const progressTrackedThresholdsRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    const total = requiredAxes.length;
+    if (total === 0) return;
+    const progressPercent = (step / total) * 100;
+    for (const threshold of [25, 50, 75]) {
+      if (progressPercent < threshold || progressTrackedThresholdsRef.current.has(threshold)) continue;
+      progressTrackedThresholdsRef.current.add(threshold);
+      track("quiz_progress", { topicId: topic.id, progress: threshold });
+    }
+  }, [step, topic.id, requiredAxes.length]);
+
   // axisId/selectedTopLevelLabels는 이 답변이 실제 TopicAxis(topics.ts)에
   // 묶여 있을 때만 넘어온다(마무리 질문 같은 자유 서술에는 없음) — 있을
   // 때만 session.quizAnswers에 기록해서 공유 태그(ideal-type-tags.ts)가

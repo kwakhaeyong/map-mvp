@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Brand } from "../../../src/map-decision-v1/components/Landing";
+import { MidResultCta, PRIMARY_CTA_CLASS, ShareViewTracker, TryItCta } from "../../../src/map-decision-v1/components/SharedResultCta";
 import { IdealTypeResultBlocks, TagRow } from "../../../src/map-decision-v1/components/IdealTypeResultBlocks";
 import { SelfIntroResultBlocks, SelfIntroTagRow } from "../../../src/map-decision-v1/components/SelfIntroResultBlocks";
 import { FriendshipResultBlocks, FriendshipTagRow } from "../../../src/map-decision-v1/components/FriendshipResultBlocks";
@@ -119,41 +119,6 @@ function resolveRenderableShare(share: GetShareResult): RenderableShare {
   return { kind: "unsupported" };
 }
 
-const PRIMARY_CTA_CLASS =
-  "inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-pill border border-primary bg-primary px-6 text-base font-extrabold tracking-[-0.01em] text-primary-foreground shadow-subtle transition-all duration-normal ease-emphasized hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-floating active:translate-y-0";
-
-// topicId가 있으면 "/?start=<topicId>"로 보내 랜딩(종류 선택 화면)을
-// 건너뛰고 같은 주제의 퀴즈/대화를 곧장 시작한다(MapDecisionProduct.tsx의
-// 마운트 effect가 이 쿼리 파라미터를 읽는다). topicId를 모르는 상황
-// (레이아웃을 모르는 결과, 링크 만료 등)에서는 그냥 "/"로 보낸다.
-//
-// withId(이 카드의 공유 ID)가 같이 있으면 "&with=<id>"도 붙인다 — 지금
-// 이 카드(A)를 보고 있는 사람(B)이 퀴즈를 마치면 자기 결과 화면에서
-// "친구와의 궁합 보기" 배너를 볼 수 있게 하는 용도다(궁합 기능).
-// topicId가 없을 때는 애초에 "/"로만 보내므로 with도 같이 생략된다.
-function ctaHref(topicId?: string, withId?: string) {
-  if (!topicId) return "/";
-  const params = new URLSearchParams({ start: topicId });
-  if (withId) params.set("with", withId);
-  return `/?${params.toString()}`;
-}
-
-// VIRAL/FRIEND EXPERIENCE REBUILD(2026-08) — label을 선택적으로 받게
-// 확장했다. 기본값("너도 만들어봐")은 그대로라 이걸 넘기지 않는
-// 이상형·나소개·친구·일할 때의 나·여행 스타일 5개 분기는 문구·동작이
-// 하나도 안 바뀐다 — 취향 분기에서만 더 구체적인 문구("나는 어떻게
-// 나올까?")를 넘겨서 쓴다(아래 §6 참고). 새 컴포넌트를 또 만들지
-// 않고 기존 함수를 확장한 이유: href 계산(ctaHref)·버튼 스타일
-// (PRIMARY_CTA_CLASS) 자체는 6개 주제가 완전히 동일해서, 문구만
-// 다른데 컴포넌트를 복제하면 그 공통 로직이 두 곳으로 갈라진다.
-function TryItCta({ topicId, withId, label = "너도 만들어봐" }: { topicId?: string; withId?: string; label?: string }) {
-  return (
-    <Link href={ctaHref(topicId, withId)} className={PRIMARY_CTA_CLASS}>
-      {label}
-    </Link>
-  );
-}
-
 // 모든 분기(이상형·나 소개·친구·인간관계·진로) 공통 하단 정책 링크.
 // components/IdealTypeCard.tsx·SelfIntroCard.tsx·FriendshipCard.tsx처럼
 // "본인이 결과를 만드는 화면"에는 이미 있던 링크(같은 문구·같은
@@ -171,42 +136,6 @@ function PolicyFooterLinks() {
         이용약관
       </a>
     </p>
-  );
-}
-
-// 자기성찰 블록(가장 감정적으로 몰입되는 지점) 바로 다음에 놓는 두 번째
-// CTA. 맨 아래 CTA(강조 버튼)와 똑같이 생기면 같은 걸 두 번 보여주는
-// 것처럼 느껴져서, 여기는 테두리만 있는 은은한 카드형으로 차등을 둔다.
-// VIRAL/FRIEND EXPERIENCE REBUILD(2026-08) — TryItCta와 같은 이유로
-// label/microcopy를 선택적으로 받게 확장했다. 기본값은 그대로라 이걸
-// 넘기지 않는 5개 분기는 문구가 하나도 안 바뀐다. microcopy는 버튼
-// 위에 붙는 한 줄 호기심 유발 문구용 슬롯이다(예: "같은 질문에 답해도
-// 지형은 다르게 나와요") — 없으면(기본) 예전처럼 버튼만 나온다.
-function MidResultCta({
-  topicId,
-  withId,
-  label = "나도 이런 발견, 해보고 싶다면?",
-  microcopy,
-}: {
-  topicId?: string;
-  withId?: string;
-  label?: string;
-  microcopy?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      {microcopy ? <p className="text-center text-xs font-semibold text-text-muted">{microcopy}</p> : null}
-      <Link
-        href={ctaHref(topicId, withId)}
-        // #116: border-primary/30, bg-primary/5, hover:bg-primary/10이 이 커스텀
-        // 색엔 슬래시 투명도 클래스가 생성되지 않아 실제로는 늘 투명이었다 —
-        // 같은 값의 ink-wash 토큰으로 대체한다.
-        className="flex items-center justify-between gap-3 rounded-large border border-ink-wash-border bg-ink-wash px-5 py-4 text-sm font-extrabold text-primary transition-colors hover:bg-ink-wash-border"
-      >
-        <span>{label}</span>
-        <span aria-hidden="true">→</span>
-      </Link>
-    </div>
   );
 }
 
@@ -237,6 +166,14 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
   // 저장소 장애 화면에는 지울 대상 자체가 없다.
   const cardContent = (
     <>
+        {/* shared_view(NEXT CYCLE — MINIMUM PRODUCT ANALYTICS, 2026-08) —
+            renderable이 실제로 지원되는 결과 형태일 때만 찍는다. 만료·
+            저장소 장애·미지원 레이아웃 화면은 "정상적으로 열렸다"고 볼 수
+            없어 제외한다(아래 각 분기의 topicId는 share.status === "ok"일
+            때만 존재하므로 renderable이 있으면 항상 함께 있다). */}
+        {renderable && renderable.kind !== "unsupported" ? (
+          <ShareViewTracker topicId={share.status === "ok" ? share.record.topicId : undefined} />
+        ) : null}
         {renderable?.kind === "idealType" ? (
           <>
             <div className="flex flex-wrap items-center gap-2">

@@ -1,6 +1,7 @@
 "use client";
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { getIdealTypeTags } from "../engine/ideal-type-tags";
 import { now } from "../engine/session";
 import { resolveTopic } from "../engine/topics";
@@ -53,6 +54,7 @@ function FriendshipCardBody({
     ensureShareUrl,
     shareTitle: "친구·인간관계 카드",
     buildShareText: (shareUrl) => `이거 완전 내 얘기래\n\n${shareUrl}`,
+    topicId: session.topicId ?? "friendship",
   });
 
   return (
@@ -150,6 +152,9 @@ export function FriendshipCard({
       .then((response) => response.json())
       .then((data) => {
         if (data.blocked) {
+          // generation_result — TasteCard.tsx의 같은 지점과 동일한 이유·
+          // 동일한 판단 기준(주석 참고).
+          track("generation_result", { topicId: session.topicId ?? "friendship", outcome: "failed", reason: data.reason });
           setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
           if (data.reason === "generation_failed") {
             setGenerationState("fallback");
@@ -159,6 +164,7 @@ export function FriendshipCard({
           setGenerationState("error");
           return;
         }
+        track("generation_result", { topicId: session.topicId ?? "friendship", outcome: "success" });
         setSession((previous) => ({
           ...previous,
           friendshipResult: data.result,
@@ -170,6 +176,7 @@ export function FriendshipCard({
       })
       .catch((error) => {
         if (error?.name === "AbortError") return;
+        track("generation_result", { topicId: session.topicId ?? "friendship", outcome: "failed", reason: "network_error" });
         setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
         setGenerationState("fallback");
       });

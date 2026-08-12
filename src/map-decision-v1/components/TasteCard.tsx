@@ -1,6 +1,7 @@
 "use client";
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { getIdealTypeTags } from "../engine/ideal-type-tags";
 import { now } from "../engine/session";
 import { resolveTopic } from "../engine/topics";
@@ -54,6 +55,7 @@ function TasteCardBody({
     ensureShareUrl,
     shareTitle: "취향 카드",
     buildShareText: (shareUrl) => `이거 완전 내 얘기래\n\n${shareUrl}`,
+    topicId: session.topicId ?? "taste",
   });
 
   // RESULT CARD 안에 곧바로 두는 공유 버튼 — 아래쪽 공유 버튼 행과
@@ -186,6 +188,12 @@ export function TasteCard({
       .then((response) => response.json())
       .then((data) => {
         if (data.blocked) {
+          // generation_result(NEXT CYCLE — MINIMUM PRODUCT ANALYTICS, 2026-08) —
+          // result_view는 로딩 화면 진입 시점이라 생성 성공/실패를 구분하지
+          // 못한다. outcome이 실제로 확정되는 이 지점에서만 찍는다.
+          // reason은 서버가 이미 정의해둔 안전한 코드값(예:
+          // "session_generation_limit")이라 PII가 아니다.
+          track("generation_result", { topicId: session.topicId ?? "taste", outcome: "failed", reason: data.reason });
           setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
           if (data.reason === "generation_failed") {
             setGenerationState("fallback");
@@ -195,6 +203,7 @@ export function TasteCard({
           setGenerationState("error");
           return;
         }
+        track("generation_result", { topicId: session.topicId ?? "taste", outcome: "success" });
         setSession((previous) => ({
           ...previous,
           tasteResult: data.result,
@@ -206,6 +215,9 @@ export function TasteCard({
       })
       .catch((error) => {
         if (error?.name === "AbortError") return;
+        // 취소(AbortError)는 위에서 걸러진다 — 재시도로 이전 요청을 스스로
+        // 덮어쓴 경우까지 "실패"로 잘못 세지 않기 위해서다.
+        track("generation_result", { topicId: session.topicId ?? "taste", outcome: "failed", reason: "network_error" });
         setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
         setGenerationState("fallback");
       });

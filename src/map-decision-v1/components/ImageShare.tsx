@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { isAbortError, logShareDiagnostic, stripTrailingUrl } from "./ShareResult";
 import { Button } from "./ui/primitives";
 
@@ -27,6 +28,7 @@ export function useImageShare({
   buildShareText,
   fileName = "map-decision-card.png",
   shareTitle = "MAP Decision",
+  topicId,
 }: {
   // useShareResult()가 만든 것을 그대로 받는다 — 별도로 새로 만들면
   // 링크 재사용 캐시가 갈라져서, 이미 "공유" 버튼으로 만든 링크가 있어도
@@ -36,6 +38,11 @@ export function useImageShare({
   buildShareText: (shareUrl: string) => string;
   fileName?: string;
   shareTitle?: string;
+  // NEXT CYCLE — MINIMUM PRODUCT ANALYTICS(2026-08) — share_attempt/
+  // share_success에 topicId를 실어 보내는 용도. 선택값인 이유: 이 훅
+  // 자체는 topicId 없이도(옛 호출부가 있다면) 동작해야 하는 범용
+  // 유틸이라, 없으면 "unknown"으로 기록하고 기능은 그대로 동작한다.
+  topicId?: string;
 }) {
   const [imageState, setImageState] = useState<ImageShareState>("idle");
   const [imageError, setImageError] = useState<string | null>(null);
@@ -101,11 +108,23 @@ export function useImageShare({
     if (file) {
       const canShareFiles = typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
       if (canShareFiles) {
-        navigator.share({ title: shareTitle, text: shareTextRef.current, files: [file] }).catch((error) => {
-          if (isAbortError(error)) return; // 사용자가 취소 — 오류 아님
-          logShareDiagnostic("navigator.share(files)", error);
-          void shareUrlFallback();
-        });
+        // share_attempt(NEXT CYCLE — MINIMUM PRODUCT ANALYTICS, 2026-08) —
+        // "이미지로 저장" 두 번째 탭(File이 이미 준비된 상태)에서 실제로
+        // navigator.share(files)를 호출하는 시점 하나만 시도로 센다.
+        // 아래 shareUrlFallback으로 이어지는 재시도 체인은 같은 시도의
+        // 연장이라 별도로 또 찍지 않는다(method별 성공 여부만 각자
+        // share_success로 구분해서 남긴다).
+        track("share_attempt", { topicId: topicId ?? "unknown", method: "image" });
+        navigator
+          .share({ title: shareTitle, text: shareTextRef.current, files: [file] })
+          .then(() => {
+            track("share_success", { topicId: topicId ?? "unknown", method: "image" });
+          })
+          .catch((error) => {
+            if (isAbortError(error)) return; // 사용자가 취소 — 오류 아님, success도 안 찍는다
+            logShareDiagnostic("navigator.share(files)", error);
+            void shareUrlFallback();
+          });
       } else {
         setModalOpen(true);
       }
@@ -127,11 +146,16 @@ export function useImageShare({
     }
     try {
       await navigator.share({ title: shareTitle, text: stripTrailingUrl(fullText, shareUrl), url: shareUrl });
+      // 실제로 성공한 수단은 파일이 아니라 URL 공유이므로 method는
+      // "native"로 남긴다(위 handleTap의 share_attempt는 "image"였지만,
+      // 성공을 과장하지 않기 위해 성공 지점에서는 실제 수단을 그대로 적는다).
+      track("share_success", { topicId: topicId ?? "unknown", method: "native" });
     } catch (error) {
       if (isAbortError(error)) return;
       logShareDiagnostic("navigator.share(url) fallback", error);
       try {
         await navigator.clipboard.writeText(fullText);
+        track("share_success", { topicId: topicId ?? "unknown", method: "copy" });
       } catch (clipboardError) {
         logShareDiagnostic("clipboard fallback", clipboardError);
         setModalOpen(true);
