@@ -112,6 +112,13 @@ const SAVED_REASSURANCE_TEXT = "답변은 이미 저장돼 있어요";
 // — 캐시가 없어 처음부터 다시 만드는 경우에도 이 문구가 그대로 남아
 // 있다가 실제 응답이 오면 화면이 바뀔 뿐, 사용자에게 해가 되지 않는다.
 const RESUMING_TEXT = "이전에 만들던 결과를 찾고 있어요";
+// VIRAL HOOK & RESULT DELIGHT PASS(2026-08) — "언제 끝나?"가 아니라
+// "뭐가 나올까?"로 마지막 정지 구간의 무게를 옮기는 한 줄. 존재하지
+// 않는 인사이트를 미리 보여주는 게 아니라(그건 금지), 곧 공개된다는
+// 사실 자체를 안내한다 — isDelayed(3분 초과)로 넘어가면 그쪽 문구가
+// 우선이라 이 줄은 사라진다(지연 안내와 기대감 안내가 동시에 뜨면
+// 모순으로 읽히기 때문).
+const ANTICIPATION_TEXT = "곧 당신의 지도가 열려요";
 // 태그 순차 강조가 다음 태그로 넘어가는 간격. 너무 빠르면 산만하고
 // 너무 느리면 "멈췄다"는 인상을 다시 준다 — animate-pulse(2s 주기)보다
 // 느긋하게, 부드러운 색 전환(TagRow의 duration-700)만으로 충분히
@@ -186,6 +193,9 @@ export function GenerationWaitCard({
       <Card className="flex flex-col items-center gap-3 py-8 text-center">
         {resuming ? null : <FormingMapVisual stageIndex={stageIndex} totalStages={stages.length} />}
         <p className="text-sm font-extrabold text-text-secondary">{resuming ? RESUMING_TEXT : stages[stageIndex]}</p>
+        {!resuming && isFrozenStage && !isDelayed ? (
+          <p className="text-sm font-black text-primary">{ANTICIPATION_TEXT}</p>
+        ) : null}
         <p className="text-xs font-semibold text-text-muted">{isDelayed ? DELAYED_TEXT : GENERATION_ESTIMATE_TEXT}</p>
         <p className="text-[11px] font-medium text-text-muted">{SAVED_REASSURANCE_TEXT}</p>
         {canRetry ? (

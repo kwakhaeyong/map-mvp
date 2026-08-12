@@ -511,15 +511,19 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
         <div className="flex items-center px-1">
           <Brand />
         </div>
-        {/* RESULT IDENTITY & CLARITY PASS(2026-08) — 공유 링크를 처음 여는
-            사람이 맥락을 이해하는 지점. Landing.tsx의 PRODUCT_DEFINITION과
-            똑같은 한 문장을 그대로 재사용한다(새 문구를 따로 만들지
-            않는다 — 한 서비스에 정체성 문장은 하나여야 한다). 실제 결과
-            카드가 있는 6개 퀴즈형 주제(isInvitationBackground와 같은
-            조건)에서만 보여준다 — 만료·장애·미지원 화면이나 진로(자유
-            대화형, "고르고 쓰다"라는 표현이 안 맞음)에는 넣지 않는다. */}
+        {/* VIRAL HOOK & RESULT DELIGHT PASS(2026-08) — /r/[id]는 결과의
+            "축약판"이 아니라 친구에게 도착하는 별도의 화면이라는 지시에
+            따라, 이해(PRODUCT_DEFINITION)보다 먼저 감정적 프레이밍 한
+            줄을 놓는다. "누군가의 MAP이 도착했어요"는 결과 데이터가
+            아니라 이 페이지 전용 고정 UI 문구다(발신자 이름은 프라이버시
+            상 알 수 없어 넣지 않는다). 그 아래 기존 PRODUCT_DEFINITION
+            (무슨 서비스인지 설명)이 이어진다 — "감정 → 이해 → 결과
+            공개" 순서. */}
         {isInvitationBackground ? (
-          <p className="px-1 text-xs font-semibold leading-5 text-text-muted">{PRODUCT_DEFINITION}</p>
+          <div className="flex flex-col gap-1 px-1">
+            <p className="text-sm font-black tracking-[-0.01em] text-text-primary">누군가의 MAP이 도착했어요</p>
+            <p className="text-xs font-semibold leading-5 text-text-muted">{PRODUCT_DEFINITION}</p>
+          </div>
         ) : null}
         {share.status === "ok" ? <DeleteShareSection id={id}>{cardContent}</DeleteShareSection> : cardContent}
       </div>

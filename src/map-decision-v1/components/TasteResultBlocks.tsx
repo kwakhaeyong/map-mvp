@@ -162,13 +162,23 @@ function pickSignaturePair(points: TasteMatrixPoint[]): [TasteMatrixPoint, Taste
 // 이 칩이 HeroHeader 안에만 있어서 공유 화면에는 안 보이는 공백이
 // 있었다(그 라운드 완료 보고에 남은 약점으로 기록했다). export해서
 // app/r/[id]/page.tsx의 taste 분기에서도 그대로 재사용한다.
+// VIRAL HOOK & RESULT DELIGHT PASS(2026-08) — 라벨을 영문 "Pattern"
+// (데이터 필드처럼 읽힘)에서 "나의 궤적"(사람이 실제로 말할 법한
+// 한국어)으로 바꿨다. 테스터 피드백("'내가 확실히 끌리는 것'이라고
+// 풀어 쓰는 것보다, 궁금증을 유발하면서 축약할 수 있는 단어가 어린
+// 층에게 더 긍정적일 것 같다")에 대한 응답이다. 계산 로직·값은 전혀
+// 안 바꿨다 — MBTI식 고정 유형명이나 랜덤 별명을 새로 만드는 게
+// 아니라, 이미 있는 값(matrix.types에서 뽑은 두 지점)을 "사용자가
+// 친구에게 그대로 말할 수 있는 문장"에 더 가깝게 소개하는 문구만
+// 바꿨다. 크기도 한 단계 키워(lg→xl) title 다음으로 눈에 들어오는
+// "공개 순간"이 되게 했다.
 export function TasteSignatureChip({ result, className }: { result: TasteResult; className?: string }) {
   const signaturePair = pickSignaturePair(result.matrix.types);
   if (!signaturePair) return null;
   return (
     <div className={cx("inline-flex w-fit items-center gap-2 rounded-medium border border-primary-border-soft bg-ink-wash px-3 py-2", className)}>
-      <span className="font-serif text-[10px] font-bold uppercase tracking-[0.14em] text-primary">Pattern</span>
-      <span className="text-lg font-black tracking-[-0.01em] text-primary">
+      <span className="font-serif text-[10px] font-bold uppercase tracking-[0.1em] text-primary">나의 궤적</span>
+      <span className="text-xl font-black tracking-[-0.01em] text-primary">
         {signaturePair[0].label} <span aria-hidden="true" className="text-text-muted">→</span> {signaturePair[1].label}
       </span>
     </div>
@@ -221,19 +231,20 @@ function HeroHeader({ result, heroAction }: { result: TasteResult; heroAction?: 
           (masthead 아래 헤드라인)처럼 가르는 얇은 선 하나. 새 정보는
           아니고 순수 구분선이라 스크린리더에서 의미를 갖지 않는다. */}
       <div aria-hidden="true" className="my-3 h-px w-full bg-border" />
-      {/* VISUAL & VIRAL REFOUNDATION(2026-08) — 결과 화면의 "첫 5초"는
-          스크롤 없이 보이는 이 카드 안에서 끝나야 한다는 원칙에 따라
-          제목을 한 단계 키웠다(text-3xl→4xl). 문장 자체는 그대로다. */}
+      {/* VIRAL HOOK & RESULT DELIGHT PASS(2026-08) — "설명"이 아니라
+          "공개 순간"이 되도록 순서를 다시 짰다. 예전엔 title → oneLiner
+          → statusLabel → (한 박자 늦게) 나의 궤적 칩 → tags 순서라,
+          제목 다음에 오는 게 "설명 문장"이었다. 이제 title 바로 다음에
+          나의 궤적 칩이 온다 — 두 개가 "결과 공개"의 한 세트로
+          한눈에 들어온다. oneLiner·statusLabel·tags는 그 아래로
+          내려 "부연 설명"으로 명확히 구분했다. 문장·값은 전혀 안
+          바꿨고, 등장 순서만 바꿨다. */}
       <h1 className="text-balance break-keep text-4xl font-black leading-10 tracking-[-0.03em] text-text-primary">{result.title}</h1>
-      <p className="mt-2 text-sm font-bold leading-6 text-text-primary">{result.oneLiner}</p>
+      <TasteSignatureChip result={result} className="mt-3" />
+      <p className="mt-3 text-sm font-bold leading-6 text-text-primary">{result.oneLiner}</p>
       {result.statusLabel ? (
         <p className="mt-2 text-xs font-semibold leading-5 text-text-secondary">{result.statusLabel}</p>
       ) : null}
-      {/* 스크롤 없이 보이는 첫 화면 안에서 title 다음으로 눈에 띄는 두
-          번째 "어?" 포인트. 값 자체는 그대로(matrix.types에서 계산한
-          기존 값), 시각적 무게만 올렸다. 공유 화면과 정확히 같은
-          컴포넌트를 쓴다(아래 TasteSignatureChip 정의 참고). */}
-      <TasteSignatureChip result={result} className="mt-3" />
       <TasteTagRow tags={result.tags ?? []} className="mt-3" />
       {heroAction ? <div className="mt-4">{heroAction}</div> : null}
     </Card>
@@ -309,10 +320,14 @@ const DISCOVERY_BADGE_CLASS = ["bg-primary text-primary-foreground", "bg-primary
 // 세 마디다), text는 그 헤드라인을 뒷받침하는 설명으로 한 단계
 // 가라앉는다. tier(카드 배경·테두리 진하기)는 그대로라 ③(내가 놓친
 // 나)이 여전히 가장 무겁게 읽힌다.
+// VIRAL HOOK & RESULT DELIGHT PASS(2026-08) — role 라벨 크기를 1<2<3
+// 순서로 점점 키워서(색만 진해지던 것에 더해) "응, 나 이래" → "어?
+// 반복되네" → "이건 몰랐는데?"로 감정이 실제로 커지는 걸 타이포로도
+// 보여준다. 문장 내용은 그대로다.
 const DISCOVERY_ROLE_CLASS = [
+  "text-xs font-black tracking-[-0.01em] text-text-primary",
   "text-sm font-black tracking-[-0.01em] text-text-primary",
-  "text-sm font-black tracking-[-0.01em] text-text-primary",
-  "text-sm font-black tracking-[-0.01em] text-primary-foreground",
+  "text-base font-black tracking-[-0.01em] text-primary-foreground",
 ];
 const DISCOVERY_TEXT_CLASS = [
   "text-sm font-semibold leading-6 text-text-secondary",
@@ -329,11 +344,23 @@ function DiscoveriesSection({ result }: { result: TasteResult }) {
       <div className="flex flex-col gap-2">
         {discoveries.map((discovery, index) => (
           <div key={discovery.role} className={cx("flex flex-col gap-1.5 rounded-large p-4", DISCOVERY_TIER_CLASS[index % DISCOVERY_TIER_CLASS.length])}>
-            <div className="flex items-center gap-2">
-              <span className={cx("grid size-6 shrink-0 place-items-center rounded-pill text-xs font-black", DISCOVERY_BADGE_CLASS[index % DISCOVERY_BADGE_CLASS.length])}>
-                {index + 1}
-              </span>
-              <p className={DISCOVERY_ROLE_CLASS[index % DISCOVERY_ROLE_CLASS.length]}>{discovery.role}</p>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className={cx("grid size-6 shrink-0 place-items-center rounded-pill text-xs font-black", DISCOVERY_BADGE_CLASS[index % DISCOVERY_BADGE_CLASS.length])}>
+                  {index + 1}
+                </span>
+                <p className={DISCOVERY_ROLE_CLASS[index % DISCOVERY_ROLE_CLASS.length]}>{discovery.role}</p>
+              </div>
+              {/* VIRAL HOOK & RESULT DELIGHT PASS(2026-08) — ③번에만 붙는
+                  작은 고정 UI 라벨. AI가 만든 새 문장이 아니라("예상 밖의
+                  발견"은 이 파일에 고정된 UI chrome이지 result 데이터가
+                  아니다), 이미 climax로 디자인된 카드에 "여기가 왜
+                  다른지"를 짧게 짚어주는 장치다. */}
+              {index === 2 ? (
+                <span className="shrink-0 rounded-pill bg-primary-foreground-wash px-2 py-0.5 text-[10px] font-black text-primary-foreground">
+                  예상 밖의 발견
+                </span>
+              ) : null}
             </div>
             <p className={DISCOVERY_TEXT_CLASS[index % DISCOVERY_TEXT_CLASS.length]}>{discovery.text}</p>
           </div>
