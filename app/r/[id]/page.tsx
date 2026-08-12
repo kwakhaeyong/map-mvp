@@ -138,10 +138,18 @@ function ctaHref(topicId?: string, withId?: string) {
   return `/?${params.toString()}`;
 }
 
-function TryItCta({ topicId, withId }: { topicId?: string; withId?: string }) {
+// VIRAL/FRIEND EXPERIENCE REBUILD(2026-08) — label을 선택적으로 받게
+// 확장했다. 기본값("너도 만들어봐")은 그대로라 이걸 넘기지 않는
+// 이상형·나소개·친구·일할 때의 나·여행 스타일 5개 분기는 문구·동작이
+// 하나도 안 바뀐다 — 취향 분기에서만 더 구체적인 문구("나는 어떻게
+// 나올까?")를 넘겨서 쓴다(아래 §6 참고). 새 컴포넌트를 또 만들지
+// 않고 기존 함수를 확장한 이유: href 계산(ctaHref)·버튼 스타일
+// (PRIMARY_CTA_CLASS) 자체는 6개 주제가 완전히 동일해서, 문구만
+// 다른데 컴포넌트를 복제하면 그 공통 로직이 두 곳으로 갈라진다.
+function TryItCta({ topicId, withId, label = "너도 만들어봐" }: { topicId?: string; withId?: string; label?: string }) {
   return (
     <Link href={ctaHref(topicId, withId)} className={PRIMARY_CTA_CLASS}>
-      너도 만들어봐
+      {label}
     </Link>
   );
 }
@@ -169,18 +177,36 @@ function PolicyFooterLinks() {
 // 자기성찰 블록(가장 감정적으로 몰입되는 지점) 바로 다음에 놓는 두 번째
 // CTA. 맨 아래 CTA(강조 버튼)와 똑같이 생기면 같은 걸 두 번 보여주는
 // 것처럼 느껴져서, 여기는 테두리만 있는 은은한 카드형으로 차등을 둔다.
-function MidResultCta({ topicId, withId }: { topicId?: string; withId?: string }) {
+// VIRAL/FRIEND EXPERIENCE REBUILD(2026-08) — TryItCta와 같은 이유로
+// label/microcopy를 선택적으로 받게 확장했다. 기본값은 그대로라 이걸
+// 넘기지 않는 5개 분기는 문구가 하나도 안 바뀐다. microcopy는 버튼
+// 위에 붙는 한 줄 호기심 유발 문구용 슬롯이다(예: "같은 질문에 답해도
+// 지형은 다르게 나와요") — 없으면(기본) 예전처럼 버튼만 나온다.
+function MidResultCta({
+  topicId,
+  withId,
+  label = "나도 이런 발견, 해보고 싶다면?",
+  microcopy,
+}: {
+  topicId?: string;
+  withId?: string;
+  label?: string;
+  microcopy?: string;
+}) {
   return (
-    <Link
-      href={ctaHref(topicId, withId)}
-      // #116: border-primary/30, bg-primary/5, hover:bg-primary/10이 이 커스텀
-      // 색엔 슬래시 투명도 클래스가 생성되지 않아 실제로는 늘 투명이었다 —
-      // 같은 값의 ink-wash 토큰으로 대체한다.
-      className="flex items-center justify-between gap-3 rounded-large border border-ink-wash-border bg-ink-wash px-5 py-4 text-sm font-extrabold text-primary transition-colors hover:bg-ink-wash-border"
-    >
-      <span>나도 이런 발견, 해보고 싶다면?</span>
-      <span aria-hidden="true">→</span>
-    </Link>
+    <div className="flex flex-col gap-2">
+      {microcopy ? <p className="text-center text-xs font-semibold text-text-muted">{microcopy}</p> : null}
+      <Link
+        href={ctaHref(topicId, withId)}
+        // #116: border-primary/30, bg-primary/5, hover:bg-primary/10이 이 커스텀
+        // 색엔 슬래시 투명도 클래스가 생성되지 않아 실제로는 늘 투명이었다 —
+        // 같은 값의 ink-wash 토큰으로 대체한다.
+        className="flex items-center justify-between gap-3 rounded-large border border-ink-wash-border bg-ink-wash px-5 py-4 text-sm font-extrabold text-primary transition-colors hover:bg-ink-wash-border"
+      >
+        <span>{label}</span>
+        <span aria-hidden="true">→</span>
+      </Link>
+    </div>
   );
 }
 
@@ -415,18 +441,42 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                 </div>
               }
             />
-            <TryItCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />
             <div className="h-px w-full bg-border" />
             {/* RESULT EXPERIENCE REBUILD(2026-08): 라이브 결과 화면과
                 마찬가지로 "MAP이 발견한 3가지"·MY MAP은 접지 않고 바로
                 보여준다(§11 — 두 화면이 여기까지는 같은 걸 보여줘야
                 한다). showHero=false인 이유는 그대로다 — 위 ShareCardImage가
                 이미 타이틀·한줄설명·태그를 담은 카드 이미지라, RESULT
-                CARD(HeroHeader)를 텍스트로 한 번 더 반복할 필요가 없다. */}
+                CARD(HeroHeader)를 텍스트로 한 번 더 반복할 필요가 없다.
+                VIRAL/FRIEND EXPERIENCE REBUILD(2026-08): 강한 CTA(아래)를
+                이 블록보다 먼저 두지 않는다 — 친구가 카드 이미지만 보고
+                바로 "너도 해봐" 버튼을 만나면, 이 링크의 핵심 자산인
+                Living MY MAP을 보기도 전에 CTA부터 마주치게 된다. "발견 →
+                MY MAP → CTA" 순서를 지켜야 강한 CTA가 "지금 막 본 지형이
+                궁금해서 누르는 버튼"으로 읽힌다. */}
             <TasteResultHighlights result={renderable.result} showHero={false} />
+            {/* 받는 사람 전용 강한 CTA — 발신자 쪽(TasteCard.tsx)의 "이
+                카드 공유하기" 버튼과는 다른 문제다: 저건 "보내는 사람이
+                누르는 버튼"이고 이건 "받은 사람이 자기 것도 궁금해져서
+                누르는 버튼"이라 문구도 달라야 한다. 근거 없는 통계
+                문구("98%가 놀랐어요" 류) 없이, 방금 본 Living MY MAP이
+                "나만의 지형"이라는 사실 자체로 호기심을 건드리는 한 줄만
+                붙인다. */}
+            <div className="flex flex-col gap-2">
+              <p className="text-center text-xs font-semibold text-text-muted">같은 질문에 답해도 지형은 다르게 나와요.</p>
+              <TryItCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} label="나는 어떻게 나올까?" />
+            </div>
             <CollapsibleFriendResult>
               <TasteResultDetails result={renderable.result} />
-              <MidResultCta topicId={share.status === "ok" ? share.record.topicId : undefined} withId={id} />
+              {/* 위 강한 CTA와 문구를 다르게 둔다 — 여기까지 펼쳐서 읽은
+                  사람은 이미 "나는 어떻게 나올까?"라는 호기심을 한 번
+                  넘어선 상태라, 똑같은 질문을 반복하기보다 곧장 행동
+                  문구("나도 내 MAP 보기")로 마무리한다. */}
+              <MidResultCta
+                topicId={share.status === "ok" ? share.record.topicId : undefined}
+                withId={id}
+                label="나도 내 MAP 보기"
+              />
               <TasteRoadmapDisclosure roadmap={renderable.result.roadmap} />
             </CollapsibleFriendResult>
             <PolicyFooterLinks />
