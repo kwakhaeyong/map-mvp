@@ -253,23 +253,82 @@ function SubLabel({ children }: { children: ReactNode }) {
   return <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-text-muted">{children}</p>;
 }
 
-// 문장을 새로 쓰거나 요약하지 않는다 — 배열의 첫 번째 항목을 그대로
-// "대표 문장"으로 크게, 나머지는 작은 불릿 목록으로 보여줘서 시각
-// 위계만 만든다(데이터 변형 없음, UI hierarchy만 적용).
-function HeroSecondaryList({ items }: { items: string[] }) {
-  if (items.length === 0) return null;
-  const [hero, ...rest] = items;
+// DEEP DIVE FINAL TRIM(2026-08) — "조금 더 보기" 2차 disclosure. 문장을
+// 자르거나 요약하지 않고, 기본 노출에서 뺀 나머지를 그대로 여기에 담아
+// 누르면 보여준다(line-clamp·말줄임표로 숨기는 게 아니라 진짜 접는다).
+// DeepDiveDisclosureItem(1차, 테두리 있는 박스+큰 화살표)보다 훨씬
+// 가벼운 인라인 텍스트 링크로 만들었다 — "아코디언 안에 또 아코디언"
+// 처럼 무겁게 느껴지지 않게 하기 위해서다.
+function MoreDisclosure({ children }: { children: ReactNode }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="self-start text-xs font-extrabold text-primary underline underline-offset-2"
+      >
+        조금 더 보기
+      </button>
+    );
+  }
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-base font-bold leading-7 text-text-primary">{hero}</p>
-      {rest.length > 0 ? (
+      {children}
+      <button
+        type="button"
+        onClick={() => setExpanded(false)}
+        className="self-start text-xs font-extrabold text-text-muted underline underline-offset-2"
+      >
+        접기
+      </button>
+    </div>
+  );
+}
+
+// DEEP DIVE FINAL TRIM(2026-08) — 예전 HeroSecondaryList(대표 문장 1개 +
+// 나머지 전부를 불릿으로)를 대체한다. 나머지를 전부 보여주던 것을
+// "근거 최대 maxEvidence개까지만 먼저 보여주고, 그 이상은 위
+// MoreDisclosure로 접는다"로 바꿨을 뿐 — 문장 자체는 배열 순서 그대로
+// 하나도 자르거나 요약하지 않는다(데이터 변형 없음, 노출 개수만 조절).
+// maxEvidence=0으로 부르면(패턴·자기성찰처럼 "1개만 먼저" 보여줘야 하는
+// 곳) 대표 문장 하나만 남고 나머지 전부가 조금 더 보기로 들어간다 —
+// 같은 부품을 재사용해 별도 컴포넌트를 새로 만들지 않았다.
+function HeroEvidence({
+  items,
+  maxEvidence = 2,
+  heroClassName = "text-base font-bold leading-7 text-text-primary",
+}: {
+  items: string[];
+  maxEvidence?: number;
+  heroClassName?: string;
+}) {
+  if (items.length === 0) return null;
+  const [hero, ...rest] = items;
+  const evidence = rest.slice(0, maxEvidence);
+  const more = rest.slice(maxEvidence);
+  return (
+    <div className="flex flex-col gap-2">
+      <p className={heroClassName}>{hero}</p>
+      {evidence.length > 0 ? (
         <ul className="flex flex-col gap-1.5">
-          {rest.map((item, index) => (
+          {evidence.map((item, index) => (
             <li key={index} className="text-sm font-semibold leading-6 text-text-secondary">
               · {item}
             </li>
           ))}
         </ul>
+      ) : null}
+      {more.length > 0 ? (
+        <MoreDisclosure>
+          <ul className="flex flex-col gap-1.5">
+            {more.map((item, index) => (
+              <li key={index} className="text-sm font-semibold leading-6 text-text-secondary">
+                · {item}
+              </li>
+            ))}
+          </ul>
+        </MoreDisclosure>
       ) : null}
     </div>
   );
@@ -448,37 +507,54 @@ function MyMapSection({ matrix }: { matrix: TasteMatrix }) {
 // success/error 색으로 이미 구분돼 있어(hero/secondary 위계를 굳이
 // 더 얹지 않아도 두 묶음이 한눈에 갈린다), 여기서는 항목 순서를
 // 그대로 둔다 — 데이터도 그대로다.
-function ExpandAvoidGrid({ tasteMap }: { tasteMap: TasteMap }) {
+//
+// DEEP DIVE FINAL TRIM(2026-08) — 예전엔 두 목록을 전부 보여줬다. 이제
+// 각 방향 최대 2개까지만 먼저 보여주고, 그 이상은 같은 2열 구조 그대로
+// MoreDisclosure 안에 접어 넣는다 — expand/avoid가 한 쌍으로 같이
+// 읽히는 내용이라 항목별로 따로 접지 않고 하나의 "조금 더 보기"로
+// 묶었다.
+function ExpandAvoidColumn({ label, items, tone }: { label: string; items: string[]; tone: "success" | "error" }) {
+  if (items.length === 0) return null;
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
-        <p className="flex items-center gap-1.5 text-xs font-black text-success">
-          <span className="size-2 rounded-full bg-success" aria-hidden="true" />
-          넓혀볼 만한 방향
-        </p>
-        <ul className="mt-1.5 space-y-1">
-          {tasteMap.expand.map((item, index) => (
-            <li key={index} className="flex items-start gap-1.5 text-xs font-bold leading-5 text-text-primary">
-              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-success" aria-hidden="true" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
+    <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
+      <p className={cx("flex items-center gap-1.5 text-xs font-black", tone === "success" ? "text-success" : "text-error")}>
+        <span className={cx("size-2 rounded-full", tone === "success" ? "bg-success" : "bg-error")} aria-hidden="true" />
+        {label}
+      </p>
+      <ul className="mt-1.5 space-y-1">
+        {items.map((item, index) => (
+          <li key={index} className="flex items-start gap-1.5 text-xs font-bold leading-5 text-text-primary">
+            <span className={cx("mt-1.5 size-1.5 shrink-0 rounded-full", tone === "success" ? "bg-success" : "bg-error")} aria-hidden="true" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const EXPAND_AVOID_SHOWN_COUNT = 2;
+
+function ExpandAvoidGrid({ tasteMap }: { tasteMap: TasteMap }) {
+  const expandShown = tasteMap.expand.slice(0, EXPAND_AVOID_SHOWN_COUNT);
+  const expandMore = tasteMap.expand.slice(EXPAND_AVOID_SHOWN_COUNT);
+  const avoidShown = tasteMap.avoid.slice(0, EXPAND_AVOID_SHOWN_COUNT);
+  const avoidMore = tasteMap.avoid.slice(EXPAND_AVOID_SHOWN_COUNT);
+  const hasMore = expandMore.length > 0 || avoidMore.length > 0;
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-3">
+        <ExpandAvoidColumn label="넓혀볼 만한 방향" items={expandShown} tone="success" />
+        <ExpandAvoidColumn label="안 맞을 방향" items={avoidShown} tone="error" />
       </div>
-      <div className="rounded-medium border border-border-strong bg-ink-wash p-3">
-        <p className="flex items-center gap-1.5 text-xs font-black text-error">
-          <span className="size-2 rounded-full bg-error" aria-hidden="true" />
-          안 맞을 방향
-        </p>
-        <ul className="mt-1.5 space-y-1">
-          {tasteMap.avoid.map((item, index) => (
-            <li key={index} className="flex items-start gap-1.5 text-xs font-bold leading-5 text-text-primary">
-              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-error" aria-hidden="true" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {hasMore ? (
+        <MoreDisclosure>
+          <div className="grid grid-cols-2 gap-3">
+            <ExpandAvoidColumn label="넓혀볼 만한 방향" items={expandMore} tone="success" />
+            <ExpandAvoidColumn label="안 맞을 방향" items={avoidMore} tone="error" />
+          </div>
+        </MoreDisclosure>
+      ) : null}
     </div>
   );
 }
@@ -580,6 +656,14 @@ export function TasteResultHighlights({
 // awareness/blindSpots도 STEP 2에서 0번째를 이미 썼으므로 dropFirst로
 // 건너뛴다 — awareness는 프롬프트상 정확히 2개, blindSpots는 정확히
 // 3개라 dropFirst 뒤에도 항상 1개·2개가 남는다(빈 섹션이 되지 않는다).
+//
+// DEEP DIVE FINAL TRIM(2026-08) — 열었을 때도 여전히 "긴 리포트"처럼
+// 읽히는 문제를 줄인다. 원인은 각 메뉴가 가진 데이터를 전부(하나도
+// 안 빼고) 한 번에 보여주고 있었다는 것 — 문장 자체는 좋지만 양이
+// 많았다. AI를 다시 부르지도, 문장을 자르거나 요약하지도 않는다 —
+// 위 HeroEvidence/MoreDisclosure로 "기본 노출 개수"만 줄였다. 각
+// 필드가 원래 가진 배열은 그대로 전달하고, 컴포넌트 내부에서
+// "핵심 1 + 근거 최대 2, 나머지는 조금 더 보기"로 나눠 보여줄 뿐이다.
 export function TasteResultDetails({ result }: { result: TasteResult }) {
   const patternsRest = dropFirst(result.patterns);
   const awarenessRest = dropFirst(result.selfReflection.awareness);
@@ -589,27 +673,27 @@ export function TasteResultDetails({ result }: { result: TasteResult }) {
     <Disclosure closedLabel="더 깊게 보기" openLabel="접기">
       <div className="flex flex-col gap-2.5">
         <DeepDiveDisclosureItem title="내가 확실히 끌리는 것">
-          <HeroSecondaryList items={result.tasteCore.certain} />
+          <HeroEvidence items={result.tasteCore.certain} maxEvidence={2} />
           {patternsRest.length > 0 ? (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
               <SubLabel>답변 사이에서 반복된 것</SubLabel>
-              <HeroSecondaryList items={patternsRest} />
+              {/* 패턴은 "핵심+근거"가 아니라 "가장 먼저 연결되는 결 1개만"이
+                  기본이다 — maxEvidence=0이라 나머지는 전부 조금 더 보기로. */}
+              <HeroEvidence items={patternsRest} maxEvidence={0} />
             </div>
           ) : null}
         </DeepDiveDisclosureItem>
 
         <DeepDiveDisclosureItem title="상황에 따라 달라지는 나">
-          <HeroSecondaryList items={result.tasteCore.conditional} />
+          <HeroEvidence items={result.tasteCore.conditional} maxEvidence={2} />
           {result.tasteCore.indifferent.length > 0 ? (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
               <SubLabel>딱히 안 끌리는 것</SubLabel>
-              <ul className="flex flex-col gap-1.5">
-                {result.tasteCore.indifferent.map((item, index) => (
-                  <li key={index} className="text-xs font-semibold leading-5 text-text-muted">
-                    · {item}
-                  </li>
-                ))}
-              </ul>
+              <HeroEvidence
+                items={result.tasteCore.indifferent}
+                maxEvidence={0}
+                heroClassName="text-sm font-semibold leading-6 text-text-muted"
+              />
             </div>
           ) : null}
         </DeepDiveDisclosureItem>
@@ -622,13 +706,17 @@ export function TasteResultDetails({ result }: { result: TasteResult }) {
           {awarenessRest.length > 0 ? (
             <div className="flex flex-col gap-2">
               <SubLabel>내가 알고 있던 나</SubLabel>
-              <HeroSecondaryList items={awarenessRest} />
+              <HeroEvidence items={awarenessRest} maxEvidence={0} />
             </div>
           ) : null}
           {blindSpotsRest.length > 0 ? (
             <div className={cx("flex flex-col gap-2", awarenessRest.length > 0 && "border-t border-border pt-3")}>
               <SubLabel>내가 놓치고 있던 나</SubLabel>
-              <HeroSecondaryList items={blindSpotsRest} />
+              {/* "마지막 한 방"으로 읽히도록 이 hero 문장만 STEP2의 climax
+                  카드(③ 내가 놓친 나)와 같은 급의 무게(font-black)를 준다 —
+                  새 색·새 크기 체계는 아니고 기존 DiscoveriesSection의
+                  climax 등급과 같은 굵기 토큰을 재사용한다. */}
+              <HeroEvidence items={blindSpotsRest} maxEvidence={0} heroClassName="text-lg font-black leading-7 text-text-primary" />
             </div>
           ) : null}
         </DeepDiveDisclosureItem>
