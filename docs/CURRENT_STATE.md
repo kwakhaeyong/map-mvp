@@ -2,7 +2,7 @@
 
 이 문서는 특정 시점의 운영 현황을 기록합니다. 아래 "열려 있는 Draft PR"과 "다음 액션"만 예외적으로 가까운 계획을 담습니다. 그 외는 전부 "지금 실제로 그런 상태"만 적습니다.
 
-마지막 갱신: 2026-08-11. 이번 갱신은 2026-08-11 진행된 세 가지 작업(work 주제 문항 업무 맥락 교체, 주제 전환 시 이전 결과 보존, 결과 화면 "다음 MAP 유도" 블록)과 FIRST CLICK MVP(랜딩 히어로를 취향 대표 콘텐츠로 재구성 + 애널리틱스 4개 이벤트 도입)를 코드 기준으로 반영한 것입니다 — 아래 "오늘(8/11) 진행된 작업"·"FIRST CLICK MVP" 두 섹션 참고. 이전 갱신 내용(2026-08-06·2026-08-07·2026-08-09)은 아래에 그대로 남아 있습니다.
+마지막 갱신: 2026-08-12. 이번 갱신은 PR #255가 main에 merge된 뒤 진행한 Production 검증 결과(Taste MAP Result Experience v1 동결)를 반영한 것입니다 — 아래 "Taste MAP Result Experience v1 — Production Verified / Frozen" 섹션 참고. 이전 갱신 내용(2026-08-06·2026-08-07·2026-08-09·2026-08-11)은 아래에 그대로 남아 있습니다.
 
 ## 코드
 
@@ -320,6 +320,20 @@
 - **프롬프트 개선 2건** — `taste-generator.ts`의 `SYSTEM_PROMPT`만 수정(schema·타입·UI·질문/선택지·다른 5개 주제는 미변경): (1) 교차 분석·구체성·블록 간 반복 금지 원칙 강화, Q17을 "결과 성립의 필수 조건이 아님"으로 재정의(커밋 `1e15c1c`), (2) 실제 Persona A 결과를 근거로 oneLiner를 "여러 교차 insight 중 가장 강한 하나"로 재정의하고, selfReflection 각 항목을 1~2문장으로 압축하는 지시 추가(커밋 `bdeb118`).
 - **⚠️ baseline 정정(중요)**: 오너가 production `mapdecision.com`에서 확인한 "우연히 발견에 끌리는 사람" 결과는 **PR #255(Preview)의 개선 결과가 아니라 기존 production baseline**입니다. main에는 아직 이 브랜치의 RESULT WOW 프롬프트 변경이 반영돼 있지 않으므로(PR #255가 아직 merge되지 않음), 이 production 결과를 커밋 `bdeb118`(또는 `1e15c1c`)의 효과를 판정하는 자료로 쓸 수 없습니다. `bdeb118` 이후의 실제 효과를 보려면 PR #255의 Vercel Preview에서 다시 테스트하거나, 아래 재생성 테스트 도구를 사용해야 합니다.
 - **RESULT WOW 재생성 테스트 도구 신설(`docs/review/result-wow-test-script.ts`, 개발 전용 CLI)**: 프롬프트를 고칠 때마다 사람이 20문항을 다시 입력하지 않고, 고정된 Persona A/B/C 입력으로 `generateTasteResult()`(현재 브랜치의 실제 생성기, mock 아님)만 반복 실행할 수 있게 하는 스크립트입니다. `npm run review:taste:a`(b/c도 동일)로 실행하며, `topics.ts`의 실제 option label과 `applyQuizAnswer`로 production과 동일한 `MapSession`을 만듭니다. `ANTHROPIC_API_KEY`가 없으면 세션 구성까지만 확인하고 명확한 에러로 종료합니다(키를 로그에 남기지 않음). 결과는 `docs/review/result-wow-current-{a,b,c}.json`(원문)과 `.md`(사람이 읽기 쉬운 요약)로 저장됩니다 — production 사용자 화면·라우트에는 전혀 노출되지 않는 순수 개발 도구입니다.
+
+## Taste MAP Result Experience v1 — Production Verified / Frozen (PR #255 merge 후, 2026-08-12)
+
+- **PR #255 merge 확인**: `merged_at 2026-08-12T04:06:35Z`, merge commit `8713a2af893a90b565abb342844842eb98c26f30`(`main`). head는 이 브랜치의 마지막 커밋 `026b397`(Deep Dive "조금 더 보기" 추가 노출 2개 제한 + ③ 영역 plain bullet화)까지 포함합니다.
+- **Production 배포 확인**: 이 세션(샌드박스)은 네트워크 정책상 `mapdecision.com`에 직접 접속할 수 없어(egress 403 policy denial, `curl` 확인) 실제 브라우저로 재검증하지 못했습니다. 대신 자동화된 `Production Smoke Check` GitHub Actions 워크플로(`.github/workflows/production-smoke.yml`)가 merge commit `8713a2a`에 대해 `04:06:38Z`~`04:08:13Z`에 실행되어 "Wait for Vercel production" → "Check mapdecision.com" 단계 모두 success로 완료됐습니다(run id `31562196289`). 이 결과를 배포 성공의 근거로 삼았습니다.
+- **실사용자 검증 근거**: 이 커밋과 동일한 코드가 merge 직전 PR #255의 Vercel Preview에서 오너가 실제 휴대폰으로 Persona A를 완주해 확인했습니다(DEEP DIVE LAST DENSITY FIX 라운드까지 포함). Production은 그 코드와 바이트 단위로 동일합니다.
+- **이 세션에서 직접 확인한 것(main 기준 로컬 검증, production 재접속 불가로 대체)**:
+  - `typecheck` · `harness:check` · `design:check` · `build` 4개 게이트 전부 통과.
+  - `TasteResultBlocks.tsx` 코드 레벨 감사: `HeroEvidence`의 `maxMore` 제한이 ①②에만 적용되고 ④(awarenessRest/blindSpotsRest)는 무제한 그대로임을 소스에서 직접 확인.
+  - 로컬 dev 서버로 5개 다른 MAP(이상형·나 소개·친구·인간관계·일할 때의 나·여행 스타일) Landing → 선택 → Profile 진입까지 회귀 확인, 에러 없음. taste REAL Q1 히어로도 Q1→Q2 정상 전환 확인.
+  - placeholder 데이터로 Deep Dive(①②③④)+Roadmap을 375/430/1280px에서 전부 펼쳐 캡처 — ①② 추가노출 2개 캡, ③ plain bullet(카드 없음) 2개 캡, ④ 무제한 유지, Roadmap 단계별 표시 모두 의도대로 렌더링됨을 확인.
+  - 실제 AI 생성·공유 링크 생성·`/r/[id]` 친구 화면은 이 샌드박스에 `ANTHROPIC_API_KEY`·Redis 자격 증명이 없어 애초에 재현이 불가능합니다(이 저장소 전 세션에서 반복 확인된 제약).
+- **판정**: 위 근거를 종합해 Taste MAP Result Experience v1(RESULT CARD → 발견 3가지 → Living MY MAP → 4-item Deep Dive density trim → Roadmap collapsed → share flow → `/r/[id]` friend experience)을 **PRODUCTION VERIFIED로 간주하고 동결**합니다.
+- **원칙**: 이 영역은 명백한 버그 또는 실제 사용자 데이터가 나오기 전까지 추가 UI 미세조정을 하지 않습니다.
 
 ## 다음 액션
 
