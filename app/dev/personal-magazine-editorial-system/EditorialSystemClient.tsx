@@ -53,7 +53,7 @@ function Grain({ className }: { className?: string }) {
 // 지금은 항상 placeholder만 그린다. 나중에 실제 이미지가 오면 이
 // 컴포넌트 내부에 <img> 한 줄만 추가하면 된다(주석 참고).
 // ============================================================
-function EditorialImageFrame({
+export function EditorialImageFrame({
   ratio,
   label,
   className,
@@ -203,7 +203,7 @@ function Cover({ size = "full" }: { size?: "full" | "hero" }) {
 // 다시 말하던 주변 텍스트를 전부 걷어냈다 — 지금 이 화면은 "매거진을
 // 보여주는 화면"이지 "매거진 디자인을 설명하는 화면"이 아니다. 이미지
 // 위에는 아무것도 얹지 않는다.
-function MeStory() {
+export function MeStory() {
   const asset = magazineVisualAssets.me.openingFeature;
   const [w, h] = asset.aspectRatio.split(":").map(Number);
   return (
@@ -226,7 +226,7 @@ function MeStory() {
 // "사람이 있는 세계(HERO) → 내가 머무는 공간(PLACE) → 내가 쥔 물건(OBJECT) →
 // 하루의 작은 순간(DETAIL)"으로 시야가 점점 좁아지는 리듬을 만든다 — 4장을
 // 같은 크기로 반복 나열하지 않는다.
-function TasteCollage() {
+export function TasteCollage() {
   const f = FEATURES.taste;
   const taste = magazineVisualAssets.taste;
 
@@ -390,7 +390,7 @@ function WorkReport() {
 // 이미지 위에는 아무것도 얹지 않는다(헤드라인 겹침·그라디언트
 // 오버레이·배지 금지) — 이미지 앞뒤로 순서만 배치한다: 헤드라인/설명
 // → 이미지(가장 큰 시각 요소) → 실제 클릭 가능한 CTA.
-function HomepageHero() {
+export function HomepageHero() {
   const hero = magazineVisualAssets.home.hero;
   const [w, h] = hero.aspectRatio.split(":").map(Number);
   return (

@@ -86,4 +86,12 @@ export const magazineVisualAssets = {
     // 다음 라운드에서 FOOD/TRAVEL/STYLE/LOVE/WORK, QUIZ, RESULT 비주얼이
     // 이 자리에 같은 구조로 추가될 예정이다.
   },
+
+  travel: {
+    // TRAVEL은 아직 Art Direction이 확정되지 않아 실제 이미지 파일이
+    // 없다. 없는 파일을 import해서 build를 깨뜨리지 않도록 null로
+    // 비워둔다 — 이미지가 오면 taste.hero와 같은 구조의
+    // MagazineVisualAsset 객체를 그대로 채워 넣기만 하면 된다.
+    hero: null as MagazineVisualAsset | null,
+  },
 };
