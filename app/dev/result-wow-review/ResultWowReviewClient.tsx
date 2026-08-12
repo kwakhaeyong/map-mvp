@@ -8,7 +8,6 @@ import {
   TasteResultHighlights,
   TasteRoadmapDisclosure,
 } from "../../../src/map-decision-v1/components/TasteResultBlocks";
-import { MyMapVisualLab } from "../../../src/map-decision-v1/components/dev/MyMapVisualLab";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -144,7 +143,6 @@ function NewResultPreview({ result }: { result: TasteResult }) {
             </Button>
           }
         />
-        <MyMapVisualLab matrix={result.matrix} />
         <TasteResultDetails result={result} />
         <TasteRoadmapDisclosure roadmap={result.roadmap} />
       </div>

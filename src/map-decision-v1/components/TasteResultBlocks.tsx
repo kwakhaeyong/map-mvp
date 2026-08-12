@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { TasteMap, TasteMatrix, TasteMatrixPoint, TasteResult, TasteRoadmap, TasteSelfReflection } from "../types";
 import { CollapsibleItems } from "./CollapsibleItems";
 import { Card } from "./ui/primitives";
@@ -312,41 +312,94 @@ export function spreadMatrixPoints(points: TasteMatrixPoint[]): PlottedMatrixPoi
   return placed.map((point) => ({ ...point, plotX: clampPercent(point.plotX), plotY: clampPercent(point.plotY) }));
 }
 
-// 다른 네 주제의 MatrixChart와 동일한 이유로 fillOpacity를 쓴다
-// (design-check #116 — 커스텀 색엔 슬래시 투명도 클래스가 생성되지
-// 않는다).
-const MATRIX_POINT_OPACITY = [1, 0.7, 0.45, 0.25];
-const MATRIX_POINT_NUMBER_CLASS = ["fill-primary-foreground", "fill-text-primary", "fill-text-primary", "fill-text-primary"];
+function centroidOf(points: { plotX: number; plotY: number }[]): { x: number; y: number } {
+  const x = points.reduce((sum, point) => sum + point.plotX, 0) / points.length;
+  const y = points.reduce((sum, point) => sum + point.plotY, 0) / points.length;
+  return { x, y };
+}
 
-function MatrixChart({ matrix }: { matrix: TasteMatrix }) {
+function scaleAroundCentroid<T extends { plotX: number; plotY: number }>(points: T[], factor: number, centroid: { x: number; y: number }) {
+  return points.map((point) => ({ plotX: centroid.x + (point.plotX - centroid.x) * factor, plotY: centroid.y + (point.plotY - centroid.y) * factor }));
+}
+
+// Catmull-Rom → 3차 베지어 변환으로 점들을 지나는 매끈한 폐곡선을
+// 만든다. 자기교차 없는 도형이 나오려면 호출 전에 중심 기준 각도순으로
+// 정렬해서 넘겨야 한다(아래 angleSortedOrder).
+function closedSmoothPath(points: { plotX: number; plotY: number }[]): string {
+  const n = points.length;
+  if (n < 3) return "";
+  let d = `M ${points[0].plotX} ${points[0].plotY} `;
+  for (let i = 0; i < n; i++) {
+    const p0 = points[(i - 1 + n) % n];
+    const p1 = points[i];
+    const p2 = points[(i + 1) % n];
+    const p3 = points[(i + 2) % n];
+    const c1x = p1.plotX + (p2.plotX - p0.plotX) / 6;
+    const c1y = p1.plotY + (p2.plotY - p0.plotY) / 6;
+    const c2x = p2.plotX - (p3.plotX - p1.plotX) / 6;
+    const c2y = p2.plotY - (p3.plotY - p1.plotY) / 6;
+    d += `C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.plotX} ${p2.plotY} `;
+  }
+  return `${d}Z`;
+}
+
+// matrix.types의 배열 순서(AI가 4가지 모습을 서술한 순서일 뿐 위치와는
+// 무관하다)로 그대로 이으면 도형이 자기 자신과 교차하는 모양(나비넥타이)이
+// 나올 수 있다 — 중심점 기준 각도로 정렬해 항상 교차 없는 매끈한 영역
+// 하나가 나오게 한다. 좌표 자체는 하나도 바꾸지 않고 연결 순서만 바꾼다.
+function angleSortedOrder<T extends { plotX: number; plotY: number }>(points: T[]): T[] {
+  const centroid = centroidOf(points);
+  return [...points].sort(
+    (a, b) => Math.atan2(a.plotY - centroid.y, a.plotX - centroid.x) - Math.atan2(b.plotY - centroid.y, b.plotX - centroid.x),
+  );
+}
+
+// RESULT VIRAL EXPERIENCE — MY MAP VISUAL LAB(2026-08) 비교 실험에서
+// "A. Living Map"이 채택되어 production 시각화로 승격됐다. 예전
+// MatrixChart(산점도 + 격자선)를 대체한다 — 데이터·좌표 계산
+// (spreadMatrixPoints)은 완전히 동일하고, "어떻게 그리는지"만 바뀐다.
+// 4개 지점을 지나는 매끈한 영역(폐곡선)을 채우고, 그 영역을 안팎으로
+// 살짝 축소·확대한 두 겹을 등고선처럼 옅게 겹쳐서 "차트"가 아니라
+// "지형"으로 읽히게 한다. 격자선·십자선은 그리지 않는다(그게 있으면
+// 바로 "분석 도구"처럼 보인다는 게 Lab 비교의 결론이었다).
+function LivingMapChart({ matrix }: { matrix: TasteMatrix }) {
+  const filterId = useId();
   const placed = spreadMatrixPoints(matrix.types);
+  const centroid = centroidOf(placed);
+  const territoryOrder = angleSortedOrder(placed);
+  const territoryPath = closedSmoothPath(territoryOrder);
+  const outerRingPath = closedSmoothPath(scaleAroundCentroid(territoryOrder, 1.22, centroid));
+  const innerRingPath = closedSmoothPath(scaleAroundCentroid(territoryOrder, 0.68, centroid));
+
   return (
     <div className="mx-auto w-full max-w-xs">
-      <p className="mb-1 text-center text-[11px] font-black text-text-muted">{matrix.yAxisLabel.high}</p>
+      <p className="mb-1 flex items-center justify-center gap-1 text-center text-[11px] font-black uppercase tracking-[0.06em] text-text-muted">
+        <span aria-hidden="true">▲</span> {matrix.yAxisLabel.high}
+      </p>
       <div className="flex items-center gap-2">
         <p className="w-12 shrink-0 text-right text-[11px] font-black leading-tight text-text-muted">{matrix.xAxisLabel.low}</p>
         <div className="relative aspect-square flex-1">
           <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
-            <rect x="1" y="1" width="98" height="98" rx="4" className="fill-none stroke-border" strokeWidth="1" />
-            <line x1="50" y1="1" x2="50" y2="99" className="stroke-border" strokeWidth="0.6" strokeDasharray="2 2" />
-            <line x1="1" y1="50" x2="99" y2="50" className="stroke-border" strokeWidth="0.6" strokeDasharray="2 2" />
+            <defs>
+              <filter id={`living-map-glow-${filterId}`} x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="4.5" />
+              </filter>
+            </defs>
+            <path d={outerRingPath} className="fill-none stroke-primary" strokeWidth="0.6" strokeDasharray="1.5 2" strokeOpacity={0.2} />
+            <path d={territoryPath} className="fill-primary" fillOpacity={0.16} filter={`url(#living-map-glow-${filterId})`} />
+            <path d={territoryPath} className="fill-none stroke-primary" strokeWidth="1" strokeOpacity={0.6} />
+            <path d={innerRingPath} className="fill-none stroke-primary" strokeWidth="0.5" strokeDasharray="1 1.6" strokeOpacity={0.32} />
+            <circle cx={centroid.x} cy={centroid.y} r="1" className="fill-primary" fillOpacity={0.5} />
             {placed.map((point, index) => (
               <g key={index}>
                 <title>{point.label}</title>
-                <circle
-                  cx={point.plotX}
-                  cy={point.plotY}
-                  r="4.2"
-                  className="fill-primary stroke-surface"
-                  fillOpacity={MATRIX_POINT_OPACITY[index % MATRIX_POINT_OPACITY.length]}
-                  strokeWidth="0.8"
-                />
+                <circle cx={point.plotX} cy={point.plotY} r="3.8" className="fill-primary stroke-surface" strokeWidth="0.8" />
                 <text
                   x={point.plotX}
                   y={point.plotY}
                   textAnchor="middle"
                   dominantBaseline="central"
-                  className={cx(MATRIX_POINT_NUMBER_CLASS[index % MATRIX_POINT_NUMBER_CLASS.length], "font-black")}
+                  className="fill-primary-foreground font-black"
                   style={{ fontSize: "4px" }}
                 >
                   {index + 1}
@@ -357,28 +410,27 @@ function MatrixChart({ matrix }: { matrix: TasteMatrix }) {
         </div>
         <p className="w-12 shrink-0 text-left text-[11px] font-black leading-tight text-text-muted">{matrix.xAxisLabel.high}</p>
       </div>
-      <p className="mt-1 text-center text-[11px] font-black text-text-muted">{matrix.yAxisLabel.low}</p>
+      <p className="mt-1 flex items-center justify-center gap-1 text-center text-[11px] font-black uppercase tracking-[0.06em] text-text-muted">
+        <span aria-hidden="true">▼</span> {matrix.yAxisLabel.low}
+      </p>
     </div>
   );
 }
 
-// STEP 3 MY MAP. 예전 MatrixSection과 데이터·차트(MatrixChart)는
-// 완전히 동일하다 — x/y 좌표를 다시 계산하거나 새 시각화 라이브러리를
-// 쓰지 않는다. 바뀐 건 제목과 설명뿐이다: "나의 여러 모습"(통계
-// 차트처럼 읽히기 쉬운 이름) 대신 "MY MAP"을 메인 타이틀로 쓴다 —
-// STEP 2 "MAP이 발견한 3가지"부터 이어지는 "MAP" 어휘를 그대로
-// 가져가고, 이 서비스 이름 자체(MAP OS)와 맞춰 "이것도 하나의
-// 지도"라는 감각을 준다. 부제("내 안의 여러 모습이 이렇게 연결돼
-// 있어요")로 원래 있던 "나의 여러 모습"이라는 표현을 자연스럽게
-// 이어 쓴다.
+// STEP 3 MY MAP. matrix 데이터·좌표 계산(spreadMatrixPoints)은 그대로다
+// — 위 LivingMapChart로 그리는 방식만 바뀌었다. 설명 문구도 "지형"
+// 프레이밍에 맞춰 다시 썼다("내 안의 여러 모습이 이렇게 연결돼
+// 있어요" → "내 안의 여러 모습이 이런 지형을 만들어요") — MY MAP
+// VISUAL LAB(2026-08) 비교 실험에서 오너가 A안(Living Map)을 최종
+// 선택했다.
 function MyMapSection({ matrix }: { matrix: TasteMatrix }) {
   return (
     <Card className="flex flex-col gap-4">
-      <SectionHeader title="MY MAP" description="내 안의 여러 모습이 이렇게 연결돼 있어요." />
-      <MatrixChart matrix={matrix} />
-      <ul className="flex flex-col gap-2">
+      <SectionHeader title="MY MAP" description="내 안의 여러 모습이 이런 지형을 만들어요." />
+      <LivingMapChart matrix={matrix} />
+      <ul className="flex flex-col gap-2.5">
         {matrix.types.map((point, index) => (
-          <li key={index} className="flex items-start gap-2 text-sm font-semibold text-text-secondary">
+          <li key={index} className="flex items-start gap-2 text-sm font-semibold leading-6 text-text-secondary">
             <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-pill border border-border bg-surface-elevated text-[11px] font-black text-text-primary">
               {index + 1}
             </span>
