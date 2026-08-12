@@ -1,5 +1,7 @@
 "use client";
 
+import { magazineVisualAssets } from "../../../src/data/magazineVisualAssets";
+
 // EDITORIAL FRAME SYSTEM — STRUCTURE FIRST PASS(2026-08) — dev-only.
 // 이번 라운드는 "예쁜 프로토타입"이 아니라 "나중에 실제 사진/GPT
 // 이미지 파일을 끼워넣기만 하면 완성되는 틀"을 만드는 라운드다. 그래서
@@ -377,41 +379,41 @@ function WorkReport() {
 // ============================================================
 
 // Scene 1 — HERO: 완성된 표지 + 뒤에 살짝 삐져나온 3장.
+// HOME HERO IMAGE INTEGRATION(2026-08) — GPT가 만든 실제 Visual Target
+// 1호(magazineVisualAssets.home.hero)를 그대로 꽂았다. 그 전까지 여기
+// 있던 회색 placeholder 3장 + Cover 컴포넌트 재사용(가짜 magazine
+// mockup)은 전부 지웠다 — 이미지 자체가 이미 "표지+뒤로 겹친 페이지"
+// 구도를 완성해서 갖고 있으므로 그걸 CSS로 다시 만들 필요가 없다.
+// 이미지 위에는 아무것도 얹지 않는다(헤드라인 겹침·그라디언트
+// 오버레이·배지 금지) — 이미지 앞뒤로 순서만 배치한다: 헤드라인/설명
+// → 이미지(가장 큰 시각 요소) → 실제 클릭 가능한 CTA.
 function HomepageHero() {
+  const hero = magazineVisualAssets.home.hero;
+  const [w, h] = hero.aspectRatio.split(":").map(Number);
   return (
-    <section className="relative flex min-h-[92vh] flex-col justify-center overflow-hidden px-5 py-10">
-      <Grain className="opacity-[0.03]" />
-      <div className="relative mx-auto w-full max-w-[16rem]">
-        {/* 뒤에 삐져나온 3장 — 각자 자기 템플릿을 아주 작게 암시만 한다 */}
-        <div aria-hidden="true" className="absolute inset-0 origin-bottom-right" style={{ transform: "rotate(7deg) translate(14px, -6px)" }}>
-          <div className="flex h-full flex-col gap-1 border border-border-strong bg-background p-2 opacity-90">
-            <div className="h-2 w-10 bg-tag-fill" />
-            <div className="mt-1 flex-1 border border-border-strong bg-tag-fill" />
-          </div>
-        </div>
-        <div aria-hidden="true" className="absolute inset-0 origin-bottom-left" style={{ transform: "rotate(-9deg) translate(-16px, -2px)" }}>
-          <div className="flex h-full gap-1 border border-border-strong bg-background p-2 opacity-90">
-            <div className="h-full w-[60%] border border-border-strong bg-tag-fill" />
-            <div className="flex h-full flex-1 flex-col gap-1">
-              <div className="h-[45%] border border-border-strong bg-tag-fill" />
-              <div className="h-[45%] border border-border-strong bg-tag-fill" />
-            </div>
-          </div>
-        </div>
-        <div aria-hidden="true" className="absolute inset-0 origin-top" style={{ transform: "rotate(3deg) translate(4px, 8px)" }}>
-          <div className="h-full border border-border-strong bg-background p-2 opacity-90">
-            <div className="h-full border border-border-strong bg-tag-fill" />
-          </div>
-        </div>
+    <section className="flex flex-col gap-6 px-5 pb-10 pt-8">
+      <p className="text-center text-xs font-black tracking-[-0.01em] text-text-primary">PERSONAL MAGAZINE</p>
 
-        <div className="relative shadow-floating">
-          <Cover size="hero" />
-        </div>
+      <div className="text-center">
+        <h1 className="text-2xl font-black leading-8 tracking-[-0.02em] text-text-primary">나를 한 권으로 만들다.</h1>
+        <p className="mx-auto mt-3 max-w-xs text-sm font-bold leading-6 text-text-secondary">
+          성격, 취향, 음식, 여행, 스타일, 관계와 일까지. 답할수록 나만의 Magazine이 완성됩니다.
+        </p>
       </div>
 
-      <div className="relative mx-auto mt-10 max-w-xs text-center">
-        <p className="text-2xl font-black leading-8 tracking-[-0.02em] text-text-primary">나를 한 권으로 만들다.</p>
-        <a href="#shelf" className="mt-6 inline-flex h-12 items-center justify-center border border-text-primary px-8 text-sm font-black uppercase tracking-[0.04em] text-text-primary">
+      {/* 실제 이미지 연결 지점: registry(src/data/magazineVisualAssets.ts)의
+          src만 바꾸면 이 자리 전체가 다음 버전 이미지로 교체된다. */}
+      <div className="relative w-full overflow-hidden" style={{ aspectRatio: `${w} / ${h}` }}>
+        <img
+          src={hero.src}
+          alt={hero.alt}
+          className="size-full object-contain"
+          style={{ objectPosition: hero.objectPositionMobile }}
+        />
+      </div>
+
+      <div className="flex justify-center">
+        <a href="#shelf" className="inline-flex h-12 items-center justify-center border border-text-primary px-8 text-sm font-black uppercase tracking-[0.04em] text-text-primary">
           내 첫 번째 Issue 만들기
         </a>
       </div>
