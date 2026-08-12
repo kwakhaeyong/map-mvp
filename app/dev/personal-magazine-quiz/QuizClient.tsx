@@ -2,77 +2,78 @@
 
 import { useState } from "react";
 import { EditorialImageFrame } from "../personal-magazine-editorial-system/EditorialSystemClient";
-import type { MagazineVisualAsset } from "../../../src/data/magazineVisualAssets";
+import { magazineVisualAssets } from "../../../src/data/magazineVisualAssets";
 
-// EDITORIAL QUIZ SKELETON(2026-08) — dev-only. 실제 문항·선택지·채점
-// 로직은 없다 — 내일 Quiz UX를 설계할 때 바로 쓸 수 있는 구조(상태
-// 모양 + 컴포넌트 분해)만 미리 준비해두는 것이 이번 라운드의 목적이다.
-// 그래서 이 파일 안의 문항 텍스트·캡션은 전부 PLACEHOLDER로 표시했다.
+// EDITORIAL QUIZ UX 1차 구현(2026-08) — dev-only. TASTE 챕터의 실제
+// 첫 문항 하나만 완성한다(문항 6개 전체가 아니다). 검증 질문은 하나:
+// "심리테스트를 푼다"가 아니라 "내 Magazine의 한 페이지를 만들어간다"고
+// 느껴지는가?
+//
+// 가장 중요한 원칙: 질문/선택지/진행률/YOUR PAGE 전부 HTML이다. 사진
+// 위에 텍스트를 박아 넣은 합성 이미지를 쓰지 않는다 — IMAGE + INTERACTIVE
+// UI 구조를 지킨다. 이번 라운드에는 전달받은 참고 이미지가 없어 A/B
+// 사진 자리는 EditorialImageFrame 회색 placeholder를 쓴다(연결 구조만
+// 완성 — 실제 사진은 magazineVisualAssets.quiz.taste.q01에 넣으면
+// 바로 교체된다).
 //
 // 사용자 정신모델은 "문제를 푼다"가 아니라 "내 Magazine을 만든다"다.
-// 그래서 내부 개념도 test/personalityTest/assessment가 아니라
-// chapter/choice/page/progress/issue를 중심으로 짰다.
+// 화면 언어에서 TEST/ASSESSMENT/심리검사 대신 PAGE IN PROGRESS·YOUR
+// PAGE·CHOICE·ISSUE·CHAPTER를 쓴다.
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-// ============================================================
-// 상태 모양 — 내일 실제 Quiz 컴포넌트가 그대로 가져다 쓸 수 있는 최소
-// 상태다. 지금은 이 파일 안의 로컬 useState로만 데모한다.
-// ============================================================
-type ChoiceType = "visual" | "text";
+const TASTE_CHAPTER = { id: "taste", number: "02", title: "TASTE" };
+const TOTAL_QUESTIONS = 6;
 
-type DemoQuestion = {
-  id: string;
-  type: ChoiceType;
-  prompt: string; // PLACEHOLDER
-  optionA: { label: string; asset?: MagazineVisualAsset | null };
-  optionB: { label: string; asset?: MagazineVisualAsset | null };
+// YOUR PAGE에 표시되는 4개 영역. 첫 문항은 PLACE 성격이라 답변 즉시
+// PLACE만 채워진다 — 실제 채점/분류 로직은 아직 없다.
+const PAGE_SECTIONS = [
+  { key: "place", label: "PLACE" },
+  { key: "object", label: "OBJECT" },
+  { key: "detail", label: "DETAIL" },
+  { key: "mood", label: "MOOD" },
+] as const;
+
+// 실제 TASTE 1번 문항. 향후 문항이 늘어나면 이 상수를 배열로
+// 확장하면 된다 — 지금은 1문항만 검증하므로 단일 객체로 둔다.
+const TASTE_Q1 = {
+  prompt: "쉬는 오후,\n더 마음이 가는 장면은?",
+  deck: "내 TASTE 지면에 더 가까운 장면을 선택해 주세요.",
+  optionA: {
+    asset: magazineVisualAssets.quiz.taste.q01.a,
+    sentence: "햇살이 드는 조용한 카페에서\n책과 커피를 즐긴다",
+  },
+  optionB: {
+    asset: magazineVisualAssets.quiz.taste.q01.b,
+    sentence: "사람들과 어울리며\n도시의 에너지를 느낀다",
+  },
 };
 
-const DEMO_CHAPTER = { id: "food", number: "03", title: "FOOD" };
-
-// 실제 문항이 아니라 구조 검증용 자리표시자. 내일 실제 문항으로
-// 교체한다.
-const DEMO_QUESTIONS: DemoQuestion[] = [
-  {
-    id: "q1",
-    type: "visual",
-    prompt: "PLACEHOLDER — 이미지 기반 질문 자리",
-    optionA: { label: "OPTION A", asset: null },
-    optionB: { label: "OPTION B", asset: null },
-  },
-  {
-    id: "q2",
-    type: "text",
-    prompt: "PLACEHOLDER — 텍스트 기반 질문 자리",
-    optionA: { label: "TEXT OPTION A" },
-    optionB: { label: "TEXT OPTION B" },
-  },
-  {
-    id: "q3",
-    type: "visual",
-    prompt: "PLACEHOLDER — 이미지 기반 질문 자리",
-    optionA: { label: "OPTION A", asset: null },
-    optionB: { label: "OPTION B", asset: null },
-  },
-];
-
 // ============================================================
-// QuizProgress — page/progress 개념. "몇 번째 문제"가 아니라
-// "몇 페이지째"로 표시한다.
+// YourPageStatus — "Magazine이 채워지고 있다"는 진행감. 답변한
+// 영역만 채워진 상태(active)로, 나머지는 빈 상태로 보인다.
 // ============================================================
-function QuizProgress({ current, total }: { current: number; total: number }) {
-  const progress = total === 0 ? 0 : current / total;
+function YourPageStatus({ filled }: { filled: string[] }) {
   return (
-    <div className="px-5 pt-6">
-      <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">
-        <span>PAGE {current + 1} / {total}</span>
-        <span>{Math.round(progress * 100)}%</span>
-      </div>
-      <div className="mt-2 h-1 w-full bg-tag-fill">
-        <div className="h-full bg-primary" style={{ width: `${progress * 100}%` }} />
+    <div className="mt-10 border-t border-border px-5 pt-5">
+      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">YOUR PAGE</p>
+      <div className="mt-2 flex gap-2">
+        {PAGE_SECTIONS.map((section) => {
+          const isFilled = filled.includes(section.key);
+          return (
+            <span
+              key={section.key}
+              className={cx(
+                "flex-1 border px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.04em] transition-all duration-normal",
+                isFilled ? "border-text-primary bg-text-primary text-background" : "border-border-strong text-text-muted"
+              )}
+            >
+              {section.label}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
@@ -99,168 +100,153 @@ function QuizIntro({ chapterNumber, chapterTitle, onStart }: { chapterNumber: st
 }
 
 // ============================================================
-// VisualChoice — 내일 가장 중요하게 볼 구조. IMAGE A vs IMAGE B.
-// asset이 없으면(null/undefined) EditorialImageFrame 회색
-// placeholder를 쓰고, asset이 오면(향후 registry 연결) 실제 이미지로
-// 바로 교체될 수 있게 자리만 잡아둔다. 지금은 AI 이미지나 CSS
-// illustration을 만들지 않는다.
+// ChoiceCard — 사진 전체 + A/B 표식 + 문장까지 한 덩어리로 클릭
+// 가능한 카드. 375px에서는 세로 stack(부모가 flex-col), 430px부터는
+// 부모가 flex-row로 바뀌어 2열 비교가 된다 — 이 컴포넌트 자체는
+// 모바일/데스크톱 동일하다(별도 desktop 전용 UI를 만들지 않는다).
 // ============================================================
-function VisualChoice({
-  optionA,
-  optionB,
+function ChoiceCard({
+  choiceKey,
+  asset,
+  sentence,
   selected,
+  dimmed,
   onSelect,
 }: {
-  optionA: { label: string; asset?: MagazineVisualAsset | null };
-  optionB: { label: string; asset?: MagazineVisualAsset | null };
-  selected: "A" | "B" | null;
-  onSelect: (choice: "A" | "B") => void;
-}) {
-  function renderOption(key: "A" | "B", option: { label: string; asset?: MagazineVisualAsset | null }) {
-    const isSelected = selected === key;
-    return (
-      <button
-        type="button"
-        onClick={() => onSelect(key)}
-        className={cx("flex flex-1 flex-col gap-2 border p-2 text-left", isSelected ? "border-text-primary" : "border-border-strong")}
-      >
-        {option.asset ? (
-          <div className="relative w-full overflow-hidden" style={{ aspectRatio: option.asset.aspectRatio.replace(":", " / ") }}>
-            <img src={option.asset.src} alt={option.asset.alt} className="size-full object-contain" />
-          </div>
-        ) : (
-          <EditorialImageFrame ratio="4:5" label={`IMAGE ${key}`} />
-        )}
-        <span className="text-center text-[11px] font-bold uppercase tracking-[0.04em] text-text-secondary">{option.label}</span>
-      </button>
-    );
-  }
-
-  return (
-    <div className="flex items-stretch gap-2 px-5">
-      {renderOption("A", optionA)}
-      <span className="flex items-center font-serif text-xs font-bold italic text-text-muted">VS</span>
-      {renderOption("B", optionB)}
-    </div>
-  );
-}
-
-// ============================================================
-// TextChoice — 이미지 없는 문항용. 텍스트 두 개.
-// ============================================================
-function TextChoice({
-  optionA,
-  optionB,
-  selected,
-  onSelect,
-}: {
-  optionA: { label: string };
-  optionB: { label: string };
-  selected: "A" | "B" | null;
-  onSelect: (choice: "A" | "B") => void;
+  choiceKey: "A" | "B";
+  asset: (typeof TASTE_Q1.optionA)["asset"];
+  sentence: string;
+  selected: boolean;
+  dimmed: boolean;
+  onSelect: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-2 px-5">
-      {(["A", "B"] as const).map((key) => {
-        const option = key === "A" ? optionA : optionB;
-        const isSelected = selected === key;
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onSelect(key)}
-            className={cx("border px-4 py-4 text-left text-sm font-bold", isSelected ? "border-text-primary text-text-primary" : "border-border-strong text-text-secondary")}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ============================================================
-// EditorialQuestion — prompt + (VisualChoice | TextChoice) 조합.
-// ============================================================
-function EditorialQuestion({
-  question,
-  selected,
-  onSelect,
-}: {
-  question: DemoQuestion;
-  selected: "A" | "B" | null;
-  onSelect: (choice: "A" | "B") => void;
-}) {
-  return (
-    <div className="flex flex-col gap-6 pb-10 pt-8">
-      <p className="px-5 text-xl font-black leading-7 text-text-primary">{question.prompt}</p>
-      {question.type === "visual" ? (
-        <VisualChoice optionA={question.optionA} optionB={question.optionB} selected={selected} onSelect={onSelect} />
-      ) : (
-        <TextChoice optionA={question.optionA} optionB={question.optionB} selected={selected} onSelect={onSelect} />
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cx(
+        "flex flex-1 flex-col gap-3 border p-3 text-left transition-all duration-normal",
+        selected ? "border-text-primary" : "border-border-strong",
+        dimmed && "opacity-50"
       )}
-    </div>
-  );
-}
-
-// ============================================================
-// EditorialProcessing — 문항 완료 후 편집 중임을 보여주는 중립
-// placeholder. 화려한 로딩 애니메이션은 만들지 않는다. 카피와
-// 애니메이션은 내일 결정한다 — 지금은 자리만 잡는다.
-// ============================================================
-function EditorialProcessing({ chapterTitle }: { chapterTitle: string }) {
-  return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
-      <p className="font-serif text-xs font-bold uppercase tracking-[0.14em] text-text-muted">EDITORIAL PROCESSING</p>
-      <p className="text-lg font-black text-text-primary">EDITING YOUR {chapterTitle}…</p>
-      <div className="mt-2 flex gap-1.5" aria-hidden="true">
-        <span className="size-1.5 animate-pulse bg-primary" style={{ animationDelay: "0ms" }} />
-        <span className="size-1.5 animate-pulse bg-primary" style={{ animationDelay: "150ms" }} />
-        <span className="size-1.5 animate-pulse bg-primary" style={{ animationDelay: "300ms" }} />
+    >
+      {asset ? (
+        <div className="relative w-full overflow-hidden" style={{ aspectRatio: asset.aspectRatio.replace(":", " / ") }}>
+          <img src={asset.src} alt={asset.alt} className="size-full object-cover" />
+        </div>
+      ) : (
+        <EditorialImageFrame ratio="4:5" label={`IMAGE ${choiceKey}`} />
+      )}
+      <div className="flex flex-col gap-1.5">
+        <span
+          className={cx(
+            "flex size-6 items-center justify-center border font-serif text-[11px] font-bold transition-all duration-normal",
+            selected ? "border-text-primary bg-text-primary text-background" : "border-border-strong text-text-muted"
+          )}
+        >
+          {choiceKey}
+        </span>
+        <p className="whitespace-pre-line text-sm font-bold leading-5 text-text-primary">{sentence}</p>
       </div>
-    </div>
+    </button>
   );
 }
 
 // ============================================================
-// QuizComplete — chapter 완성 화면. 다음 챕터로 넘어가는 구조만
-// 개념적으로 보여준다(실제 라우팅/데이터는 없음).
+// TasteQuestion01 — 실제로 완성된 첫 문항. 선택 즉시 다음으로
+// 자동 이동하지 않는다 — 짧은 confirmation을 먼저 보여주고,
+// NEXT를 눌러야 다음 상태로 넘어간다.
 // ============================================================
-function QuizComplete({ chapterTitle, onRestart }: { chapterTitle: string; onRestart: () => void }) {
+function TasteQuestion01({
+  selected,
+  onSelect,
+  onNext,
+}: {
+  selected: "A" | "B" | null;
+  onSelect: (choice: "A" | "B") => void;
+  onNext: () => void;
+}) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
-      <p className="font-serif text-xs font-bold uppercase tracking-[0.14em] text-text-muted">CHAPTER COMPLETE</p>
-      <p className="text-2xl font-black text-text-primary">{chapterTitle} 페이지가 만들어졌어요.</p>
-      <p className="text-sm font-bold text-text-secondary">다음 챕터 구조(개념 자리) — 실제 연결은 내일.</p>
-      <button
-        type="button"
-        onClick={onRestart}
-        className="mt-4 inline-flex h-11 items-center justify-center border border-border-strong px-6 text-sm font-bold uppercase tracking-[0.04em] text-text-secondary"
-      >
-        NEXT CHAPTER (placeholder)
-      </button>
+    <div className="pb-10">
+      <div className="flex items-center justify-between px-5 pt-6">
+        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">TASTE · PAGE IN PROGRESS</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">1 of {TOTAL_QUESTIONS}</p>
+      </div>
+
+      <h2 className="whitespace-pre-line px-5 pt-5 text-[1.75rem] font-black leading-[1.15] tracking-[-0.01em] text-text-primary">
+        {TASTE_Q1.prompt}
+      </h2>
+      <p className="px-5 pt-2 text-sm font-bold text-text-secondary">{TASTE_Q1.deck}</p>
+
+      <div className="mt-6 flex flex-col gap-3 px-5 min-[430px]:flex-row">
+        <ChoiceCard
+          choiceKey="A"
+          asset={TASTE_Q1.optionA.asset}
+          sentence={TASTE_Q1.optionA.sentence}
+          selected={selected === "A"}
+          dimmed={selected === "B"}
+          onSelect={() => onSelect("A")}
+        />
+        <ChoiceCard
+          choiceKey="B"
+          asset={TASTE_Q1.optionB.asset}
+          sentence={TASTE_Q1.optionB.sentence}
+          selected={selected === "B"}
+          dimmed={selected === "A"}
+          onSelect={() => onSelect("B")}
+        />
+      </div>
+
+      {selected && (
+        <div className="mt-5 flex flex-col items-start gap-3 px-5">
+          <p className="text-sm font-bold text-text-secondary">첫 장면이 담겼습니다.</p>
+          <button
+            type="button"
+            onClick={onNext}
+            className="inline-flex h-11 items-center justify-center bg-text-primary px-6 text-sm font-black uppercase tracking-[0.04em] text-background"
+          >
+            다음 페이지
+          </button>
+        </div>
+      )}
+
+      <YourPageStatus filled={selected ? ["place"] : []} />
     </div>
   );
 }
 
 // ============================================================
-// ROOT — chapter / questionIndex / totalQuestions / selectedChoice /
-// progress 상태를 로컬로 데모한다.
+// Question02Placeholder — 이번 라운드에서는 실제 2번 문항을 만들지
+// 않는다. 흐름이 계속된다는 것만 보여주는 자리표시자.
 // ============================================================
-type Stage = "intro" | "question" | "processing" | "complete";
+function Question02Placeholder() {
+  return (
+    <div className="pb-10">
+      <div className="flex items-center justify-between px-5 pt-6">
+        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">TASTE · PAGE IN PROGRESS</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">2 of {TOTAL_QUESTIONS}</p>
+      </div>
+      <div className="flex flex-col items-center justify-center gap-2 px-6 py-24 text-center">
+        <p className="font-serif text-xs font-bold uppercase tracking-[0.14em] text-text-muted">QUESTION 02</p>
+        <p className="text-lg font-black text-text-primary">PLACEHOLDER</p>
+        <p className="text-sm font-bold text-text-secondary">2~6번 문항은 이번 라운드에서 만들지 않았습니다.</p>
+      </div>
+      <YourPageStatus filled={["place"]} />
+    </div>
+  );
+}
+
+// ============================================================
+// ROOT
+// ============================================================
+type Stage = "intro" | "q1" | "q2placeholder";
 
 export function QuizSkeletonPrototype() {
   const [stage, setStage] = useState<Stage>("intro");
-  const [questionIndex, setQuestionIndex] = useState(0);
   const [selectedChoice, setSelectedChoice] = useState<"A" | "B" | null>(null);
 
-  const chapter = DEMO_CHAPTER;
-  const totalQuestions = DEMO_QUESTIONS.length;
-  const progress = totalQuestions === 0 ? 0 : questionIndex / totalQuestions;
-
   function handleStart() {
-    setStage("question");
-    setQuestionIndex(0);
+    setStage("q1");
     setSelectedChoice(null);
   }
 
@@ -269,55 +255,19 @@ export function QuizSkeletonPrototype() {
   }
 
   function handleNext() {
-    if (questionIndex + 1 >= totalQuestions) {
-      setStage("processing");
-      // 실제 생성 API 없이, 스켈레톤 데모용으로 짧게 대기 후 완료 화면으로.
-      window.setTimeout(() => setStage("complete"), 900);
-      return;
-    }
-    setQuestionIndex((i) => i + 1);
-    setSelectedChoice(null);
-  }
-
-  function handleRestart() {
-    setStage("intro");
-    setQuestionIndex(0);
-    setSelectedChoice(null);
+    setStage("q2placeholder");
   }
 
   return (
     <div className="min-h-dvh bg-background text-text-primary">
       <div className="sticky top-0 z-50 border-b border-dashed border-border-strong bg-background px-3 py-2 text-center text-[11px] font-bold text-text-muted backdrop-blur">
-        DEV PROTOTYPE — EDITORIAL QUIZ SKELETON (문항·채점 미구현 · 구조 검증용)
+        DEV PROTOTYPE — EDITORIAL QUIZ UX 1차 구현 (TASTE 1문항만 실제 구현)
       </div>
 
       <div className="mx-auto max-w-md">
-        {stage === "intro" && <QuizIntro chapterNumber={chapter.number} chapterTitle={chapter.title} onStart={handleStart} />}
-
-        {stage === "question" && (
-          <>
-            <QuizProgress current={questionIndex} total={totalQuestions} />
-            <p className="sr-only">progress: {Math.round(progress * 100)}%</p>
-            <EditorialQuestion question={DEMO_QUESTIONS[questionIndex]} selected={selectedChoice} onSelect={handleSelect} />
-            <div className="flex justify-end px-5 pb-10">
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={!selectedChoice}
-                className={cx(
-                  "inline-flex h-11 items-center justify-center px-6 text-sm font-black uppercase tracking-[0.04em]",
-                  selectedChoice ? "bg-text-primary text-background" : "bg-tag-fill text-text-muted"
-                )}
-              >
-                다음 페이지
-              </button>
-            </div>
-          </>
-        )}
-
-        {stage === "processing" && <EditorialProcessing chapterTitle={chapter.title} />}
-
-        {stage === "complete" && <QuizComplete chapterTitle={chapter.title} onRestart={handleRestart} />}
+        {stage === "intro" && <QuizIntro chapterNumber={TASTE_CHAPTER.number} chapterTitle={TASTE_CHAPTER.title} onStart={handleStart} />}
+        {stage === "q1" && <TasteQuestion01 selected={selectedChoice} onSelect={handleSelect} onNext={handleNext} />}
+        {stage === "q2placeholder" && <Question02Placeholder />}
       </div>
     </div>
   );

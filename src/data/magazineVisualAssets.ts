@@ -103,4 +103,19 @@ export const magazineVisualAssets = {
       role: "travel-chapter-opening-hero",
     } satisfies MagazineVisualAsset,
   },
+
+  quiz: {
+    taste: {
+      // TASTE 1번 문항(쉬는 오후, 더 마음이 가는 장면은?)의 A/B 선택지
+      // 사진. 이번 라운드에는 전달받은 참고 이미지가 없어 실제 사진
+      // 없이 구조만 준비한다 — null이면 화면에서 EditorialImageFrame
+      // 회색 placeholder로 대체된다. 실제 사진이 오면 taste.hero와
+      // 같은 구조의 MagazineVisualAsset 객체를 여기 채워 넣기만 하면
+      // 된다.
+      q01: {
+        a: null as MagazineVisualAsset | null,
+        b: null as MagazineVisualAsset | null,
+      },
+    },
+  },
 };
