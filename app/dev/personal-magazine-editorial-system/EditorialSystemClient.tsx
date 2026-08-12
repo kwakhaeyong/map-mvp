@@ -196,23 +196,20 @@ function Cover({ size = "full" }: { size?: "full" | "hero" }) {
 // ============================================================
 
 // TYPE A — COVER STORY (ME)
+// ME OPENING VISUAL INTEGRATION(2026-08) — 실제 GPT editorial spread를
+// 그대로 꽂았다. 이 이미지 자체가 이미 CHAPTER 01/ME 타이틀·인물·
+// 프로필·풀쿼트·MIND/LIFE/VALUES 3분할까지 완성된 한 장의 스프레드라,
+// PageHeader/Kicker/FeatureTitle/Deck/PullQuote처럼 그 내용을 HTML로
+// 다시 말하던 주변 텍스트를 전부 걷어냈다 — 지금 이 화면은 "매거진을
+// 보여주는 화면"이지 "매거진 디자인을 설명하는 화면"이 아니다. 이미지
+// 위에는 아무것도 얹지 않는다.
 function MeStory() {
-  const f = FEATURES.me;
+  const asset = magazineVisualAssets.me.openingFeature;
+  const [w, h] = asset.aspectRatio.split(":").map(Number);
   return (
-    <section id={`feature-${f.id}`} className="pb-12">
-      <PageHeader folio={f.folio} />
-      <div className="px-5 pt-3">
-        <Kicker>{f.kicker}</Kicker>
-      </div>
-      <EditorialImageFrame ratio="4:5" label="PORTRAIT · 4:5" className="relative mx-5 mt-2" />
-      <div className="relative -mt-10 px-5">
-        <FeatureTitle lines={f.titleLines} />
-      </div>
-      <div className="mt-3 px-5">
-        <Deck>{f.deck}</Deck>
-      </div>
-      <div className="mt-6 border-t border-border px-5 pt-5">
-        <PullQuote>"나는 결국 내가 반복하는 선택들의 합이다."</PullQuote>
+    <section id="feature-me" className="px-5 pb-12 pt-10">
+      <div className="relative mx-auto w-full max-w-xl overflow-hidden" style={{ aspectRatio: `${w} / ${h}` }}>
+        <img src={asset.src} alt={asset.alt} className="size-full object-contain" style={{ objectPosition: asset.objectPositionMobile }} />
       </div>
     </section>
   );

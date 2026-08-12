@@ -23,7 +23,22 @@ export const magazineVisualAssets = {
       objectPositionDesktop: "center center",
       role: "homepage-hero",
     } satisfies MagazineVisualAsset,
-    // 다음 라운드에서 ME/TASTE/FOOD/TRAVEL/STYLE/LOVE/WORK, QUIZ, RESULT
+    // 다음 라운드에서 TASTE/FOOD/TRAVEL/STYLE/LOVE/WORK, QUIZ, RESULT
     // 비주얼이 이 자리에 같은 구조로 추가될 예정이다.
+  },
+
+  me: {
+    // ME 챕터의 오프닝 스프레드 — 제목·인물사진·프로필·풀쿼트·
+    // MIND/LIFE/VALUES 3분할까지 이미 하나의 완성된 editorial spread로
+    // 들어있다. 이 자산을 자르거나 여러 프레임으로 나누지 않고 한
+    // 장으로 그대로 쓴다.
+    openingFeature: {
+      src: "/magazine/me/me-opening-feature.png",
+      alt: "ME 챕터 오프닝 스프레드 — 왼쪽에 CHAPTER 01 · ME · 나라는 사람 타이틀과 자기 인용구, 프로필 정보(Name/Birth/MBTI/Keyword/Currently), 오른쪽에 인물 사진, 하단에 01 MIND · 02 LIFE · 03 VALUES 3분할 섹션.",
+      aspectRatio: "1085:1450",
+      objectPositionMobile: "center top",
+      objectPositionDesktop: "center center",
+      role: "personal-portrait-opening-feature",
+    } satisfies MagazineVisualAsset,
   },
 };
