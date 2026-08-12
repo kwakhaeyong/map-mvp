@@ -279,9 +279,14 @@ function PatternsSection({ items }: { items: string[] }) {
 
 const clampPercent = (value: number) => Math.min(96, Math.max(4, value));
 
-type PlottedMatrixPoint = TasteMatrixPoint & { plotX: number; plotY: number };
+// export하는 이유: MY MAP VISUAL LAB(app/dev/result-wow-review, Preview
+// 전용 비교 실험)이 production과 "같은 좌표 배치"를 그대로 재사용하기
+// 위해서다 — 이 좌표 계산 로직 자체는 이번 실험에서 절대 다시 구현하지
+// 않는다(중복 구현 시 두 화면의 배치가 미묘하게 어긋날 위험이 있다).
+// export를 추가한 것 자체는 동작을 하나도 바꾸지 않는다(순수 함수 노출).
+export type PlottedMatrixPoint = TasteMatrixPoint & { plotX: number; plotY: number };
 
-function spreadMatrixPoints(points: TasteMatrixPoint[]): PlottedMatrixPoint[] {
+export function spreadMatrixPoints(points: TasteMatrixPoint[]): PlottedMatrixPoint[] {
   const minDistance = 14;
   const placed: PlottedMatrixPoint[] = points.map((point) => ({ ...point, plotX: point.x, plotY: 100 - point.y }));
 
