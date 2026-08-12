@@ -2,6 +2,7 @@
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { track } from "@vercel/analytics";
 import { getIdealTypeTags } from "../engine/ideal-type-tags";
 import { now } from "../engine/session";
 import { resolveTopic } from "../engine/topics";
@@ -151,6 +152,7 @@ function IdealTypeCardBody({
     // 공유하며 썼던 말("야 이게 내 이상형이래")을 고정 문구로 채워두고,
     // 카톡에서 보내기 전에 자유롭게 고쳐 쓸 수 있게 한다.
     buildShareText: (shareUrl) => `야 이게 내 이상형이래\n\n${shareUrl}`,
+    topicId: session.topicId ?? "idealType",
   });
 
   return (
@@ -270,6 +272,9 @@ export function IdealTypeCard({
       .then((response) => response.json())
       .then((data) => {
         if (data.blocked) {
+          // generation_result — TasteCard.tsx의 같은 지점과 동일한 이유·
+          // 동일한 판단 기준(주석 참고).
+          track("generation_result", { topicId: session.topicId ?? "idealType", outcome: "failed", reason: data.reason });
           setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
           if (data.reason === "generation_failed") {
             setGenerationState("fallback");
@@ -279,6 +284,7 @@ export function IdealTypeCard({
           setGenerationState("error");
           return;
         }
+        track("generation_result", { topicId: session.topicId ?? "idealType", outcome: "success" });
         setSession((previous) => ({
           ...previous,
           idealTypeResult: data.result,
@@ -295,6 +301,7 @@ export function IdealTypeCard({
         // 그대로 둔다(뒤로가기 등으로 클라이언트만 포기했을 뿐 서버는
         // 계속 생성 중일 수 있어, 다음 마운트가 재개 상황으로 인식하는
         // 편이 맞다).
+        track("generation_result", { topicId: session.topicId ?? "idealType", outcome: "failed", reason: "network_error" });
         setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
         setGenerationState("fallback");
       });

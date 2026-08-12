@@ -1,6 +1,7 @@
 "use client";
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { getIdealTypeTags } from "../engine/ideal-type-tags";
 import { now } from "../engine/session";
 import { resolveTopic } from "../engine/topics";
@@ -51,6 +52,7 @@ function SelfIntroCardBody({
     ensureShareUrl,
     shareTitle: "내 소개 카드",
     buildShareText: (shareUrl) => `이거 완전 내 얘기래\n\n${shareUrl}`,
+    topicId: session.topicId ?? "selfIntro",
   });
 
   return (
@@ -148,6 +150,9 @@ export function SelfIntroCard({
       .then((response) => response.json())
       .then((data) => {
         if (data.blocked) {
+          // generation_result — TasteCard.tsx의 같은 지점과 동일한 이유·
+          // 동일한 판단 기준(주석 참고).
+          track("generation_result", { topicId: session.topicId ?? "selfIntro", outcome: "failed", reason: data.reason });
           setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
           if (data.reason === "generation_failed") {
             setGenerationState("fallback");
@@ -157,6 +162,7 @@ export function SelfIntroCard({
           setGenerationState("error");
           return;
         }
+        track("generation_result", { topicId: session.topicId ?? "selfIntro", outcome: "success" });
         setSession((previous) => ({
           ...previous,
           selfIntroResult: data.result,
@@ -168,6 +174,7 @@ export function SelfIntroCard({
       })
       .catch((error) => {
         if (error?.name === "AbortError") return;
+        track("generation_result", { topicId: session.topicId ?? "selfIntro", outcome: "failed", reason: "network_error" });
         setSession((previous) => ({ ...previous, pendingResultGeneration: false }));
         setGenerationState("fallback");
       });
