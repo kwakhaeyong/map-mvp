@@ -8,7 +8,7 @@ import { resolveTopic } from "../engine/topics";
 import { MapSession } from "../types";
 import { Brand } from "./Landing";
 import { GenerationWaitCard } from "./GenerationProgress";
-import { SectionHeader, TasteResultDetails, TasteResultHighlights, TasteRoadmapDisclosure } from "./TasteResultBlocks";
+import { SectionHeader, TasteResultDetails, TasteResultHighlights, TasteRoadmapDisclosure, TasteShareCardPreview } from "./TasteResultBlocks";
 import { NextMapPrompt } from "./NextMapPrompt";
 import { ShareStatusCard, useShareResult } from "./ShareResult";
 import { ImageSaveModal, useImageShare } from "./ImageShare";
@@ -101,6 +101,9 @@ function TasteCardBody({
           다른 섹션(발견 3가지·MY MAP)과 같은 SectionHeader를 재사용할
           뿐, 새 컴포넌트는 아니다. */}
       <SectionHeader title="공유 & 다음 행동" description="이 결과를 나누고, 다음 이야기로 이어가요." />
+      {/* RESULT VISUAL EXPERIENCE REBUILD(2026-08) — 공유 버튼을 누르기
+          전에 "무엇이 나가는지"를 미리 보여준다(Target §7). */}
+      <TasteShareCardPreview result={result} />
       <ShareStatusCard shareState={shareState} shareError={shareError} sharedUrl={sharedUrl} />
       {/* Primary — 공유가 이 단계의 대표 행동이라는 걸 채운 버튼
           하나로 보여준다(이전엔 secondary였다). 클릭 대상·문구는
