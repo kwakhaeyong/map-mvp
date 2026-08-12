@@ -33,7 +33,10 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 // WorkResultBlocks.tsx의 SectionHeader와 같은 이유(PR #150)로 영문
 // eyebrow 텍스트 대신 작은 색상 바를 쓴다.
-function SectionHeader({ title, description }: { title: string; description: string }) {
+// RESULT EXPERIENCE TARGET FIDELITY(2026-08) — TasteCard.tsx의 공유/다음
+// 행동 블록도 같은 헤더 언어를 쓰도록 export한다. 새 컴포넌트를 또
+// 만들지 않고 이미 있는 걸 재사용할 뿐이다.
+export function SectionHeader({ title, description }: { title: string; description: string }) {
   return (
     <div>
       {/* VISUAL DESIGN PASS v1(2026-08) — 단순 색 바를 "선 + 점" 두 조각으로
@@ -231,22 +234,30 @@ function HeroHeader({ result, heroAction }: { result: TasteResult; heroAction?: 
           (masthead 아래 헤드라인)처럼 가르는 얇은 선 하나. 새 정보는
           아니고 순수 구분선이라 스크린리더에서 의미를 갖지 않는다. */}
       <div aria-hidden="true" className="my-3 h-px w-full bg-border" />
-      {/* VIRAL HOOK & RESULT DELIGHT PASS(2026-08) — "설명"이 아니라
-          "공개 순간"이 되도록 순서를 다시 짰다. 예전엔 title → oneLiner
-          → statusLabel → (한 박자 늦게) 나의 궤적 칩 → tags 순서라,
-          제목 다음에 오는 게 "설명 문장"이었다. 이제 title 바로 다음에
-          나의 궤적 칩이 온다 — 두 개가 "결과 공개"의 한 세트로
-          한눈에 들어온다. oneLiner·statusLabel·tags는 그 아래로
-          내려 "부연 설명"으로 명확히 구분했다. 문장·값은 전혀 안
-          바꿨고, 등장 순서만 바꿨다. */}
+      {/* RESULT EXPERIENCE TARGET FIDELITY(2026-08) — "RESULT CARD →
+          발견 3가지 → MY MAP → 더 깊게 보기 → 공유/다음 행동" 기준
+          설계안(첨부 이미지)에서 RESULT CARD 단계의 주인공은 명시적으로
+          title + oneLiner다("사용자가 첫 3초 안에 기억해야 할 것은
+          결과 title + oneLiner다. PATTERN/나의 궤적이 주인공이
+          아니다"). 이전 라운드(VIRAL HOOK & RESULT DELIGHT PASS)에서
+          나의 궤적 칩을 title 바로 다음(첫 3초 자리)으로 올렸던 걸
+          되돌린다 — title → oneLiner → statusLabel → tags까지가
+          "결과 공개" 한 세트로 먼저 오고, 나의 궤적 칩은 그 부연
+          설명들 다음(공유 버튼 바로 위)으로 내려 "덤으로 발견한
+          한 줄 요약" 정도의 위계로 낮췄다. 문장·계산 값은 전혀
+          안 바꿨고, 등장 순서만 되돌렸다. */}
       <h1 className="text-balance break-keep text-4xl font-black leading-10 tracking-[-0.03em] text-text-primary">{result.title}</h1>
-      <TasteSignatureChip result={result} className="mt-3" />
       <p className="mt-3 text-sm font-bold leading-6 text-text-primary">{result.oneLiner}</p>
       {result.statusLabel ? (
         <p className="mt-2 text-xs font-semibold leading-5 text-text-secondary">{result.statusLabel}</p>
       ) : null}
       <TasteTagRow tags={result.tags ?? []} className="mt-3" />
+      <TasteSignatureChip result={result} className="mt-3" />
       {heroAction ? <div className="mt-4">{heroAction}</div> : null}
+      {/* Target 이미지의 RESULT CARD 화면엔 "다음 단계로: MAP이 발견한
+          3가지를 볼까요?" 같은 스크롤 유도 한 줄이 있다 — 새 데이터가
+          아니라 고정 UI 문구 하나(스크롤 안내)만 추가한다. */}
+      <p className="mt-4 text-center text-[11px] font-semibold text-text-muted">다음 단계로 · MAP이 발견한 3가지를 볼까요? ↓</p>
     </Card>
   );
 }
@@ -297,18 +308,20 @@ function dropFirst<T>(items: T[]): T[] {
 // 3번째("내가 놓친 나")가 자연스럽게 climax가 되게 한다 — 새 색을
 // 추가하지 않고 기존 토큰(border/border-strong/primary, surface-elevated/
 // ink-wash)만으로 3단계를 만든다.
-// VISUAL & VIRAL REFOUNDATION(2026-08) — ①②는 그대로 옅은 카드지만,
-// ③(내가 놓친 나 — 세 발견 중 가장 "어떻게 알았지?"에 가까운 것)은
-// 테두리만 진해지는 정도가 아니라 배경을 통째로 채운 잉크 카드로
-// 바꿔서 진짜 climax처럼 시선이 멈추게 한다. 이상형·나 소개 결과의
-// 자기성찰 다크 블록과 같은, 이미 이 프로젝트에 있던 "채운 배경"
-// 어휘를 재사용한 것뿐이라 새 색은 없다. 문장·순서·데이터는 그대로다.
+// RESULT EXPERIENCE TARGET FIDELITY(2026-08) — 기준 설계안은 "3개
+// 발견의 역할 차이"가 핵심이지 "색 폭발"이 핵심이 아니라고 명시한다.
+// 이전 라운드에서 ③을 배경을 통째로 채운 잉크 카드(흰 글자)로 만들어
+// 결과 화면 전체에서 가장 튀는 지점이 됐는데, 다시 보니 그 임팩트가
+// "역할이 다르다"보다 "색이 다르다"로 읽힐 위험이 있었다. 배경 전체
+// 반전은 되돌리고, 두꺼운 테두리 + 강한 tint + 굵은 배지 색으로만
+// 무게를 준다 — 여전히 ①②보다 뚜렷이 무겁지만, 카드 배경은 계속
+// 밝은 톤이라 전체 화면 톤 안에 머문다.
 const DISCOVERY_TIER_CLASS = [
   "border border-border bg-surface-elevated shadow-subtle",
   "border border-border-strong bg-ink-wash shadow-subtle",
-  "border-0 bg-primary shadow-floating",
+  "border-2 border-primary bg-ink-wash shadow-floating",
 ];
-const DISCOVERY_BADGE_CLASS = ["bg-primary text-primary-foreground", "bg-primary text-primary-foreground", "bg-primary-foreground text-primary"];
+const DISCOVERY_BADGE_CLASS = ["border border-border bg-surface-elevated text-text-primary", "bg-tag-fill text-text-primary", "bg-primary text-primary-foreground"];
 // RESULT IDENTITY & CLARITY PASS(2026-08) — "번호+분류명+긴 문장"이
 // 리포트처럼 읽힌다는 피드백 대응. 문장(discovery.text)은 한 글자도
 // 자르거나 새로 쓰지 않는다 — role(예: "내가 아는 나")과 text(실제
@@ -327,12 +340,12 @@ const DISCOVERY_BADGE_CLASS = ["bg-primary text-primary-foreground", "bg-primary
 const DISCOVERY_ROLE_CLASS = [
   "text-xs font-black tracking-[-0.01em] text-text-primary",
   "text-sm font-black tracking-[-0.01em] text-text-primary",
-  "text-base font-black tracking-[-0.01em] text-primary-foreground",
+  "text-base font-black tracking-[-0.01em] text-primary",
 ];
 const DISCOVERY_TEXT_CLASS = [
   "text-sm font-semibold leading-6 text-text-secondary",
   "text-sm font-semibold leading-6 text-text-secondary",
-  "text-lg font-black leading-7 text-primary-foreground",
+  "text-lg font-black leading-7 text-text-primary",
 ];
 
 function DiscoveriesSection({ result }: { result: TasteResult }) {
@@ -357,7 +370,7 @@ function DiscoveriesSection({ result }: { result: TasteResult }) {
                   아니다), 이미 climax로 디자인된 카드에 "여기가 왜
                   다른지"를 짧게 짚어주는 장치다. */}
               {index === 2 ? (
-                <span className="shrink-0 rounded-pill bg-primary-foreground-wash px-2 py-0.5 text-[10px] font-black text-primary-foreground">
+                <span className="shrink-0 rounded-pill bg-primary px-2 py-0.5 text-[10px] font-black text-primary-foreground">
                   예상 밖의 발견
                 </span>
               ) : null}
@@ -386,7 +399,12 @@ function DiscoveriesSection({ result }: { result: TasteResult }) {
 // divide-y 구분선)로 감싼다 — "카드 4장"이 아니라 "메뉴 한 판" 인상을
 // 준다. 펼치기·접기 로직, 각 항목이 독립적으로 열리는 동작, 문구는
 // 전혀 바뀌지 않는다.
-function DeepDiveDisclosureItem({ title, children }: { title: string; children: ReactNode }) {
+// RESULT EXPERIENCE TARGET FIDELITY(2026-08) — "FAQ/settings accordion처럼
+// 보이지 않게 editorial menu 느낌으로"라는 요구에 맞춰, 항목 번호를
+// serif 숫자로 왼쪽에 붙였다. 새 데이터가 아니라 항목 순서(1~4)를
+// 그대로 숫자로 보여줄 뿐이다 — 이 카드시그니처·MAP DECISION 마크가
+// 이미 쓰는 "font-serif = 브랜드 디테일" 어휘를 재사용했다.
+function DeepDiveDisclosureItem({ index, title, children }: { index: number; title: string; children: ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <div>
@@ -396,7 +414,12 @@ function DeepDiveDisclosureItem({ title, children }: { title: string; children: 
         aria-expanded={expanded}
         className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-extrabold text-text-primary"
       >
-        <span>{title}</span>
+        <span className="flex items-baseline gap-2.5">
+          <span aria-hidden="true" className="font-serif text-xs font-bold text-text-muted">
+            {String(index).padStart(2, "0")}
+          </span>
+          <span>{title}</span>
+        </span>
         <span aria-hidden="true" className="shrink-0 text-text-muted">
           {expanded ? "▲" : "▾"}
         </span>
@@ -599,8 +622,12 @@ function LivingMapChart({ matrix }: { matrix: TasteMatrix }) {
   const outerRingPath = closedSmoothPath(scaleAroundCentroid(territoryOrder, 1.22, centroid));
   const innerRingPath = closedSmoothPath(scaleAroundCentroid(territoryOrder, 0.68, centroid));
 
+  // RESULT EXPERIENCE TARGET FIDELITY(2026-08) — 기준 설계안은 MY MAP을
+  // "결과 경험의 3번째 핵심 장면... 충분히 크게, 중앙에서 집중되게"로
+  // 요구한다. 좌표 계산(spreadMatrixPoints)은 전혀 안 건드리고, 그린
+  // 영역만 max-w-xs(320px)에서 max-w-sm(384px)로 살짝 키웠다.
   return (
-    <div className="mx-auto w-full max-w-xs">
+    <div className="mx-auto w-full max-w-sm">
       <p className="mb-1 flex items-center justify-center gap-1 text-center text-[11px] font-black uppercase tracking-[0.06em] text-text-muted">
         <span aria-hidden="true">▲</span> {matrix.yAxisLabel.high}
       </p>
@@ -873,7 +900,7 @@ export function TasteResultDetails({ result }: { result: TasteResult }) {
   return (
     <Disclosure closedLabel="더 깊게 보기" openLabel="접기">
       <div className="divide-y divide-border overflow-hidden rounded-large border border-border bg-surface-elevated">
-        <DeepDiveDisclosureItem title="내가 확실히 끌리는 것">
+        <DeepDiveDisclosureItem index={1} title="내가 확실히 끌리는 것">
           <HeroEvidence items={result.tasteCore.certain} maxEvidence={2} maxMore={2} />
           {patternsRest.length > 0 ? (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
@@ -885,7 +912,7 @@ export function TasteResultDetails({ result }: { result: TasteResult }) {
           ) : null}
         </DeepDiveDisclosureItem>
 
-        <DeepDiveDisclosureItem title="상황에 따라 달라지는 나">
+        <DeepDiveDisclosureItem index={2} title="상황에 따라 달라지는 나">
           <HeroEvidence items={result.tasteCore.conditional} maxEvidence={2} maxMore={2} />
           {result.tasteCore.indifferent.length > 0 ? (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
@@ -900,11 +927,11 @@ export function TasteResultDetails({ result }: { result: TasteResult }) {
           ) : null}
         </DeepDiveDisclosureItem>
 
-        <DeepDiveDisclosureItem title="넓혀볼 것 / 굳이 안 맞출 것">
+        <DeepDiveDisclosureItem index={3} title="넓혀볼 것 / 굳이 안 맞출 것">
           <ExpandAvoidGrid tasteMap={result.tasteMap} />
         </DeepDiveDisclosureItem>
 
-        <DeepDiveDisclosureItem title="내가 미처 몰랐던 나">
+        <DeepDiveDisclosureItem index={4} title="내가 미처 몰랐던 나">
           {awarenessRest.length > 0 ? (
             <div className="flex flex-col gap-2">
               <SubLabel>내가 알고 있던 나</SubLabel>
