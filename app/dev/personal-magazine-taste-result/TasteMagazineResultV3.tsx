@@ -2,12 +2,14 @@ import { magazineVisualAssets, type MagazineVisualAsset } from "../../../src/dat
 import { TASTE_V3_AXIS_KEYS, TASTE_V3_AXIS_LABELS } from "../../../src/data/tasteQuestionnaireV3";
 import { type TasteMagazineNarrativeV3 } from "../../../src/data/tasteNarrativeV3";
 
-// TASTE v3 RESULT — PRODUCT FREEZE §8 7-section Editorial Architecture.
-// 기존 TasteMagazineResult.tsx(v1/v2/v2.2용 4-feature 구조)는 전혀
-// 건드리지 않는다 — v3 전용 신규 컴포넌트다. 기존 4장의 실사 이미지
-// (hero/place/object/detail)를 재사용하고, 신규 이미지는 만들지
-// 않는다(§8 "기존 5~6장 editorial asset 흐름 유지" — 실제로는 기존
-// 4장을 재사용, 부족분은 이번 라운드 한계로 최종 보고에 명시한다).
+// TASTE v3 RESULT — RESULT EDITORIAL COMPRESSION(PR #261 후속) §6
+// 5-section 구조. 이전 4-feature(SPACE/SENSORY/RHYTHM&RELATION/
+// EXPLORATION&EXPRESSION, 축에 고정) 구조를 CORE TASTE/HOW IT SHOWS
+// UP(축 순위에 따라 동적으로 배정) 2개로 압축했다. 어떤 축이 이
+// 사용자의 "취향의 중심"이 되는지 SectionMarker에 그대로 노출해
+// (§9) 결과 구조 자체가 사용자마다 달라진다는 것이 화면에서도
+// 보이게 했다. 기존 3장의 실사 이미지(hero/place/object)를 재사용
+// 하고, 신규 이미지는 만들지 않았다.
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -160,40 +162,22 @@ export function TasteMagazineResultV3({ narrative, hideDebugPanel = false }: { n
 
       <FeatureSection
         index="01"
-        label="SPACE"
+        label={`CORE TASTE · ${narrative.coreTaste.axisLabel}`}
         asset={magazineVisualAssets.taste.place}
-        headline={narrative.space.headline}
-        body={narrative.space.body}
+        headline={narrative.coreTaste.headline}
+        body={narrative.coreTaste.body}
         variant="dominant"
         imagePaddingClass="px-4"
       />
 
       <FeatureSection
         index="02"
-        label="SENSORY"
-        asset={magazineVisualAssets.taste.detail}
-        headline={narrative.sensory.headline}
-        body={narrative.sensory.body}
+        label={`HOW IT SHOWS UP · ${narrative.howItShowsUp.axisLabel}`}
+        asset={magazineVisualAssets.taste.object}
+        headline={narrative.howItShowsUp.headline}
+        body={narrative.howItShowsUp.body}
         variant="balanced"
         imagePaddingClass="px-8"
-      />
-
-      <FeatureSection
-        index="03"
-        label="RHYTHM & RELATION"
-        headline={narrative.rhythmRelation.headline}
-        body={narrative.rhythmRelation.body}
-        variant="text-only"
-      />
-
-      <FeatureSection
-        index="04"
-        label="EXPLORATION & EXPRESSION"
-        asset={magazineVisualAssets.taste.object}
-        headline={narrative.explorationExpression.headline}
-        body={narrative.explorationExpression.body}
-        variant="quiet"
-        imagePaddingClass="px-14"
       />
 
       <InterestingPartSection headline={narrative.interestingPart.headline} body={narrative.interestingPart.body} />

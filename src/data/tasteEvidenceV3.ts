@@ -32,8 +32,13 @@ export function extractV3Evidence(answers: TasteV3RawAnswers, questions: TasteV3
       questionId: question.id,
       qNumber: question.qNumber,
       eyebrow: question.eyebrow,
+      // narrative compression(PR #261 후속) — Q15처럼 label이 영문
+      // 짧은 태그("BACK TO MY PLACE")인 문항은 description(자연스러운
+      // 한국어 문구)이 있으면 그쪽을 우선한다. evidence 자체(axes/
+      // evidenceTag/evidenceLabel)는 전혀 바꾸지 않는다 — optionLabel은
+      // 서술 인용에만 쓰이는 표시용 필드다.
       optionId: option.id,
-      optionLabel: option.label.replace(/\n/g, " "),
+      optionLabel: (option.description ?? option.label).replace(/\n/g, " "),
       evidenceTag: option.evidenceTag,
       evidenceLabel: option.evidenceLabel,
       axes: option.axes,
