@@ -6,9 +6,10 @@ import { analyzeTasteFromSources } from "../../../src/data/tasteAnalysis";
 import { mapTasteAnswersToSignalSources, type TasteRawAnswers } from "../../../src/data/tasteQuestionnaire";
 import { TASTE_QUESTIONS_V2_2 } from "../../../src/data/tasteQuestionnaireV22";
 import { buildTasteMagazineNarrativeV23 } from "../../../src/data/tasteNarrativeV23";
-import { getSavedTasteIssue, type SavedTasteIssue } from "../../../src/data/tasteIssueStorage";
+import { getSavedTasteIssue, TASTE_ISSUE_ID, type SavedTasteIssue } from "../../../src/data/tasteIssueStorage";
 import { TasteQuestionnaireFlow } from "../personal-magazine-quiz/TasteQuestionnaireFlow";
 import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMagazineResult";
+import { FeedbackSection } from "./FeedbackSection";
 import { MyMagazineScreen } from "./MyMagazineScreen";
 import { OwnershipSection } from "./OwnershipSection";
 
@@ -198,14 +199,29 @@ function EditingTransition() {
 // 그대로 두고(Ending까지 기존 layout 무변경), 그 아래 형제로
 // OwnershipSection만 이어붙인다. Result 내부 spacing/구조에는 diff가
 // 없다.
+//
+// R-D-C FEEDBACK(2026-08, Round 5) — §5 권장 순서(SAVE/SHARE →
+// FEEDBACK → VIEW MY MAGAZINE)에 맞춰 FeedbackSection을 Ownership
+// 다음 형제로 이어붙인다. "VIEW MY MAGAZINE" CTA는 Round 4에서
+// OwnershipSection 안에 있었지만, 이번 라운드 요구대로 FeedbackSection
+// 끝으로 옮겼다 — OwnershipSection(SAVE/SHARE)은 그 자체로는 변경
+// 없이 그대로다.
 function JourneyResult({ answers, onViewMyMagazine }: { answers: TasteRawAnswers; onViewMyMagazine: () => void }) {
   const sources = mapTasteAnswersToSignalSources(TASTE_QUESTIONS_V2_2, answers);
   const result = analyzeTasteFromSources(sources);
   const narrative = buildTasteMagazineNarrativeV23(result, sources);
+  // "SAVE 여부"를 여기서 들고 있다가 FeedbackSection에 내려준다 —
+  // OwnershipSection과 FeedbackSection은 형제라 서로의 state를 직접
+  // 볼 수 없다. FeedbackSection이 자체적으로 mount 시점에만
+  // localStorage를 읽으면, 이 둘이 동시에 mount되는 화면 구조상 SAVE
+  // 버튼을 누르기 "전" 값이 굳어버리는 문제가 있어(검증 중 발견)
+  // 이렇게 끌어올렸다.
+  const [saved, setSaved] = useState(() => Boolean(getSavedTasteIssue()));
   return (
     <>
       <TasteMagazineResult narrative={narrative} result={result} hideDebugPanel />
-      <OwnershipSection answers={answers} narrative={narrative} onViewMyMagazine={onViewMyMagazine} />
+      <OwnershipSection answers={answers} narrative={narrative} onSaved={() => setSaved(true)} />
+      <FeedbackSection issueId={TASTE_ISSUE_ID} savedIssueExists={saved} onViewMyMagazine={onViewMyMagazine} />
     </>
   );
 }
@@ -227,7 +243,15 @@ function JourneyResult({ answers, onViewMyMagazine }: { answers: TasteRawAnswers
 // 돌아온다 — 데이터 자체는 항상 localStorage에서 다시 읽으므로,
 // 여기서 굳이 answers/narrative 같은 React state를 별도 저장하지
 // 않는다.
-function updateViewQueryParam(view: "my-magazine" | null) {
+//
+// Round 5에서 "result"도 같은 방식으로 넓혔다 — Feedback(§9)이 새로고침
+// 후에도 THANK YOU 상태를 복원해야 하는데, Result 화면 자체가 새로고침에
+// 살아남지 못하면 그 안의 Feedback도 확인할 수 없기 때문이다. Result는
+// SAVE 이후에만 localStorage에 답변이 남으므로(getSavedTasteIssue()),
+// 이 복원은 "이미 저장된 Issue"에 한해서만 동작한다 — 저장 전에
+// 새로고침하면 기존과 동일하게 처음부터 다시 시작한다(새 state를 만들지
+// 않았다).
+function updateViewQueryParam(view: "my-magazine" | "result" | null) {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
   if (view) {
@@ -245,16 +269,31 @@ export function PersonalMagazineBetaClient() {
 
   useEffect(() => {
     if (stage !== "editing") return;
-    const timer = setTimeout(() => setStage("result"), EDITING_TOTAL_MS);
+    const timer = setTimeout(() => {
+      updateViewQueryParam("result");
+      setStage("result");
+    }, EDITING_TOTAL_MS);
     return () => clearTimeout(timer);
   }, [stage]);
 
-  // 최초 mount(=새로고침 포함) 시 URL에 ?view=my-magazine이 남아있으면
-  // 그 화면으로 바로 진입한다. 서버 렌더/hydration 시점엔 window가
-  // 없으므로 항상 "home"으로 시작한 뒤, mount 후 client에서만 전환한다.
+  // 최초 mount(=새로고침 포함) 시 URL에 ?view=가 남아있으면 그 화면으로
+  // 바로 진입한다. 서버 렌더/hydration 시점엔 window가 없으므로 항상
+  // "home"으로 시작한 뒤, mount 후 client에서만 전환한다. view=result는
+  // 저장된 Issue가 있을 때만 복원한다 — 없으면(=저장 전 새로고침)
+  // 조용히 home에 머문다.
   useEffect(() => {
     const view = new URLSearchParams(window.location.search).get("view");
-    if (view === "my-magazine") setStage("my-magazine");
+    if (view === "my-magazine") {
+      setStage("my-magazine");
+      return;
+    }
+    if (view === "result") {
+      const saved = getSavedTasteIssue();
+      if (saved) {
+        setAnswers(saved.answers);
+        setStage("result");
+      }
+    }
   }, []);
 
   function handleRestart() {
@@ -269,7 +308,7 @@ export function PersonalMagazineBetaClient() {
   }
 
   function handleOpenSavedIssue(issue: SavedTasteIssue) {
-    updateViewQueryParam(null);
+    updateViewQueryParam("result");
     setAnswers(issue.answers);
     setStage("result");
   }

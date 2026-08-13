@@ -152,11 +152,11 @@ function triggerDownload(blob: Blob) {
 export function OwnershipSection({
   answers,
   narrative,
-  onViewMyMagazine,
+  onSaved,
 }: {
   answers: TasteRawAnswers;
   narrative: TasteMagazineNarrative;
-  onViewMyMagazine: () => void;
+  onSaved?: () => void;
 }) {
   // MY MAGAZINE / CONTINUATION LAYER(2026-08, Round 4) — §4/§16. 이미
   // 저장된 Issue를 가지고 돌아온 경우(예: TASTE COMPLETE 카드를 다시
@@ -176,6 +176,7 @@ export function OwnershipSection({
   function handleSave() {
     saveTasteIssue({ answers, narrative });
     setSaved(true);
+    onSaved?.();
   }
 
   async function ensureShareCard(): Promise<Blob> {
@@ -249,15 +250,6 @@ export function OwnershipSection({
           {saved ? "SAVED TO MY MAGAZINE ✓" : "SAVE MY MAGAZINE"}
         </button>
         {saved && <p className="text-[12px] font-bold text-text-secondary">첫 번째 Issue가 저장되었습니다.</p>}
-        {saved && (
-          <button
-            type="button"
-            onClick={onViewMyMagazine}
-            className="text-sm font-black uppercase tracking-[0.04em] text-text-primary underline decoration-border-strong underline-offset-4"
-          >
-            VIEW MY MAGAZINE
-          </button>
-        )}
 
         <button
           type="button"
