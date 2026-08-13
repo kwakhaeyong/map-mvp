@@ -1,24 +1,34 @@
-// TASTE v3 — RESULT EDITORIAL DEPTH & VISUAL NARRATIVE PASS(PR #261 후속
-// 3차, 2026-08).
+// TASTE v3 — EDITORIAL DENSITY PASS(PR #261 후속 4차, 2026-08).
 //
-// §0 FREEZE(이번 라운드부터 확정 — 더 이상 수정 금지): Questionnaire
-// (15문항)·6축 evidence extraction·Relationship R1~R8·Tension T1~T5·
-// scoring logic·분석 깊이. `tasteQuestionnaireV3.ts`/`tasteEvidenceV3.ts`
-// /`tasteRelationshipsV3.ts`/`tasteTensionsV3.ts`는 이번 라운드에서 한
-// 글자도 건드리지 않았다(2차 라운드에서 "고르다" 동사 3곳을 고친 것을
-// 마지막으로, 이제 이 4개 파일은 완전히 얼렸다). 이번 라운드에서 필요한
-// editorial 변환은 전부 이 파일(presentation layer)에서만 처리한다.
+// §0 FREEZE(3차 라운드부터 확정, 계속 유지): Questionnaire(15문항)·6축
+// evidence extraction·Relationship R1~R8·Tension T1~T5·scoring
+// logic. `tasteQuestionnaireV3.ts`/`tasteEvidenceV3.ts`/
+// `tasteRelationshipsV3.ts`/`tasteTensionsV3.ts`는 이번 라운드에서도
+// 한 글자도 건드리지 않았다. 필요한 편집은 전부 이 파일에서만 한다.
 //
-// 이번 라운드가 다루는 것은 "말투"(2차 라운드에서 이미 끝남)가 아니라
-// "깊이"다: (1) THE INTERESTING PART가 "A 성향 + B 성향" 나열에서 끝나지
-// 않고 "그래서 실제로는 이렇게 삽니다"까지 내려가도록 Relationship/
-// Tension id별 PRACTICAL_CONSEQUENCE(생활 결론 한 줄)를 추가했고,
-// (2) PLACE/OBJECT 이미지가 축 기반 고정 문장이 아니라 실제 이미지
-// asset의 scene 메타데이터(magazineVisualAssets.ts)에서 첫 문장을
-// 만들도록 연결했고, (3) CORE TASTE(왜 끌리는가)와 HOW IT SHOWS UP
-// (실제로 어떻게 나타나는가)이 서로 다른 정보만 말하도록 정리했다.
-// 글자 수는 목표하지 않는다 — 자연스럽게 짧아졌다면 그 이유가 "분석
-// 메타 언어 삭제"인지 "의미 있는 해석까지 삭제"인지가 기준이다.
+// 3차 라운드에서 THE INTERESTING PART에 PRACTICAL_CONSEQUENCE("그래서
+// 실제로는")를 추가하고 나머지 섹션의 범용 클로저를 걷어냈더니, 그 결과
+// 8개 profile이 780~830자까지 짧아졌다 — 필러는 없앴지만 CORE/HOW/
+// Opening/Ending은 상대적으로 얕아졌다. 이번 라운드는 새 분석 로직을
+// 더하지 않고, 이미 있는 축/Relationship/Tension에서 "이 profile에만
+// 붙는" 해석을 한 겹씩 더 끌어냈다:
+//   - CORE TASTE: visual cue를 축 해석과 한 문장으로 묶고(visual cue만
+//     단독으로 서 있지 않게), interpretation(무엇) → meaning(왜) 뒤에
+//     STAKES(이게 왜 이 사람에게 중요한가)를 한 겹 더 얹었다.
+//   - HOW IT SHOWS UP: 같은 축 안에서 서로 다른 생활 영역(BEHAVIOR_
+//     SCENE_SECONDARY)을 하나 더 붙여 "여러 장면에서 반복되는 패턴"을
+//     보여준다.
+//   - Opening: hook 한 줄 뒤에 그 profile의 Relationship/Tension(또는
+//     축)에서 파생된 해석 한 줄을 추가했다.
+//   - Ending: 축마다 다른, 요약이 아닌 "이 취향을 어떻게 다루면
+//     더 선명해지는가"짧은 반영으로 바꿨다(범용 ENDING_CLOSERS 제거).
+// 새로 추가한 문장은 전부 축/Relationship/Tension "키"에 따라 달라지는
+// 표현이지 "이 부분을 알고 나면…" 같은 어떤 결과에도 붙는 범용 문장이
+// 아니다 — 그런 범용 클로저(WHY_IT_MATTERS/CONTRAST_LINE/
+// INTERESTING_LIFE_ECHO/OPENING_ECHO/ENDING_RESONANCE/ENDING_CLOSERS)는
+// 3~4차 라운드를 거치며 전부 제거했고 다시 만들지 않는다.
+// Character count는 목표가 아니다 — 자연스럽게 900~1,100자대가 되면
+// 좋지만, 억지로 그 범위를 채우지 않는다.
 
 import { TASTE_V3_AXIS_KEYS, type TasteV3AxisKey } from "./tasteQuestionnaireV3";
 import { aggregateV3Axes, extractV3Evidence, type V3AxisAggregate, type V3EvidenceItem } from "./tasteEvidenceV3";
@@ -166,6 +176,110 @@ const BEHAVIOR_SCENE: Record<TasteV3AxisKey, { positive: string; negative: strin
   },
 };
 
+// HOW IT SHOWS UP 전용 두 번째 생활 장면 — BEHAVIOR_SCENE과는 다른
+// 생활 영역(물건 구매/약속/여행/쉬는 방식/새 장소/추천 방식)에서 같은
+// 내부 패턴이 반복된다는 것을 보여준다. 같은 이야기를 다른 말로
+// 반복하지 않도록 BEHAVIOR_SCENE과 영역을 겹치지 않게 짰다.
+const BEHAVIOR_SCENE_SECONDARY: Record<TasteV3AxisKey, { positive: string; negative: string }> = {
+  space: {
+    negative: "여행을 가서도 화려한 숙소보다, 오래 걸어도 되는 익숙한 동네의 작은 자리를 더 편하게 느낍니다.",
+    positive: "선물을 받을 때도 화려한 포장보다 실제로 쓸 수 있는 단순한 물건을 더 반갑게 여깁니다.",
+  },
+  sensory: {
+    positive: "사람을 볼 때도 처음 만난 인상보다 시간이 지나며 자연스러워지는 모습에 더 마음이 갑니다.",
+    negative: "옷을 살 때도 유행보다 재질과 마감이 실제로 좋은지를 먼저 만져 봅니다.",
+  },
+  rhythm: {
+    positive: "약속을 잡을 때도 몇 주 전 계획보다, 그 순간 마음이 맞으면 바로 만나는 쪽을 더 좋아합니다.",
+    negative: "집에서 쉴 때도 일정을 빡빡하게 채우기보다, 아무 계획 없이 흘러가는 시간을 더 오래 붙잡습니다.",
+  },
+  relation: {
+    positive: "좋은 것을 발견하면 혼자 알고 지나가기보다, 누군가에게 먼저 알리고 함께 나누고 싶어합니다.",
+    negative: "새로운 장소도 혼자 걸어보고 나서야 다른 사람과 다시 가보고 싶은 마음이 듭니다.",
+  },
+  exploration: {
+    positive: "물건을 살 때도 이미 검증된 것보다, 아직 사람들이 잘 모르는 브랜드에 먼저 손이 갑니다.",
+    negative: "물건을 살 때도 새로 나온 것보다, 이미 써봐서 확신이 있는 것을 다시 집어듭니다.",
+  },
+  expression: {
+    positive: "옷차림이나 소지품에서도 좋아하는 것을 감추지 않고 그대로 드러내는 편입니다.",
+    negative: "혼자만의 기록에는 좋아하는 것을 남기지만, 그것을 굳이 밖으로 꺼내지는 않습니다.",
+  },
+};
+
+// CORE TASTE 전용 세 번째 층 — interpretation(무엇)·meaning(왜) 다음,
+// 이 부분이 흔들리면 왜 이 사람에게 유독 크게 다가오는지("이게 왜
+// 중요한가")를 짚는다. AXIS_MEANING보다 한 단계 더 감정적/개인적인
+// 결로 쓴다.
+const AXIS_STAKES: Record<TasteV3AxisKey, { positive: string; negative: string }> = {
+  space: {
+    negative:
+      "당신에게 공간은 배경이 아니라 컨디션을 조절하는 장치에 가깝습니다. 낯선 곳에서도 재미를 찾지만, 오래 머물 장소만큼은 몸이 먼저 익숙해질 수 있어야 합니다.",
+    positive:
+      "당신에게 공간은 그저 넓은 곳이 아니라 생각이 걸리지 않고 흐를 수 있는 조건에 가깝습니다. 아무리 좋아 보이는 곳이어도 시야가 막혀 있으면 오래 머물기 어렵습니다.",
+  },
+  sensory: {
+    positive:
+      "당신에게 좋음은 처음 순간의 인상이 아니라 시간이 지나며 어떻게 낡아가는지로 확인됩니다. 첫눈에 완벽해 보이는 것보다, 오래 두고 봐도 실망하지 않을 것에 더 마음이 갑니다.",
+    negative:
+      "당신에게 좋음은 분위기가 아니라 실제로 잘 만들어졌는가로 확인됩니다. 겉으로 아무리 그럴듯해도 마감이 어긋나 있으면 그 순간 마음이 식습니다.",
+  },
+  rhythm: {
+    positive:
+      "당신에게 좋은 순간은 미리 계획한 대로 오는 것이 아니라 지금 이 감각이 왔을 때 붙잡는 것에 가깝습니다. 너무 오래 재다가 그 순간을 놓치는 쪽이 당신에게는 더 아쉬운 일입니다.",
+    negative:
+      "당신에게 좋은 결정은 빠르게 오는 것이 아니라 시간을 들여야 비로소 믿을 수 있는 것이 됩니다. 서둘러 정한 것은 나중에 꼭 다시 흔들리기 때문입니다.",
+  },
+  relation: {
+    positive: "당신에게 좋은 순간은 혼자 간직하는 것으로는 완성되지 않습니다. 누군가와 나누는 순간 그 경험이 비로소 온전해집니다.",
+    negative:
+      "당신에게 좋은 컨디션은 사람 수가 아니라 혼자 있는 시간이 얼마나 채워졌는가로 결정됩니다. 그 시간이 없으면 사람을 만나는 일도 점점 버거워집니다.",
+  },
+  exploration: {
+    positive: "당신에게 안전함은 오히려 지루함에 가깝습니다. 아직 확인되지 않은 쪽에 마음이 움직여야 하루가 제대로 시작된 느낌이 듭니다.",
+    negative:
+      "당신에게 새로움은 그 자체로 목적이 아니라, 이미 확인된 좋음을 다시 확인하는 과정에 가깝습니다. 검증되지 않은 것에 먼저 곁을 내주는 일은 좀처럼 없습니다.",
+  },
+  expression: {
+    positive:
+      "당신에게 감정은 담아두는 것이 아니라 흘려보내야 비로소 정리되는 것에 가깝습니다. 좋은 순간을 표현하지 못하고 지나가면 그 자체로 아쉬움이 남습니다.",
+    negative: "당신에게 감정은 남에게 확인받아야 완성되는 것이 아닙니다. 스스로 알고 있다는 사실만으로 이미 그 감정은 충분합니다.",
+  },
+};
+
+// CORE TASTE/HOW IT SHOWS UP의 visual cue(이미지 asset의 scene에서 온
+// 문장) 바로 뒤에 붙는 한 문장 — 같은 이미지를 쓰더라도 그 장면을
+// "어떻게 읽는가"는 축마다 달라야 하므로, visual cue가 혼자 서 있지
+// 않고 이 문장과 한 호흡으로 이어진다(§7). AXIS_INTERPRETATION과는
+// 달리 "그 장면 앞에서 시선이 먼저 어디로 가는가"라는 지각의 순간에
+// 집중한다.
+const VISUAL_LINK: Record<TasteV3AxisKey, { positive: string; negative: string }> = {
+  space: {
+    negative: "당신의 눈은 넓은 트임보다 손에 익은 밀도를 먼저 찾습니다.",
+    positive: "당신의 눈은 채워진 것보다 비워진 자리를 먼저 찾습니다.",
+  },
+  sensory: {
+    positive: "당신의 시선은 매끈한 새것보다 시간이 지나간 흔적에 먼저 머뭅니다.",
+    negative: "당신의 시선은 분위기보다 선과 마감이 맞는지를 먼저 훑습니다.",
+  },
+  rhythm: {
+    positive: "당신은 오래 살피기보다 마음이 움직이는 순간을 먼저 붙잡습니다.",
+    negative: "당신은 첫인상보다 시간을 들인 뒤의 느낌을 더 신뢰합니다.",
+  },
+  relation: {
+    positive: "당신은 혼자 두기보다 누군가와 나눌 자리부터 떠올립니다.",
+    negative: "당신은 사람보다 먼저 혼자만의 여백이 있는지를 확인합니다.",
+  },
+  exploration: {
+    positive: "당신의 시선은 정돈된 익숙함보다 예측할 수 없는 쪽으로 먼저 튑니다.",
+    negative: "당신의 시선은 처음 보는 것보다 좋았던 기억이 있는 쪽으로 먼저 돌아갑니다.",
+  },
+  expression: {
+    positive: "당신에게 이 순간은 눈에 담고 끝나는 것이 아니라 누군가에게 곧장 전하고 싶어지는 쪽입니다.",
+    negative: "당신에게 이 순간은 남에게 보여줄 필요 없이 눈으로만 담아도 되는 쪽입니다.",
+  },
+};
+
 const SCENE_LINK_SINGLE = [
   "이 장면 하나만으로도 충분히 짐작됩니다.",
   "망설임 없이 이쪽으로 마음이 갑니다.",
@@ -200,12 +314,17 @@ function stripTrailingPunct(text: string): string {
 }
 
 // PLACE/OBJECT 이미지가 실제로 무엇을 담고 있는지(magazineVisualAssets
-// 의 scene 메타데이터)를 가져와 첫 문장을 만든다 — 축 기반 고정 문장이
-// 아니라 이미지 자체에서 나온 시각적 단서 한 줄이다. asset이 나중에
-// variant별로 늘어나도 이 함수는 그대로 동작한다.
-function buildVisualCue(scene: NonNullable<MagazineVisualAsset["scene"]>): string {
+// 의 scene 메타데이터)로 각 축 섹션의 첫 문장을 만든다. 지금은 asset이
+// 사용자마다 다른 variant가 아니라 하나뿐이라(§7의 알려진 한계),
+// visual cue 자체는 모든 profile에서 동일한 장면 묘사가 된다 — 그래서
+// cue 문장이 혼자 서 있지 않고 VISUAL_LINK(축마다 다른, "이 장면 앞에서
+// 시선이 먼저 어디로 가는가")와 한 문장으로 묶여야, 이미지는 같아도
+// 해석은 profile마다 달라진다. asset이 나중에 variant별로 늘어나도
+// 이 함수는 그대로 동작한다.
+function buildVisualOpeningLine(scene: NonNullable<MagazineVisualAsset["scene"]>, axis: TasteV3AxisKey, direction: "positive" | "negative"): string {
   const lastDetail = scene.details[scene.details.length - 1] ?? "";
-  return `${scene.light}${iGa(scene.light)} ${scene.setting}에 내려앉고, ${scene.details.join(", ")}${iGa(lastDetail)} 그대로 놓여 있습니다.`;
+  const cueClause = `${scene.light}${iGa(scene.light)} ${scene.setting}에 내려앉고 ${scene.details.join(", ")}${iGa(lastDetail)} 그대로 놓인 이 장면처럼`;
+  return `${cueClause}, ${VISUAL_LINK[axis][direction]}`;
 }
 
 function tieBreakHash(item: V3EvidenceItem, axis: TasteV3AxisKey): number {
@@ -246,18 +365,17 @@ function sceneList(phrases: string[]): string {
 // CORE TASTE / HOW IT SHOWS UP — 가장 강한 축(들)을 하나의 관찰
 // 문단으로 엮는다.
 //
-// 구조(3차 라운드부터): visual cue(이미지 asset의 scene 메타데이터에서
-// 온 한 문장) → personal observation(그 사람 자신의 evidence로 만든
-// 장면) → deeper interpretation. 이미지를 소설처럼 묘사하지 않고 딱
-// 한 문장만 쓴 뒤 바로 그 사람 이야기로 넘어간다(§5).
+// 구조(4차 라운드): visual opening line(이미지 scene + VISUAL_LINK가
+// 한 문장으로 묶인 것) → personal observation(그 사람 자신의 evidence로
+// 만든 장면) → interpretation(무엇) → 세 번째 층.
 //
 // role="why"(CORE TASTE)는 "왜 끌리는가"에 집중해 AXIS_INTERPRETATION
-// +AXIS_MEANING만 쓰고, role="behavior"(HOW IT SHOWS UP)는 "실제로
-// 어떻게 나타나는가"에 집중해 BEHAVIOR_SCENE만 쓴다 — 서로 다른 정보만
-// 담아 반복을 피한다(§6). WHY_IT_MATTERS/CONTRAST_LINE 같은 범용
-// 클로저는 축 섹션에서 제거했다(모든 사용자에게 같은 문장이 반복되는
-// "generic phrase collision" 위험이 있었다) — SCENE_LINK만 순수한
-// 연결어로 남긴다.
+// (무엇)→AXIS_MEANING(왜)→AXIS_STAKES(왜 중요한가) 3층으로 내려가고,
+// role="behavior"(HOW IT SHOWS UP)는 "실제로 어떻게 나타나는가"에
+// 집중해 서로 다른 생활 영역의 BEHAVIOR_SCENE→BEHAVIOR_SCENE_SECONDARY
+// 2개 장면을 쓴다 — 서로 다른 정보만 담아 반복을 피한다(§6). 범용
+// 클로저(모든 profile에 똑같이 붙는 문장)는 절대 다시 추가하지 않는다
+// — 여기 있는 모든 새 문장은 axis(+방향) 키에 따라 달라진다.
 // ============================================================
 function buildAxisSection(
   axis: TasteV3AxisKey,
@@ -271,9 +389,10 @@ function buildAxisSection(
   const axisLabel = AXIS_LABEL_KO[axis];
   const sorted = strongestEvidenceForAxis(aggregate, axis);
   const anchor = sorted[0];
-  const visualCue = visualAsset.scene ? buildVisualCue(visualAsset.scene) : "";
+  const direction = aggregate[axis].score >= 0 ? "positive" : "negative";
+  const visualOpening = visualAsset.scene ? buildVisualOpeningLine(visualAsset.scene, axis, direction) : "";
   if (!anchor) {
-    return { headline, body: [visualCue, "여기서는 어느 한쪽으로 뚜렷하게 기울지 않고 고르게 나뉩니다."].filter(Boolean).join(" "), axisLabel };
+    return { headline, body: [visualOpening, "여기서는 어느 한쪽으로 뚜렷하게 기울지 않고 고르게 나뉩니다."].filter(Boolean).join(" "), axisLabel };
   }
   usage.use(anchor.questionId);
   const supporting = sorted.find((e) => e.questionId !== anchor.questionId);
@@ -282,23 +401,24 @@ function buildAxisSection(
   const personalScene = supporting ? sceneList([anchor.optionLabel, supporting.optionLabel]) : sceneList([anchor.optionLabel]);
   const bridge = supporting ? pickByIndex(SCENE_LINK, seed) : pickByIndex(SCENE_LINK_SINGLE, seed);
 
-  const direction = aggregate[axis].score >= 0 ? "positive" : "negative";
   const content =
     role === "why"
-      ? [AXIS_INTERPRETATION[axis][direction], AXIS_MEANING[axis][direction]]
-      : [BEHAVIOR_SCENE[axis][direction]];
+      ? [AXIS_INTERPRETATION[axis][direction], AXIS_MEANING[axis][direction], AXIS_STAKES[axis][direction]]
+      : [BEHAVIOR_SCENE[axis][direction], BEHAVIOR_SCENE_SECONDARY[axis][direction]];
 
-  const body = [visualCue, personalScene, bridge, ...content].filter(Boolean).join(" ");
+  const body = [visualOpening, personalScene, bridge, ...content].filter(Boolean).join(" ");
   return { headline, body, axisLabel };
 }
 
 // ============================================================
-// OPENING — 결과 전체를 요약하지 않고, 가장 특징적인 장면 하나(또는
-// 둘)와 hook 한 줄로 끝낸다. 3차 라운드에서 훅 뒤에 붙였던 "예고" 한
-// 줄(OPENING_ECHO)은 뺐다 — 특정 개인의 정보를 담지 않는 범용 문장이라
-// Opening/Core/Interesting 사이 통찰 반복 금지 원칙에 어긋났다. 첫
-// 세 문장(headline 2줄 + scene 한 줄) 안에 이 사람만의 특징 하나가
-// 이미 드러나야 한다.
+// OPENING — 결과 전체를 요약하지 않는다. 4차 라운드부터 hook 한 줄
+// 뒤에 이 profile의 Relationship/Tension(또는 축)에서 파생된 해석
+// 한 줄(OPENING_INSIGHT/OPENING_FRAME)을 붙인다 — CORE TASTE 내용을
+// 전부 끌어오지는 않되, 첫 문단 안에 이 사람만의 특징이 이미 하나
+// 드러나야 한다는 §5 요구를 만족한다. Opening에서 쓴 def.id는 THE
+// INTERESTING PART에서 다시 쓰이지 않으므로(코드에서 이미 제외 처리),
+// OPENING_INSIGHT와 PRACTICAL_CONSEQUENCE가 한 결과 안에서 같은 def를
+// 두 번 말하는 일은 없다.
 // ============================================================
 const OPENING_HOOK_PAIR = [
   "겉으로 다른 두 장면 같지만, 하루 안에서는 자연스럽게 이어집니다.",
@@ -312,6 +432,57 @@ const OPENING_HOOK_SINGLE = [
   "복잡한 설명이 필요 없을 만큼, 방향은 뚜렷합니다.",
 ];
 
+// Relationship/Tension id별 Opening 해석 한 줄 — PRACTICAL_CONSEQUENCE
+// ("그래서 실제로는")와는 다른 각도로, "이 조합이 삶에서 어떤 무게로
+// 다가오는가"를 짧게 짚는다.
+const OPENING_INSIGHT: Record<string, string> = {
+  "r1-space-exploration": "당신에게 낯선 장소는 삶의 기반을 흔드는 일이 아니라, 익숙한 하루에 작은 변화를 넣는 방식에 가깝습니다.",
+  "r2-sensory-expression": "감각은 예민하게 받아들이면서도 그것을 굳이 증명하려 들지 않는, 조용히 확신하는 쪽입니다.",
+  "r3-rhythm-exploration": "발견의 속도와 확신의 속도가 다르다는 것은, 당신에게는 성급함이 아니라 두 가지 다른 기준을 쓰고 있다는 뜻입니다.",
+  "r4-relation-expression": "관계는 넓게 열어두면서도, 그 안에서 무엇을 보여줄지는 스스로 정하는 쪽입니다.",
+  "r5-textural-first": "정돈된 구조보다 시간이 남긴 흔적이 먼저 눈에 들어오는, 촉각에 가까운 감각을 가졌습니다.",
+  "r5-structural-first": "분위기보다 선과 비율이 먼저 눈에 들어오는, 시각적으로 정밀한 감각을 가졌습니다.",
+  "r6-rhythm-relation": "사람과 함께 있는 시간을 좋아하면서도, 그 시간의 속도까지 내주지는 않는 쪽입니다.",
+  "r7-exploration-expression": "새로움을 좇는 기준이 유행이 아니라 당신 자신에게 있다는 뜻에 가깝습니다.",
+  "r8-space-expression": "취향을 설명하기보다, 공간이 대신 말하게 두는 쪽에 가깝습니다.",
+  "t1-familiar-space-new-place": "안정된 기반이 있어야 비로소 더 멀리 나가볼 수 있는, 얼핏 반대로 보이는 두 마음이 사실은 하나로 이어져 있습니다.",
+  "t2-sensitive-not-visible": "많이 느끼는 것과 많이 드러내는 것은 당신에게는 전혀 다른 회로로 움직입니다.",
+  "t3-fast-discovery-slow-choice": "새로운 것을 만나는 속도와 그것을 내 것으로 정하는 속도는, 당신 안에서는 전혀 다른 두 개의 시계로 움직입니다.",
+  "t4-share-but-keep-autonomy": "나누고 싶은 마음과 혼자이고 싶은 마음이 부딪히지 않고, 같은 사람 안에서 번갈아 나타납니다.",
+  "t5-keep-long-seek-new": "오래 곁에 두는 것과 새로 찾아 나서는 것은, 당신에게는 서로 다른 층에서 따로 움직이는 두 가지 진심입니다.",
+};
+
+// Relationship/Tension이 하나도 없을 때(axis-fallback)만 쓰는 Opening
+// 해석 한 줄 — 대비 구조로 짧게 짚는다. 같은 축이 CORE TASTE에서 다시
+// 다뤄지므로 VISUAL_LINK/AXIS_INTERPRETATION/MEANING/STAKES와는 다른
+// "예고" 성격의 각도로 쓴다.
+const OPENING_FRAME: Record<TasteV3AxisKey, { positive: string; negative: string }> = {
+  space: {
+    negative: "여행 사진을 보면 이곳저곳 다닌 것 같지만, 정작 좋아하는 카페나 식당은 몇 곳으로 정해져 있습니다.",
+    positive: "물건을 새로 들이는 일에는 관심이 없어도, 책상 위 각도 하나는 자주 다시 맞추는 편입니다.",
+  },
+  sensory: {
+    positive: "쇼핑을 할 때 리뷰 개수보다, 그 물건이 몇 년 뒤에 어떤 모습일지가 더 궁금합니다.",
+    negative: "가격표를 보기 전에 손끝으로 재질부터 훑는 버릇이 있습니다.",
+  },
+  rhythm: {
+    positive: "약속 장소를 정할 때도 미리 검색하기보다, 그날 지나가다 마음에 든 곳으로 발길을 돌립니다.",
+    negative: "물건 하나를 사기까지 장바구니에 며칠씩 담아두는 편입니다.",
+  },
+  relation: {
+    positive: "휴대폰 사진첩에는 혼자 찍은 풍경보다 누군가와 함께 찍은 사진이 훨씬 많습니다.",
+    negative: "주말 일정을 짤 때 약속보다 아무 일정 없는 하루를 먼저 비워 둡니다.",
+  },
+  exploration: {
+    positive: "맛집 리스트를 아무리 채워도, 결국 처음 가보는 골목 하나를 더 궁금해하는 쪽입니다.",
+    negative: "메뉴판을 오래 보다가도, 결국 지난번에 만족했던 메뉴로 손이 갑니다.",
+  },
+  expression: {
+    positive: "특별한 이유 없이도 좋았던 하루를 사진 몇 장으로 남겨두는 편입니다.",
+    negative: "좋았던 하루도 굳이 기록으로 남기지 않고 그냥 지나가는 경우가 많습니다.",
+  },
+};
+
 function buildOpening(
   aggregate: V3AxisAggregate,
   relationships: V3RelationshipMatch[],
@@ -324,9 +495,10 @@ function buildOpening(
     const ev = tensions[0].evidence.slice(0, 2);
     ev.forEach((e) => usage.use(e.questionId));
     const scene = sceneList(ev.map((e) => e.optionLabel));
+    const insight = OPENING_INSIGHT[t.id] ?? "";
     return {
       headline: t.headline,
-      summary: `${scene} ${pickByIndex(OPENING_HOOK_PAIR, ev[0]?.qNumber ?? 0)}`,
+      summary: [scene, pickByIndex(OPENING_HOOK_PAIR, ev[0]?.qNumber ?? 0), insight].filter(Boolean).join(" "),
       source: `tension:${t.id}`,
     };
   }
@@ -335,18 +507,22 @@ function buildOpening(
     const ev = r.evidence.slice(0, 2);
     ev.forEach((e) => usage.use(e.questionId));
     const scene = sceneList(ev.map((e) => e.optionLabel));
+    const insight = OPENING_INSIGHT[r.def.id] ?? "";
     return {
       headline: r.def.headline,
-      summary: `${scene} ${pickByIndex(OPENING_HOOK_PAIR, ev[0]?.qNumber ?? 1)}`,
+      summary: [scene, pickByIndex(OPENING_HOOK_PAIR, ev[0]?.qNumber ?? 1), insight].filter(Boolean).join(" "),
       source: `relationship:${r.def.id}`,
     };
   }
   const topAxis = axisRanking[0];
   const top = strongestEvidenceForAxis(aggregate, topAxis)[0];
   if (top) usage.use(top.questionId);
+  const direction = aggregate[topAxis].score >= 0 ? "positive" : "negative";
   return {
     headline: "여러 장면이 아니라,\n하나의 시선으로 이어지는 사람.",
-    summary: top ? `${sceneList([top.optionLabel])} ${pickByIndex(OPENING_HOOK_SINGLE, top.qNumber)}` : "여러 장면이 하나의 시선으로 이어집니다.",
+    summary: top
+      ? [sceneList([top.optionLabel]), pickByIndex(OPENING_HOOK_SINGLE, top.qNumber), OPENING_FRAME[topAxis][direction]].filter(Boolean).join(" ")
+      : "여러 장면이 하나의 시선으로 이어집니다.",
     source: `axis-fallback:${topAxis}`,
   };
 }
@@ -458,27 +634,56 @@ function buildInterestingPart(
 }
 
 // ============================================================
-// ENDING — 요약도 새 분석도 아닌 짧은 editorial closing.
+// ENDING — summary가 아니라 "소장하고 싶은 마무리". 4차 라운드부터
+// 어떤 결과에나 붙던 범용 ENDING_CLOSERS를 없애고, 취향의 중심이 된
+// 축(coreTaste의 axis1)마다 다른 ENDING_INSIGHT로 바꿨다 — "이 취향을
+// 어떻게 다루면 더 선명해지는가"를 advice 톤이 아니라 관찰 톤으로
+// 짧게 남긴다.
 // ============================================================
-const ENDING_CLOSERS = [
-  "이 페이지는 오늘로 끝나지 않습니다 — 다음 장에서 당신은 조금 더 또렷하게 읽힐 것입니다.",
-  "사진 몇 장으로 보이는 인상보다, 이 안에 쌓인 장면들이 결국 더 오래 남습니다.",
-  "취향은 완성되는 것이 아니라, 매번 이렇게 다시 확인되는 것에 가깝습니다.",
-  "여기까지가 오늘의 한 장입니다 — 다음 장은 조금 다른 장면에서 시작됩니다.",
-];
+// AXIS_STAKES와 같은 축을 다루지만 어휘/이미지를 겹치지 않게 썼다 —
+// STAKES는 "이게 왜 중요한가"(컨디션·마감·시야 같은 단어), ENDING은
+// "이 취향이 어떻게 자라는가"(동네·물건·사람 같은 다른 구체어)로
+// 서로 다른 그림을 그린다.
+const ENDING_INSIGHT: Record<TasteV3AxisKey, { positive: string; negative: string }> = {
+  space: {
+    negative: "당신의 취향은 새로운 동네를 넓혀가는 데서 자라기보다, 이미 아는 골목을 더 깊이 걸어볼 때 더 선명해집니다.",
+    positive: "당신의 취향은 물건을 하나씩 들이는 데서 자라기보다, 자리 하나를 그대로 비워 둘 줄 알 때 더 선명해집니다.",
+  },
+  sensory: {
+    positive: "당신의 취향은 새것을 자주 들이는 데서 자라기보다, 하나를 오래 곁에 두고 그 변화를 지켜볼 때 더 선명해집니다.",
+    negative: "당신의 취향은 여러 개를 두루 갖추는 데서 자라기보다, 하나를 제대로 알아보는 눈을 키울 때 더 선명해집니다.",
+  },
+  rhythm: {
+    positive: "당신의 취향은 일정을 촘촘히 채우는 데서 자라기보다, 마음이 이끄는 하루 하나를 그대로 따라갈 때 더 선명해집니다.",
+    negative: "당신의 취향은 빠른 결정을 늘리는 데서 자라기보다, 하나에 충분히 머물러 볼 때 더 선명해집니다.",
+  },
+  relation: {
+    positive: "당신의 취향은 더 많은 사람을 만나는 데서 자라기보다, 한 사람과 깊이 겹쳐질 때 더 선명해집니다.",
+    negative: "당신의 취향은 사람을 피하는 데서 자라기보다, 온전히 자신과 마주 앉는 시간에서 더 선명해집니다.",
+  },
+  exploration: {
+    positive: "당신의 취향은 새로운 것을 많이 갖는 데서 자라기보다, 이미 좋아하는 것 사이에 새로운 장면 하나를 들여놓을 때 더 선명해집니다.",
+    negative: "당신의 취향은 매번 다른 것을 시도하는 데서 자라기보다, 좋아하는 것 하나를 여러 번 다시 찾아갈 때 더 선명해집니다.",
+  },
+  expression: {
+    positive: "당신의 취향은 많이 말하는 데서 자라기보다, 좋았던 순간을 놓치지 않고 남길 때 더 선명해집니다.",
+    negative: "당신의 취향은 알리는 데서 자라기보다, 굳이 말하지 않은 채로도 오래 잘 간직될 때 더 선명해집니다.",
+  },
+};
 
 function buildEnding(
   openingHeadline: string,
   howItShowsUp: { axisLabel: string },
   coreTaste: { axisLabel: string },
-  seed: number
+  axis1: TasteV3AxisKey,
+  aggregate: V3AxisAggregate
 ): { body: string; pullQuote: string } {
   const callback = openingHeadline.replace(/\n/g, " ");
   const cleanCallback = stripTrailingPunct(callback);
+  const direction1 = aggregate[axis1].score >= 0 ? "positive" : "negative";
   const body = [
     `"${cleanCallback}"${iRaneun(cleanCallback)} 첫 장면으로 돌아가 보면, ${coreTaste.axisLabel}${gwaWa(coreTaste.axisLabel)} ${howItShowsUp.axisLabel}${eunNeun(howItShowsUp.axisLabel)} 서로 다른 자리에서 같은 사람을 가리키고 있었습니다.`,
-    "장면 하나, 물건 하나로는 다 설명되지 않지만, 이렇게 겹쳐 놓고 보면 어렴풋했던 윤곽이 조금 더 또렷해집니다.",
-    pickByIndex(ENDING_CLOSERS, seed),
+    ENDING_INSIGHT[axis1][direction1],
   ]
     .filter(Boolean)
     .join(" ");
@@ -523,7 +728,7 @@ export function buildTasteMagazineNarrativeV3(answers: TasteV3RawAnswers): Taste
   const interestingPartResult = buildInterestingPart(aggregate, relationships, tensions, openingResult.source);
   const interestingPart = { headline: interestingPartResult.headline, body: interestingPartResult.body };
 
-  const ending = buildEnding(opening.headline, howItShowsUp, coreTaste, axis1.length + axis2.length);
+  const ending = buildEnding(opening.headline, howItShowsUp, coreTaste, axis1, aggregate);
 
   const keywords = Array.from(new Set(evidence.slice(0, 6).map((e) => e.eyebrow)));
 
