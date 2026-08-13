@@ -8,6 +8,7 @@ import { TASTE_QUESTIONS_V2_2 } from "../../../src/data/tasteQuestionnaireV22";
 import { buildTasteMagazineNarrativeV23 } from "../../../src/data/tasteNarrativeV23";
 import { TasteQuestionnaireFlow } from "../personal-magazine-quiz/TasteQuestionnaireFlow";
 import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMagazineResult";
+import { OwnershipSection } from "./OwnershipSection";
 
 // PRIVATE BETA 0.9 ROUND 1(2026-08) — HOME → TASTE INTRO → 기존 TASTE
 // JOURNEY(Questionnaire v2.2 + Narrative v2.3 Final/Opening Arbitration)
@@ -191,11 +192,20 @@ function EditingTransition() {
   );
 }
 
+// OWNERSHIP / SAVE / SHARE(2026-08, Round 3) — TasteMagazineResult는
+// 그대로 두고(Ending까지 기존 layout 무변경), 그 아래 형제로
+// OwnershipSection만 이어붙인다. Result 내부 spacing/구조에는 diff가
+// 없다.
 function JourneyResult({ answers }: { answers: TasteRawAnswers }) {
   const sources = mapTasteAnswersToSignalSources(TASTE_QUESTIONS_V2_2, answers);
   const result = analyzeTasteFromSources(sources);
   const narrative = buildTasteMagazineNarrativeV23(result, sources);
-  return <TasteMagazineResult narrative={narrative} result={result} hideDebugPanel />;
+  return (
+    <>
+      <TasteMagazineResult narrative={narrative} result={result} hideDebugPanel />
+      <OwnershipSection answers={answers} narrative={narrative} />
+    </>
+  );
 }
 
 // ============================================================
