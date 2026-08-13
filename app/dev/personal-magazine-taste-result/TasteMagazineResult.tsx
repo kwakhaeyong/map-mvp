@@ -210,7 +210,20 @@ function DebugPanel({ result, narrative }: { result: TasteAnalysisResult; narrat
 // ============================================================
 // ROOT
 // ============================================================
-export function TasteMagazineResult({ narrative, result }: { narrative: TasteMagazineNarrative; result: TasteAnalysisResult }) {
+export function TasteMagazineResult({
+  narrative,
+  result,
+  hideDebugPanel = false,
+}: {
+  narrative: TasteMagazineNarrative;
+  result: TasteAnalysisResult;
+  // Private Beta 전용(2026-08) — 기본값 false라 기존 두 dev route
+  // (personal-magazine-taste-result / personal-magazine-taste-journey)는
+  // 이 prop을 넘기지 않으므로 debug accordion이 그대로 노출된다.
+  // personal-magazine-beta만 true를 넘겨 사용자에게 debug 정보가
+  // 보이지 않게 한다 — 공용 Result 레이아웃/카피는 전혀 바뀌지 않는다.
+  hideDebugPanel?: boolean;
+}) {
   return (
     <div className="mx-auto max-w-lg">
       <OpeningSection narrative={narrative} />
@@ -256,7 +269,7 @@ export function TasteMagazineResult({ narrative, result }: { narrative: TasteMag
 
       <EndingSection pullQuote={narrative.pullQuote} />
 
-      <DebugPanel result={result} narrative={narrative} />
+      {!hideDebugPanel && <DebugPanel result={result} narrative={narrative} />}
     </div>
   );
 }

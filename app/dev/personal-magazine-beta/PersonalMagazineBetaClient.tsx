@@ -25,7 +25,25 @@ import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMaga
 
 type Stage = "home" | "intro" | "flow" | "editing" | "result";
 
-const EDITING_DURATION_MS = 1500;
+// EDITING PRODUCTIZATION(2026-08, Round 2) — §3 확정 4개 processing line
+// 그대로. 각 줄이 LINE_STAGGER_MS 간격으로 순서대로 나타난 뒤,
+// READY_APPEAR_MS 시점에 "YOUR ISSUE IS READY."가 뜨고, 그로부터
+// AUTO_ADVANCE_AFTER_READY_MS 뒤 Result로 자동 전환된다. §4가 요구한
+// "약 2~4초, 10초 이상 artificial delay 금지"를 지키기 위해 실제
+// 합계(READING_TO_READY_TOTAL_MS + AUTO_ADVANCE_AFTER_READY_MS)를
+// 약 3.2초로 맞췄다 — 계산 자체는 이미 deterministic/local이라
+// 즉시 끝나므로, 이 시간은 순수히 연출용 지연이다.
+//
+// CTA 없이 자동으로 Result로 넘어가는 방식을 선택했다 — §3이 제시한
+// 두 방식(CTA 있음/자동 reveal) 중 "현재 Journey와 더 자연스러운
+// 방식"을 고르라고 했는데, 기존 TasteJourneyClient.tsx의 EDITING
+// 단계도 이미 CTA 없이 타이머로 자동 전환하는 방식이라 그 관례를
+// 그대로 따랐다.
+const PROCESSING_LINES = ["READING YOUR CHOICES", "FINDING CONNECTIONS", "EDITING YOUR STORY", "MAKING YOUR ISSUE"];
+const LINE_STAGGER_MS = 550;
+const READY_APPEAR_MS = LINE_STAGGER_MS * PROCESSING_LINES.length + 450; // 마지막 줄이 뜨고서 여유 0.45초 후 READY
+const AUTO_ADVANCE_AFTER_READY_MS = 800;
+const EDITING_TOTAL_MS = READY_APPEAR_MS + AUTO_ADVANCE_AFTER_READY_MS;
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -116,11 +134,59 @@ function TasteIntro({ onBegin, onBack }: { onBegin: () => void; onBack: () => vo
   );
 }
 
+// ============================================================
+// EDITING — §3 확정 카피 그대로. HOME/INTRO/Result와 같은 off-white
+// 배경·typography를 재사용하고, SaaS spinner/progress circle/퍼센트
+// 바 없이 opacity+translate만 쓰는 절제된 motion으로 4개 processing
+// line을 순서대로 드러낸다(§5/§6). 새 라이브러리 도입 없음(순수
+// useState/useEffect + Tailwind transition).
+// ============================================================
 function EditingTransition() {
+  const [visibleCount, setVisibleCount] = useState(0);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const timers = PROCESSING_LINES.map((_, i) => setTimeout(() => setVisibleCount((c) => Math.max(c, i + 1)), i * LINE_STAGGER_MS));
+    timers.push(setTimeout(() => setReady(true), READY_APPEAR_MS));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
-      <p className="font-serif text-xs font-bold uppercase tracking-[0.14em] text-text-muted">TASTE</p>
-      <p className="mt-3 text-lg font-black tracking-[-0.01em] text-text-primary">EDITING YOUR TASTE</p>
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center px-6 text-center">
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-text-muted">PERSONAL MAGAZINE</p>
+
+      <h1 className="mt-5 text-3xl font-black leading-[1.15] tracking-[-0.02em] text-text-primary">
+        EDITING
+        <br />
+        YOUR TASTE
+      </h1>
+
+      <p className="mt-4 whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
+        {"당신이 고른 장면과 선택 사이에서\n반복되는 취향과\n의외의 조합을 찾고 있습니다."}
+      </p>
+
+      <div className="mt-10 flex flex-col gap-3">
+        {PROCESSING_LINES.map((line, i) => (
+          <p
+            key={line}
+            className={cx(
+              "text-[11px] font-bold uppercase tracking-[0.1em] transition-all duration-500 ease-out",
+              i < visibleCount ? "translate-y-0 text-text-primary opacity-100" : "translate-y-1 text-text-muted opacity-0"
+            )}
+          >
+            {line}
+          </p>
+        ))}
+      </div>
+
+      <p
+        className={cx(
+          "mt-8 text-sm font-black uppercase tracking-[0.04em] text-text-primary transition-all duration-500 ease-out",
+          ready ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+        )}
+      >
+        YOUR ISSUE IS READY.
+      </p>
     </div>
   );
 }
@@ -129,7 +195,7 @@ function JourneyResult({ answers }: { answers: TasteRawAnswers }) {
   const sources = mapTasteAnswersToSignalSources(TASTE_QUESTIONS_V2_2, answers);
   const result = analyzeTasteFromSources(sources);
   const narrative = buildTasteMagazineNarrativeV23(result, sources);
-  return <TasteMagazineResult narrative={narrative} result={result} />;
+  return <TasteMagazineResult narrative={narrative} result={result} hideDebugPanel />;
 }
 
 // ============================================================
@@ -148,7 +214,7 @@ export function PersonalMagazineBetaClient() {
 
   useEffect(() => {
     if (stage !== "editing") return;
-    const timer = setTimeout(() => setStage("result"), EDITING_DURATION_MS);
+    const timer = setTimeout(() => setStage("result"), EDITING_TOTAL_MS);
     return () => clearTimeout(timer);
   }, [stage]);
 
