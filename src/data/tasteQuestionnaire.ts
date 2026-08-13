@@ -1,29 +1,23 @@
-// TASTE QUESTIONNAIRE SPEC ARCHITECTURE v1(2026-08) — dev 전용 데이터/타입
+// TASTE QUESTIONNAIRE SPEC ARCHITECTURE(2026-08) — dev 전용 데이터/타입
 // 레이어.
 //
-// 역할 분리(2026-08부터):
-//   - 질문/선택지 문구, 분석 카피, signal 가중치는 앞으로 GPT가 확정해서
+// 역할 분리:
+//   - 질문/선택지 문구, 분석 카피, signal 가중치는 GPT가 확정해서
 //     전달한다.
 //   - Claude Code는 그 확정된 Spec을 코드로 "구현"하는 역할만 맡는다
 //     (state 관리 / data model / interaction component / routing /
 //     asset 연결 / 반응형 / 테스트 / quality gate).
 //
-// 그래서 이 파일은 "내용"이 아니라 "그릇"이다 — 이 파일이 하는 일:
-//   1) 여러 인터랙션 타입(Scene/Object/Priority/MultiSelect/Situation/
-//      Scale/QuickCuts/Signature choice)을 표현할 수 있는 타입 구조를
-//      만든다. 모든 질문을 A/B 이지선다로 강제하지 않는다.
-//   2) 이미 UX 검증이 끝난 Q1(장면 선택)·Q2(물건 선택 프로토타입)를
-//      새 구조로 "표현"한다 — 문구/가중치는 QuizClient.tsx와
-//      tasteAnalysis.ts에 있는 값을 그대로 옮겨왔을 뿐, 새로 쓰지 않았다.
-//   3) TasteQuestionnaire → 답변 → SignalSource(tasteAnalysis.ts 입력)로
-//      가는 adapter 함수의 자리를 만든다 — 규칙은 아직 없다(GPT의 최종
-//      Spec이 오면 그때 채운다). 지금은 옵션에 이미 붙어 있는 signals를
-//      그대로 옮기기만 하는 범용 변환만 한다.
-//
-// QuizClient.tsx는 이번 라운드에 건드리지 않는다 — Q1/Q2 실제 렌더링은
-// 여전히 QuizClient.tsx 자체의 하드코딩된 데이터를 쓴다. 이 파일은 그
-// 옆에 나란히 존재하는 "미래를 위한 그릇"이며, 아직 실제 렌더링에
-// 연결되지 않았다(연결/교체는 별도 라운드에서 진행).
+// 이 파일 두 부분으로 구성된다:
+//   1) TASTE_Q1_V1_PROTOTYPE / TASTE_Q2_V1_PROTOTYPE / 관련 타입 —
+//      이전 라운드에서 QuizClient.tsx의 초기 프로토타입(Q1/Q2만) 문구를
+//      그대로 옮겨 표현한 것. 지금은 실제 사용자 플로우에 쓰이지 않고
+//      dev 참고용으로만 남아 있다(QuizClient.tsx의 TASTE_Q1/TASTE_Q2와
+//      마찬가지로 보존).
+//   2) TASTE_QUESTIONS_V1 — GPT가 검증 완료해 전달한 TASTE Questionnaire
+//      v1의 실제 6 PAGE 문항. 문구/선택지/signal 가중치는 전부 전달받은
+//      Spec을 그대로 옮겨 적었을 뿐, 새로 쓰거나 값을 조정하지 않았다.
+//      실제 /dev/personal-magazine-quiz 화면은 이 데이터로 렌더링된다.
 
 import {
   Q1_SIGNAL_SOURCES,
@@ -36,9 +30,6 @@ import {
 // ============================================================
 // 0. VERSION / METADATA
 // ============================================================
-// 다음 GPT Spec이 오면 이 버전 문자열만 올리고, 아래
-// TASTE_QUESTIONS_V1_PROTOTYPE를 새 배열로 교체하는 방식으로 v1.1/v2를
-// 추가할 수 있게 만든 자리다.
 export const TASTE_QUESTIONNAIRE_VERSION = "v1";
 
 export type TasteQuestionnaireMetadata = {
@@ -48,9 +39,6 @@ export type TasteQuestionnaireMetadata = {
   pages: number;
 };
 
-// 아래 숫자는 확정값이 아니다 — Section 11에서 언급된 6페이지 컨셉을
-// placeholder로 그대로 옮겨온 것뿐이고, 지금 실제로 구현된 문항은
-// Q1/Q2 2개뿐이다. GPT의 최종 Spec이 오면 이 값을 교체한다.
 export const TASTE_QUESTIONNAIRE_METADATA: TasteQuestionnaireMetadata = {
   id: "taste",
   version: TASTE_QUESTIONNAIRE_VERSION,
@@ -58,30 +46,35 @@ export const TASTE_QUESTIONNAIRE_METADATA: TasteQuestionnaireMetadata = {
   pages: 6,
 };
 
+// PAGE 번호 → YOUR PAGE의 PLACE/OBJECT/DETAIL/RITUAL 매핑. GPT Spec
+// 문서의 "PAGE 01~02 → PLACE, 03~04 → OBJECT, 05 → DETAIL, 06 → RITUAL"을
+// 그대로 옮긴 config다. 향후 Narrative/Editorial System에서 이 표만
+// 바꾸면 매핑을 조정할 수 있도록 컴포넌트 코드에 하드코딩하지 않는다.
+export const TASTE_V1_PAGE_SECTION_MAP: Record<number, PageSectionKey> = {
+  1: "place",
+  2: "place",
+  3: "object",
+  4: "object",
+  5: "detail",
+  6: "ritual",
+};
+
 // ============================================================
-// 1. INTERACTION KIND — 문항이 가질 수 있는 인터랙션 종류.
-// scene-choice/object-choice 2개만 실제로 구현되어 있다(Q1/Q2). 나머지
-// 6개는 GPT의 최종 Spec을 받을 자리만 마련해 둔 것이며 아직 질문/
-// 선택지 내용이 없다.
+// 1. INTERACTION KIND
 // ============================================================
 export type TasteInteractionKind =
-  | "scene-choice" // Q1 — 장면 2개 중 하나(이미 구현됨)
-  | "object-choice" // Q2 — 물건 여러 개 중 하나(이미 구현됨, 4지선다 프로토타입)
-  | "priority-choice" // 여러 개 중 우선순위/개수 제한 선택(예: "두 개만 고르면")
-  | "multi-select" // 제한 없는 복수 선택
-  | "situation-choice" // 상황/시나리오 기반 선택
-  | "scale" // 수치 스케일 응답
-  | "quick-cuts" // 짧은 연속 즉답형 선택
-  | "signature-choice"; // 마무리 성격의 상징적 선택
+  | "scene-choice" // PAGE 01 — 장면 2개 중 하나
+  | "object-choice" // 프로토타입 Q2(물건 4개 중 하나) — v1 실제 플로우에서는 사용하지 않음(dev 참고용)
+  | "priority-choice" // PAGE 02 — 여러 개 중 하나(가장 크게 작용하는 것)
+  | "multi-select" // PAGE 03 — 정확히 2개 선택
+  | "situation-choice" // PAGE 04 — 상황 기반 선택
+  | "scale" // 아직 v1에서 쓰이지 않음(향후 GPT Spec 대기)
+  | "quick-cuts" // PAGE 05 — 연속된 이지선다 4개
+  | "signature-choice"; // PAGE 06 — 마무리 상징적 선택
 
 // ============================================================
 // 2. 공통 옵션 / 문항 shell
 // ============================================================
-// signals는 tasteAnalysis.ts의 SignalContribution을 그대로 재사용한다.
-// (브리프의 예시 타입은 Record<string, number>였지만, 실제
-// SignalContribution은 Partial<Record<TasteSignalKey, number>>라 구조가
-// 다르다 — 기존 엔진과 충돌하지 않도록 이 파일에서 재선언하지 않고
-// import해서 그대로 쓴다.)
 export type TasteQuestionOption = {
   id: string;
   label: string;
@@ -91,9 +84,6 @@ export type TasteQuestionOption = {
   semanticTags?: string[];
 };
 
-// analysisSignals는 이 문항 자체(옵션 단위가 아니라 문항 레벨)가 어떤
-// 축과 관련 있는지에 대한 메타데이터 자리다. 실제 모양/값은 GPT의
-// Spec이 오기 전까지 정하지 않는다 — 그래서 unknown으로 열어 둔다.
 export type BaseTasteQuestion = {
   id: string;
   page: number;
@@ -105,11 +95,7 @@ export type BaseTasteQuestion = {
 };
 
 // ============================================================
-// 3. 문항 discriminated union — 8가지 인터랙션 타입.
-// 모든 문항을 하나의 A/B shape에 강제하지 않는다: 이미 구현된 2개는
-// 실제 사용 형태를 그대로 반영했고, 나머지 6개는 GPT Spec을 받을 수
-// 있는 최소 shape만 만들어 뒀다(과도하게 구체적인 필드를 미리
-// 설계하지 않는다).
+// 3. 문항 discriminated union
 // ============================================================
 export type SceneChoiceQuestion = BaseTasteQuestion & {
   kind: "scene-choice";
@@ -124,14 +110,13 @@ export type ObjectChoiceQuestion = BaseTasteQuestion & {
 export type PriorityChoiceQuestion = BaseTasteQuestion & {
   kind: "priority-choice";
   options: TasteQuestionOption[];
-  selectCount?: number; // 예: "두 개만 고르세요" — 실제 값은 GPT Spec 대기
 };
 
 export type MultiSelectQuestion = BaseTasteQuestion & {
   kind: "multi-select";
   options: TasteQuestionOption[];
-  minSelect?: number;
-  maxSelect?: number;
+  minSelect: number;
+  maxSelect: number;
 };
 
 export type SituationChoiceQuestion = BaseTasteQuestion & {
@@ -147,9 +132,17 @@ export type ScaleQuestion = BaseTasteQuestion & {
   maxLabel?: string;
 };
 
+// QUICK CUTS 한 페이지는 독립된 이지선다 여러 개(cut)로 이루어진다.
+// cut 하나하나가 그 자체로 개별 raw answer/signal source가 된다.
+export type QuickCutItem = {
+  id: string;
+  left: TasteQuestionOption;
+  right: TasteQuestionOption;
+};
+
 export type QuickCutsQuestion = BaseTasteQuestion & {
   kind: "quick-cuts";
-  options: TasteQuestionOption[];
+  cuts: QuickCutItem[];
 };
 
 export type SignatureChoiceQuestion = BaseTasteQuestion & {
@@ -168,15 +161,9 @@ export type TasteQuestion =
   | SignatureChoiceQuestion;
 
 // ============================================================
-// 4. Q1 / Q2 — 이미 검증된 프로토타입을 새 구조로 "표현".
-// 문구는 QuizClient.tsx(TASTE_Q1/TASTE_Q2)에서, signal 가중치는
-// tasteAnalysis.ts(Q1_SIGNAL_SOURCES/Q2_SIGNAL_SOURCES)에서 그대로
-// 옮겨왔다 — 새로 쓴 문구/가중치는 없다.
-//
-// 주의: 이 상수는 아직 QuizClient.tsx의 실제 렌더링과 연결되어 있지
-// 않다. QuizClient.tsx는 이번 라운드에서 건드리지 않았고, 여전히 자체
-// 하드코딩 데이터로 화면을 그린다 — 이 파일은 그 옆에 나란히 존재하는
-// "미래 GPT Spec을 받을 그릇"이다.
+// 4. PROTOTYPE(이전 라운드 참고용) — QuizClient.tsx의 TASTE_Q1/TASTE_Q2와
+// 동일한 문구/가중치를 새 구조로 표현한 것. v1 실제 플로우에서는 쓰이지
+// 않는다(TASTE_QUESTIONS_V1을 쓴다). 삭제하지 않고 dev 참고용으로 둔다.
 // ============================================================
 export const TASTE_Q1_V1_PROTOTYPE: SceneChoiceQuestion = {
   kind: "scene-choice",
@@ -204,9 +191,6 @@ export const TASTE_Q1_V1_PROTOTYPE: SceneChoiceQuestion = {
   ],
 };
 
-// Q2는 "확정된 Questionnaire"가 아니라 4지선다 프로토타입이다 — GPT의
-// 최종 Spec이 오면 이 문항 자체가 다른 interaction kind로 교체될 수
-// 있다(브리프에서 명시적으로 확인된 내용).
 export const TASTE_Q2_V1_PROTOTYPE: ObjectChoiceQuestion = {
   kind: "object-choice",
   id: "q2",
@@ -247,16 +231,209 @@ export const TASTE_Q2_V1_PROTOTYPE: ObjectChoiceQuestion = {
   ],
 };
 
-// 지금 실제로 구현된 문항만 배열에 넣는다 — Q3~Q6는 아직 없다.
 export const TASTE_QUESTIONS_V1_PROTOTYPE: TasteQuestion[] = [TASTE_Q1_V1_PROTOTYPE, TASTE_Q2_V1_PROTOTYPE];
 
 // ============================================================
-// 5. INTERACTION REGISTRY — 인터랙션 종류 → 구현 상태.
-// 컴포넌트를 미리 만들지 않는다(브리프: "새 디자인을 자율적으로 만들지
-// 마세요"). 대신 TasteInteractionKind 전체에 대해 Record로 강제
-// exhaustive하게 상태를 선언해 둔다 — 새 kind가 추가되면 타입 에러로
-// 바로 드러나는 것 자체가 type-safe fallback 역할을 한다. 실제 화면
-// 컴포넌트 연결은 GPT Spec이 확정된 뒤 진행한다.
+// 5. TASTE QUESTIONNAIRE v1 — GPT 검증 완료 Spec 실제 구현.
+// 문구/선택지/signal 값은 전달받은 Spec을 그대로 옮겼다. 새로 짓거나
+// 값을 조정하지 않았다.
+// ============================================================
+
+// ------------------------------------------------------------
+// PAGE 01 — SCENE (scene-choice)
+// 현재 실제 이미지 2장(taste-quiz-01-a.png / taste-quiz-01-b.png)을
+// 그대로 사용한다 — 이미지 재생성/재가공 없음.
+// ------------------------------------------------------------
+export const TASTE_V1_PAGE_01_SCENE: SceneChoiceQuestion = {
+  kind: "scene-choice",
+  id: "scene",
+  page: 1,
+  totalPages: TASTE_QUESTIONNAIRE_METADATA.pages,
+  section: TASTE_V1_PAGE_SECTION_MAP[1],
+  prompt: "쉬는 오후,\n더 마음이 가는 장면은?",
+  helper: "생각하기보다 먼저 마음이 가는 쪽을 골라주세요.",
+  options: [
+    {
+      id: "window-afternoon",
+      label: "창가에 앉아\n책이나 커피와 시간을 보내는 오후",
+      assetKey: "quiz.taste.q01.a",
+      signals: { stimulus: -15, socialDensity: -10, pace: -10, sensory: 5 },
+    },
+    {
+      id: "city-evening",
+      label: "사람과 불빛이 있는\n도시의 저녁을 즐기는 시간",
+      assetKey: "quiz.taste.q01.b",
+      signals: { stimulus: 15, socialDensity: 15, pace: 10, novelty: 5 },
+    },
+  ],
+};
+
+// ------------------------------------------------------------
+// PAGE 02 — WHAT MATTERS (priority-choice)
+// ------------------------------------------------------------
+export const TASTE_V1_PAGE_02_WHAT_MATTERS: PriorityChoiceQuestion = {
+  kind: "priority-choice",
+  id: "what-matters",
+  page: 2,
+  totalPages: TASTE_QUESTIONNAIRE_METADATA.pages,
+  section: TASTE_V1_PAGE_SECTION_MAP[2],
+  prompt: "좋은 공간이라고 느낄 때,\n가장 크게 작용하는 것은?",
+  helper: "하나만 고른다면.",
+  options: [
+    {
+      id: "light-mood",
+      label: "빛과 분위기",
+      description: "햇빛, 조명, 색감처럼\n공간 전체를 만드는 느낌",
+      signals: { sensory: 15, stimulus: -5 },
+      semanticTags: ["atmosphere", "light", "mood", "sensory"],
+    },
+    {
+      id: "objects-detail",
+      label: "물건과 디테일",
+      description: "가구, 그릇, 포스터처럼\n눈에 걸리는 작은 것들",
+      signals: { sensory: 15, curation: 10 },
+    },
+    {
+      id: "people-sound",
+      label: "사람과 소리",
+      description: "누가 있고\n어떤 음악과 에너지가 흐르는지",
+      signals: { socialDensity: 15, stimulus: 10 },
+    },
+    {
+      id: "structure-use",
+      label: "구조와 쓰임",
+      description: "자리가 어떻게 놓여 있고\n얼마나 편하게 쓸 수 있는지",
+      signals: { sensory: -5, curation: 10, pace: -5 },
+    },
+  ],
+};
+
+// ------------------------------------------------------------
+// PAGE 03 — KEEP (multi-select, 정확히 2개)
+// PAGE 03의 2개 선택 조합 자체가 향후 Narrative Engine의 분석
+// 대상이다 — signal로 합산한 뒤에도 raw answer(선택된 2개 id, 선택
+// 순서 포함)를 그대로 보존한다(아래 6번 ADAPTER/RAW ANSWER 참고).
+// ------------------------------------------------------------
+export const TASTE_V1_PAGE_03_KEEP: MultiSelectQuestion = {
+  kind: "multi-select",
+  id: "keep",
+  page: 3,
+  totalPages: TASTE_QUESTIONNAIRE_METADATA.pages,
+  section: TASTE_V1_PAGE_SECTION_MAP[3],
+  prompt: "마음에 드는 것을 고를 때,\n놓치기 어려운 기준 두 가지는?",
+  helper: "딱 두 개만 골라주세요.",
+  minSelect: 2,
+  maxSelect: 2,
+  options: [
+    { id: "timeless", label: "오래 봐도 질리지 않는 것", signals: { attachment: 15, curation: 10, novelty: -5 } },
+    { id: "different", label: "남들과 조금 다른 것", signals: { novelty: 15, expression: 10 } },
+    { id: "functional", label: "쓰임이 분명한 것", signals: { curation: 10, sensory: -5 } },
+    { id: "storied", label: "이야기가 있는 것", signals: { attachment: 15, sensory: 5 } },
+    { id: "instant-pull", label: "지금 보는 순간 마음이 가는 것", signals: { novelty: 10, attachment: -5, pace: 10 } },
+    { id: "well-made", label: "작은 부분까지 잘 만들어진 것", signals: { curation: 15, sensory: 10 } },
+  ],
+};
+
+// ------------------------------------------------------------
+// PAGE 04 — INSTINCT (situation-choice)
+// ------------------------------------------------------------
+export const TASTE_V1_PAGE_04_INSTINCT: SituationChoiceQuestion = {
+  kind: "situation-choice",
+  id: "instinct",
+  page: 4,
+  totalPages: TASTE_QUESTIONNAIRE_METADATA.pages,
+  section: TASTE_V1_PAGE_SECTION_MAP[4],
+  prompt: "정말 마음에 드는 물건을 발견했습니다.\n그런데 생각했던 것보다 조금 비쌉니다.",
+  helper: "나는 보통...",
+  options: [
+    { id: "buy-if-lingers", label: "계속 생각날 것 같으면 산다.", signals: { pace: 15, attachment: 5 } },
+    { id: "wait-days", label: "일단 돌아서서 며칠 더 생각한다.", signals: { pace: -10, curation: 10 } },
+    { id: "compare", label: "비슷한 것들을 더 찾아보고 비교한다.", signals: { curation: 15, novelty: 5, pace: -5 } },
+    {
+      id: "budget-limit",
+      label: "마음에 들어도\n내가 정한 가격을 넘으면 지나간다.",
+      signals: { curation: 10, novelty: -5, sensory: -5 },
+    },
+  ],
+};
+
+// ------------------------------------------------------------
+// PAGE 05 — QUICK CUTS (quick-cuts, 4개 전부 선택)
+// 중립값 없음 — 각 cut은 반드시 둘 중 하나를 고른다.
+// ------------------------------------------------------------
+export const TASTE_V1_PAGE_05_QUICK_CUTS: QuickCutsQuestion = {
+  kind: "quick-cuts",
+  id: "quick-cuts",
+  page: 5,
+  totalPages: TASTE_QUESTIONNAIRE_METADATA.pages,
+  section: TASTE_V1_PAGE_SECTION_MAP[5],
+  prompt: "A FEW QUICK THINGS",
+  helper: "생각하지 말고,\n조금 더 가까운 쪽.",
+  cuts: [
+    {
+      id: "cut01",
+      left: { id: "new-place", label: "새로 생긴 곳", signals: { novelty: 15 } },
+      right: { id: "usual-place", label: "늘 가던 곳", signals: { novelty: -15, attachment: 5 } },
+    },
+    {
+      id: "cut02",
+      left: { id: "keep-long", label: "마음에 들면 오래 쓴다", signals: { attachment: 15, curation: 5 } },
+      right: { id: "swap-fun", label: "새로운 걸로 바꾸는 재미가 있다", signals: { attachment: -10, novelty: 10 } },
+    },
+    {
+      id: "cut03",
+      left: { id: "share-it", label: "좋았던 건 누군가에게 알려주고 싶다", signals: { expression: 15, socialDensity: 5 } },
+      right: { id: "keep-private", label: "나만 알고 있어도 좋다", signals: { expression: -15, socialDensity: -5 } },
+    },
+    {
+      id: "cut04",
+      left: { id: "mood-matters", label: "작은 분위기 차이가 꽤 중요하다", signals: { sensory: 15 } },
+      right: { id: "overall-enough", label: "전체적으로 괜찮으면 충분하다", signals: { sensory: -15 } },
+    },
+  ],
+};
+
+// ------------------------------------------------------------
+// PAGE 06 — YOUR DAY (signature-choice)
+// 실제 Editorial Photography는 GPT가 이후 별도로 생성한다 — 지금은
+// assetKey 없이 neutral placeholder를 쓴다(이미지/일러스트 생성 없음).
+// ------------------------------------------------------------
+export const TASTE_V1_PAGE_06_YOUR_DAY: SignatureChoiceQuestion = {
+  kind: "signature-choice",
+  id: "your-day",
+  page: 6,
+  totalPages: TASTE_QUESTIONNAIRE_METADATA.pages,
+  section: TASTE_V1_PAGE_SECTION_MAP[6],
+  prompt: "하루가 통째로 비었습니다.\n지금 더 마음이 가는 하루는?",
+  options: [
+    {
+      id: "familiar-day",
+      label: "FAMILIAR",
+      description:
+        "좋아하는 동네.\n이미 알고 있는 카페.\n늘 걷던 길.\n\n마음에 드는 곳 몇 군데를\n천천히 다시 찾는 하루.",
+      signals: { novelty: -15, attachment: 10, pace: -10 },
+    },
+    {
+      id: "discover-day",
+      label: "DISCOVER",
+      description:
+        "처음 가보는 동네.\n지도에 저장해뒀던 장소.\n\n계획을 조금 비워두고\n걷다가 새로운 것을 발견하는 하루.",
+      signals: { novelty: 15, attachment: -5, pace: 5 },
+    },
+  ],
+};
+
+export const TASTE_QUESTIONS_V1: TasteQuestion[] = [
+  TASTE_V1_PAGE_01_SCENE,
+  TASTE_V1_PAGE_02_WHAT_MATTERS,
+  TASTE_V1_PAGE_03_KEEP,
+  TASTE_V1_PAGE_04_INSTINCT,
+  TASTE_V1_PAGE_05_QUICK_CUTS,
+  TASTE_V1_PAGE_06_YOUR_DAY,
+];
+
+// ============================================================
+// 6. INTERACTION REGISTRY
 // ============================================================
 export type TasteInteractionStatus = {
   kind: TasteInteractionKind;
@@ -265,58 +442,50 @@ export type TasteInteractionStatus = {
 };
 
 export const TASTE_INTERACTION_REGISTRY: Record<TasteInteractionKind, TasteInteractionStatus> = {
-  "scene-choice": {
-    kind: "scene-choice",
-    implemented: true,
-    note: "Q1 프로토타입에서 이미 UX 검증됨 (QuizClient.tsx).",
-  },
+  "scene-choice": { kind: "scene-choice", implemented: true, note: "PAGE 01(SCENE)에서 실제 사용 중." },
   "object-choice": {
     kind: "object-choice",
     implemented: true,
-    note: "Q2 프로토타입에서 이미 UX 검증됨 (QuizClient.tsx). 4지선다 형태는 최종 Spec이 아니며 GPT 확정 시 교체될 수 있음.",
+    note: "이전 프로토타입 Q2에서 구현됨. v1 실제 플로우에서는 쓰이지 않고 dev 참고용으로만 남아 있음.",
   },
-  "priority-choice": { kind: "priority-choice", implemented: false, note: "GPT Spec 대기 — 미구현." },
-  "multi-select": { kind: "multi-select", implemented: false, note: "GPT Spec 대기 — 미구현." },
-  "situation-choice": { kind: "situation-choice", implemented: false, note: "GPT Spec 대기 — 미구현." },
-  scale: { kind: "scale", implemented: false, note: "GPT Spec 대기 — 미구현." },
-  "quick-cuts": { kind: "quick-cuts", implemented: false, note: "GPT Spec 대기 — 미구현." },
-  "signature-choice": { kind: "signature-choice", implemented: false, note: "GPT Spec 대기 — 미구현." },
+  "priority-choice": { kind: "priority-choice", implemented: true, note: "PAGE 02(WHAT MATTERS)에서 실제 사용 중." },
+  "multi-select": { kind: "multi-select", implemented: true, note: "PAGE 03(KEEP)에서 실제 사용 중 — 정확히 2개 선택." },
+  "situation-choice": { kind: "situation-choice", implemented: true, note: "PAGE 04(INSTINCT)에서 실제 사용 중." },
+  scale: { kind: "scale", implemented: false, note: "v1에서 사용하지 않음 — GPT Spec 대기." },
+  "quick-cuts": { kind: "quick-cuts", implemented: true, note: "PAGE 05(QUICK CUTS)에서 실제 사용 중 — 4개 전부 선택." },
+  "signature-choice": { kind: "signature-choice", implemented: true, note: "PAGE 06(YOUR DAY)에서 실제 사용 중." },
 };
 
 // ============================================================
-// 6. ANALYSIS ADAPTER — TasteQuestionnaire 답변 → SignalSource[]
-// (tasteAnalysis.ts의 입력 형식)로 바꾸는 자리.
-//
-// 여기 있는 함수는 "이 질문에서 어떤 옵션이 선택됐는가"를 interaction
-// kind별로 꺼내는 것만 한다 — 어떤 축에 몇 점을 주는지는 전혀 결정하지
-// 않는다(그 값은 이미 옵션에 signals로 붙어 있고, 그 값 자체는
-// tasteAnalysis.ts/QuizClient.tsx에서 그대로 가져온 것뿐이다). 즉 이
-// 함수들은 새로운 매핑 규칙을 만들지 않는, 형태 변환만 하는 범용
-// 코드다.
-//
-// scale 타입은 아직 "스케일 값 → signal" 규칙이 없다(GPT Spec 대기) —
-// 지금은 항상 빈 배열을 반환한다.
+// 7. RAW ANSWER — signal로 변환한 뒤에도 사용자의 실제 선택을 지우지
+// 않는다. selectedOptionIds는 선택 순서를 그대로 보존한다 —
+// PAGE 03(2개 조합)과 PAGE 05(cut 4개 각각의 선택)를 재구성하는 데
+// 그대로 쓰인다.
 // ============================================================
-export type TasteAnswerValue = string | string[] | number;
+export type TasteRawAnswer = {
+  questionId: string;
+  interactionType: TasteInteractionKind;
+  selectedOptionIds: string[];
+  timestamp?: number;
+};
 
-function resolveSelectedOptions(question: TasteQuestion, rawAnswer: TasteAnswerValue): TasteQuestionOption[] {
-  switch (question.kind) {
-    case "scene-choice":
-    case "object-choice":
-    case "situation-choice":
-    case "signature-choice": {
-      if (typeof rawAnswer !== "string") return [];
-      return question.options.filter((option) => option.id === rawAnswer);
-    }
-    case "priority-choice":
-    case "multi-select":
-    case "quick-cuts": {
-      const ids = Array.isArray(rawAnswer) ? rawAnswer : [];
-      return question.options.filter((option) => ids.includes(option.id));
-    }
-    case "scale":
-      return [];
+export type TasteRawAnswers = Record<string, TasteRawAnswer>;
+
+// ============================================================
+// 8. ANALYSIS ADAPTER — TasteRawAnswers → SignalSource[]
+// (tasteAnalysis.ts의 analyzeTasteFromSources() 입력 형식)
+//
+// 여기 있는 함수는 "이 질문에서 어떤 옵션이 선택됐는가"를 raw answer의
+// selectedOptionIds에서 그대로 찾아오는 것만 한다 — 어떤 축에 몇 점을
+// 주는지는 옵션에 이미 붙어 있는 signals 값을 그대로 옮길 뿐, 새로운
+// 매핑 규칙을 만들지 않는다.
+// ============================================================
+function collectOptionPool(question: TasteQuestion): TasteQuestionOption[] {
+  if (question.kind === "quick-cuts") {
+    return question.cuts.flatMap((cut) => [cut.left, cut.right]);
   }
+  if (question.kind === "scale") return [];
+  return question.options;
 }
 
 function optionToSignalSource(question: TasteQuestion, option: TasteQuestionOption): SignalSource | null {
@@ -325,22 +494,109 @@ function optionToSignalSource(question: TasteQuestion, option: TasteQuestionOpti
     questionId: question.id,
     answerId: option.id,
     pageSection: question.section,
-    label: `${question.id} · ${option.label}`,
+    label: `${question.id} · ${option.label.replace(/\n/g, " ")}`,
     signals: option.signals,
     semanticTags: option.semanticTags ?? [],
   };
 }
 
-export function buildSignalSourceFromAnswer(question: TasteQuestion, rawAnswer: TasteAnswerValue | undefined): SignalSource[] {
-  if (rawAnswer === undefined) return [];
-  return resolveSelectedOptions(question, rawAnswer)
+export function buildSignalSourceFromAnswer(question: TasteQuestion, rawAnswer: TasteRawAnswer | undefined): SignalSource[] {
+  if (!rawAnswer) return [];
+  const pool = collectOptionPool(question);
+  return rawAnswer.selectedOptionIds
+    .map((id) => pool.find((option) => option.id === id))
+    .filter((option): option is TasteQuestionOption => Boolean(option))
     .map((option) => optionToSignalSource(question, option))
     .filter((source): source is SignalSource => source !== null);
 }
 
-export function mapTasteAnswersToSignalSources(
-  questions: TasteQuestion[],
-  answers: Record<string, TasteAnswerValue | undefined>
-): SignalSource[] {
+export function mapTasteAnswersToSignalSources(questions: TasteQuestion[], answers: TasteRawAnswers): SignalSource[] {
   return questions.flatMap((question) => buildSignalSourceFromAnswer(question, answers[question.id]));
 }
+
+// ============================================================
+// 9. VALIDATION FIXTURES — v1 6 PAGE 전체를 대상으로 한 5개 mock
+// profile. signal은 각 문항 옵션에 이미 붙은 값을 그대로 조합했을
+// 뿐이며, 이 조합에 맞는 새로운 headline/트레잇 해석을 새로 짓지
+// 않았다 — analyzeTasteFromSources()가 계산한 결과를 그대로 dev
+// preview에서 확인한다.
+// ============================================================
+export type TasteV1MockProfile = {
+  id: string;
+  label: string;
+  description: string;
+  answers: TasteRawAnswers;
+};
+
+function rawAnswer(question: TasteQuestion, selectedOptionIds: string[]): TasteRawAnswer {
+  return { questionId: question.id, interactionType: question.kind, selectedOptionIds };
+}
+
+export const TASTE_V1_MOCK_PROFILES: TasteV1MockProfile[] = [
+  {
+    id: "quiet-curator",
+    label: "QUIET CURATOR",
+    description: "조용한 창가 + 물건과 디테일 + timeless/well-made + 신중한 결정 — 낮은 자극·높은 큐레이션/감각/애착.",
+    answers: {
+      scene: rawAnswer(TASTE_V1_PAGE_01_SCENE, ["window-afternoon"]),
+      "what-matters": rawAnswer(TASTE_V1_PAGE_02_WHAT_MATTERS, ["objects-detail"]),
+      keep: rawAnswer(TASTE_V1_PAGE_03_KEEP, ["timeless", "well-made"]),
+      instinct: rawAnswer(TASTE_V1_PAGE_04_INSTINCT, ["wait-days"]),
+      "quick-cuts": rawAnswer(TASTE_V1_PAGE_05_QUICK_CUTS, ["usual-place", "keep-long", "keep-private", "mood-matters"]),
+      "your-day": rawAnswer(TASTE_V1_PAGE_06_YOUR_DAY, ["familiar-day"]),
+    },
+  },
+  {
+    id: "urban-explorer",
+    label: "URBAN EXPLORER",
+    description: "도시 저녁 + 사람과 소리 + different/instant-pull + 즉흥 구매 — 높은 자극·사교·새로움·표현.",
+    answers: {
+      scene: rawAnswer(TASTE_V1_PAGE_01_SCENE, ["city-evening"]),
+      "what-matters": rawAnswer(TASTE_V1_PAGE_02_WHAT_MATTERS, ["people-sound"]),
+      keep: rawAnswer(TASTE_V1_PAGE_03_KEEP, ["different", "instant-pull"]),
+      instinct: rawAnswer(TASTE_V1_PAGE_04_INSTINCT, ["buy-if-lingers"]),
+      "quick-cuts": rawAnswer(TASTE_V1_PAGE_05_QUICK_CUTS, ["new-place", "swap-fun", "share-it", "overall-enough"]),
+      "your-day": rawAnswer(TASTE_V1_PAGE_06_YOUR_DAY, ["discover-day"]),
+    },
+  },
+  {
+    id: "practical-editor",
+    label: "PRACTICAL EDITOR",
+    description: "조용한 창가 + 구조와 쓰임 + functional/timeless + 예산 기준 — 높은 큐레이션, 낮은 감각/표현(quiet-curator와 달리 감각 낮음).",
+    answers: {
+      scene: rawAnswer(TASTE_V1_PAGE_01_SCENE, ["window-afternoon"]),
+      "what-matters": rawAnswer(TASTE_V1_PAGE_02_WHAT_MATTERS, ["structure-use"]),
+      keep: rawAnswer(TASTE_V1_PAGE_03_KEEP, ["functional", "timeless"]),
+      instinct: rawAnswer(TASTE_V1_PAGE_04_INSTINCT, ["budget-limit"]),
+      "quick-cuts": rawAnswer(TASTE_V1_PAGE_05_QUICK_CUTS, ["usual-place", "keep-long", "keep-private", "overall-enough"]),
+      "your-day": rawAnswer(TASTE_V1_PAGE_06_YOUR_DAY, ["familiar-day"]),
+    },
+  },
+  {
+    id: "quiet-explorer",
+    label: "QUIET EXPLORER",
+    description: "조용한 창가 + 빛과 분위기 + different/instant-pull + 비교 탐색 — 낮은 자극·사교이면서 새로움은 높음(같은 축이 아니라 서로 다른 축의 조합).",
+    answers: {
+      scene: rawAnswer(TASTE_V1_PAGE_01_SCENE, ["window-afternoon"]),
+      "what-matters": rawAnswer(TASTE_V1_PAGE_02_WHAT_MATTERS, ["light-mood"]),
+      keep: rawAnswer(TASTE_V1_PAGE_03_KEEP, ["different", "instant-pull"]),
+      instinct: rawAnswer(TASTE_V1_PAGE_04_INSTINCT, ["compare"]),
+      "quick-cuts": rawAnswer(TASTE_V1_PAGE_05_QUICK_CUTS, ["new-place", "swap-fun", "keep-private", "mood-matters"]),
+      "your-day": rawAnswer(TASTE_V1_PAGE_06_YOUR_DAY, ["discover-day"]),
+    },
+  },
+  {
+    id: "contradiction",
+    label: "CONTRADICTION",
+    description:
+      "조용한 창가(낮은 자극/사교) + 사람과 소리(높은 자극/사교) — stimulus·socialDensity·pace 축에서 문항 간 신호가 정면으로 엇갈리도록 의도적으로 구성.",
+    answers: {
+      scene: rawAnswer(TASTE_V1_PAGE_01_SCENE, ["window-afternoon"]),
+      "what-matters": rawAnswer(TASTE_V1_PAGE_02_WHAT_MATTERS, ["people-sound"]),
+      keep: rawAnswer(TASTE_V1_PAGE_03_KEEP, ["different", "instant-pull"]),
+      instinct: rawAnswer(TASTE_V1_PAGE_04_INSTINCT, ["buy-if-lingers"]),
+      "quick-cuts": rawAnswer(TASTE_V1_PAGE_05_QUICK_CUTS, ["new-place", "swap-fun", "share-it", "overall-enough"]),
+      "your-day": rawAnswer(TASTE_V1_PAGE_06_YOUR_DAY, ["discover-day"]),
+    },
+  },
+];

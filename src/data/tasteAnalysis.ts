@@ -20,9 +20,20 @@
 // ============================================================
 // 1. SIGNAL 축
 // ============================================================
-export type TasteSignalKey = "stimulus" | "socialDensity" | "pace" | "curation" | "sensory" | "novelty";
+// v1(2026-08) TASTE Questionnaire 실제 구현에 맞춰 expression/attachment
+// 2개 축을 추가한다(GPT 확정 Spec). 기존 6축은 그대로 유지.
+export type TasteSignalKey = "stimulus" | "socialDensity" | "pace" | "curation" | "sensory" | "novelty" | "expression" | "attachment";
 
-export const TASTE_SIGNAL_KEYS: TasteSignalKey[] = ["stimulus", "socialDensity", "pace", "curation", "sensory", "novelty"];
+export const TASTE_SIGNAL_KEYS: TasteSignalKey[] = [
+  "stimulus",
+  "socialDensity",
+  "pace",
+  "curation",
+  "sensory",
+  "novelty",
+  "expression",
+  "attachment",
+];
 
 export const TASTE_SIGNAL_LABELS: Record<TasteSignalKey, string> = {
   stimulus: "STIMULUS",
@@ -31,6 +42,8 @@ export const TASTE_SIGNAL_LABELS: Record<TasteSignalKey, string> = {
   curation: "CURATION",
   sensory: "SENSORY",
   novelty: "NOVELTY",
+  expression: "EXPRESSION",
+  attachment: "ATTACHMENT",
 };
 
 // 문항 하나가 한 축에 주는 개별 기여값. ±100 전체를 한 문항이 주지
@@ -171,7 +184,9 @@ export type Contradiction = {
   evidence: string[];
 };
 
-const CONTRADICTION_COPY: Record<TasteSignalKey, { title: string; interpretation: string; headline: string; pullQuote: string }> = {
+// expression/attachment 항목은 아직 GPT 확정 카피가 없어 의도적으로
+// 비워둔다(Partial) — detectContradictions()가 이 두 축은 건너뛴다.
+const CONTRADICTION_COPY: Partial<Record<TasteSignalKey, { title: string; interpretation: string; headline: string; pullQuote: string }>> = {
   stimulus: {
     title: "조용함과 자극 사이",
     interpretation:
@@ -225,7 +240,12 @@ export function detectContradictions(aggregate: SignalAggregate): Contradiction[
     const hasPositive = values.some((v) => v > 0);
     const hasNegative = values.some((v) => v < 0);
     if (!hasPositive || !hasNegative) continue;
+    // expression/attachment(v1 신규 축)는 아직 GPT가 준 contradiction
+    // 해석 카피가 없다 — 새 문구를 임의로 짓지 않고, signals/confidence
+    // 원자료에는 반영하되 이 축에 대한 named contradiction 카드는
+    // 만들지 않는다(다음 라운드에서 GPT Narrative Spec으로 채운다).
     const copy = CONTRADICTION_COPY[key];
+    if (!copy) continue;
     contradictions.push({
       id: `contradiction-${key}`,
       axis: key,
@@ -449,14 +469,16 @@ function buildNarrative(
   const secondaryTrait = coreTraits[1];
   const topContradiction = contradictions[0];
 
+  // topContradiction은 detectContradictions()가 이미 CONTRADICTION_COPY가
+  // 있는 축만 만들어내므로 여기서는 항상 존재한다.
   const headline = topContradiction
-    ? CONTRADICTION_COPY[topContradiction.axis].headline
+    ? (CONTRADICTION_COPY[topContradiction.axis]?.headline ?? DEFAULT_HEADLINE)
     : topTrait
       ? (TRAIT_COPY[topTrait.id]?.headline ?? DEFAULT_HEADLINE)
       : DEFAULT_HEADLINE;
 
   const pullQuote = topContradiction
-    ? CONTRADICTION_COPY[topContradiction.axis].pullQuote
+    ? (CONTRADICTION_COPY[topContradiction.axis]?.pullQuote ?? DEFAULT_PULL_QUOTE)
     : topTrait
       ? (TRAIT_COPY[topTrait.id]?.pullQuote ?? DEFAULT_PULL_QUOTE)
       : DEFAULT_PULL_QUOTE;
@@ -548,11 +570,14 @@ export type TasteAnswers = {
   q2?: string; // Q2_SIGNAL_SOURCES의 key ("camera" | "speaker" | "notebook" | "object")
 };
 
-export function analyzeTaste(answers: TasteAnswers): TasteAnalysisResult {
-  const sources: SignalSource[] = [];
-  if (answers.q1 && Q1_SIGNAL_SOURCES[answers.q1]) sources.push(Q1_SIGNAL_SOURCES[answers.q1]);
-  if (answers.q2 && Q2_SIGNAL_SOURCES[answers.q2]) sources.push(Q2_SIGNAL_SOURCES[answers.q2]);
-
+// analyzeTaste()의 핵심 로직을 SignalSource[] 입력 기준으로 분리한
+// 버전 — TASTE QUESTIONNAIRE v1(6 PAGE 실제 문항)처럼 Q1/Q2 2개짜리
+// TasteAnswers shape에 갇히지 않는 입력을 분석할 때 이 함수를 직접
+// 쓴다(src/data/tasteQuestionnaire.ts의 mapTasteAnswersToSignalSources()
+// 출력을 그대로 받는다). analyzeTaste(answers)는 이 함수의 얇은
+// wrapper로 남겨 기존 dev preview(/dev/personal-magazine-analysis)와
+// 3개 PROTOTYPE mock profile을 그대로 유지한다.
+export function analyzeTasteFromSources(sources: SignalSource[]): TasteAnalysisResult {
   const aggregate = aggregateSignals(sources);
   const { coreTraits, secondaryTraits } = deriveTraits(aggregate);
   const contradictions = detectContradictions(aggregate);
@@ -572,6 +597,13 @@ export function analyzeTaste(answers: TasteAnswers): TasteAnalysisResult {
     pagePriority,
     visualDirection,
   };
+}
+
+export function analyzeTaste(answers: TasteAnswers): TasteAnalysisResult {
+  const sources: SignalSource[] = [];
+  if (answers.q1 && Q1_SIGNAL_SOURCES[answers.q1]) sources.push(Q1_SIGNAL_SOURCES[answers.q1]);
+  if (answers.q2 && Q2_SIGNAL_SOURCES[answers.q2]) sources.push(Q2_SIGNAL_SOURCES[answers.q2]);
+  return analyzeTasteFromSources(sources);
 }
 
 // ============================================================

@@ -6,15 +6,23 @@ import {
   TASTE_SIGNAL_KEYS,
   TASTE_SIGNAL_LABELS,
   analyzeTaste,
-  type TasteMockProfile,
+  analyzeTasteFromSources,
+  type TasteAnalysisResult,
 } from "../../../src/data/tasteAnalysis";
+import { TASTE_QUESTIONS_V1, TASTE_V1_MOCK_PROFILES, mapTasteAnswersToSignalSources } from "../../../src/data/tasteQuestionnaire";
 
 // TASTE ANALYSIS PREVIEW(2026-08) — dev-only 내부 확인 화면. 디자인을
-// 고도화하지 않는다 — Q1/Q2 mock answers를 analyzeTaste()에 넣었을 때
-// SIGNALS/CONFIDENCE/CORE TRAITS/CONTRADICTIONS/EDITORIAL KEYWORDS/
-// NARRATIVE/PAGE PRIORITY/VISUAL DIRECTION이 어떻게 나오는지 개발자가
-// 그대로 확인할 수 있는 debug 화면이다. Quiz UI(Q1/Q2)는 이 화면과
+// 고도화하지 않는다 — mock answers를 analyzeTaste()/analyzeTasteFromSources()에
+// 넣었을 때 SIGNALS/CONFIDENCE/CORE TRAITS/CONTRADICTIONS/EDITORIAL
+// KEYWORDS/NARRATIVE/PAGE PRIORITY/VISUAL DIRECTION이 어떻게 나오는지
+// 개발자가 그대로 확인할 수 있는 debug 화면이다. Quiz UI는 이 화면과
 // 무관하게 그대로 둔다.
+//
+// 두 세트를 탭으로 나눠 보여준다:
+//   - PROTOTYPE(Q1/Q2): 이전 라운드부터 있던 3개 mock profile.
+//   - V1(6 PAGE): TASTE QUESTIONNAIRE v1 실제 구현 이후 추가된 5개
+//     mock profile(TASTE_V1_MOCK_PROFILES) — analyzeTasteFromSources()
+//     경로를 그대로 검증한다.
 
 const PAGE_SECTION_LABELS: Record<string, string> = {
   place: "PLACE",
@@ -46,17 +54,23 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function ProfileView({ profile }: { profile: TasteMockProfile }) {
-  const result = analyzeTaste(profile.answers);
-
+function ProfileView({
+  label,
+  description,
+  answersLine,
+  result,
+}: {
+  label: string;
+  description: string;
+  answersLine: string;
+  result: TasteAnalysisResult;
+}) {
   return (
     <div className="pb-16">
       <div className="px-5 pt-6">
-        <p className="font-serif text-xs font-bold uppercase tracking-[0.14em] text-text-muted">{profile.label}</p>
-        <p className="mt-1 text-sm font-bold text-text-secondary">{profile.description}</p>
-        <p className="mt-1 text-[11px] font-bold text-text-muted">
-          answers — Q1: {profile.answers.q1} · Q2: {profile.answers.q2}
-        </p>
+        <p className="font-serif text-xs font-bold uppercase tracking-[0.14em] text-text-muted">{label}</p>
+        <p className="mt-1 text-sm font-bold text-text-secondary">{description}</p>
+        <p className="mt-1 text-[11px] font-bold text-text-muted">answers — {answersLine}</p>
       </div>
 
       <Section title="Signals">
@@ -164,9 +178,18 @@ function ProfileView({ profile }: { profile: TasteMockProfile }) {
   );
 }
 
+type Mode = "prototype" | "v1";
+
 export function AnalysisPreviewClient() {
-  const [activeId, setActiveId] = useState(TASTE_MOCK_PROFILES[0].id);
-  const activeProfile = TASTE_MOCK_PROFILES.find((p) => p.id === activeId) ?? TASTE_MOCK_PROFILES[0];
+  const [mode, setMode] = useState<Mode>("v1");
+  const [prototypeId, setPrototypeId] = useState(TASTE_MOCK_PROFILES[0].id);
+  const [v1Id, setV1Id] = useState(TASTE_V1_MOCK_PROFILES[0].id);
+
+  const activePrototype = TASTE_MOCK_PROFILES.find((p) => p.id === prototypeId) ?? TASTE_MOCK_PROFILES[0];
+  const activeV1 = TASTE_V1_MOCK_PROFILES.find((p) => p.id === v1Id) ?? TASTE_V1_MOCK_PROFILES[0];
+
+  const prototypeResult = analyzeTaste(activePrototype.answers);
+  const v1Result = analyzeTasteFromSources(mapTasteAnswersToSignalSources(TASTE_QUESTIONS_V1, activeV1.answers));
 
   return (
     <div className="min-h-dvh bg-background text-text-primary">
@@ -174,25 +197,77 @@ export function AnalysisPreviewClient() {
         DEV PROTOTYPE — TASTE ANALYSIS PREVIEW (구조 검증용 · 디자인 미고도화)
       </div>
 
-      <div className="sticky top-[33px] z-40 flex gap-2 border-b border-border-strong bg-background px-5 py-3">
-        {TASTE_MOCK_PROFILES.map((profile) => (
+      <div className="sticky top-[33px] z-40 flex gap-2 border-b border-dashed border-border-strong bg-background px-5 py-2">
+        {(["v1", "prototype"] as Mode[]).map((m) => (
           <button
-            key={profile.id}
+            key={m}
             type="button"
-            onClick={() => setActiveId(profile.id)}
+            onClick={() => setMode(m)}
             className={
-              activeId === profile.id
-                ? "border border-text-primary bg-text-primary px-3 py-2 text-[11px] font-bold uppercase tracking-[0.04em] text-background"
-                : "border border-border-strong px-3 py-2 text-[11px] font-bold uppercase tracking-[0.04em] text-text-secondary"
+              mode === m
+                ? "border border-text-primary bg-text-primary px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.06em] text-background"
+                : "border border-border-strong px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted"
             }
           >
-            {profile.id === "quiet-curator" ? "PROFILE A" : profile.id === "urban-explorer" ? "PROFILE B" : "PROFILE C"}
+            {m === "v1" ? "V1 · 6 PAGE (mapTasteAnswersToSignalSources)" : "PROTOTYPE · Q1/Q2"}
           </button>
         ))}
       </div>
 
+      {mode === "v1" ? (
+        <div className="sticky top-[65px] z-40 flex flex-wrap gap-2 border-b border-border-strong bg-background px-5 py-3">
+          {TASTE_V1_MOCK_PROFILES.map((profile) => (
+            <button
+              key={profile.id}
+              type="button"
+              onClick={() => setV1Id(profile.id)}
+              className={
+                v1Id === profile.id
+                  ? "border border-text-primary bg-text-primary px-3 py-2 text-[11px] font-bold uppercase tracking-[0.04em] text-background"
+                  : "border border-border-strong px-3 py-2 text-[11px] font-bold uppercase tracking-[0.04em] text-text-secondary"
+              }
+            >
+              {profile.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="sticky top-[65px] z-40 flex gap-2 border-b border-border-strong bg-background px-5 py-3">
+          {TASTE_MOCK_PROFILES.map((profile) => (
+            <button
+              key={profile.id}
+              type="button"
+              onClick={() => setPrototypeId(profile.id)}
+              className={
+                prototypeId === profile.id
+                  ? "border border-text-primary bg-text-primary px-3 py-2 text-[11px] font-bold uppercase tracking-[0.04em] text-background"
+                  : "border border-border-strong px-3 py-2 text-[11px] font-bold uppercase tracking-[0.04em] text-text-secondary"
+              }
+            >
+              {profile.id === "quiet-curator" ? "PROFILE A" : profile.id === "urban-explorer" ? "PROFILE B" : "PROFILE C"}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="mx-auto max-w-lg">
-        <ProfileView profile={activeProfile} />
+        {mode === "v1" ? (
+          <ProfileView
+            label={activeV1.label}
+            description={activeV1.description}
+            answersLine={Object.values(activeV1.answers)
+              .map((a) => `${a.questionId}: ${a.selectedOptionIds.join("+")}`)
+              .join(" · ")}
+            result={v1Result}
+          />
+        ) : (
+          <ProfileView
+            label={activePrototype.label}
+            description={activePrototype.description}
+            answersLine={`Q1: ${activePrototype.answers.q1} · Q2: ${activePrototype.answers.q2}`}
+            result={prototypeResult}
+          />
+        )}
       </div>
     </div>
   );
