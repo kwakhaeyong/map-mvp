@@ -1,26 +1,31 @@
-// TASTE v3 — RESULT EDITORIAL REWRITE(PR #261 후속 2차, 2026-08).
+// TASTE v3 — RESULT EDITORIAL DEPTH & VISUAL NARRATIVE PASS(PR #261 후속
+// 3차, 2026-08).
 //
-// §0 FREEZE: Questionnaire(15문항)·6축 evidence extraction·Relationship
-// R1~R8·Tension T1~T5·scoring logic·분석 깊이는 전혀 손대지 않았다.
-// tasteQuestionnaireV3.ts/tasteEvidenceV3.ts는 이번 라운드에서 아예
-// 수정하지 않았고, tasteRelationshipsV3.ts/tasteTensionsV3.ts는 "고르다"
-// 동사 2곳만 자연스러운 표현으로 바꿨을 뿐 축/방향/매칭 조건은 그대로다.
+// §0 FREEZE(이번 라운드부터 확정 — 더 이상 수정 금지): Questionnaire
+// (15문항)·6축 evidence extraction·Relationship R1~R8·Tension T1~T5·
+// scoring logic·분석 깊이. `tasteQuestionnaireV3.ts`/`tasteEvidenceV3.ts`
+// /`tasteRelationshipsV3.ts`/`tasteTensionsV3.ts`는 이번 라운드에서 한
+// 글자도 건드리지 않았다(2차 라운드에서 "고르다" 동사 3곳을 고친 것을
+// 마지막으로, 이제 이 4개 파일은 완전히 얼렸다). 이번 라운드에서 필요한
+// editorial 변환은 전부 이 파일(presentation layer)에서만 처리한다.
 //
-// 이번 라운드가 바꾼 것은 오직 "그 계산 결과를 사용자에게 어떤 말로
-// 전달할지"뿐이다(DEEP ANALYSIS → SELECTIVE EDITORIAL OUTPUT). 이전
-// (압축) 라운드는 글자 수를 줄이는 과정에서 "실제로 OO을 고른 대목",
-// "열다섯 개의 답변 중에서", "SPACE 축" 같은 분석 리포트 표현이 오히려
-// 늘어났다 — 이번 라운드는 그 표현을 전부 걷어내고, 생활 장면을 오래
-// 관찰한 매거진 에디터의 문장으로 다시 썼다. 사용자에게 "문항/질문/
-// 답변/선택/점수/분석/축/evidence/relationship/tension" 같은 단어나
-// 그 개념을 노출하지 않는다 — 계산에는 그대로 쓰되, 문장에는 등장하지
-// 않는다.
+// 이번 라운드가 다루는 것은 "말투"(2차 라운드에서 이미 끝남)가 아니라
+// "깊이"다: (1) THE INTERESTING PART가 "A 성향 + B 성향" 나열에서 끝나지
+// 않고 "그래서 실제로는 이렇게 삽니다"까지 내려가도록 Relationship/
+// Tension id별 PRACTICAL_CONSEQUENCE(생활 결론 한 줄)를 추가했고,
+// (2) PLACE/OBJECT 이미지가 축 기반 고정 문장이 아니라 실제 이미지
+// asset의 scene 메타데이터(magazineVisualAssets.ts)에서 첫 문장을
+// 만들도록 연결했고, (3) CORE TASTE(왜 끌리는가)와 HOW IT SHOWS UP
+// (실제로 어떻게 나타나는가)이 서로 다른 정보만 말하도록 정리했다.
+// 글자 수는 목표하지 않는다 — 자연스럽게 짧아졌다면 그 이유가 "분석
+// 메타 언어 삭제"인지 "의미 있는 해석까지 삭제"인지가 기준이다.
 
 import { TASTE_V3_AXIS_KEYS, type TasteV3AxisKey } from "./tasteQuestionnaireV3";
 import { aggregateV3Axes, extractV3Evidence, type V3AxisAggregate, type V3EvidenceItem } from "./tasteEvidenceV3";
 import { matchAllV3Relationships, RELATIONSHIP_DEFS_V3, type V3RelationshipDef, type V3RelationshipMatch } from "./tasteRelationshipsV3";
 import { matchAllV3Tensions, type V3TensionMatch } from "./tasteTensionsV3";
 import type { TasteV3RawAnswers } from "./tasteQuestionnaireV3";
+import { magazineVisualAssets, type MagazineVisualAsset } from "./magazineVisualAssets";
 
 // ============================================================
 // SECTION SHAPE — 5-section editorial structure(Cover는 별도, Result는
@@ -131,7 +136,7 @@ const AXIS_MEANING: Record<TasteV3AxisKey, { positive: string; negative: string 
   },
 };
 
-// HOW IT SHOWS UP 전용 — 이 마음이 실제로 어떤 구체적인 행동/선택
+// HOW IT SHOWS UP 전용 — 이 마음이 실제로 어떤 구체적인 행동
 // (쇼핑·여행·만남·하루 속도)으로 나타나는지 보여주는 생활 장면 한 줄.
 // AXIS_INTERPRETATION/AXIS_MEANING과 다른 새 정보(§6 반복 금지)만 담는다.
 const BEHAVIOR_SCENE: Record<TasteV3AxisKey, { positive: string; negative: string }> = {
@@ -166,19 +171,6 @@ const SCENE_LINK_SINGLE = [
   "망설임 없이 이쪽으로 마음이 갑니다.",
   "다른 설명이 필요 없을 만큼 분명합니다.",
 ];
-const WHY_IT_MATTERS = [
-  "겉으로는 사소해 보여도, 이 마음은 매번 비슷하게 움직입니다.",
-  "상황이 달라져도 결국 같은 쪽으로 돌아옵니다.",
-  "다른 조건이 아무리 좋아도, 이 부분이 어긋나면 마음이 잘 가지 않습니다.",
-  "설명을 듣기 전부터 몸이 먼저 그쪽으로 움직입니다.",
-];
-const CONTRAST_LINE = [
-  "누군가는 이 차이를 눈치채지 못하고 지나가지만, 당신에게는 분명한 경계입니다.",
-  "비슷해 보이는 두 갈래 앞에서, 당신은 언제나 같은 쪽으로 기울었습니다.",
-  "다른 사람이라면 크게 신경 쓰지 않았을 지점에서, 당신은 매번 갈렸습니다.",
-  "사소한 차이처럼 보여도, 이 부분을 빼면 나머지 설명이 잘 되지 않습니다.",
-];
-
 function pickByIndex<T>(pool: T[], seed: number): T {
   return pool[((seed % pool.length) + pool.length) % pool.length];
 }
@@ -200,8 +192,20 @@ function gwaWa(text: string): string {
 function iRaneun(text: string): string {
   return hasBatchim(text) ? "이라는" : "라는";
 }
+function iGa(text: string): string {
+  return hasBatchim(text) ? "이" : "가";
+}
 function stripTrailingPunct(text: string): string {
   return text.trim().replace(/[.!?]+$/, "");
+}
+
+// PLACE/OBJECT 이미지가 실제로 무엇을 담고 있는지(magazineVisualAssets
+// 의 scene 메타데이터)를 가져와 첫 문장을 만든다 — 축 기반 고정 문장이
+// 아니라 이미지 자체에서 나온 시각적 단서 한 줄이다. asset이 나중에
+// variant별로 늘어나도 이 함수는 그대로 동작한다.
+function buildVisualCue(scene: NonNullable<MagazineVisualAsset["scene"]>): string {
+  const lastDetail = scene.details[scene.details.length - 1] ?? "";
+  return `${scene.light}${iGa(scene.light)} ${scene.setting}에 내려앉고, ${scene.details.join(", ")}${iGa(lastDetail)} 그대로 놓여 있습니다.`;
 }
 
 function tieBreakHash(item: V3EvidenceItem, axis: TasteV3AxisKey): number {
@@ -240,51 +244,61 @@ function sceneList(phrases: string[]): string {
 
 // ============================================================
 // CORE TASTE / HOW IT SHOWS UP — 가장 강한 축(들)을 하나의 관찰
-// 문단으로 엮는다. 첫 문장은 항상 구체적인 생활 장면(이미지가 있다면
-// 그 이미지 안의 장면과 같은 결)으로 시작한다.
+// 문단으로 엮는다.
+//
+// 구조(3차 라운드부터): visual cue(이미지 asset의 scene 메타데이터에서
+// 온 한 문장) → personal observation(그 사람 자신의 evidence로 만든
+// 장면) → deeper interpretation. 이미지를 소설처럼 묘사하지 않고 딱
+// 한 문장만 쓴 뒤 바로 그 사람 이야기로 넘어간다(§5).
+//
+// role="why"(CORE TASTE)는 "왜 끌리는가"에 집중해 AXIS_INTERPRETATION
+// +AXIS_MEANING만 쓰고, role="behavior"(HOW IT SHOWS UP)는 "실제로
+// 어떻게 나타나는가"에 집중해 BEHAVIOR_SCENE만 쓴다 — 서로 다른 정보만
+// 담아 반복을 피한다(§6). WHY_IT_MATTERS/CONTRAST_LINE 같은 범용
+// 클로저는 축 섹션에서 제거했다(모든 사용자에게 같은 문장이 반복되는
+// "generic phrase collision" 위험이 있었다) — SCENE_LINK만 순수한
+// 연결어로 남긴다.
 // ============================================================
 function buildAxisSection(
   axis: TasteV3AxisKey,
   headline: string,
-  leadIn: string | null,
+  visualAsset: MagazineVisualAsset,
   aggregate: V3AxisAggregate,
   usage: UsageTracker,
   seed: number,
-  // CORE TASTE는 "왜 끌리는지"(meaning)를 먼저, HOW IT SHOWS UP은
-  // "실제로 어떻게 나타나는지"(behavior)를 먼저 말해 두 섹션의
-  // 무게중심을 다르게 둔다 — 두 정보 모두 담되 순서로 역할을 가른다.
-  // 같은 축이라도 두 섹션(axis1≠axis2)이 서로 다른 축을 다뤄 반복되지
-  // 않는다(§6).
-  role: "why" | "behavior" = "why"
+  role: "why" | "behavior"
 ): { headline: string; body: string; axisLabel: string } {
   const axisLabel = AXIS_LABEL_KO[axis];
   const sorted = strongestEvidenceForAxis(aggregate, axis);
   const anchor = sorted[0];
+  const visualCue = visualAsset.scene ? buildVisualCue(visualAsset.scene) : "";
   if (!anchor) {
-    return { headline, body: "여기서는 어느 한쪽으로 뚜렷하게 기울지 않고 고르게 나뉩니다.", axisLabel };
+    return { headline, body: [visualCue, "여기서는 어느 한쪽으로 뚜렷하게 기울지 않고 고르게 나뉩니다."].filter(Boolean).join(" "), axisLabel };
   }
   usage.use(anchor.questionId);
   const supporting = sorted.find((e) => e.questionId !== anchor.questionId);
   if (supporting) usage.use(supporting.questionId);
 
-  const scene = supporting ? sceneList([anchor.optionLabel, supporting.optionLabel]) : sceneList([anchor.optionLabel]);
-  const link = supporting ? pickByIndex(SCENE_LINK, seed) : pickByIndex(SCENE_LINK_SINGLE, seed);
+  const personalScene = supporting ? sceneList([anchor.optionLabel, supporting.optionLabel]) : sceneList([anchor.optionLabel]);
+  const bridge = supporting ? pickByIndex(SCENE_LINK, seed) : pickByIndex(SCENE_LINK_SINGLE, seed);
 
   const direction = aggregate[axis].score >= 0 ? "positive" : "negative";
-  const interpretation = AXIS_INTERPRETATION[axis][direction];
-  const meaning = AXIS_MEANING[axis][direction];
-  const behavior = BEHAVIOR_SCENE[axis][direction];
-  const [first, second] = role === "why" ? [meaning, behavior] : [behavior, meaning];
-  const why = pickByIndex(WHY_IT_MATTERS, seed + anchor.qNumber);
-  const contrast = pickByIndex(CONTRAST_LINE, seed + anchor.qNumber + 1);
+  const content =
+    role === "why"
+      ? [AXIS_INTERPRETATION[axis][direction], AXIS_MEANING[axis][direction]]
+      : [BEHAVIOR_SCENE[axis][direction]];
 
-  const body = [leadIn, scene, link, interpretation, first, second, why, contrast].filter(Boolean).join(" ");
+  const body = [visualCue, personalScene, bridge, ...content].filter(Boolean).join(" ");
   return { headline, body, axisLabel };
 }
 
 // ============================================================
-// OPENING — "계속 읽고 싶게 만드는 첫 관찰". 전체를 요약하지 않고,
-// 가장 특징적인 장면 하나(또는 둘)를 꺼내 짧은 hook으로 닫는다.
+// OPENING — 결과 전체를 요약하지 않고, 가장 특징적인 장면 하나(또는
+// 둘)와 hook 한 줄로 끝낸다. 3차 라운드에서 훅 뒤에 붙였던 "예고" 한
+// 줄(OPENING_ECHO)은 뺐다 — 특정 개인의 정보를 담지 않는 범용 문장이라
+// Opening/Core/Interesting 사이 통찰 반복 금지 원칙에 어긋났다. 첫
+// 세 문장(headline 2줄 + scene 한 줄) 안에 이 사람만의 특징 하나가
+// 이미 드러나야 한다.
 // ============================================================
 const OPENING_HOOK_PAIR = [
   "겉으로 다른 두 장면 같지만, 하루 안에서는 자연스럽게 이어집니다.",
@@ -296,12 +310,6 @@ const OPENING_HOOK_SINGLE = [
   "이 장면 하나에도 이미 많은 것이 담겨 있습니다.",
   "화려하지 않아도, 이쪽 하나는 분명합니다.",
   "복잡한 설명이 필요 없을 만큼, 방향은 뚜렷합니다.",
-];
-// 훅 다음, 이 지면을 계속 읽고 싶게 만드는 짧은 예고 한 줄.
-const OPENING_ECHO = [
-  "지금부터 이 장면이 어디까지 이어지는지 하나씩 따라가 봅니다.",
-  "이 페이지는 그 장면에서 시작해, 조금씩 더 안쪽으로 들어갑니다.",
-  "여기서부터가 진짜 당신에 가까운 이야기입니다.",
 ];
 
 function buildOpening(
@@ -318,7 +326,7 @@ function buildOpening(
     const scene = sceneList(ev.map((e) => e.optionLabel));
     return {
       headline: t.headline,
-      summary: `${scene} ${pickByIndex(OPENING_HOOK_PAIR, ev[0]?.qNumber ?? 0)} ${pickByIndex(OPENING_ECHO, ev[0]?.qNumber ?? 0)}`,
+      summary: `${scene} ${pickByIndex(OPENING_HOOK_PAIR, ev[0]?.qNumber ?? 0)}`,
       source: `tension:${t.id}`,
     };
   }
@@ -329,7 +337,7 @@ function buildOpening(
     const scene = sceneList(ev.map((e) => e.optionLabel));
     return {
       headline: r.def.headline,
-      summary: `${scene} ${pickByIndex(OPENING_HOOK_PAIR, ev[0]?.qNumber ?? 1)} ${pickByIndex(OPENING_ECHO, ev[0]?.qNumber ?? 1)}`,
+      summary: `${scene} ${pickByIndex(OPENING_HOOK_PAIR, ev[0]?.qNumber ?? 1)}`,
       source: `relationship:${r.def.id}`,
     };
   }
@@ -338,36 +346,59 @@ function buildOpening(
   if (top) usage.use(top.questionId);
   return {
     headline: "여러 장면이 아니라,\n하나의 시선으로 이어지는 사람.",
-    summary: top
-      ? `${sceneList([top.optionLabel])} ${pickByIndex(OPENING_HOOK_SINGLE, top.qNumber)} ${pickByIndex(OPENING_ECHO, top.qNumber)}`
-      : "여러 장면이 하나의 시선으로 이어집니다.",
+    summary: top ? `${sceneList([top.optionLabel])} ${pickByIndex(OPENING_HOOK_SINGLE, top.qNumber)}` : "여러 장면이 하나의 시선으로 이어집니다.",
     source: `axis-fallback:${topAxis}`,
   };
 }
 
 // ============================================================
 // THE INTERESTING PART — strongest tension > relationship > axis-pair
-// fallback. 이 사람 안의 뜻밖의 조합을 "재미있는 건" 식으로 풀어낸다.
-// R1~R8/T1~T5의 headline/interestingPartBody(이미 편집된 문장)를 그대로
-// 쓰고, 짧은 마무리 한 줄만 얹는다 — evidence를 추가로 인용하며
-// 길이를 늘리지 않는다(§ 반복 제거·불필요한 padding 금지).
+// fallback. 결과에서 가장 personal해야 하는 섹션이라, "A 성향 + B
+// 성향"을 나열하는 R1~R8/T1~T5의 interestingPartBody(frozen, 그대로
+// 사용)에서 멈추지 않고 "그래서 실제로는 이렇게 삽니다"까지 한 겹
+// 더 내려간다. 그 한 겹은 이전 라운드처럼 아무 조합에나 붙는 범용
+// 클로저(INTERESTING_CLOSERS/LIFE_ECHO, 3차 라운드에서 제거)가 아니라
+// Relationship/Tension id마다 다른 PRACTICAL_CONSEQUENCE 한 줄이다 —
+// 그래서 서로 다른 조합을 가진 profile끼리 이 섹션만 떼어 읽어도
+// 구별된다.
 // ============================================================
 const FALLBACK_INTERESTING_HEADLINES = [
   "가장 강하게 남은 건,\n어느 한쪽이 아니라 그 사이였습니다.",
   "정답을 정해두지 않아도,\n방향은 이미 뚜렷했습니다.",
 ];
-const INTERESTING_CLOSERS = [
-  "서로 다른 두 마음이 실제로는 아무 마찰 없이 공존합니다. 둘 중 하나를 지우면 오히려 설명이 이상해집니다.",
-  "겉으로 드러나는 모습만으로는 짐작하기 어려운 조합입니다. 가까이서 지켜본 사람만 알아챌 만한 부분입니다.",
-  "함께 있는 채로 두는 편이 더 정확합니다. 어긋나 보여도 실은 두 겹으로 겹친 하나의 모습입니다.",
-];
-// 이 모순이 실제로 언제 드러나는지 짚어주는 짧은 생활 장면 한 줄 —
-// 가까운 사람 눈에는 보이지만 본인에게는 당연해서 잘 안 보이는 지점.
-const INTERESTING_LIFE_ECHO = [
-  "가까운 사람들은 이런 순간을 이미 여러 번 봤을 겁니다 — 정작 본인에게는 너무 당연해서 잘 안 보일 뿐입니다.",
-  "처음 만난 사람은 둘 중 한쪽만 보고 당신을 짐작하기 쉽지만, 오래 지켜본 사람은 둘 다를 알고 있습니다.",
-  "이 부분을 미리 알고 나면, 다음번엔 당신의 다른 결정도 조금 더 이해가 될 겁니다.",
-];
+
+// R1~R8(R5는 2개 표현형 포함, 9개)·T1~T5, 총 14개 def.id 전부를
+// 키로 가진다 — "그래서 실제로는" 한 줄. interestingPartBody(무엇이
+// 함께 있는지)에서 한 겹 더 내려가 그 조합이 어떤 구체적 행동으로
+// 이어지는지 보여준다. tasteRelationshipsV3.ts/tasteTensionsV3.ts는
+// 건드리지 않고, 이 표현은 전부 이 파일(presentation layer)에만 있다.
+const PRACTICAL_CONSEQUENCE: Record<string, string> = {
+  "r1-space-exploration":
+    "그래서 여행을 가더라도 숙소만큼은 오래 걸어도 되는 익숙한 동네에 잡아두고, 낮 동안은 마음껏 낯선 골목으로 나섭니다.",
+  "r2-sensory-expression":
+    "그래서 마음에 드는 것을 발견해도 곧바로 남에게 보여주기보다, 혼자 한 번 더 들여다본 뒤에야 꺼내 놓습니다.",
+  "r3-rhythm-exploration":
+    "그래서 새로 생긴 곳은 그 주에 바로 가보지만, 정말 마음에 든 물건 하나는 장바구니에 넣어두고 며칠을 더 들여다봅니다.",
+  "r4-relation-expression":
+    "그래서 좋은 곳을 발견하면 가까운 한둘에게는 바로 알리지만, 그 밖의 자리에 남기는 일은 거의 없습니다.",
+  "r5-textural-first":
+    "그래서 새로운 공간에 들어서면 가구 배치보다 빛이 스민 자리, 벽의 질감 같은 흔적부터 먼저 눈에 담깁니다.",
+  "r5-structural-first": "그래서 새로운 공간에 들어서면 분위기보다 동선과 비율이 맞는지가 먼저 눈에 들어옵니다.",
+  "r6-rhythm-relation":
+    "그래서 약속을 잡을 때도 누구를 만나는지만큼이나, 그날 얼마나 여유 있게 움직일 수 있는지를 함께 헤아립니다.",
+  "r7-exploration-expression":
+    "그래서 아직 사람들이 잘 모르는 곳을 알게 되면 반갑지만, 그곳이 갑자기 유명해지고 나면 오히려 발길이 뜸해집니다.",
+  "r8-space-expression": "그래서 취향을 말로 설명하기보다, 방에 물건 하나를 들이는 방식으로 표현하는 쪽에 가깝습니다.",
+  "t1-familiar-space-new-place":
+    "그래서 이사할 마음은 없어도 다음 여행 계획은 늘 세워두는 편이고, 정작 가장 좋았던 기억은 돌아와 익숙한 방에 짐을 푸는 순간일 때가 많습니다.",
+  "t2-sensitive-not-visible": "그래서 좋아하는 것에 대해 남들보다 훨씬 많이 알고 있지만, 먼저 나서서 설명하는 일은 드뭅니다.",
+  "t3-fast-discovery-slow-choice":
+    "그래서 낯선 곳은 망설임 없이 들어가 보지만, 그 안에서 마음에 든 물건 하나를 집으로 데려오는 데는 며칠이 걸립니다.",
+  "t4-share-but-keep-autonomy":
+    "그래서 좋은 곳을 발견하면 가장 먼저 떠오르는 사람에게 알리면서도, 정작 그 자리에 함께 갈 땐 각자 움직이는 시간을 따로 남겨둡니다.",
+  "t5-keep-long-seek-new":
+    "그래서 몇 년째 쓰는 물건 하나는 좀처럼 바꾸지 않으면서, 한번 유명해진 다른 물건 앞에서는 미련 없이 또 다른 것을 찾아 나섭니다.",
+};
 
 function buildInterestingPart(
   aggregate: V3AxisAggregate,
@@ -381,21 +412,25 @@ function buildInterestingPart(
   const nextRelationship = relationships.find((r) => !(openingIsRelationship && openingSource === `relationship:${r.def.id}`));
 
   if (nextTension) {
-    const seed = nextTension.def.relatedQNumbers.reduce((a, b) => a + b, 0);
+    const consequence = PRACTICAL_CONSEQUENCE[nextTension.def.id] ?? "";
     return {
       headline: nextTension.def.headline,
-      body: `${nextTension.def.interestingPartBody} ${pickByIndex(INTERESTING_CLOSERS, seed)} ${pickByIndex(INTERESTING_LIFE_ECHO, seed + 1)}`,
+      body: [nextTension.def.interestingPartBody, consequence].filter(Boolean).join(" "),
       source: `tension:${nextTension.def.id}`,
     };
   }
   if (nextRelationship) {
+    const consequence = PRACTICAL_CONSEQUENCE[nextRelationship.def.id] ?? "";
     return {
       headline: nextRelationship.def.headline,
-      body: `${nextRelationship.def.interestingPartBody} ${pickByIndex(INTERESTING_CLOSERS, nextRelationship.strength)} ${pickByIndex(INTERESTING_LIFE_ECHO, nextRelationship.strength + 1)}`,
+      body: [nextRelationship.def.interestingPartBody, consequence].filter(Boolean).join(" "),
       source: `relationship:${nextRelationship.def.id}`,
     };
   }
 
+  // Relationship/Tension이 하나도 없을 때만 쓰는 폴백 — 이때도 범용
+  // 클로저 대신, 두 축 각각의 BEHAVIOR_SCENE(첫 문장만)을 "그런데"로
+  // 이어 "상황 A에서는 이렇게, 상황 B에서는 저렇게"까지 내려간다.
   const axesSorted = TASTE_V3_AXIS_KEYS.map((k) => ({ key: k, score: aggregate[k].score })).sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
   const a = axesSorted[0];
   const b = axesSorted.find((x) => x.key !== a.key) ?? axesSorted[1];
@@ -407,12 +442,15 @@ function buildInterestingPart(
   const headline = pickByIndex(FALLBACK_INTERESTING_HEADLINES, (evA?.qNumber ?? 0) + (evB?.qNumber ?? 0));
   const labelA = AXIS_LABEL_KO[a.key];
   const labelB = AXIS_LABEL_KO[b.key];
+  const directionA = a.score >= 0 ? "positive" : "negative";
+  const directionB = b.score >= 0 ? "positive" : "negative";
+  const firstSentence = (text: string) => text.split(". ")[0]?.trim() + ".";
+  const behaviorA = firstSentence(BEHAVIOR_SCENE[a.key][directionA]);
+  const behaviorB = firstSentence(BEHAVIOR_SCENE[b.key][directionB]);
   const body = [
     scene.length > 0 ? sceneList(scene) : "",
     `${labelA}${gwaWa(labelA)} ${labelB}${eunNeun(labelB)} 이렇게 다른 크기로 나타났다는 것은, 이 둘을 애초에 같은 무게로 쓰고 있지 않다는 뜻입니다.`,
-    "어느 쪽이 진짜인지 하나로 정리할 필요는 없습니다 — 두 크기가 다른 채로 함께 있는 편이 실제 모습에 더 가깝습니다.",
-    pickByIndex(INTERESTING_CLOSERS, (evA?.qNumber ?? 0) + (evB?.qNumber ?? 1)),
-    pickByIndex(INTERESTING_LIFE_ECHO, (evA?.qNumber ?? 0) + (evB?.qNumber ?? 2)),
+    `그래서 ${behaviorA} 그런데 ${behaviorB}`,
   ]
     .filter(Boolean)
     .join(" ");
@@ -428,13 +466,6 @@ const ENDING_CLOSERS = [
   "취향은 완성되는 것이 아니라, 매번 이렇게 다시 확인되는 것에 가깝습니다.",
   "여기까지가 오늘의 한 장입니다 — 다음 장은 조금 다른 장면에서 시작됩니다.",
 ];
-// closer 앞에 한 겹 더 — 오늘 읽은 장면들이 왜 하나로 묶이는지에 대한
-// 짧은 여운. 요약이 아니라 감정의 잔향에 가깝다.
-const ENDING_RESONANCE = [
-  "따로 떼어 보면 사소했을 순간들이, 이렇게 모아 놓으니 하나의 결로 읽힙니다.",
-  "매일 지나치던 장면인데, 이렇게 나란히 놓고 보니 낯설게 다시 보입니다.",
-  "본인에게는 당연했던 습관들이, 지면 위에서는 뚜렷한 무늬가 됩니다.",
-];
 
 function buildEnding(
   openingHeadline: string,
@@ -447,8 +478,7 @@ function buildEnding(
   const body = [
     `"${cleanCallback}"${iRaneun(cleanCallback)} 첫 장면으로 돌아가 보면, ${coreTaste.axisLabel}${gwaWa(coreTaste.axisLabel)} ${howItShowsUp.axisLabel}${eunNeun(howItShowsUp.axisLabel)} 서로 다른 자리에서 같은 사람을 가리키고 있었습니다.`,
     "장면 하나, 물건 하나로는 다 설명되지 않지만, 이렇게 겹쳐 놓고 보면 어렴풋했던 윤곽이 조금 더 또렷해집니다.",
-    pickByIndex(ENDING_RESONANCE, seed),
-    pickByIndex(ENDING_CLOSERS, seed + 1),
+    pickByIndex(ENDING_CLOSERS, seed),
   ]
     .filter(Boolean)
     .join(" ");
@@ -473,14 +503,17 @@ export function buildTasteMagazineNarrativeV3(answers: TasteV3RawAnswers): Taste
   const openingResult = buildOpening(aggregate, relationships, tensions, axisRanking, usage);
   const opening = { headline: openingResult.headline, summary: openingResult.summary };
 
+  // CORE TASTE는 PLACE 이미지, HOW IT SHOWS UP은 OBJECT 이미지 위에
+  // 놓인다(TasteMagazineResultV3.tsx) — 그래서 각 섹션의 visual cue도
+  // 그 이미지의 실제 scene 메타데이터에서 가져온다.
   const axis1 = axisRanking[0];
-  const coreTaste = buildAxisSection(axis1, "취향의 중심", null, aggregate, usage, axis1.length + 1, "why");
+  const coreTaste = buildAxisSection(axis1, "취향의 중심", magazineVisualAssets.taste.place, aggregate, usage, axis1.length + 1, "why");
 
   const axis2 = axisRanking[1];
   const howItShowsUp = buildAxisSection(
     axis2,
     "생활에서 나타나는 방식",
-    "이 마음은 다른 자리에서도 다시 나타납니다.",
+    magazineVisualAssets.taste.object,
     aggregate,
     usage,
     axis2.length + 2,

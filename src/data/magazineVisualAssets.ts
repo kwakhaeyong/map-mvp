@@ -11,6 +11,17 @@ export type MagazineVisualAsset = {
   objectPositionMobile: string;
   objectPositionDesktop: string;
   role: string;
+  // 선택 필드 — 이 이미지 안에 실제로 무엇이 담겨 있는지에 대한 최소
+  // 정보(TASTE Result의 Narrative가 이 asset을 "몰라도 되는 배경"이
+  // 아니라 실제 장면으로 취급하도록, visual-cue 문장을 여기서 만든다).
+  // 지금은 asset마다 하나뿐이라 값이 고정돼 있지만, 나중에 asset이
+  // variant별로 늘어나도 이 필드만 채우면 Narrative는 그대로 동작한다.
+  scene?: {
+    light: string;
+    setting: string;
+    mood: string;
+    details: string[];
+  };
 };
 
 export const magazineVisualAssets = {
@@ -62,6 +73,12 @@ export const magazineVisualAssets = {
       objectPositionMobile: "center center",
       objectPositionDesktop: "center center",
       role: "taste-place-feature",
+      scene: {
+        light: "부드럽게 스며드는 낮의 빛",
+        setting: "손에 익은 카페 창가 테이블",
+        mood: "조용하고 편안한",
+        details: ["펼쳐 둔 책", "커피잔"],
+      },
     } satisfies MagazineVisualAsset,
     // OBJECT — 취향을 드러내는 소지품 스틸라이프(라이카 카메라, Kinfolk,
     // 향수병).
@@ -72,6 +89,12 @@ export const magazineVisualAssets = {
       objectPositionMobile: "center center",
       objectPositionDesktop: "center center",
       role: "taste-object-feature",
+      scene: {
+        light: "정갈하게 내려앉은 정물의 빛",
+        setting: "책상 위에 나란히 놓인 물건들",
+        mood: "취향이 조용히 드러나는",
+        details: ["라이카 카메라", "Kinfolk 매거진", "향수병"],
+      },
     } satisfies MagazineVisualAsset,
     // DETAIL — 챕터의 마지막 이미지. 커피·다이어리·초·안경 같은 일상의
     // 작은 순간들.
