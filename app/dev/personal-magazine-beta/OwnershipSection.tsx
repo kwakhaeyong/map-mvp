@@ -4,7 +4,8 @@ import { useState } from "react";
 import { magazineVisualAssets } from "../../../src/data/magazineVisualAssets";
 import { type TasteMagazineNarrative } from "../../../src/data/tasteNarrative";
 import { type TasteRawAnswers } from "../../../src/data/tasteQuestionnaire";
-import { getSavedTasteIssue, saveTasteIssue } from "../../../src/data/tasteIssueStorage";
+import { getSavedTasteIssue, saveTasteIssue, TASTE_ISSUE_ID } from "../../../src/data/tasteIssueStorage";
+import { sendBetaEvent } from "../../../src/data/personalMagazineBetaTelemetry";
 
 // OWNERSHIP / SAVE / SHARE(2026-08, Private Beta Round 3) — §3 확정
 // 카피 그대로, 기존 Result의 EndingSection 바로 다음에 이어지는 한
@@ -174,7 +175,11 @@ export function OwnershipSection({
   const [shareError, setShareError] = useState<string | null>(null);
 
   function handleSave() {
+    // 사용자 행동(localStorage 저장) 먼저, 중앙 전송은 그다음 —
+    // §7 순서 그대로. sendBetaEvent는 실패해도 던지지 않으므로 아래
+    // 두 줄(setSaved/onSaved)은 항상 정상 실행된다.
     saveTasteIssue({ answers, narrative });
+    sendBetaEvent(TASTE_ISSUE_ID, { event: "issue_saved" });
     setSaved(true);
     onSaved?.();
   }
@@ -196,23 +201,30 @@ export function OwnershipSection({
       const file = new File([blob], "taste-issue-share-card.png", { type: "image/png" });
       const shareData = { files: [file], title: "나의 TASTE Issue", text: "나의 TASTE Issue" };
       const canShareFiles = typeof navigator !== "undefined" && Boolean(navigator.share) && Boolean(navigator.canShare) && navigator.canShare(shareData);
+      // §5 "share method을 알 수 있으면 native | fallback 정도만" —
+      // canShareFiles 판정 시점에 이미 어느 경로로 갈지 알 수 있다.
+      sendBetaEvent(TASTE_ISSUE_ID, { event: "share_attempted", method: canShareFiles ? "native" : "fallback" });
 
       if (canShareFiles) {
         try {
           await navigator.share(shareData);
           setShareCompleted(true);
+          sendBetaEvent(TASTE_ISSUE_ID, { event: "share_succeeded" });
         } catch (err) {
           // 사용자가 공유 시트를 취소한 것은 실패가 아니다(§14) — 상태를
           // 바꾸지 않고 조용히 종료한다. 그 외 실제 오류만 다운로드로
-          // fallback한다.
+          // fallback한다. §6 "취소는 별도 데이터" — 취소 시 아무
+          // 이벤트도 보내지 않는다(실패도 성공도 아니므로).
           if ((err as DOMException)?.name !== "AbortError") {
             triggerDownload(blob);
             setShareDownloaded(true);
+            sendBetaEvent(TASTE_ISSUE_ID, { event: "share_fallback_downloaded" });
           }
         }
       } else {
         triggerDownload(blob);
         setShareDownloaded(true);
+        sendBetaEvent(TASTE_ISSUE_ID, { event: "share_fallback_downloaded" });
       }
     } catch {
       // Canvas/PNG 생성 자체가 실패하는 경우 — 임의로 다른 방법을
