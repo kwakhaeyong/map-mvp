@@ -65,10 +65,15 @@ export type TasteMagazineNarrative = {
 // 2. VALIDATION PROFILE COPY MAP — GPT가 전달한 5개 profile의 문장을
 // 그대로 옮긴 pattern fragment 저장소. 여기 있는 문자열은 한 글자도
 // 새로 짓지 않았다.
+//
+// NARRATIVE_COPY/타입은 Narrative v2(tasteNarrativeV2.ts)가 §7에서
+// 카피가 비어 있는 조각(pullQuote/interestingPart 일부)을 빌려 쓸 수
+// 있도록 export한다 — v2도 "새 문장을 짓지 않는다" 원칙을 지키기
+// 위해 이미 승인된 v1 문구를 그대로 재사용하는 것이다.
 // ============================================================
-type NarrativeProfileId = "quiet-curator" | "urban-explorer" | "practical-editor" | "quiet-explorer" | "contradiction";
+export type NarrativeProfileId = "quiet-curator" | "urban-explorer" | "practical-editor" | "quiet-explorer" | "contradiction";
 
-type NarrativeProfileCopy = {
+export type NarrativeProfileCopy = {
   id: NarrativeProfileId;
   opening: { headline: string; summary: string };
   place: TasteNarrativeFeature;
@@ -80,7 +85,7 @@ type NarrativeProfileCopy = {
   keywords: string[];
 };
 
-const NARRATIVE_COPY: Record<NarrativeProfileId, NarrativeProfileCopy> = {
+export const NARRATIVE_COPY: Record<NarrativeProfileId, NarrativeProfileCopy> = {
   "quiet-curator": {
     id: "quiet-curator",
     opening: {
@@ -241,9 +246,12 @@ const PROFILE_SIGNAL_TARGET: Record<Exclude<NarrativeProfileId, "contradiction">
 
 // PRACTICAL EDITOR의 "functional preference / low impulse"는 신호 축이
 // 아니라 raw answer(옵션 id) 조건이다 — TASTE_QUESTIONS_V1(질문지)의
-// 실제 옵션 id를 그대로 참조한다.
-const FUNCTIONAL_PREFERENCE_ANSWER_IDS = ["functional", "structure-use", "budget-limit"];
-const IMPULSE_ANSWER_ID = "buy-if-lingers";
+// 실제 옵션 id를 그대로 참조한다. v2(tasteNarrativeV2.ts)도 같은 v1
+// 옵션 id를 그대로 참조하므로(TASTE_QUESTIONS_V2가 signals를 v1에서
+// 그대로 가져왔듯 answer id도 동일) 값을 새로 만들지 않고 export해서
+// 공유한다.
+export const FUNCTIONAL_PREFERENCE_ANSWER_IDS = ["functional", "structure-use", "budget-limit"];
+export const IMPULSE_ANSWER_ID = "buy-if-lingers";
 
 // 섹션마다 "무엇을 보고 판단하는가"가 다르다(Spec 6번 — PLACE는 공간/
 // 자극/밀도, OBJECT는 소유/선택 기준, DETAIL은 감각, RITUAL은 새로움/

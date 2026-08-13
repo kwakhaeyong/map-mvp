@@ -5,7 +5,6 @@ import { EditorialImageFrame } from "../personal-magazine-editorial-system/Edito
 import { magazineVisualAssets, type MagazineVisualAsset } from "../../../src/data/magazineVisualAssets";
 import { type PageSectionKey } from "../../../src/data/tasteAnalysis";
 import {
-  TASTE_QUESTIONS_V1,
   type MultiSelectQuestion,
   type QuickCutsQuestion,
   type QuickCutItem,
@@ -17,13 +16,19 @@ import {
   type TasteRawAnswers,
 } from "../../../src/data/tasteQuestionnaire";
 
-// TASTE QUESTIONNAIRE v1(2026-08) — 6 PAGE 실제 답변 흐름(intro→question)
-// 만 담당하는 재사용 컴포넌트. 완료(onComplete) 이후 무엇을 보여줄지는
-// 이 파일이 정하지 않는다 — 호출하는 쪽(QuizV1Client.tsx의 dev debug
-// 화면, TasteJourneyClient.tsx의 실제 Magazine Result)이 결정한다.
+// TASTE QUESTIONNAIRE 6 PAGE 실제 답변 흐름(intro→question)만 담당하는
+// 재사용 컴포넌트. 완료(onComplete) 이후 무엇을 보여줄지는 이 파일이
+// 정하지 않는다 — 호출하는 쪽(QuizV1Client.tsx의 dev debug 화면,
+// TasteJourneyClient.tsx의 실제 Magazine Result)이 결정한다.
+//
+// v2(TASTE Questionnaire v2 + Narrative v2, 2026-08) — 어떤 질문
+// 세트(v1/v2)를 쓸지 이 컴포넌트가 정하지 않도록 questions prop으로
+// 받는다(원래는 TASTE_QUESTIONS_V1을 내부에서 직접 import해 v1
+// 전용이었다). 문구/선택지/signal은 전혀 건드리지 않았다 — 어떤
+// 질문지를 "주입"할지만 바뀐 리팩터다.
 //
 // 원래 QuizV1Client.tsx 안에 있던 interaction 컴포넌트/state를 그대로
-// 옮긴 것이다 — 문구/선택지/signal은 전혀 건드리지 않았다.
+// 옮긴 것이다.
 
 export function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -505,15 +510,15 @@ function SignatureChoiceGroup({
 // ============================================================
 type Stage = "intro" | "question";
 
-export function TasteQuestionnaireFlow({ onComplete }: { onComplete: (answers: TasteRawAnswers) => void }) {
+export function TasteQuestionnaireFlow({ questions, onComplete }: { questions: TasteQuestion[]; onComplete: (answers: TasteRawAnswers) => void }) {
   const [stage, setStage] = useState<Stage>("intro");
   const [pageIndex, setPageIndex] = useState(0);
   const [answers, setAnswers] = useState<TasteRawAnswers>({});
   const [quickCutSelections, setQuickCutSelections] = useState<Record<string, string>>({});
 
-  const currentQuestion: TasteQuestion | undefined = TASTE_QUESTIONS_V1[pageIndex];
+  const currentQuestion: TasteQuestion | undefined = questions[pageIndex];
   const currentAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
-  const filledSections = Array.from(new Set(TASTE_QUESTIONS_V1.filter((q) => answers[q.id]).map((q) => q.section)));
+  const filledSections = Array.from(new Set(questions.filter((q) => answers[q.id]).map((q) => q.section)));
   const canGoNext = currentQuestion ? isPageComplete(currentQuestion, currentAnswer) : false;
 
   function handleStart() {
@@ -526,7 +531,7 @@ export function TasteQuestionnaireFlow({ onComplete }: { onComplete: (answers: T
   }
 
   function handleNext() {
-    if (pageIndex + 1 >= TASTE_QUESTIONS_V1.length) {
+    if (pageIndex + 1 >= questions.length) {
       onComplete(answers);
       return;
     }

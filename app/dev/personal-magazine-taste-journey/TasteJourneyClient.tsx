@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { analyzeTasteFromSources } from "../../../src/data/tasteAnalysis";
-import { TASTE_QUESTIONS_V1, mapTasteAnswersToSignalSources, type TasteRawAnswers } from "../../../src/data/tasteQuestionnaire";
+import { TASTE_QUESTIONS_V1, mapTasteAnswersToSignalSources, type TasteQuestion, type TasteRawAnswers } from "../../../src/data/tasteQuestionnaire";
+import { TASTE_QUESTIONS_V2 } from "../../../src/data/tasteQuestionnaireV2";
 import { buildTasteMagazineNarrative } from "../../../src/data/tasteNarrative";
+import { buildTasteMagazineNarrativeV2 } from "../../../src/data/tasteNarrativeV2";
 import { TasteQuestionnaireFlow } from "../personal-magazine-quiz/TasteQuestionnaireFlow";
 import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMagazineResult";
 
@@ -19,6 +21,20 @@ import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMaga
 //
 // Questionnaire/Narrative/Result 컴포넌트는 전부 기존 것을 그대로
 // import해서 쓴다 — 이 파일은 새 문항/카피/레이아웃을 만들지 않는다.
+//
+// v2(TASTE Questionnaire v2 + Narrative v2, 2026-08) — v1은 삭제하지
+// 않고 dev 비교용으로 그대로 둔다는 지시에 따라 QUESTIONNAIRE 버전과
+// NARRATIVE 엔진 버전을 각각 독립적으로 토글할 수 있게 한다. 같은
+// answers/sources로 v1/v2 Narrative를 둘 다 만들어볼 수 있어야
+// "동일 답변 기준 V1 Result vs V2 Result 비교"(검증자료 요구사항)를
+// questionnaire를 다시 풀지 않고도 확인할 수 있다.
+
+type QuestionnaireVersion = "v1" | "v2";
+type NarrativeVersion = "v1" | "v2";
+
+function questionsForVersion(version: QuestionnaireVersion): TasteQuestion[] {
+  return version === "v1" ? TASTE_QUESTIONS_V1 : TASTE_QUESTIONS_V2;
+}
 
 const EDITING_DURATION_MS = 1500;
 
@@ -34,8 +50,11 @@ function EditingTransition() {
 type JourneyStage = "flow" | "editing" | "result";
 
 export function TasteJourneyClient() {
+  const [questionnaireVersion, setQuestionnaireVersion] = useState<QuestionnaireVersion>("v2");
+  const [narrativeVersion, setNarrativeVersion] = useState<NarrativeVersion>("v2");
   const [stage, setStage] = useState<JourneyStage>("flow");
   const [finalAnswers, setFinalAnswers] = useState<TasteRawAnswers | null>(null);
+  const questions = questionsForVersion(questionnaireVersion);
 
   useEffect(() => {
     if (stage !== "editing") return;
@@ -43,15 +62,60 @@ export function TasteJourneyClient() {
     return () => clearTimeout(timer);
   }, [stage]);
 
+  function handleQuestionnaireVersionChange(next: QuestionnaireVersion) {
+    setQuestionnaireVersion(next);
+    setStage("flow");
+    setFinalAnswers(null);
+  }
+
   return (
     <div className="min-h-dvh bg-background text-text-primary">
       <div className="sticky top-0 z-50 border-b border-dashed border-border-strong bg-background px-3 py-2 text-center text-[11px] font-bold text-text-muted backdrop-blur">
         DEV PROTOTYPE — TASTE END-TO-END JOURNEY (실제 답변 → 실제 Result)
       </div>
 
+      <div className="sticky top-[33px] z-40 flex flex-wrap items-center justify-center gap-4 border-b border-border-strong bg-background px-5 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted">QUESTIONNAIRE</span>
+          {(["v1", "v2"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => handleQuestionnaireVersionChange(v)}
+              className={
+                questionnaireVersion === v
+                  ? "border border-text-primary bg-text-primary px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] text-background"
+                  : "border border-border-strong px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] text-text-secondary"
+              }
+            >
+              {v.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted">NARRATIVE</span>
+          {(["v1", "v2"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setNarrativeVersion(v)}
+              className={
+                narrativeVersion === v
+                  ? "border border-text-primary bg-text-primary px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] text-background"
+                  : "border border-border-strong px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] text-text-secondary"
+              }
+            >
+              {v.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {stage === "flow" && (
         <div className="mx-auto max-w-md">
           <TasteQuestionnaireFlow
+            key={questionnaireVersion}
+            questions={questions}
             onComplete={(answers) => {
               setFinalAnswers(answers);
               setStage("editing");
@@ -62,15 +126,25 @@ export function TasteJourneyClient() {
 
       {stage === "editing" && <EditingTransition />}
 
-      {stage === "result" && finalAnswers && <JourneyResult answers={finalAnswers} />}
+      {stage === "result" && finalAnswers && (
+        <JourneyResult questions={questions} answers={finalAnswers} narrativeVersion={narrativeVersion} />
+      )}
     </div>
   );
 }
 
-function JourneyResult({ answers }: { answers: TasteRawAnswers }) {
-  const sources = mapTasteAnswersToSignalSources(TASTE_QUESTIONS_V1, answers);
+function JourneyResult({
+  questions,
+  answers,
+  narrativeVersion,
+}: {
+  questions: TasteQuestion[];
+  answers: TasteRawAnswers;
+  narrativeVersion: NarrativeVersion;
+}) {
+  const sources = mapTasteAnswersToSignalSources(questions, answers);
   const result = analyzeTasteFromSources(sources);
-  const narrative = buildTasteMagazineNarrative(result, sources);
+  const narrative = narrativeVersion === "v1" ? buildTasteMagazineNarrative(result, sources) : buildTasteMagazineNarrativeV2(result, sources);
 
   return <TasteMagazineResult narrative={narrative} result={result} />;
 }
