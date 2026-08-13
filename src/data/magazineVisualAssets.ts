@@ -129,20 +129,14 @@ export const magazineVisualAssets = {
           role: "taste-quiz-choice",
         } satisfies MagazineVisualAsset,
       },
-      // ⚠️ BLOCKER(2026-08, Round 6 RC) — PAGE 06(YOUR DAY / signature-choice,
-      // "BACK TO MY PLACE" / "SOMEWHERE NEW") 실사 이미지 2장이 아직 없다.
-      // registry에도, public/magazine/ 아래에도, 이 저장소 어디에도 존재하지
-      // 않는다(Round 5/6에서 확인) — 아래 src는 이미지가 생기면 넣을 "예정
-      // 경로"일 뿐 실제 파일이 아니다. 지금은 어떤 컴포넌트도 이 값을
-      // 참조하지 않는다(TasteQuestionnaireFlow.tsx의 SignatureCard는 여전히
-      // neutral placeholder만 그린다) — 이 슬롯은 이미지가 도착했을 때 바로
-      // 채워 넣을 수 있도록 구조만 준비해둔 것이다. 실제 연결에는 이 값을
-      // 채우는 것 외에 SignatureCard가 resolveAsset을 쓰도록 하는 코드
-      // 변경도 필요하다(이번 라운드 범위 밖).
+      // PAGE 06(YOUR DAY / signature-choice, "BACK TO MY PLACE" /
+      // "SOMEWHERE NEW") 실사 이미지 2장(2026-08, Round 8에서 GPT가 전달한
+      // 최종 asset 연결). Q1과 같은 3:2 가로 컨벤션(1536:1024) — 원본이
+      // 이미 정확히 이 픽셀 크기라 crop/resize/비율 보정이 필요 없었다.
       q06: {
         a: {
           src: "/magazine/quiz/taste/taste-quiz-06-a.png",
-          alt: "TODO — BACK TO MY PLACE(익숙한 동네, 이미 아는 카페, 늘 걷던 길로 돌아가는 하루)를 표현하는 실사 사진. 이미지 파일 없음(BLOCKER).",
+          alt: "노을이 지는 도시 야경이 보이는 창가 방으로, 에코백을 멘 여성이 문을 열고 들어서는 뒷모습. 책상 위 스탠드 조명과 책장이 있는 익숙하고 따뜻한 실내.",
           aspectRatio: "1536:1024",
           objectPositionMobile: "center center",
           objectPositionDesktop: "center center",
@@ -150,7 +144,7 @@ export const magazineVisualAssets = {
         } satisfies MagazineVisualAsset,
         b: {
           src: "/magazine/quiz/taste/taste-quiz-06-b.png",
-          alt: "TODO — SOMEWHERE NEW(처음 가보는 동네, 계획에 없던 곳을 발견하는 하루)를 표현하는 실사 사진. 이미지 파일 없음(BLOCKER).",
+          alt: "해질녘 골목길, 동네 서점과 카페 불빛이 늘어선 낯선 거리를 걸어가는 여성의 뒷모습. 처음 가보는 장소를 마주하는 분위기.",
           aspectRatio: "1536:1024",
           objectPositionMobile: "center center",
           objectPositionDesktop: "center center",

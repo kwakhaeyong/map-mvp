@@ -45,12 +45,14 @@ const PAGE_SECTIONS: Array<{ key: PageSectionKey; label: string }> = [
   { key: "ritual", label: "RITUAL" },
 ];
 
-// PAGE 01(SCENE)만 실제 이미지를 쓴다. 다른 페이지는 assetKey가 없다
-// (priority/situation/multi-select는 이미지 슬롯 자체가 없고,
-// signature-choice는 neutral placeholder를 쓴다 — 새 이미지 생성 없음).
+// PAGE 01(SCENE)과 PAGE 06(YOUR DAY)만 실제 이미지를 쓴다(2026-08,
+// Round 8에서 PAGE06 A/B 실사 2장 연결). 나머지 페이지(priority/
+// situation/multi-select)는 이미지 슬롯 자체가 없다.
 function resolveAsset(assetKey?: string): MagazineVisualAsset | null {
   if (assetKey === "quiz.taste.q01.a") return magazineVisualAssets.quiz.taste.q01.a;
   if (assetKey === "quiz.taste.q01.b") return magazineVisualAssets.quiz.taste.q01.b;
+  if (assetKey === "quiz.taste.q06.a") return magazineVisualAssets.quiz.taste.q06.a;
+  if (assetKey === "quiz.taste.q06.b") return magazineVisualAssets.quiz.taste.q06.b;
   return null;
 }
 
@@ -529,6 +531,7 @@ function SignatureCard({
   dimmed: boolean;
   onSelect: () => void;
 }) {
+  const asset = resolveAsset(option.assetKey);
   return (
     <button
       type="button"
@@ -539,7 +542,13 @@ function SignatureCard({
         dimmed && "opacity-50"
       )}
     >
-      <EditorialImageFrame ratio="4:5" label={option.label} />
+      {asset ? (
+        <div className="relative w-full overflow-hidden" style={{ aspectRatio: asset.aspectRatio.replace(":", " / ") }}>
+          <img src={asset.src} alt={asset.alt} className="size-full object-cover" style={{ objectPosition: asset.objectPositionMobile }} />
+        </div>
+      ) : (
+        <EditorialImageFrame ratio="4:5" label={option.label} />
+      )}
       <div className="flex flex-col gap-2">
         <span
           className={cx(

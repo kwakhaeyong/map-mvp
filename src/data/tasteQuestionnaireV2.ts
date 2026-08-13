@@ -181,8 +181,10 @@ export const TASTE_V2_PAGE_05_QUICK_CUTS: QuickCutsQuestion = {
 // TasteQuestionOption.description을 그대로 쓴다 — description은 이미
 // whitespace-pre-line으로 렌더링되므로 줄바꿈이 그대로 보존된다).
 // signal은 v1 familiar-day/discover-day를 그대로 재사용.
-// 실제 이미지는 아직 없어 v1과 동일하게 neutral placeholder를 쓴다
-// (assetKey 없음).
+// 실사 이미지 연결(2026-08, Round 8) — PAGE01과 같은 방식으로
+// assetKey만 추가했다. id/label/description/signals는 전혀 바뀌지
+// 않았다 — resolveAsset()이 이 문자열로 어떤 이미지를 보여줄지
+// 찾는 데만 쓰인다.
 // ============================================================
 const V1_YOUR_DAY_BY_ID = Object.fromEntries(TASTE_V1_PAGE_06_YOUR_DAY.options.map((o) => [o.id, o]));
 
@@ -200,6 +202,7 @@ export const TASTE_V2_PAGE_06_LAST_SCENE: SignatureChoiceQuestion = {
       description:
         "좋아하는 동네.\n이미 알고 있는 카페.\n늘 걷던 길.\n\n그런데 이상하게\n오늘도 좋을 것 같은 하루.\n\n좋아하는 것을 다시 좋아하는 하루.",
       signals: V1_YOUR_DAY_BY_ID["familiar-day"].signals,
+      assetKey: "quiz.taste.q06.a",
     },
     {
       id: "somewhere-new",
@@ -207,6 +210,7 @@ export const TASTE_V2_PAGE_06_LAST_SCENE: SignatureChoiceQuestion = {
       description:
         "처음 가보는 동네.\n저장만 해두었던 장소.\n\n걷다가 계획에 없던 곳에\n들어가 보는 하루.\n\n아직 모르는 것을 발견하는 하루.",
       signals: V1_YOUR_DAY_BY_ID["discover-day"].signals,
+      assetKey: "quiz.taste.q06.b",
     },
   ],
 };
