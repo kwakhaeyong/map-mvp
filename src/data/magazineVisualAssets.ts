@@ -129,6 +129,34 @@ export const magazineVisualAssets = {
           role: "taste-quiz-choice",
         } satisfies MagazineVisualAsset,
       },
+      // ⚠️ BLOCKER(2026-08, Round 6 RC) — PAGE 06(YOUR DAY / signature-choice,
+      // "BACK TO MY PLACE" / "SOMEWHERE NEW") 실사 이미지 2장이 아직 없다.
+      // registry에도, public/magazine/ 아래에도, 이 저장소 어디에도 존재하지
+      // 않는다(Round 5/6에서 확인) — 아래 src는 이미지가 생기면 넣을 "예정
+      // 경로"일 뿐 실제 파일이 아니다. 지금은 어떤 컴포넌트도 이 값을
+      // 참조하지 않는다(TasteQuestionnaireFlow.tsx의 SignatureCard는 여전히
+      // neutral placeholder만 그린다) — 이 슬롯은 이미지가 도착했을 때 바로
+      // 채워 넣을 수 있도록 구조만 준비해둔 것이다. 실제 연결에는 이 값을
+      // 채우는 것 외에 SignatureCard가 resolveAsset을 쓰도록 하는 코드
+      // 변경도 필요하다(이번 라운드 범위 밖).
+      q06: {
+        a: {
+          src: "/magazine/quiz/taste/taste-quiz-06-a.png",
+          alt: "TODO — BACK TO MY PLACE(익숙한 동네, 이미 아는 카페, 늘 걷던 길로 돌아가는 하루)를 표현하는 실사 사진. 이미지 파일 없음(BLOCKER).",
+          aspectRatio: "1536:1024",
+          objectPositionMobile: "center center",
+          objectPositionDesktop: "center center",
+          role: "taste-quiz-choice",
+        } satisfies MagazineVisualAsset,
+        b: {
+          src: "/magazine/quiz/taste/taste-quiz-06-b.png",
+          alt: "TODO — SOMEWHERE NEW(처음 가보는 동네, 계획에 없던 곳을 발견하는 하루)를 표현하는 실사 사진. 이미지 파일 없음(BLOCKER).",
+          aspectRatio: "1536:1024",
+          objectPositionMobile: "center center",
+          objectPositionDesktop: "center center",
+          role: "taste-quiz-choice",
+        } satisfies MagazineVisualAsset,
+      },
     },
   },
 };

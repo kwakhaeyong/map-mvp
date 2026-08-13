@@ -325,6 +325,7 @@ export function PersonalMagazineBetaClient() {
             key="beta-flow"
             questions={TASTE_QUESTIONS_V2_2}
             startAtQuestion
+            onExitToIntro={() => setStage("intro")}
             onComplete={(completedAnswers) => {
               setAnswers(completedAnswers);
               setStage("editing");

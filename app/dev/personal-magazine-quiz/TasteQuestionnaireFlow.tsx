@@ -591,14 +591,23 @@ type Stage = "intro" | "question";
 // 경우에만 true로 넘겨 내부 QuizIntro(중복 "챕터 만들기 시작" 화면)를
 // 건너뛴다. 문항/선택지/signal/interaction 로직은 전혀 건드리지
 // 않는다 — 시작 지점 하나만 옵션으로 열어준 것뿐이다.
+//
+// onExitToIntro(2026-08, Round 6 RC — 기본 undefined, 기존 4곳 호출부는
+// 그대로 동작 불변)는 startAtQuestion=true라서 PAGE 1(pageIndex 0)에
+// "← 이전 페이지"가 아예 없던 문제(Private Beta 실사용자가 Q1에서
+// 되돌아갈 방법이 전혀 없던 release blocker)의 최소 수정이다. PAGE
+// 1에서만 canGoBack을 이 prop의 존재 여부로 켜고, 클릭 시 문항 state를
+// 건드리지 않고 이 콜백만 호출한다 — 질문/답변/선택지 로직은 그대로다.
 export function TasteQuestionnaireFlow({
   questions,
   onComplete,
   startAtQuestion = false,
+  onExitToIntro,
 }: {
   questions: TasteQuestion[];
   onComplete: (answers: TasteRawAnswers) => void;
   startAtQuestion?: boolean;
+  onExitToIntro?: () => void;
 }) {
   const [stage, setStage] = useState<Stage>(startAtQuestion ? "question" : "intro");
   const [pageIndex, setPageIndex] = useState(0);
@@ -686,8 +695,8 @@ export function TasteQuestionnaireFlow({
       prompt={currentQuestion.prompt}
       helper={currentQuestion.helper}
       filled={filledSections}
-      canGoBack={pageIndex > 0}
-      onBack={handleBack}
+      canGoBack={pageIndex > 0 || Boolean(onExitToIntro)}
+      onBack={pageIndex > 0 ? handleBack : () => onExitToIntro?.()}
       canGoNext={canGoNext}
       onNext={handleNext}
     >
