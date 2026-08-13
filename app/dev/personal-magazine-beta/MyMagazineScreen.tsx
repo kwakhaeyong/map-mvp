@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { magazineVisualAssets } from "../../../src/data/magazineVisualAssets";
 import { getContinuationIntent, saveContinuationIntent, type NextChapterId } from "../../../src/data/continuationStorage";
-import { TASTE_ISSUE_ID, type SavedTasteIssue } from "../../../src/data/tasteIssueStorage";
+import { TASTE_ISSUE_ID, type AnySavedTasteIssue } from "../../../src/data/tasteIssueStorage";
 import { sendBetaEvent } from "../../../src/data/personalMagazineBetaTelemetry";
 
 // MY MAGAZINE / CONTINUATION LAYER(2026-08, Private Beta Round 4) — §5~§13
@@ -31,9 +31,9 @@ export function MyMagazineScreen({
   onGoHome,
   onOpenSavedIssue,
 }: {
-  savedIssue: SavedTasteIssue | null;
+  savedIssue: AnySavedTasteIssue | null;
   onGoHome: () => void;
-  onOpenSavedIssue: (issue: SavedTasteIssue) => void;
+  onOpenSavedIssue: (issue: AnySavedTasteIssue) => void;
 }) {
   const [selectedNextChapter, setSelectedNextChapter] = useState<NextChapterId | null>(null);
   const [confirmedNextChapter, setConfirmedNextChapter] = useState<NextChapterId | null>(null);

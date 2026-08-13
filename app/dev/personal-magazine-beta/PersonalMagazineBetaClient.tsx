@@ -6,10 +6,18 @@ import { analyzeTasteFromSources } from "../../../src/data/tasteAnalysis";
 import { mapTasteAnswersToSignalSources, type TasteRawAnswers } from "../../../src/data/tasteQuestionnaire";
 import { TASTE_QUESTIONS_V2_2 } from "../../../src/data/tasteQuestionnaireV22";
 import { buildTasteMagazineNarrativeV23 } from "../../../src/data/tasteNarrativeV23";
-import { getSavedTasteIssue, TASTE_ISSUE_ID, type SavedTasteIssue } from "../../../src/data/tasteIssueStorage";
+import { buildTasteMagazineNarrativeV3 } from "../../../src/data/tasteNarrativeV3";
+import type { TasteV3RawAnswers } from "../../../src/data/tasteQuestionnaireV3";
+import {
+  getSavedTasteIssue,
+  saveTasteIssueV3,
+  TASTE_ISSUE_ID,
+  type AnySavedTasteIssue,
+} from "../../../src/data/tasteIssueStorage";
 import { sendBetaEvent } from "../../../src/data/personalMagazineBetaTelemetry";
-import { TasteQuestionnaireFlow } from "../personal-magazine-quiz/TasteQuestionnaireFlow";
+import { TasteQuestionnaireFlowV3 } from "../personal-magazine-quiz/TasteQuestionnaireFlowV3";
 import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMagazineResult";
+import { TasteMagazineResultV3 } from "../personal-magazine-taste-result/TasteMagazineResultV3";
 import { FeedbackSection } from "./FeedbackSection";
 import { MyMagazineScreen } from "./MyMagazineScreen";
 import { OwnershipSection } from "./OwnershipSection";
@@ -207,7 +215,10 @@ function EditingTransition() {
 // OwnershipSection 안에 있었지만, 이번 라운드 요구대로 FeedbackSection
 // 끝으로 옮겼다 — OwnershipSection(SAVE/SHARE)은 그 자체로는 변경
 // 없이 그대로다.
-function JourneyResult({ answers, onViewMyMagazine }: { answers: TasteRawAnswers; onViewMyMagazine: () => void }) {
+// LEGACY(v2.2/v2.3) — §18 호환 요구. 기존 저장된 v2.2 Issue를 다시 열
+// 때만 이 경로로 렌더링한다. 새 완료 흐름은 더 이상 이 경로를 타지
+// 않지만, 로직/문구를 전혀 바꾸지 않고 그대로 남겨둔다.
+function LegacyJourneyResult({ answers, onViewMyMagazine }: { answers: TasteRawAnswers; onViewMyMagazine: () => void }) {
   const sources = mapTasteAnswersToSignalSources(TASTE_QUESTIONS_V2_2, answers);
   const result = analyzeTasteFromSources(sources);
   const narrative = buildTasteMagazineNarrativeV23(result, sources);
@@ -222,6 +233,28 @@ function JourneyResult({ answers, onViewMyMagazine }: { answers: TasteRawAnswers
     <>
       <TasteMagazineResult narrative={narrative} result={result} hideDebugPanel />
       <OwnershipSection answers={answers} narrative={narrative} onSaved={() => setSaved(true)} />
+      <FeedbackSection issueId={TASTE_ISSUE_ID} savedIssueExists={saved} onViewMyMagazine={onViewMyMagazine} />
+    </>
+  );
+}
+
+// TASTE v3(PRODUCT FREEZE, 2026-08) — 새 15문항 완료 흐름은 전부 이
+// 경로를 탄다. Compositional Narrative Engine(tasteNarrativeV3)이
+// 만든 7-section 결과를 TasteMagazineResultV3로 렌더링하고, SAVE는
+// onSaveIssue로 saveTasteIssueV3를 호출한다 — OwnershipSection의
+// SAVE/SHARE UI·PNG Share Card 로직은 전혀 바꾸지 않았다.
+function JourneyResultV3({ answers, onViewMyMagazine }: { answers: TasteV3RawAnswers; onViewMyMagazine: () => void }) {
+  const narrative = buildTasteMagazineNarrativeV3(answers);
+  const [saved, setSaved] = useState(() => Boolean(getSavedTasteIssue()));
+  return (
+    <>
+      <TasteMagazineResultV3 narrative={narrative} hideDebugPanel />
+      <OwnershipSection
+        answers={answers}
+        narrative={narrative}
+        onSaved={() => setSaved(true)}
+        onSaveIssue={() => saveTasteIssueV3({ answers, narrative })}
+      />
       <FeedbackSection issueId={TASTE_ISSUE_ID} savedIssueExists={saved} onViewMyMagazine={onViewMyMagazine} />
     </>
   );
@@ -264,9 +297,11 @@ function updateViewQueryParam(view: "my-magazine" | "result" | null) {
   window.history.replaceState(null, "", `${url.pathname}${qs ? `?${qs}` : ""}`);
 }
 
+type Session = { version: "v2.2"; answers: TasteRawAnswers } | { version: "v3"; answers: TasteV3RawAnswers };
+
 export function PersonalMagazineBetaClient() {
   const [stage, setStage] = useState<Stage>("home");
-  const [answers, setAnswers] = useState<TasteRawAnswers | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
     if (stage !== "editing") return;
@@ -291,7 +326,9 @@ export function PersonalMagazineBetaClient() {
     if (view === "result") {
       const saved = getSavedTasteIssue();
       if (saved) {
-        setAnswers(saved.answers);
+        setSession(
+          saved.questionnaireVersion === "v3" ? { version: "v3", answers: saved.answers } : { version: "v2.2", answers: saved.answers }
+        );
         setStage("result");
       }
     }
@@ -299,7 +336,7 @@ export function PersonalMagazineBetaClient() {
 
   function handleRestart() {
     updateViewQueryParam(null);
-    setAnswers(null);
+    setSession(null);
     setStage("home");
   }
 
@@ -308,9 +345,12 @@ export function PersonalMagazineBetaClient() {
     setStage("my-magazine");
   }
 
-  function handleOpenSavedIssue(issue: SavedTasteIssue) {
+  // §18 — 저장된 Issue를 다시 열 때, v2.2로 저장된 Issue는 레거시 엔진
+  // 그대로, v3로 저장된 Issue는 새 엔진으로 렌더링한다. 저장된 answers를
+  // 강제로 다른 버전 구조로 재해석하지 않는다.
+  function handleOpenSavedIssue(issue: AnySavedTasteIssue) {
     updateViewQueryParam("result");
-    setAnswers(issue.answers);
+    setSession(issue.questionnaireVersion === "v3" ? { version: "v3", answers: issue.answers } : { version: "v2.2", answers: issue.answers });
     setStage("result");
   }
 
@@ -333,16 +373,14 @@ export function PersonalMagazineBetaClient() {
 
       {stage === "flow" && (
         <div className="mx-auto max-w-md">
-          <TasteQuestionnaireFlow
-            key="beta-flow"
-            questions={TASTE_QUESTIONS_V2_2}
-            startAtQuestion
+          <TasteQuestionnaireFlowV3
+            key="beta-flow-v3"
             onExitToIntro={() => setStage("intro")}
             onComplete={(completedAnswers) => {
               // §3 taste_completed — Questionnaire 전체 답변은 절대
-              // 전송하지 않는다(§4). issueId만 남긴다.
+              // 전송하지 않는다(§4/§17). issueId만 남긴다.
               sendBetaEvent(TASTE_ISSUE_ID, { event: "taste_completed" });
-              setAnswers(completedAnswers);
+              setSession({ version: "v3", answers: completedAnswers });
               setStage("editing");
             }}
           />
@@ -351,7 +389,12 @@ export function PersonalMagazineBetaClient() {
 
       {stage === "editing" && <EditingTransition />}
 
-      {stage === "result" && answers && <JourneyResult answers={answers} onViewMyMagazine={handleViewMyMagazine} />}
+      {stage === "result" && session && session.version === "v3" && (
+        <JourneyResultV3 answers={session.answers} onViewMyMagazine={handleViewMyMagazine} />
+      )}
+      {stage === "result" && session && session.version === "v2.2" && (
+        <LegacyJourneyResult answers={session.answers} onViewMyMagazine={handleViewMyMagazine} />
+      )}
 
       {stage === "my-magazine" && (
         <MyMagazineScreen savedIssue={getSavedTasteIssue()} onGoHome={handleRestart} onOpenSavedIssue={handleOpenSavedIssue} />

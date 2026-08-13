@@ -6,6 +6,18 @@ import { type TasteMagazineNarrative } from "../../../src/data/tasteNarrative";
 import { type TasteRawAnswers } from "../../../src/data/tasteQuestionnaire";
 import { getSavedTasteIssue, saveTasteIssue, TASTE_ISSUE_ID } from "../../../src/data/tasteIssueStorage";
 import { sendBetaEvent } from "../../../src/data/personalMagazineBetaTelemetry";
+import type { TasteMagazineNarrativeV3 } from "../../../src/data/tasteNarrativeV3";
+import type { TasteV3RawAnswers } from "../../../src/data/tasteQuestionnaireV3";
+
+// TASTE v3(2026-08) — §17/§18 "SAVE/SHARE UX 그대로 유지" 요구에 따라
+// 이 컴포넌트의 화면/문구/PNG 생성 로직은 전혀 바꾸지 않았다. 다만
+// v2.2/v3 두 questionnaire 버전 모두에서 재사용할 수 있도록 narrative/
+// answers 타입만 "실제로 이 컴포넌트가 읽는 필드"로 좁혔고(구조적
+// 타이핑 — 두 실제 타입 모두 이 최소 shape를 만족한다), 저장 동작은
+// onSaveIssue가 주어지면 그것을 쓰고, 없으면 기존 saveTasteIssue(v2.2)
+// 그대로 호출한다 — 기존 호출부(JourneyResult)는 prop을 넘기지 않으므로
+// 동작이 전혀 바뀌지 않는다.
+type ShareableNarrative = { opening: { headline: string; summary: string }; pullQuote: string; keywords: string[] };
 
 // OWNERSHIP / SAVE / SHARE(2026-08, Private Beta Round 3) — §3 확정
 // 카피 그대로, 기존 Result의 EndingSection 바로 다음에 이어지는 한
@@ -55,7 +67,7 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
   return lines;
 }
 
-async function buildTasteShareCardBlob(narrative: TasteMagazineNarrative): Promise<Blob> {
+async function buildTasteShareCardBlob(narrative: ShareableNarrative): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = SHARE_CARD_WIDTH;
   canvas.height = SHARE_CARD_HEIGHT;
@@ -154,10 +166,13 @@ export function OwnershipSection({
   answers,
   narrative,
   onSaved,
+  onSaveIssue,
 }: {
-  answers: TasteRawAnswers;
-  narrative: TasteMagazineNarrative;
+  answers: TasteRawAnswers | TasteV3RawAnswers;
+  narrative: TasteMagazineNarrative | TasteMagazineNarrativeV3;
   onSaved?: () => void;
+  // v3(§18)에서만 넘긴다 — 없으면 기존 saveTasteIssue(v2.2)를 그대로 쓴다.
+  onSaveIssue?: () => void;
 }) {
   // MY MAGAZINE / CONTINUATION LAYER(2026-08, Round 4) — §4/§16. 이미
   // 저장된 Issue를 가지고 돌아온 경우(예: TASTE COMPLETE 카드를 다시
@@ -178,7 +193,11 @@ export function OwnershipSection({
     // 사용자 행동(localStorage 저장) 먼저, 중앙 전송은 그다음 —
     // §7 순서 그대로. sendBetaEvent는 실패해도 던지지 않으므로 아래
     // 두 줄(setSaved/onSaved)은 항상 정상 실행된다.
-    saveTasteIssue({ answers, narrative });
+    if (onSaveIssue) {
+      onSaveIssue();
+    } else {
+      saveTasteIssue({ answers: answers as TasteRawAnswers, narrative: narrative as TasteMagazineNarrative });
+    }
     sendBetaEvent(TASTE_ISSUE_ID, { event: "issue_saved" });
     setSaved(true);
     onSaved?.();
