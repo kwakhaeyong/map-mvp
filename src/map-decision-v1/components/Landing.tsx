@@ -135,10 +135,41 @@ const HERO_OPTION_VISUAL: Record<string, { badge: string; Icon: (props: { classN
 // "눌렀다 → 오? → Q2"라는 짧은 피드백을 250ms 자동 전환 시간 안에서만
 // 준다(새 지연을 추가하지 않는다). 선택·전환 로직(useAutoAdvance,
 // 250ms) 자체는 그대로다 — 이번 보정은 순수 시각(className)만 바꿨다.
+// BRAND IDENTITY PASS v2(2026-08) — "4지선다 설문"이 아니라 "내 지도의
+// 첫 위치를 찍는다"는 인상을 아주 옅게 더하는 배경 하나. 실제 좌표·축·
+// 숫자는 전혀 없다(그러면 chart가 된다) — 그냥 지면 위를 지나가는
+// 경로 한 가닥과 옅은 점 하나뿐이다. 타일 4개의 실제 중심 좌표에
+// 정확히 맞추지 않는다 — 이 그리드는 375px에서 2×2, lg 이상에서
+// 1×4로 완전히 다른 배치가 되므로, 특정 타일에 선을 정확히 연결하면
+// 한쪽 레이아웃에서는 어긋난다. 대신 두 레이아웃 모두에서 자연스러운
+// 추상적인 "경로 조각"으로만 존재한다. TasteHeroBackdrop과 같은 원칙
+// (currentColor + opacity 속성, raw 색상값 아님)을 그대로 따른다.
+function FirstPointBackdrop() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 100 60"
+      preserveAspectRatio="none"
+      className="pointer-events-none absolute inset-0 -z-10 size-full text-primary"
+    >
+      <path
+        d="M4 50 C 22 34, 30 46, 48 30 S 74 14, 96 10"
+        className="fill-none stroke-current"
+        strokeWidth="0.6"
+        strokeDasharray="0.5 3.2"
+        strokeLinecap="round"
+        opacity="0.14"
+      />
+      <circle cx="4" cy="50" r="1.1" className="fill-current" opacity="0.18" />
+    </svg>
+  );
+}
+
 function HeroFirstQuestion({ axis, onAnswer }: { axis: TopicAxis; onAnswer: (choice: TopicChoice) => void }) {
   const { pending, pick } = useAutoAdvance(onAnswer, false);
   return (
-    <div className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-3 sm:gap-4 lg:max-w-none lg:grid-cols-4 lg:gap-5">
+    <div className="relative mx-auto mt-6 grid max-w-md grid-cols-2 gap-3 sm:gap-4 lg:max-w-none lg:grid-cols-4 lg:gap-5">
+      <FirstPointBackdrop />
       {axis.options.map((option) => {
         const isSelected = pending?.label === option.label;
         const isLocked = pending !== null && !isSelected;
@@ -151,7 +182,11 @@ function HeroFirstQuestion({ axis, onAnswer }: { axis: TopicAxis; onAnswer: (cho
             onClick={() => pick(option)}
             disabled={isLocked}
             className={cx(
-              "group relative flex flex-col items-center gap-2.5 rounded-large border px-4 py-7 text-center transition-all duration-normal ease-emphasized disabled:pointer-events-none sm:py-8",
+              // LANDING HOOK & QUIZ FUN PASS(2026-08) — active:scale 하나만
+              // 추가한다. hover는 마우스 전용이라 모바일(실제 사용자 대다수)
+              // 에서는 탭해도 아무 즉각 피드백이 없었다 — 손끝이 닿는 순간
+              // 살짝 눌리는 감각이 "tactile feeling" 지시가 요구한 전부다.
+              "group relative flex flex-col items-center gap-2.5 rounded-large border px-4 py-7 text-center transition-all duration-normal ease-emphasized active:scale-[0.97] disabled:pointer-events-none sm:py-8",
               isSelected
                 ? "scale-[1.03] border-primary bg-primary text-primary-foreground shadow-floating"
                 : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-1 hover:scale-[1.02] hover:border-border-strong hover:bg-primary hover:text-primary-foreground hover:shadow-floating",
@@ -298,6 +333,29 @@ export const TOPIC_HOOK: Record<string, string> = {
   career: "정하긴 해야 하는데, 뭘 기준으로 정할까요?",
 };
 
+// RESULT IDENTITY & CLARITY PASS(2026-08) — MAP Decision을 한 문장으로
+// 설명하는 유일한 카피. 실제 테스트 피드백("이게 정확히 무슨 테스트야?
+// 라고 한마디로 설명하기 어렵다")에 대응한다. 후보 3개를 비교했다:
+// (1) "선택과 직접 쓴 답에서 반복되는 패턴을 찾아, 나만의 지도로
+//     보여줘요." — 브리프가 제시한 예시에 가장 가깝지만 29자로 길고,
+//     "찾아, 보여줘요"처럼 절이 두 번 꺾여 5초 안에 읽기엔 무겁다.
+// (2) "고르고 쓴 것들 속에서, 나도 몰랐던 패턴을 지도로 그려요." —
+//     "나도 몰랐던"이 발견 3가지의 "내가 놓친 나"와 의미가 겹쳐 다른
+//     자리에서 또 읽으면 반복처럼 느껴질 위험이 있다.
+// (3, 채택) "답을 고르고 쓰다 보면, 나만의 패턴이 지도가 돼요." — 가장
+//     짧고(21자), 딱 하나의 흐름(고르고 쓰다 보면 → 지도가 된다)만
+//     담아 5초 안에 읽힌다. "고르고 쓰다"는 REAL Q1(선택)과 자유 서술
+//     문항(직접 쓰기)을 둘 다 가리켜, 이 문장이 곧이어 시작될 행동을
+//     그대로 설명한다는 점에서 Landing에도, 이미 그 행동을 마친
+//     사람의 결과를 보는 공유 화면에도 똑같이 자연스럽다. MBTI/진단
+//     느낌을 주는 "분석", "테스트", "유형" 같은 단어를 쓰지 않았다.
+//
+// 반복 남용을 피하려고 딱 두 곳에만 쓴다 — Landing(처음 이해하는
+// 지점, 아래 헤더 밑)과 /r/[id] 공유 결과 첫 화면(공유받은 사람이
+// 맥락을 이해하는 지점, app/r/[id]/page.tsx). 그 외 화면(퀴즈 진행 중,
+// ProfileStep 등)에는 반복해서 넣지 않는다.
+export const PRODUCT_DEFINITION = "답을 고르고 쓰다 보면, 나만의 패턴이 지도가 돼요.";
+
 // 문항 수는 topics.ts의 axes 배열 길이를 직접 세어 확인한 값이다(코드
 // 값을 그대로 읽어오지 않고 상수로 고정한 이유는, 이 표시가 "지금
 // 문항 구성 기준 대략 이 정도 걸린다"는 안내이지 매 렌더마다 재계산할
@@ -343,10 +401,18 @@ function TopicCard({
   topic,
   onStart,
   onLocked,
+  compact,
 }: {
   topic: TopicConfig;
   onStart: (topicId: string) => void;
   onLocked: (topic: TopicConfig) => void;
+  // LANDING HOOK & QUIZ FUN PASS(2026-08) — "다른 MAP" 그리드가 REAL Q1
+  // 히어로와 시각적 무게를 다투면 첫 행동을 방해한다는 지시에 따라,
+  // 이 그리드에서만 카드를 더 작고 조용하게(최소 높이·글자 크기·여백을
+  // 낮춘다) 만든다. "무엇을 결정해야 할지"(진로 1장)는 원래 크기를
+  // 유지한다 — 그쪽은 그리드 형태도 아니고 히어로와 경쟁하는 자리도
+  // 아니다. 클릭 대상·문구·카드 개수는 전혀 바뀌지 않는다.
+  compact?: boolean;
 }) {
   const disabled = !topic.implemented;
   const meta = TOPIC_META[topic.id];
@@ -356,20 +422,30 @@ function TopicCard({
       aria-disabled={disabled}
       onClick={() => (disabled ? onLocked(topic) : onStart(topic.id))}
       className={cx(
-        "group relative flex min-h-[112px] flex-col items-start justify-center gap-2 overflow-hidden rounded-large border border-border bg-surface p-4 text-left shadow-subtle transition duration-normal ease-emphasized",
-        disabled ? "opacity-60" : "hover:-translate-y-1 hover:border-border-strong hover:shadow-floating",
+        // VISUAL DESIGN PASS v1(2026-08) — 상단 통짜 색 바 + 흰 배경 +
+        // shadow-subtle 조합("카드마다 회색 테두리 + 흰 배경"의 전형적인
+        // SaaS 기능 카드 패턴)을 지도 "범례 색인" 톤으로 낮춘다. 색 바를
+        // 위쪽 전체 폭이 아니라 왼쪽에 짧게 세워 지도 범례의 색 표식처럼
+        // 보이게 하고, 평상시 그림자를 없애 화면이 "카드가 여러 장 떠
+        // 있다"가 아니라 "인쇄된 색인 목록"처럼 차분하게 가라앉게 한다.
+        // 정보 구조·문구·클릭 동작은 전혀 바뀌지 않는다.
+        "group relative flex flex-col items-start justify-center gap-2 overflow-hidden rounded-large border border-border bg-surface text-left transition duration-normal ease-emphasized",
+        compact ? "min-h-[88px] py-3 pl-4 pr-3" : "min-h-[112px] py-4 pl-5 pr-4",
+        disabled ? "opacity-60" : "hover:-translate-y-0.5 hover:border-primary-border-soft hover:bg-ink-wash hover:shadow-subtle",
       )}
     >
       {TOPIC_ACCENT[topic.id] ? (
-        <span aria-hidden="true" className={cx("absolute inset-x-0 top-0 h-1", TOPIC_ACCENT[topic.id])} />
+        <span aria-hidden="true" className={cx("absolute inset-y-4 left-0 w-1 rounded-pill", TOPIC_ACCENT[topic.id])} />
       ) : null}
       {disabled ? (
         <span className="absolute right-3 top-3 rounded-pill border border-border bg-surface-elevated px-2.5 py-1 text-[10px] font-black text-text-muted">
           준비 중
         </span>
       ) : null}
-      <span className="break-keep text-base font-black tracking-[-0.02em]">{topic.name}</span>
-      <span className="break-keep text-xs font-semibold leading-5 text-text-secondary">{TOPIC_HOOK[topic.id] ?? topic.oneLiner}</span>
+      <span className={cx("break-keep font-black tracking-[-0.02em]", compact ? "text-sm" : "text-base")}>{topic.name}</span>
+      <span className={cx("break-keep font-semibold leading-5 text-text-secondary", compact ? "text-[11px]" : "text-xs")}>
+        {TOPIC_HOOK[topic.id] ?? topic.oneLiner}
+      </span>
       {meta ? (
         <span className="break-keep text-[11px] font-semibold text-text-muted">
           {meta.questions}문항 · 약 {meta.minutes}분
@@ -385,30 +461,32 @@ function TopicSection({
   onStart,
   onLocked,
   showCount = true,
+  compact = false,
 }: {
   kicker: string;
   ids: string[];
   onStart: (topicId: string) => void;
   onLocked: (topic: TopicConfig) => void;
   showCount?: boolean;
+  compact?: boolean;
 }) {
   // 카드가 1개뿐이면(현재 "무엇을 결정해야 할지") 2~3열 그리드에 넣지
   // 않고 전폭 1열로 그린다 — 그리드 칸이 남아 오른쪽이 비어 보이는
   // 문제를 없앤다. 카드가 여러 개면 기존 2~3열 그대로다.
   const isSingle = ids.length === 1;
   return (
-    <section className="map-container py-4">
+    <section className={cx("map-container", compact ? "py-3" : "py-4")}>
       {/* 배지 숫자는 ids.length에서 계산한다 — VIRAL_TOPIC_IDS/DEPTH_TOPIC_IDS에
           주제가 추가·삭제돼도 따로 고칠 값이 늘지 않는다. showCount=false인
           섹션(현재 "무엇을 결정해야 할지")은 배지 자체를 렌더링하지 않는다 —
           "6개"와 "1개"가 나란히 있으면 후자가 미완성처럼 보이기 때문. */}
-      <div className="mb-4 flex items-center gap-2 px-1">
-        <p className="text-lg font-black tracking-[-0.02em] text-text-primary">{kicker}</p>
+      <div className={cx("flex items-center gap-2 px-1", compact ? "mb-2.5" : "mb-4")}>
+        <p className={cx("font-black tracking-[-0.02em] text-text-secondary", compact ? "text-sm" : "text-lg text-text-primary")}>{kicker}</p>
         {showCount ? <Badge>{ids.length}개</Badge> : null}
       </div>
-      <div className={cx("grid gap-4", isSingle ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3")}>
+      <div className={cx("grid", compact ? "gap-2.5" : "gap-4", isSingle ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3")}>
         {ids.map((id) => (
-          <TopicCard key={id} topic={TOPICS[id]} onStart={onStart} onLocked={onLocked} />
+          <TopicCard key={id} topic={TOPICS[id]} onStart={onStart} onLocked={onLocked} compact={compact} />
         ))}
       </div>
     </section>
@@ -512,6 +590,14 @@ export function Landing({
         </div>
       </header>
 
+      {/* RESULT IDENTITY & CLARITY PASS(2026-08) — 헤더 바로 아래, REAL Q1
+          위에 딱 한 줄만 놓는다. FIRST ACTION MVP가 "설명 없이 바로
+          질문"으로 이미 검증한 구조를 되돌리지 않기 위해, 이 줄은
+          내비게이션 바에 붙는 작은 캡션 취급이다 — 아래 질문(h1, 훨씬
+          크고 진한 폰트)이 여전히 첫 시선을 가져가고, 이 줄은 "혹시
+          이게 뭔지 궁금하면 여기"라는 보조 정보로만 존재한다. */}
+      <p className="map-container px-2 pt-2 text-xs font-semibold leading-5 text-text-muted">{PRODUCT_DEFINITION}</p>
+
       {/* FIRST ACTION MVP(2026-08, REAL Q1 LANDING) — 히어로 자체를
           "설명 → CTA → 테스트"가 아니라 "선택 → 진행"으로 바꿨다. 오너
           검수 지시: 처음 들어온 사람이 별도 설명이나 "테스트를 시작할지"
@@ -603,7 +689,7 @@ export function Landing({
           사람인지"를 그대로 두면 taste가 빠진 게 아니라 처음부터 없던
           것처럼 읽힌다. "다른 MAP"으로 바꿔 이 카드들이 위 Hero(taste)
           말고도 더 있다는 걸 분명히 한다. */}
-      <TopicSection kicker="다른 MAP" ids={gridTopicIds} onStart={handleGridStart} onLocked={handleLocked} />
+      <TopicSection kicker="다른 MAP" ids={gridTopicIds} onStart={handleGridStart} onLocked={handleLocked} compact />
       <TopicSection
         kicker="무엇을 결정해야 할지"
         ids={DEPTH_TOPIC_IDS}

@@ -33,10 +33,21 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 // WorkResultBlocks.tsx의 SectionHeader와 같은 이유(PR #150)로 영문
 // eyebrow 텍스트 대신 작은 색상 바를 쓴다.
-function SectionHeader({ title, description }: { title: string; description: string }) {
+// RESULT EXPERIENCE TARGET FIDELITY(2026-08) — TasteCard.tsx의 공유/다음
+// 행동 블록도 같은 헤더 언어를 쓰도록 export한다. 새 컴포넌트를 또
+// 만들지 않고 이미 있는 걸 재사용할 뿐이다.
+export function SectionHeader({ title, description }: { title: string; description: string }) {
   return (
     <div>
-      <span aria-hidden="true" className="mb-2 block h-1 w-8 rounded-pill bg-primary" />
+      {/* VISUAL DESIGN PASS v1(2026-08) — 단순 색 바를 "선 + 점" 두 조각으로
+          나눴다. 위 CardSignature(카드 우상단 경로 서명)와 같은 언어(선을
+          따라가다 점에 닿는다)를 아주 작게 반복해서, 섹션을 넘길 때마다
+          이 카드가 "경로 위의 한 지점"이라는 인상이 옅게 쌓이게 한다 —
+          새 색·새 의미는 아니고 기존 bg-primary 토큰 하나만 쓴다. */}
+      <span aria-hidden="true" className="mb-2 flex items-center gap-1.5">
+        <span className="h-1 w-6 rounded-pill bg-primary" />
+        <span className="size-1 rounded-full bg-primary" />
+      </span>
       <h2 className="text-base font-black tracking-[-0.02em] text-text-primary">{title}</h2>
       <p className="mt-0.5 text-xs font-semibold leading-5 text-text-secondary">{description}</p>
     </div>
@@ -45,6 +56,13 @@ function SectionHeader({ title, description }: { title: string; description: str
 
 // CollapsibleFriendResult.tsx와 똑같은 토글 버튼 스타일을 재사용한다 —
 // "더 깊게 보기"/"행동으로 이어보기" 둘 다 이 컴포넌트로 만든다.
+//
+// BRAND IDENTITY PASS v2(2026-08) — 알약 모양 + shadow-subtle(둥실 뜬
+// 흰 버튼) 조합을 "모든 걸 rounded card에 담는" 패턴에서 빼기 위해
+// radius-small(12px)·그림자 없음·투명 배경의 얇은 테두리 행으로
+// 낮췄다. 결과 CTA(친구에게 보여주기 등, 진짜 버튼)와 이 정보 토글이
+// 한눈에 다른 위계로 읽히게 하는 목적도 겸한다. 펼치기/접기 동작,
+// 문구, 클릭 대상은 전혀 바뀌지 않는다.
 function Disclosure({ closedLabel, openLabel, children }: { closedLabel: string; openLabel: string; children: ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   return (
@@ -53,7 +71,7 @@ function Disclosure({ closedLabel, openLabel, children }: { closedLabel: string;
         type="button"
         onClick={() => setExpanded((current) => !current)}
         aria-expanded={expanded}
-        className="flex w-full items-center justify-between rounded-pill border border-border bg-surface-elevated px-4 py-3 text-sm font-extrabold text-text-primary shadow-subtle transition-colors hover:border-border-strong"
+        className="flex w-full items-center justify-between rounded-small border border-border bg-transparent px-4 py-3 text-sm font-extrabold text-text-primary transition-colors hover:border-border-strong hover:bg-ink-wash"
       >
         <span>{expanded ? openLabel : closedLabel}</span>
         <span aria-hidden="true">{expanded ? "▲" : "▾"}</span>
@@ -79,27 +97,96 @@ export function TasteTagRow({ tags, className }: { tags: string[]; className?: s
   );
 }
 
-// RESULT VIRAL EXPERIENCE(2026-08) — 카드 우상단에 얹는 작은 "경로"
-// 모티프. MY MAP(매트릭스 차트)이 이미 쓰는 점·선 언어를 재사용하되,
-// 새 시각화 엔진이나 일러스트 세트 없이 SVG 도형 3개(원 3개 + 곡선
-// 1개)만으로 "이것도 하나의 지도"라는 인상만 옅게(opacity-20) 남긴다 —
-// 정보 전달용이 아니라 순수 브랜드 시그니처다. 정보(제목·한줄설명)
-// 뒤에 깔리는 배경 요소라 pointer-events-none + aria-hidden으로
-// 상호작용/스크린리더에서 완전히 제외한다.
-function CardSignature() {
+// RESULT VISUAL EXPERIENCE REBUILD(2026-08) — 카드 우상단 5% 미만짜리
+// 작은 아이콘(옛 CardSignature)을 없애고, 카드 전체를 덮는 큰 배경
+// 워터마크로 대체한다. Target 설계안 §3의 요구("MAP Decision 로고를
+// 가려도 개인 결과물처럼 보이는가")에 대한 답 — 이 사람의 MY MAP
+// 지형(matrix.types)을 그대로 재사용해 크고 옅게 깐다. 카드 자체가
+// "이 사람의 지도에서 잘라낸 한 조각"처럼 보이게 하는 게 목적이다.
+// 좌표 계산은 MyMapSection이 쓰는 것과 완전히 같은 함수(아래
+// spreadMatrixPoints/centroidOf/angleSortedOrder/closedSmoothPath, 모두
+// 이 파일 안에서 그대로 재사용 — 새로 만들지 않음)라 값이 어긋날 일이
+// 없다. 정보 전달용이 아니라 순수 배경이라 pointer-events-none +
+// aria-hidden으로 상호작용/스크린리더에서 완전히 제외한다.
+function CardTerritoryBackdrop({ matrix }: { matrix: TasteMatrix }) {
+  const filterId = useId();
+  const placed = spreadMatrixPoints(matrix.types);
+  const territoryOrder = angleSortedOrder(placed);
+  const territoryPath = closedSmoothPath(territoryOrder);
+  if (!territoryPath) return null;
   return (
-    <svg viewBox="0 0 64 64" className="pointer-events-none absolute right-4 top-4 size-14 opacity-20" aria-hidden="true">
-      <path
-        d="M8 44 C20 40, 26 20, 40 18 S 54 10, 56 8"
-        className="fill-none stroke-primary"
-        strokeWidth="2"
-        strokeDasharray="1 5"
-        strokeLinecap="round"
-      />
-      <circle cx="8" cy="44" r="3" className="fill-primary" />
-      <circle cx="40" cy="18" r="2.4" className="fill-primary" />
-      <circle cx="56" cy="8" r="3" className="fill-primary" />
+    <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" className="pointer-events-none absolute inset-0 -z-10 size-full" aria-hidden="true">
+      <defs>
+        <filter id={`card-territory-blur-${filterId}`} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="7" />
+        </filter>
+      </defs>
+      <path d={territoryPath} className="fill-primary" fillOpacity={0.16} filter={`url(#card-territory-blur-${filterId})`} />
+      <path d={territoryPath} className="fill-none stroke-primary" strokeWidth="0.6" strokeOpacity={0.3} />
     </svg>
+  );
+}
+
+// RESULT IDENTITY & CLARITY PASS(2026-08) — "결과가 기억에 남지 않는다"는
+// 테스터 피드백(1명, 상대평가) 대응. 새 AI 필드를 만들지 않고, 이미
+// 생성된 result.matrix.types(정확히는 그 배열 안의 label 필드 — AI가
+// 이미 2~4단어로 지어둔 "취향 속 모습" 이름)에서만 값을 뽑는다. 네
+// 지점 중 서로 가장 멀리 떨어진(=이 사람의 지형에서 가장 대비되는)
+// 두 지점의 label을 "A → B"로 붙여, 브리핑에서 예시로 든 "탐험 →
+// 회귀" 같은 짧고 기억 가능한 신호를 매 사용자마다 다르게, 결정적으로
+// 만든다. 화살표 방향은 배열에 먼저 등장한 순서를 그대로 따른다 —
+// x/y가 사용자마다 다른 임의의 두 축이라 "어느 쪽이 시작이고 어느
+// 쪽이 도착인지"를 코드가 함부로 판단하면 사실과 다른 서사를 지어내는
+// 셈이 되기 때문이다(예: 실제로는 안 그런데 "탐험에서 회귀로 향한다"고
+// 단정하는 것). 점이 2개 미만이면(스키마상 가능성만 있음, capMatrixPoints
+// 참고) null을 돌려주고 화면은 그 경우 이 줄 자체를 생략한다 — MY MAP
+// 섹션(LivingMapChart)이 이미 3개 미만일 때 폐곡선을 안 그리는 것과
+// 같은 방어 원칙이다.
+function pickSignaturePair(points: TasteMatrixPoint[]): [TasteMatrixPoint, TasteMatrixPoint] | null {
+  if (points.length < 2) return null;
+  let best: [TasteMatrixPoint, TasteMatrixPoint] | null = null;
+  let bestDistance = -1;
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i + 1; j < points.length; j++) {
+      const distance = Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y);
+      if (distance > bestDistance) {
+        bestDistance = distance;
+        best = [points[i], points[j]];
+      }
+    }
+  }
+  return best;
+}
+
+// VISUAL & VIRAL REFOUNDATION(2026-08) — 위 계산 결과를 보여주는 칩을
+// HeroHeader 전용이 아니라 독립 컴포넌트로 뺐다. 이유: 라이브 결과
+// 화면(showHero=true)뿐 아니라 /r/[id] 공유 화면(showHero=false, 카드
+// 이미지가 이미 title을 담당해 HeroHeader 자체를 안 그리는 경로)에도
+// 똑같은 발견을 보여줘야 "친구가 개인 MAP을 받았다"는 느낌이 생긴다는
+// 지시 때문이다 — 이전 라운드(RESULT IDENTITY & CLARITY PASS)에서는
+// 이 칩이 HeroHeader 안에만 있어서 공유 화면에는 안 보이는 공백이
+// 있었다(그 라운드 완료 보고에 남은 약점으로 기록했다). export해서
+// app/r/[id]/page.tsx의 taste 분기에서도 그대로 재사용한다.
+// VIRAL HOOK & RESULT DELIGHT PASS(2026-08) — 라벨을 영문 "Pattern"
+// (데이터 필드처럼 읽힘)에서 "나의 궤적"(사람이 실제로 말할 법한
+// 한국어)으로 바꿨다. 테스터 피드백("'내가 확실히 끌리는 것'이라고
+// 풀어 쓰는 것보다, 궁금증을 유발하면서 축약할 수 있는 단어가 어린
+// 층에게 더 긍정적일 것 같다")에 대한 응답이다. 계산 로직·값은 전혀
+// 안 바꿨다 — MBTI식 고정 유형명이나 랜덤 별명을 새로 만드는 게
+// 아니라, 이미 있는 값(matrix.types에서 뽑은 두 지점)을 "사용자가
+// 친구에게 그대로 말할 수 있는 문장"에 더 가깝게 소개하는 문구만
+// 바꿨다. 크기도 한 단계 키워(lg→xl) title 다음으로 눈에 들어오는
+// "공개 순간"이 되게 했다.
+export function TasteSignatureChip({ result, className }: { result: TasteResult; className?: string }) {
+  const signaturePair = pickSignaturePair(result.matrix.types);
+  if (!signaturePair) return null;
+  return (
+    <div className={cx("inline-flex w-fit items-center gap-2 rounded-medium border border-primary-border-soft bg-ink-wash px-3 py-2", className)}>
+      <span className="font-serif text-[10px] font-bold uppercase tracking-[0.1em] text-primary">나의 궤적</span>
+      <span className="text-xl font-black tracking-[-0.01em] text-primary">
+        {signaturePair[0].label} <span aria-hidden="true" className="text-text-muted">→</span> {signaturePair[1].label}
+      </span>
+    </div>
   );
 }
 
@@ -114,26 +201,96 @@ function CardSignature() {
 function HeroHeader({ result, heroAction }: { result: TasteResult; heroAction?: ReactNode }) {
   return (
     <Card className="relative overflow-hidden p-5">
-      <CardSignature />
-      <div className="flex items-center justify-between gap-2">
+      <CardTerritoryBackdrop matrix={result.matrix} />
+      <div className="relative flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5" aria-hidden="true">
-          <span className="grid size-5 place-items-center rounded-medium border border-primary bg-surface-elevated text-[10px] font-black text-primary">
+          {/* BRAND IDENTITY PASS v2(2026-08) — "M + irregular contour" 지시를
+              반영해, 완벽한 원/정사각형 대신 손으로 찍은 봉인처럼 약간
+              비정형인 윤곽(비대칭 border-radius)과 미세한 기울임을 준다.
+              Living MY MAP의 "완벽한 도형이 아닌 유기적 윤곽" 언어를 이
+              작은 배지 하나에도 그대로 반복한 것뿐 — 새 색·새 아이콘
+              세트는 아니다. 밀랍 인장처럼 두껍게 만들지 않도록 테두리는
+              1px, 크기는 기존과 거의 같게 유지했다. */}
+          <span
+            className="grid size-6 place-items-center border border-primary bg-surface-elevated text-[10px] font-black text-primary"
+            style={{ borderRadius: "42% 58% 53% 47% / 48% 42% 58% 52%", transform: "rotate(-4deg)" }}
+          >
             M
           </span>
-          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-text-muted">MAP Decision</span>
+          {/* "MAP Decision"은 라틴 문자뿐이라 시스템 세리프(font-serif,
+              Tailwind 기본 스택 — 새 폰트 파일을 받지 않는다)를 입혀도
+              추가 전송량이 0바이트다. 실제 결과 제목(한글, AI가 만든
+              임의 문장)에는 세리프를 적용하지 않았다 — 이유는 이 파일의
+              결과 보고에 별도로 남긴다(요약: 이 프로젝트가 이미 Pretendard를
+              92개 유니코드 조각으로 나눠 쓰는 이유와 같은 이유로, 결과
+              제목처럼 글자 구성을 예측할 수 없는 자리에 새 한글 세리프
+              전체(웹 폰트 2.4MB급)를 무조건 올리는 건 이번 라운드의
+              "가볍게" 원칙과 맞지 않는다). */}
+          <span className="font-serif text-[10px] font-black uppercase tracking-[0.14em] text-text-muted">MAP Decision</span>
         </div>
         <span className="inline-flex items-center rounded-pill bg-tag-fill px-3 py-1 text-xs font-extrabold text-text-primary">
           나의 취향 MAP
         </span>
       </div>
-      <h1 className="mt-4 text-balance break-keep text-3xl font-black leading-9 tracking-[-0.03em] text-text-primary">{result.title}</h1>
-      <p className="mt-2 text-sm font-bold leading-6 text-text-primary">{result.oneLiner}</p>
+      {/* masthead rule — "브랜드 표기"와 "제목"을 필드가 아니라 지면
+          (masthead 아래 헤드라인)처럼 가르는 얇은 선 하나. 새 정보는
+          아니고 순수 구분선이라 스크린리더에서 의미를 갖지 않는다. */}
+      <div aria-hidden="true" className="my-3 h-px w-full bg-border" />
+      {/* RESULT EXPERIENCE TARGET FIDELITY(2026-08) — "RESULT CARD →
+          발견 3가지 → MY MAP → 더 깊게 보기 → 공유/다음 행동" 기준
+          설계안(첨부 이미지)에서 RESULT CARD 단계의 주인공은 명시적으로
+          title + oneLiner다("사용자가 첫 3초 안에 기억해야 할 것은
+          결과 title + oneLiner다. PATTERN/나의 궤적이 주인공이
+          아니다"). 이전 라운드(VIRAL HOOK & RESULT DELIGHT PASS)에서
+          나의 궤적 칩을 title 바로 다음(첫 3초 자리)으로 올렸던 걸
+          되돌린다 — title → oneLiner → statusLabel → tags까지가
+          "결과 공개" 한 세트로 먼저 오고, 나의 궤적 칩은 그 부연
+          설명들 다음(공유 버튼 바로 위)으로 내려 "덤으로 발견한
+          한 줄 요약" 정도의 위계로 낮췄다. 문장·계산 값은 전혀
+          안 바꿨고, 등장 순서만 되돌렸다. */}
+      <h1 className="text-balance break-keep text-4xl font-black leading-10 tracking-[-0.03em] text-text-primary">{result.title}</h1>
+      <p className="mt-3 text-sm font-bold leading-6 text-text-primary">{result.oneLiner}</p>
       {result.statusLabel ? (
         <p className="mt-2 text-xs font-semibold leading-5 text-text-secondary">{result.statusLabel}</p>
       ) : null}
       <TasteTagRow tags={result.tags ?? []} className="mt-3" />
+      <TasteSignatureChip result={result} className="mt-3" />
       {heroAction ? <div className="mt-4">{heroAction}</div> : null}
+      {/* Target 이미지의 RESULT CARD 화면엔 "다음 단계로: MAP이 발견한
+          3가지를 볼까요?" 같은 스크롤 유도 한 줄이 있다 — 새 데이터가
+          아니라 고정 UI 문구 하나(스크롤 안내)만 추가한다. */}
+      <p className="mt-4 text-center text-[11px] font-semibold text-text-muted">다음 단계로 · MAP이 발견한 3가지를 볼까요? ↓</p>
     </Card>
+  );
+}
+
+// RESULT VISUAL EXPERIENCE REBUILD(2026-08) — Target 설계안 §7: "공유용
+// RESULT CARD preview가 화면 안에서 다시 등장하는 구조를 검토한다...
+// 사용자는 버튼을 누르기 전에 '이걸 친구한테 보내면 재밌겠다'고
+// 느껴야 한다." STEP 1 HeroHeader와 같은 데이터(title/tags)를 훨씬
+// 작게 다시 보여줘, 공유 버튼을 누르기 전에 "무엇이 나가는지"를
+// 미리 보여주는 축소 카드다. 새 데이터 없음 — title/tags 재사용뿐.
+export function TasteShareCardPreview({ result }: { result: TasteResult }) {
+  return (
+    <div className="relative overflow-hidden rounded-large border border-border bg-surface-elevated p-4 shadow-subtle">
+      <span
+        aria-hidden="true"
+        className="absolute right-3 top-3 rounded-pill bg-tag-fill px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.06em] text-text-muted"
+      >
+        미리보기
+      </span>
+      <div className="flex items-center gap-1.5" aria-hidden="true">
+        <span
+          className="grid size-5 place-items-center border border-primary bg-surface-elevated text-[9px] font-black text-primary"
+          style={{ borderRadius: "42% 58% 53% 47% / 48% 42% 58% 52%" }}
+        >
+          M
+        </span>
+        <span className="font-serif text-[9px] font-black uppercase tracking-[0.14em] text-text-muted">MAP Decision</span>
+      </div>
+      <p className="mt-2 text-lg font-black leading-6 tracking-[-0.02em] text-text-primary">{result.title}</p>
+      <TasteTagRow tags={(result.tags ?? []).slice(0, 3)} className="mt-2" />
+    </div>
   );
 }
 
@@ -179,20 +336,71 @@ function dropFirst<T>(items: T[]): T[] {
   return items.length > 0 ? items.slice(1) : items;
 }
 
-// 1→2→3으로 갈수록 카드 무게(테두리·배경·글자 굵기)가 짙어지게 해서
-// 3번째("내가 놓친 나")가 자연스럽게 climax가 되게 한다 — 새 색을
-// 추가하지 않고 기존 토큰(border/border-strong/primary, surface-elevated/
-// ink-wash)만으로 3단계를 만든다.
-const DISCOVERY_TIER_CLASS = [
-  "border border-border bg-surface-elevated shadow-subtle",
-  "border border-border-strong bg-ink-wash shadow-subtle",
-  "border-2 border-primary bg-ink-wash shadow-floating",
-];
-const DISCOVERY_TEXT_CLASS = [
-  "text-base font-bold leading-7 text-text-primary",
-  "text-base font-bold leading-7 text-text-primary",
-  "text-lg font-black leading-7 text-text-primary",
-];
+// RESULT VISUAL EXPERIENCE REBUILD(2026-08) — Target 설계안 §4: "세 장이
+// 같은 rounded card로 반복되면 안 된다. 번호·타이포·레이아웃·아이콘·
+// 강조·여백을 다르게 써서 세 발견의 '성격'을 다르게 만들어라." 이전
+// 라운드는 카드 색 tier만 3단계로 나눴는데, 그건 여전히 "카드 3장"
+// 반복이었다. 이번엔 세 카드를 아예 다른 컴포넌트(다른 layout·다른
+// 모티프)로 만든다 — role/text 데이터·순서는 전혀 안 바꾼다.
+
+// ① 내가 아는 나 — 가장 안전한 진입점. 조용히, 인용부호 하나로.
+function DiscoveryQuietCard({ role, text }: Discovery) {
+  return (
+    <div className="flex gap-3 py-3">
+      <span aria-hidden="true" className="shrink-0 font-serif text-3xl font-black leading-none text-border-strong">“</span>
+      <div className="flex flex-col gap-1 pt-1">
+        <p className="text-xs font-black tracking-[-0.01em] text-text-muted">{role}</p>
+        <p className="text-sm font-semibold leading-6 text-text-secondary">{text}</p>
+      </div>
+    </div>
+  );
+}
+
+// ② 반복되는 나 — 답변을 가로질러 반복된다는 뜻의 loop 아이콘.
+function DiscoveryLoopCard({ role, text }: Discovery) {
+  return (
+    <div className="flex items-start gap-3 rounded-large border border-border bg-surface-elevated p-4 shadow-subtle">
+      <svg viewBox="0 0 24 24" className="mt-0.5 size-6 shrink-0 fill-none stroke-primary" strokeWidth={1.8} aria-hidden="true">
+        <path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3" strokeLinecap="round" />
+        <path d="M18 4v3h-3M6 20v-3h3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-black tracking-[-0.01em] text-text-primary">{role}</p>
+        <p className="text-sm font-semibold leading-6 text-text-secondary">{text}</p>
+      </div>
+    </div>
+  );
+}
+
+// ③ 내가 놓친 나 — climax. -mx-4로 화면 카드 밖까지 번지듯 full-bleed로
+// 터뜨린다(아래 MY MAP 섹션의 full-bleed와 같은 장치를 재사용해 "장면이
+// 전환된다"는 리듬을 만든다). 조리개가 열리는 듯한 확장 원 모티프.
+function DiscoveryBreakoutCard({ role, text }: Discovery) {
+  return (
+    <div className="relative -mx-4 overflow-hidden bg-primary px-8 py-8 text-primary-foreground">
+      <svg viewBox="0 0 100 100" className="pointer-events-none absolute -right-6 -top-6 size-32 opacity-20" aria-hidden="true">
+        <circle cx="50" cy="50" r="46" className="fill-none stroke-primary-foreground" strokeWidth="1" />
+        <circle cx="50" cy="50" r="32" className="fill-none stroke-primary-foreground" strokeWidth="1" />
+        <circle cx="50" cy="50" r="18" className="fill-none stroke-primary-foreground" strokeWidth="1" />
+      </svg>
+      <div className="relative flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-pill bg-primary-foreground text-xs font-black text-primary">
+            3
+          </span>
+          <p className="text-sm font-black uppercase tracking-[0.08em] text-primary-foreground-soft">{role}</p>
+        </div>
+        <p className="text-2xl font-black leading-8 tracking-[-0.02em]">{text}</p>
+        {/* VIRAL HOOK & RESULT DELIGHT PASS(2026-08)에서 만든 고정 UI
+            라벨을 그대로 이어 쓴다 — AI 문장이 아니라 이 파일의 고정
+            chrome이다. */}
+        <span className="mt-1 inline-flex w-fit items-center rounded-pill bg-primary-foreground-wash px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.06em] text-primary-foreground">
+          예상 밖의 발견
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function DiscoveriesSection({ result }: { result: TasteResult }) {
   const discoveries = pickDiscoveries(result);
@@ -200,19 +408,15 @@ function DiscoveriesSection({ result }: { result: TasteResult }) {
   return (
     <div className="flex flex-col gap-3">
       <SectionHeader title="MAP이 발견한 3가지" description="따로 답한 문항들을 모아보니, 이런 게 보였어요." />
-      <div className="flex flex-col gap-2">
-        {discoveries.map((discovery, index) => (
-          <div key={discovery.role} className={cx("flex flex-col gap-1.5 rounded-large p-4", DISCOVERY_TIER_CLASS[index % DISCOVERY_TIER_CLASS.length])}>
-            <div className="flex items-center gap-2">
-              <span className="grid size-6 shrink-0 place-items-center rounded-pill bg-primary text-xs font-black text-primary-foreground">
-                {index + 1}
-              </span>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-text-muted">{discovery.role}</p>
-            </div>
-            <p className={DISCOVERY_TEXT_CLASS[index % DISCOVERY_TEXT_CLASS.length]}>{discovery.text}</p>
+      <div className="flex flex-col divide-y divide-border">
+        {discoveries[0] ? <DiscoveryQuietCard {...discoveries[0]} /> : null}
+        {discoveries[1] ? (
+          <div className="py-3">
+            <DiscoveryLoopCard {...discoveries[1]} />
           </div>
-        ))}
+        ) : null}
       </div>
+      {discoveries[2] ? <DiscoveryBreakoutCard {...discoveries[2]} /> : null}
     </div>
   );
 }
@@ -226,18 +430,54 @@ function DiscoveriesSection({ result }: { result: TasteResult }) {
 // CollapsibleFriendResult.tsx·위 Disclosure와 같은 토글 발상이지만,
 // "메뉴 목록" 느낌을 내려고 더 얇고 리스트에 가깝게 만들었다(더
 // 깊게 보기 자체를 여는 Disclosure보다 한 단계 더 가벼운 톤).
-function DeepDiveDisclosureItem({ title, children }: { title: string; children: ReactNode }) {
+// VISUAL DESIGN PASS v1(2026-08) — 예전엔 항목마다 각자 테두리·radius·
+// shadow를 가진 독립된 흰 박스였다(4장이 세로로 쌓여 "폼 필드 리스트"에
+// 가깝게 보였다). 이제 이 컴포넌트 자체는 자기 테두리를 갖지 않고,
+// 아래 TasteResultDetails가 4개를 하나의 그룹 컨테이너(테두리 1개 +
+// divide-y 구분선)로 감싼다 — "카드 4장"이 아니라 "메뉴 한 판" 인상을
+// 준다. 펼치기·접기 로직, 각 항목이 독립적으로 열리는 동작, 문구는
+// 전혀 바뀌지 않는다.
+// RESULT EXPERIENCE TARGET FIDELITY(2026-08) — "FAQ/settings accordion처럼
+// 보이지 않게 editorial menu 느낌으로"라는 요구에 맞춰, 항목 번호를
+// serif 숫자로 왼쪽에 붙였다. 새 데이터가 아니라 항목 순서(1~4)를
+// 그대로 숫자로 보여줄 뿐이다 — 이 카드시그니처·MAP DECISION 마크가
+// 이미 쓰는 "font-serif = 브랜드 디테일" 어휘를 재사용했다.
+// RESULT VISUAL EXPERIENCE REBUILD(2026-08) — Target 설계안 §6: "탐색
+// 메뉴처럼, preview sentence를 활용해라." 닫힌 상태에서도 그 메뉴의
+// 첫 문장(이미 TasteResultDetails가 각 메뉴에 넘겨주는 데이터의
+// 0번째 항목 — 새 데이터 아님)을 한 줄 미리 보여준다. 열기/닫기
+// 로직·본문 내용은 전혀 안 바뀐다, 닫힌 행에 미리보기 한 줄이 추가될
+// 뿐이다.
+function DeepDiveDisclosureItem({
+  index,
+  title,
+  preview,
+  children,
+}: {
+  index: number;
+  title: string;
+  preview?: string;
+  children: ReactNode;
+}) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="overflow-hidden rounded-large border border-border bg-surface-elevated shadow-subtle">
+    <div>
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
         aria-expanded={expanded}
-        className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-extrabold text-text-primary"
+        className="flex w-full items-start justify-between gap-3 px-4 py-3.5 text-left"
       >
-        <span>{title}</span>
-        <span aria-hidden="true" className="shrink-0 text-text-muted">
+        <span className="flex min-w-0 flex-1 gap-2.5">
+          <span aria-hidden="true" className="shrink-0 font-serif text-xs font-bold text-primary">
+            {String(index).padStart(2, "0")}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-extrabold text-text-primary">{title}</span>
+            {!expanded && preview ? <span className="mt-0.5 block truncate text-xs font-medium text-text-muted">{preview}</span> : null}
+          </span>
+        </span>
+        <span aria-hidden="true" className="mt-0.5 shrink-0 text-text-muted">
           {expanded ? "▲" : "▾"}
         </span>
       </button>
@@ -430,7 +670,10 @@ function angleSortedOrder<T extends { plotX: number; plotY: number }>(points: T[
 // 살짝 축소·확대한 두 겹을 등고선처럼 옅게 겹쳐서 "차트"가 아니라
 // "지형"으로 읽히게 한다. 격자선·십자선은 그리지 않는다(그게 있으면
 // 바로 "분석 도구"처럼 보인다는 게 Lab 비교의 결론이었다).
-function LivingMapChart({ matrix }: { matrix: TasteMatrix }) {
+// RESULT VISUAL EXPERIENCE REBUILD(2026-08) — dark 모드 추가. 좌표
+// 계산은 완전히 동일하고, 어두운 배경(bg-primary) 위에서 지형이
+// "빛나는" 것처럼 보이도록 색만 반전한다(primary ↔ primary-foreground).
+function LivingMapChart({ matrix, dark, size = "default" }: { matrix: TasteMatrix; dark?: boolean; size?: "default" | "hero" }) {
   const filterId = useId();
   const placed = spreadMatrixPoints(matrix.types);
   const centroid = centroidOf(placed);
@@ -439,35 +682,41 @@ function LivingMapChart({ matrix }: { matrix: TasteMatrix }) {
   const outerRingPath = closedSmoothPath(scaleAroundCentroid(territoryOrder, 1.22, centroid));
   const innerRingPath = closedSmoothPath(scaleAroundCentroid(territoryOrder, 0.68, centroid));
 
+  const labelClass = dark ? "text-primary-foreground-soft" : "text-text-muted";
+  const territoryColor = dark ? "stroke-primary-foreground" : "stroke-primary";
+  const fillColor = dark ? "fill-primary-foreground" : "fill-primary";
+  const pointStroke = dark ? "stroke-primary" : "stroke-surface";
+  const pointText = dark ? "fill-primary" : "fill-primary-foreground";
+
   return (
-    <div className="mx-auto w-full max-w-xs">
-      <p className="mb-1 flex items-center justify-center gap-1 text-center text-[11px] font-black uppercase tracking-[0.06em] text-text-muted">
+    <div className={cx("mx-auto w-full", size === "hero" ? "max-w-none" : "max-w-sm")}>
+      <p className={cx("mb-1 flex items-center justify-center gap-1 text-center text-[11px] font-black uppercase tracking-[0.06em]", labelClass)}>
         <span aria-hidden="true">▲</span> {matrix.yAxisLabel.high}
       </p>
       <div className="flex items-center gap-2">
-        <p className="w-12 shrink-0 text-right text-[11px] font-black leading-tight text-text-muted">{matrix.xAxisLabel.low}</p>
+        <p className={cx("w-12 shrink-0 text-right text-[11px] font-black leading-tight", labelClass)}>{matrix.xAxisLabel.low}</p>
         <div className="relative aspect-square flex-1">
           <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
             <defs>
               <filter id={`living-map-glow-${filterId}`} x="-60%" y="-60%" width="220%" height="220%">
-                <feGaussianBlur stdDeviation="4.5" />
+                <feGaussianBlur stdDeviation={size === "hero" ? "3.5" : "4.5"} />
               </filter>
             </defs>
-            <path d={outerRingPath} className="fill-none stroke-primary" strokeWidth="0.6" strokeDasharray="1.5 2" strokeOpacity={0.2} />
-            <path d={territoryPath} className="fill-primary" fillOpacity={0.16} filter={`url(#living-map-glow-${filterId})`} />
-            <path d={territoryPath} className="fill-none stroke-primary" strokeWidth="1" strokeOpacity={0.6} />
-            <path d={innerRingPath} className="fill-none stroke-primary" strokeWidth="0.5" strokeDasharray="1 1.6" strokeOpacity={0.32} />
-            <circle cx={centroid.x} cy={centroid.y} r="1" className="fill-primary" fillOpacity={0.5} />
+            <path d={outerRingPath} className={cx("fill-none", territoryColor)} strokeWidth="0.6" strokeDasharray="1.5 2" strokeOpacity={dark ? 0.35 : 0.2} />
+            <path d={territoryPath} className={fillColor} fillOpacity={dark ? 0.28 : 0.16} filter={`url(#living-map-glow-${filterId})`} />
+            <path d={territoryPath} className={cx("fill-none", territoryColor)} strokeWidth={size === "hero" ? "0.7" : "1"} strokeOpacity={dark ? 0.85 : 0.6} />
+            <path d={innerRingPath} className={cx("fill-none", territoryColor)} strokeWidth="0.5" strokeDasharray="1 1.6" strokeOpacity={dark ? 0.5 : 0.32} />
+            <circle cx={centroid.x} cy={centroid.y} r="1" className={fillColor} fillOpacity={dark ? 0.8 : 0.5} />
             {placed.map((point, index) => (
               <g key={index}>
                 <title>{point.label}</title>
-                <circle cx={point.plotX} cy={point.plotY} r="3.8" className="fill-primary stroke-surface" strokeWidth="0.8" />
+                <circle cx={point.plotX} cy={point.plotY} r={size === "hero" ? "3.2" : "3.8"} className={cx(fillColor, pointStroke)} strokeWidth="0.8" />
                 <text
                   x={point.plotX}
                   y={point.plotY}
                   textAnchor="middle"
                   dominantBaseline="central"
-                  className="fill-primary-foreground font-black"
+                  className={cx(pointText, "font-black")}
                   style={{ fontSize: "4px" }}
                 >
                   {index + 1}
@@ -476,39 +725,49 @@ function LivingMapChart({ matrix }: { matrix: TasteMatrix }) {
             ))}
           </svg>
         </div>
-        <p className="w-12 shrink-0 text-left text-[11px] font-black leading-tight text-text-muted">{matrix.xAxisLabel.high}</p>
+        <p className={cx("w-12 shrink-0 text-left text-[11px] font-black leading-tight", labelClass)}>{matrix.xAxisLabel.high}</p>
       </div>
-      <p className="mt-1 flex items-center justify-center gap-1 text-center text-[11px] font-black uppercase tracking-[0.06em] text-text-muted">
+      <p className={cx("mt-1 flex items-center justify-center gap-1 text-center text-[11px] font-black uppercase tracking-[0.06em]", labelClass)}>
         <span aria-hidden="true">▼</span> {matrix.yAxisLabel.low}
       </p>
     </div>
   );
 }
 
-// STEP 3 MY MAP. matrix 데이터·좌표 계산(spreadMatrixPoints)은 그대로다
-// — 위 LivingMapChart로 그리는 방식만 바뀌었다. 설명 문구도 "지형"
-// 프레이밍에 맞춰 다시 썼다("내 안의 여러 모습이 이렇게 연결돼
-// 있어요" → "내 안의 여러 모습이 이런 지형을 만들어요") — MY MAP
-// VISUAL LAB(2026-08) 비교 실험에서 오너가 A안(Living Map)을 최종
-// 선택했다.
+// STEP 3 MY MAP — RESULT VISUAL EXPERIENCE REBUILD(2026-08). Target
+// 설계안 §5: "그래프가 아니라 HERO SCENE... 화면 한 장을 거의 MY MAP에
+// 사용할 수 있는가?" white Card 안에 차트를 넣는 방식을 버리고,
+// -mx-4로 화면 카드 밖까지 번지는 full-bleed 어두운(bg-primary) 구간
+// 하나를 통째로 만든다 — 앞뒤 섹션(전부 크림 배경)과 톤이 완전히
+// 갈려서 "장면이 바뀐다"는 게 스크롤만으로도 느껴진다. matrix 데이터·
+// 좌표 계산(spreadMatrixPoints)은 한 줄도 안 건드렸다 — LivingMapChart의
+// dark/size prop으로 "어떻게 그리는지"만 바꿨다. 설명 문구도 한 줄로
+// 더 줄였다(Target §5 "설명문을 줄일 수 있는가").
 function MyMapSection({ matrix }: { matrix: TasteMatrix }) {
   return (
-    <Card className="flex flex-col gap-4">
-      <SectionHeader title="MY MAP" description="내 안의 여러 모습이 이런 지형을 만들어요." />
-      <LivingMapChart matrix={matrix} />
-      <ul className="flex flex-col gap-2.5">
+    <div className="-mx-4 flex flex-col gap-6 bg-primary px-6 py-12 text-primary-foreground">
+      <div className="text-center">
+        <p className="font-serif text-[11px] font-bold uppercase tracking-[0.2em] text-primary-foreground-soft">MY MAP</p>
+        <p className="mt-1 text-sm font-bold text-primary-foreground">내 안의 여러 모습이 만든 지형이에요.</p>
+      </div>
+      <LivingMapChart matrix={matrix} dark size="hero" />
+      <ul className="mx-auto flex w-full max-w-xs flex-col gap-2">
         {matrix.types.map((point, index) => (
-          <li key={index} className="flex items-start gap-2 text-sm font-semibold leading-6 text-text-secondary">
-            <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-pill border border-border bg-surface-elevated text-[11px] font-black text-text-primary">
+          <li key={index} className="flex items-start gap-2 text-xs font-semibold leading-6 text-primary-foreground-soft">
+            <span
+              aria-hidden="true"
+              className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-pill border border-primary-foreground-soft text-[10px] font-black text-primary-foreground"
+            >
               {index + 1}
             </span>
             <span>
-              <span className="font-black text-text-primary">{point.label}</span> — {point.description}
+              <span className="font-black text-primary-foreground">{point.label}</span> — {point.description}
             </span>
           </li>
         ))}
       </ul>
-    </Card>
+      <p className="text-center text-xs font-semibold text-primary-foreground-soft">이 지형은 나만의 것이에요 — 친구는 완전히 다르게 나와요.</p>
+    </div>
   );
 }
 
@@ -706,8 +965,8 @@ export function TasteResultDetails({ result }: { result: TasteResult }) {
 
   return (
     <Disclosure closedLabel="더 깊게 보기" openLabel="접기">
-      <div className="flex flex-col gap-2.5">
-        <DeepDiveDisclosureItem title="내가 확실히 끌리는 것">
+      <div className="divide-y divide-border overflow-hidden rounded-large border border-border bg-surface-elevated">
+        <DeepDiveDisclosureItem index={1} title="내가 확실히 끌리는 것" preview={result.tasteCore.certain[0]}>
           <HeroEvidence items={result.tasteCore.certain} maxEvidence={2} maxMore={2} />
           {patternsRest.length > 0 ? (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
@@ -719,7 +978,7 @@ export function TasteResultDetails({ result }: { result: TasteResult }) {
           ) : null}
         </DeepDiveDisclosureItem>
 
-        <DeepDiveDisclosureItem title="상황에 따라 달라지는 나">
+        <DeepDiveDisclosureItem index={2} title="상황에 따라 달라지는 나" preview={result.tasteCore.conditional[0]}>
           <HeroEvidence items={result.tasteCore.conditional} maxEvidence={2} maxMore={2} />
           {result.tasteCore.indifferent.length > 0 ? (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
@@ -734,11 +993,11 @@ export function TasteResultDetails({ result }: { result: TasteResult }) {
           ) : null}
         </DeepDiveDisclosureItem>
 
-        <DeepDiveDisclosureItem title="넓혀볼 것 / 굳이 안 맞출 것">
+        <DeepDiveDisclosureItem index={3} title="넓혀볼 것 / 굳이 안 맞출 것" preview={result.tasteMap.expand[0]}>
           <ExpandAvoidGrid tasteMap={result.tasteMap} />
         </DeepDiveDisclosureItem>
 
-        <DeepDiveDisclosureItem title="내가 미처 몰랐던 나">
+        <DeepDiveDisclosureItem index={4} title="내가 미처 몰랐던 나" preview={awarenessRest[0]}>
           {awarenessRest.length > 0 ? (
             <div className="flex flex-col gap-2">
               <SubLabel>내가 알고 있던 나</SubLabel>

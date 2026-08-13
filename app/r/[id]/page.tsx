@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Brand } from "../../../src/map-decision-v1/components/Landing";
+import { Brand, PRODUCT_DEFINITION } from "../../../src/map-decision-v1/components/Landing";
 import { MidResultCta, PRIMARY_CTA_CLASS, ShareViewTracker, TryItCta } from "../../../src/map-decision-v1/components/SharedResultCta";
 import { IdealTypeResultBlocks, TagRow } from "../../../src/map-decision-v1/components/IdealTypeResultBlocks";
 import { SelfIntroResultBlocks, SelfIntroTagRow } from "../../../src/map-decision-v1/components/SelfIntroResultBlocks";
 import { FriendshipResultBlocks, FriendshipTagRow } from "../../../src/map-decision-v1/components/FriendshipResultBlocks";
 import { WorkResultBlocks, WorkTagRow } from "../../../src/map-decision-v1/components/WorkResultBlocks";
-import { TasteResultDetails, TasteResultHighlights, TasteRoadmapDisclosure, TasteTagRow } from "../../../src/map-decision-v1/components/TasteResultBlocks";
+import { TasteResultDetails, TasteResultHighlights, TasteRoadmapDisclosure, TasteSignatureChip, TasteTagRow } from "../../../src/map-decision-v1/components/TasteResultBlocks";
 import { TravelResultBlocks, TravelTagRow } from "../../../src/map-decision-v1/components/TravelResultBlocks";
 import { FinalResultSectionReadOnly } from "../../../src/map-decision-v1/components/FinalResultBlocks";
 import { ShareCardImage } from "../../../src/map-decision-v1/components/ShareCardImage";
@@ -378,6 +378,14 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
                 </div>
               }
             />
+            {/* VISUAL & VIRAL REFOUNDATION(2026-08) — 라이브 결과 화면
+                (HeroHeader)에만 있던 "PATTERN A → B" 발견 신호를 공유
+                화면에도 그대로 노출한다. 이전 라운드(RESULT IDENTITY &
+                CLARITY PASS)에서는 이 칩이 showHero=true 경로에만 있어
+                친구가 보는 화면에는 안 보이는 공백이 있었다 — 그 라운드
+                완료 보고에 남은 약점으로 적어뒀던 부분을 여기서 메운다.
+                새 계산이 아니라 같은 TasteSignatureChip을 그대로 재사용한다. */}
+            <TasteSignatureChip result={renderable.result} className="mx-auto" />
             <div className="h-px w-full bg-border" />
             {/* RESULT EXPERIENCE REBUILD(2026-08): 라이브 결과 화면과
                 마찬가지로 "MAP이 발견한 3가지"·MY MAP은 접지 않고 바로
@@ -503,6 +511,20 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
         <div className="flex items-center px-1">
           <Brand />
         </div>
+        {/* VIRAL HOOK & RESULT DELIGHT PASS(2026-08) — /r/[id]는 결과의
+            "축약판"이 아니라 친구에게 도착하는 별도의 화면이라는 지시에
+            따라, 이해(PRODUCT_DEFINITION)보다 먼저 감정적 프레이밍 한
+            줄을 놓는다. "누군가의 MAP이 도착했어요"는 결과 데이터가
+            아니라 이 페이지 전용 고정 UI 문구다(발신자 이름은 프라이버시
+            상 알 수 없어 넣지 않는다). 그 아래 기존 PRODUCT_DEFINITION
+            (무슨 서비스인지 설명)이 이어진다 — "감정 → 이해 → 결과
+            공개" 순서. */}
+        {isInvitationBackground ? (
+          <div className="flex flex-col gap-1 px-1">
+            <p className="text-sm font-black tracking-[-0.01em] text-text-primary">누군가의 MAP이 도착했어요</p>
+            <p className="text-xs font-semibold leading-5 text-text-muted">{PRODUCT_DEFINITION}</p>
+          </div>
+        ) : null}
         {share.status === "ok" ? <DeleteShareSection id={id}>{cardContent}</DeleteShareSection> : cardContent}
       </div>
     </main>

@@ -36,6 +36,13 @@ const config: Config = {
         "primary-foreground-wash": "var(--color-primary-foreground-wash)",
         "error-soft-border": "var(--color-error-soft-border)",
         "primary-border-soft": "var(--color-primary-border-soft)",
+        "accent-bronze": "var(--color-accent-bronze)",
+        "editorial-clay": "var(--color-editorial-clay)",
+        "editorial-moss": "var(--color-editorial-moss)",
+        "editorial-turmeric": "var(--color-editorial-turmeric)",
+        "editorial-slate": "var(--color-editorial-slate)",
+        "editorial-burgundy": "var(--color-editorial-burgundy)",
+        "editorial-navy": "var(--color-editorial-navy)",
       },
       borderRadius: {
         small: "var(--radius-small)",

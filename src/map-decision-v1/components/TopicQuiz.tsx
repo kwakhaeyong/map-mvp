@@ -87,14 +87,30 @@ function OptionChip({
       onClick={onClick}
       disabled={isDisabled}
       className={cx(
-        "flex flex-col items-start gap-0.5 rounded-large border px-4 text-left transition-all duration-normal ease-emphasized disabled:pointer-events-none",
+        // VISUAL DESIGN PASS v1(2026-08) — Landing의 TopicCard 호버
+        // 톤(옅은 ink-wash 틴트 + primary-border-soft 테두리, 강한
+        // shadow-floating 대신 shadow-subtle)과 맞춰서, 랜딩에서 퀴즈로
+        // 넘어와도 "다른 사람이 만든 화면"처럼 느껴지지 않게 한다. 선택
+        // 로직·문구·비활성 처리는 그대로다.
+        "relative flex flex-col items-start gap-0.5 rounded-large border px-4 text-left transition-all duration-normal ease-emphasized disabled:pointer-events-none",
         compact ? "py-2" : "py-3",
         isSelected
           ? "border-primary bg-primary text-primary-foreground shadow-subtle"
-          : "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-border-strong hover:shadow-floating",
+          : "border-border bg-surface text-text-primary hover:-translate-y-0.5 hover:border-primary-border-soft hover:bg-ink-wash hover:shadow-subtle",
         isDisabled && !isSelected && "opacity-40",
       )}
     >
+      {/* LANDING HOOK & QUIZ FUN PASS(2026-08) — Landing 히어로 타일이
+          선택 순간 오른쪽 위에 점을 하나 남기던 것과 같은 장치를 여기도
+          쓴다. 새 인터랙션이 아니라 이미 검증된 "선택 = 점 하나가
+          남는다"는 동작을 문항 화면까지 일관되게 이어붙인 것뿐이다. */}
+      <span
+        aria-hidden="true"
+        className={cx(
+          "absolute right-3 top-3 size-1.5 rounded-full bg-primary-foreground transition-all duration-normal ease-emphasized",
+          isSelected ? "scale-100 opacity-100" : "scale-0 opacity-0",
+        )}
+      />
       <span className={cx("font-extrabold tracking-[-0.01em]", compact ? "text-sm" : "text-base")}>{choice.label}</span>
       <span className={cx("text-xs font-medium", isSelected ? "text-primary-foreground-soft" : "text-text-muted")}>{choice.description}</span>
     </button>
@@ -126,10 +142,12 @@ function StackCard({
       onClick={onClick}
       disabled={isDisabled}
       className={cx(
+        // VISUAL DESIGN PASS v1(2026-08) — OptionChip과 같은 이유로 호버
+        // 톤을 ink-wash/primary-border-soft로 맞춘다.
         "relative flex flex-col items-start gap-1 rounded-large border px-4 py-5 text-left transition-all duration-normal ease-emphasized disabled:pointer-events-none",
         isSelected
           ? "scale-[1.02] border-primary bg-primary text-primary-foreground shadow-floating"
-          : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:scale-[1.01] hover:border-border-strong hover:shadow-floating",
+          : "border-border bg-surface text-text-primary shadow-subtle hover:-translate-y-0.5 hover:scale-[1.01] hover:border-primary-border-soft hover:bg-ink-wash hover:shadow-subtle",
         isDisabled && !isSelected && "opacity-40",
       )}
     >
@@ -852,7 +870,13 @@ function ReflectionStep({
   return (
     <div className="flex w-full flex-col gap-5">
       {aboutSelf ? <SelfQuestionLabel /> : null}
-      <h2 className="text-balance break-keep whitespace-pre-line text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
+      {/* LANDING HOOK & QUIZ FUN PASS(2026-08) — 서술형은 선택지 화면과
+          똑같은 "그냥 또 다른 문항"처럼 보이면 안 된다는 지시에 따라,
+          다른 special-callout 라벨(HeroHeader의 "MAP DECISION"/"나의
+          궤적"과 같은 톤 — font-serif 소문자 캡션)로 이 화면만의 존재감을
+          짧게 짚는다. 질문 문구·placeholder·기능은 전혀 안 바꿨다. */}
+      <p className="font-serif text-[11px] font-bold uppercase tracking-[0.14em] text-primary">내 말로 남기는 한 줄</p>
+      <h2 className="-mt-3 text-balance break-keep whitespace-pre-line text-xl font-black leading-8 tracking-[-0.03em]">{question}</h2>
       {isFirst ? (
         <p className="-mt-2 text-xs font-semibold text-text-muted">
           여기 적어주신 내용은 카드를 만들 때 분석을 위해 Anthropic(미국) 서버로 전송돼요.
@@ -947,7 +971,8 @@ function ClosingStep({ prompt, onSubmit, onBack }: { prompt: string; onSubmit: (
   const [text, setText] = useState("");
   return (
     <div className="flex w-full flex-col gap-5">
-      <h2 className="text-balance break-keep text-xl font-black leading-8 tracking-[-0.03em]">{prompt}</h2>
+      <p className="font-serif text-[11px] font-bold uppercase tracking-[0.14em] text-primary">내 말로 남기는 한 줄</p>
+      <h2 className="-mt-3 text-balance break-keep whitespace-pre-line text-xl font-black leading-8 tracking-[-0.03em]">{prompt}</h2>
       <Textarea autoFocus value={text} onChange={(event) => setText(event.target.value)} placeholder="자유롭게 적어주세요 (선택)" className="min-h-28" />
       <div className="mt-1 flex items-center justify-between gap-3">
         <button type="button" onClick={onBack} className="text-xs font-black text-text-muted hover:text-text-primary">
@@ -1240,8 +1265,23 @@ export function TopicQuiz({
       </header>
 
       <section className="map-container pt-6">
-        <div className="h-1.5 w-full overflow-hidden rounded-pill bg-background-subtle">
-          <div className="h-full rounded-pill bg-primary transition-all duration-normal ease-emphasized" style={{ width: `${progressPercent}%` }} />
+        {/* LANDING HOOK & QUIZ FUN PASS(2026-08) — "10/20, 아직 절반"으로
+            읽히는 평범한 진행률 막대에, 지금 지나가고 있는 지점을 표시하는
+            작은 점 하나를 더했다. 실제 progressPercent 값은 전혀 안
+            바꿨다(가짜 진행률 금지) — 같은 값을 막대 채움과 점 위치
+            둘 다에 그대로 쓴다. Landing 첫 선택·RESULT CARD 서명이 이미
+            쓰는 "경로 위의 점" 언어를 문항 진행에도 반복해서, 20문항이
+            "설문 진행률"이 아니라 "지금 이 지점을 지나는 중"으로
+            읽히게 하려는 것뿐이다. */}
+        <div className="relative">
+          <div className="h-1.5 w-full overflow-hidden rounded-pill bg-background-subtle">
+            <div className="h-full rounded-pill bg-primary transition-all duration-normal ease-emphasized" style={{ width: `${progressPercent}%` }} />
+          </div>
+          <span
+            aria-hidden="true"
+            className="absolute top-1/2 size-2.5 rounded-full bg-primary shadow-floating transition-all duration-normal ease-emphasized"
+            style={{ left: `${progressPercent}%`, transform: "translate(-50%, -50%)" }}
+          />
         </div>
         <p className="mt-2 text-xs font-black text-text-muted">
           {progressLabel} · {phase.kind === "optional" ? "여기서 나가도 지금까지 답한 건 저장돼요" : "자동 저장됨"}

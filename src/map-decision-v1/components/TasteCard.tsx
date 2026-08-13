@@ -8,7 +8,7 @@ import { resolveTopic } from "../engine/topics";
 import { MapSession } from "../types";
 import { Brand } from "./Landing";
 import { GenerationWaitCard } from "./GenerationProgress";
-import { TasteResultDetails, TasteResultHighlights, TasteRoadmapDisclosure } from "./TasteResultBlocks";
+import { SectionHeader, TasteResultDetails, TasteResultHighlights, TasteRoadmapDisclosure, TasteShareCardPreview } from "./TasteResultBlocks";
 import { NextMapPrompt } from "./NextMapPrompt";
 import { ShareStatusCard, useShareResult } from "./ShareResult";
 import { ImageSaveModal, useImageShare } from "./ImageShare";
@@ -95,33 +95,52 @@ function TasteCardBody({
 
       <TasteResultDetails result={result} />
 
+      {/* RESULT EXPERIENCE TARGET FIDELITY(2026-08) — 기준 설계안의
+          5단계 이름("공유 & 다음 행동")을 그대로 섹션 제목으로 얹어,
+          여기서부터 새 장면이 시작된다는 걸 명확히 한다. 이 파일의
+          다른 섹션(발견 3가지·MY MAP)과 같은 SectionHeader를 재사용할
+          뿐, 새 컴포넌트는 아니다. */}
+      <SectionHeader title="공유 & 다음 행동" description="이 결과를 나누고, 다음 이야기로 이어가요." />
+      {/* RESULT VISUAL EXPERIENCE REBUILD(2026-08) — 공유 버튼을 누르기
+          전에 "무엇이 나가는지"를 미리 보여준다(Target §7). */}
+      <TasteShareCardPreview result={result} />
       <ShareStatusCard shareState={shareState} shareError={shareError} sharedUrl={sharedUrl} />
+      {/* Primary — 공유가 이 단계의 대표 행동이라는 걸 채운 버튼
+          하나로 보여준다(이전엔 secondary였다). 클릭 대상·문구는
+          그대로, 시각적 무게만 한 단계 올렸다. */}
+      <Button variant="primary" size="lg" className="w-full" onClick={canNativeShare ? share : copyLink} disabled={shareState === "creating"}>
+        {shareState === "creating" ? "링크 만드는 중…" : canNativeShare ? "카톡·인스타로 공유" : shareState === "copied" ? "복사됨!" : "링크 복사"}
+      </Button>
+      {/* Secondary — 링크 복사·이미지 저장을 같은 무게의 보조 행동
+          한 쌍으로 묶는다(이전엔 이미지 저장이 전체 폭 단독 버튼이라
+          공유 버튼과 경쟁했다). */}
       <div className="flex gap-2">
         {canNativeShare ? (
-          <Button variant="secondary" size="lg" className="flex-1" onClick={share} disabled={shareState === "creating"}>
-            {shareState === "creating" ? "링크 만드는 중…" : "카톡·인스타로 공유"}
+          <Button variant="secondary" size="lg" className="flex-1" onClick={copyLink} disabled={shareState === "creating"}>
+            {shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : "링크 복사"}
           </Button>
         ) : null}
-        <Button variant={canNativeShare ? "ghost" : "secondary"} size="lg" className="flex-1" onClick={copyLink} disabled={shareState === "creating"}>
-          {shareState === "creating" ? "링크 만드는 중…" : shareState === "copied" ? "복사됨!" : "링크 복사"}
+        <Button
+          variant="secondary"
+          size="lg"
+          className="flex-1"
+          onClick={saveImage}
+          disabled={imageState === "preparing-link" || imageState === "preparing-image"}
+        >
+          {imageState === "preparing-link"
+            ? "링크 확인 중…"
+            : imageState === "preparing-image"
+              ? "이미지 만드는 중…"
+              : imageState === "ready"
+                ? "한 번 더 눌러 저장"
+                : "이미지로 저장"}
         </Button>
       </div>
-      <Button
-        variant={imageState === "ready" ? "primary" : "secondary"}
-        size="lg"
-        onClick={saveImage}
-        disabled={imageState === "preparing-link" || imageState === "preparing-image"}
-      >
-        {imageState === "preparing-link"
-          ? "링크 확인 중…"
-          : imageState === "preparing-image"
-            ? "이미지 만드는 중…"
-            : imageState === "ready"
-              ? "한 번 더 눌러 저장"
-              : "이미지로 저장"}
-      </Button>
       {imageError ? <p className="text-center text-xs font-bold text-error">{imageError}</p> : null}
-      <Button variant="outline" size="lg" onClick={onReset}>
+      {/* "너도 만들어봐"는 공유·저장보다 한 단계 낮은 톤(ghost)으로
+          내려, 이 단계의 진짜 주인공(공유)과 경쟁하지 않게 한다.
+          문구·클릭 동작·analytics는 그대로다. */}
+      <Button variant="ghost" size="lg" onClick={onReset}>
         너도 만들어봐
       </Button>
       <NextMapPrompt session={session} tags={result.tags} onStartTopic={onStartTopic} />
