@@ -70,7 +70,8 @@ export type TasteInteractionKind =
   | "situation-choice" // PAGE 04 — 상황 기반 선택
   | "scale" // 아직 v1에서 쓰이지 않음(향후 GPT Spec 대기)
   | "quick-cuts" // PAGE 05 — 연속된 이지선다 4개
-  | "signature-choice"; // PAGE 06 — 마무리 상징적 선택
+  | "signature-choice" // PAGE 06 — 마무리 상징적 선택
+  | "trade-off"; // v2.2 PAGE 03 — 독립된 A/B pair 여러 개(pair 하나하나가 개별 raw answer/signal source)
 
 // ============================================================
 // 2. 공통 옵션 / 문항 shell
@@ -150,6 +151,24 @@ export type SignatureChoiceQuestion = BaseTasteQuestion & {
   options: TasteQuestionOption[];
 };
 
+// TRADE-OFF(v2.2 PAGE 03) — QUICK CUTS(left/right 이지선다)와 구조는
+// 같지만 "여러 이지선다를 연속으로 넘기는" quick-cuts와 달리, pair
+// 각각을 독립된 editorial decision으로 보여준다는 UX 의도가 달라 별도
+// kind로 둔다. pair 하나하나가 서로 다른 evidence "page"로 취급된다
+// (질문 하나로 relationship이 정해지지 않게 하려는 v2.1 원칙을 PAGE
+// 내부에서도 지키기 위함 — collectOptionPool/buildSignalSourceFromAnswer
+// 참고).
+export type TradeOffPair = {
+  id: string;
+  a: TasteQuestionOption;
+  b: TasteQuestionOption;
+};
+
+export type TradeOffQuestion = BaseTasteQuestion & {
+  kind: "trade-off";
+  pairs: TradeOffPair[];
+};
+
 export type TasteQuestion =
   | SceneChoiceQuestion
   | ObjectChoiceQuestion
@@ -158,7 +177,8 @@ export type TasteQuestion =
   | SituationChoiceQuestion
   | ScaleQuestion
   | QuickCutsQuestion
-  | SignatureChoiceQuestion;
+  | SignatureChoiceQuestion
+  | TradeOffQuestion;
 
 // ============================================================
 // 4. PROTOTYPE(이전 라운드 참고용) — QuizClient.tsx의 TASTE_Q1/TASTE_Q2와
@@ -454,6 +474,7 @@ export const TASTE_INTERACTION_REGISTRY: Record<TasteInteractionKind, TasteInter
   scale: { kind: "scale", implemented: false, note: "v1에서 사용하지 않음 — GPT Spec 대기." },
   "quick-cuts": { kind: "quick-cuts", implemented: true, note: "PAGE 05(QUICK CUTS)에서 실제 사용 중 — 4개 전부 선택." },
   "signature-choice": { kind: "signature-choice", implemented: true, note: "PAGE 06(YOUR DAY)에서 실제 사용 중." },
+  "trade-off": { kind: "trade-off", implemented: true, note: "v2.2 PAGE 03(TRADE-OFF)에서 사용 중 — pair 3개 전부 선택." },
 };
 
 // ============================================================
@@ -484,6 +505,9 @@ function collectOptionPool(question: TasteQuestion): TasteQuestionOption[] {
   if (question.kind === "quick-cuts") {
     return question.cuts.flatMap((cut) => [cut.left, cut.right]);
   }
+  if (question.kind === "trade-off") {
+    return question.pairs.flatMap((pair) => [pair.a, pair.b]);
+  }
   if (question.kind === "scale") return [];
   return question.options;
 }
@@ -500,8 +524,33 @@ function optionToSignalSource(question: TasteQuestion, option: TasteQuestionOpti
   };
 }
 
+// TRADE-OFF는 pair 하나하나를 독립된 evidence "page"로 취급한다 —
+// questionId를 question.id 하나로 뭉개지 않고 `${question.id}-${pair.id}`
+// 로 쪼갠다. v2.1의 relationship 발동 규칙(서로 다른 page에서 최소 2곳
+// evidence)이 PAGE 03 안에서도 "이 3개 pair 중 무엇을 골랐는가"를 각각
+// 독립적으로 볼 수 있게 하기 위함이다.
+function buildTradeOffSignalSources(question: TradeOffQuestion, rawAnswer: TasteRawAnswer): SignalSource[] {
+  const sources: SignalSource[] = [];
+  for (const pair of question.pairs) {
+    const chosenId = rawAnswer.selectedOptionIds.find((id) => id === pair.a.id || id === pair.b.id);
+    if (!chosenId) continue;
+    const option = chosenId === pair.a.id ? pair.a : pair.b;
+    if (!option.signals) continue;
+    sources.push({
+      questionId: `${question.id}-${pair.id}`,
+      answerId: option.id,
+      pageSection: question.section,
+      label: `${question.id}-${pair.id} · ${option.label.replace(/\n/g, " ")}`,
+      signals: option.signals,
+      semanticTags: option.semanticTags ?? [],
+    });
+  }
+  return sources;
+}
+
 export function buildSignalSourceFromAnswer(question: TasteQuestion, rawAnswer: TasteRawAnswer | undefined): SignalSource[] {
   if (!rawAnswer) return [];
+  if (question.kind === "trade-off") return buildTradeOffSignalSources(question, rawAnswer);
   const pool = collectOptionPool(question);
   return rawAnswer.selectedOptionIds
     .map((id) => pool.find((option) => option.id === id))

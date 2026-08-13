@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { analyzeTasteFromSources } from "../../../src/data/tasteAnalysis";
 import { TASTE_QUESTIONS_V1, mapTasteAnswersToSignalSources, type TasteQuestion, type TasteRawAnswers } from "../../../src/data/tasteQuestionnaire";
 import { TASTE_QUESTIONS_V2 } from "../../../src/data/tasteQuestionnaireV2";
+import { TASTE_QUESTIONS_V2_2 } from "../../../src/data/tasteQuestionnaireV22";
 import { buildTasteMagazineNarrative } from "../../../src/data/tasteNarrative";
 import { buildTasteMagazineNarrativeV2 } from "../../../src/data/tasteNarrativeV2";
+import { buildTasteMagazineNarrativeV22 } from "../../../src/data/tasteNarrativeV22";
 import { TasteQuestionnaireFlow } from "../personal-magazine-quiz/TasteQuestionnaireFlow";
 import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMagazineResult";
 
@@ -28,12 +30,23 @@ import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMaga
 // answers/sources로 v1/v2 Narrative를 둘 다 만들어볼 수 있어야
 // "동일 답변 기준 V1 Result vs V2 Result 비교"(검증자료 요구사항)를
 // questionnaire를 다시 풀지 않고도 확인할 수 있다.
+//
+// v2.2(2026-08) — buildTasteMagazineNarrativeV2()는 GPT의 v2.1 교정
+// 지시를 그대로 반영해 이미 제자리에서 수정됐다(파일/함수명은 v2
+// 그대로) — 그래서 버튼 라벨만 "V2.1"로 보여주고, 신규 v2.2 엔진
+// (buildTasteMagazineNarrativeV22)을 세 번째 옵션으로 추가한다.
 
-type QuestionnaireVersion = "v1" | "v2";
-type NarrativeVersion = "v1" | "v2";
+type QuestionnaireVersion = "v1" | "v2" | "v2.2";
+type NarrativeVersion = "v1" | "v2" | "v2.2";
+
+const QUESTIONNAIRE_VERSIONS: QuestionnaireVersion[] = ["v1", "v2", "v2.2"];
+const NARRATIVE_VERSIONS: NarrativeVersion[] = ["v1", "v2", "v2.2"];
+const VERSION_LABEL: Record<"v1" | "v2" | "v2.2", string> = { v1: "V1", v2: "V2.1", "v2.2": "V2.2" };
 
 function questionsForVersion(version: QuestionnaireVersion): TasteQuestion[] {
-  return version === "v1" ? TASTE_QUESTIONS_V1 : TASTE_QUESTIONS_V2;
+  if (version === "v1") return TASTE_QUESTIONS_V1;
+  if (version === "v2") return TASTE_QUESTIONS_V2;
+  return TASTE_QUESTIONS_V2_2;
 }
 
 const EDITING_DURATION_MS = 1500;
@@ -75,9 +88,9 @@ export function TasteJourneyClient() {
       </div>
 
       <div className="sticky top-[33px] z-40 flex flex-wrap items-center justify-center gap-4 border-b border-border-strong bg-background px-5 py-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-testid="questionnaire-version-toggle">
           <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted">QUESTIONNAIRE</span>
-          {(["v1", "v2"] as const).map((v) => (
+          {QUESTIONNAIRE_VERSIONS.map((v) => (
             <button
               key={v}
               type="button"
@@ -88,13 +101,13 @@ export function TasteJourneyClient() {
                   : "border border-border-strong px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] text-text-secondary"
               }
             >
-              {v.toUpperCase()}
+              {VERSION_LABEL[v]}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-testid="narrative-version-toggle">
           <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted">NARRATIVE</span>
-          {(["v1", "v2"] as const).map((v) => (
+          {NARRATIVE_VERSIONS.map((v) => (
             <button
               key={v}
               type="button"
@@ -105,7 +118,7 @@ export function TasteJourneyClient() {
                   : "border border-border-strong px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] text-text-secondary"
               }
             >
-              {v.toUpperCase()}
+              {VERSION_LABEL[v]}
             </button>
           ))}
         </div>
@@ -144,7 +157,12 @@ function JourneyResult({
 }) {
   const sources = mapTasteAnswersToSignalSources(questions, answers);
   const result = analyzeTasteFromSources(sources);
-  const narrative = narrativeVersion === "v1" ? buildTasteMagazineNarrative(result, sources) : buildTasteMagazineNarrativeV2(result, sources);
+  const narrative =
+    narrativeVersion === "v1"
+      ? buildTasteMagazineNarrative(result, sources)
+      : narrativeVersion === "v2"
+        ? buildTasteMagazineNarrativeV2(result, sources)
+        : buildTasteMagazineNarrativeV22(result, sources);
 
   return <TasteMagazineResult narrative={narrative} result={result} />;
 }

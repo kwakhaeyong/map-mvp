@@ -14,6 +14,8 @@ import {
   type TasteQuestionOption,
   type TasteRawAnswer,
   type TasteRawAnswers,
+  type TradeOffPair,
+  type TradeOffQuestion,
 } from "../../../src/data/tasteQuestionnaire";
 
 // TASTE QUESTIONNAIRE 6 PAGE 실제 답변 흐름(intro→question)만 담당하는
@@ -56,6 +58,7 @@ function isPageComplete(question: TasteQuestion, answer: TasteRawAnswer | undefi
   if (!answer) return false;
   if (question.kind === "multi-select") return answer.selectedOptionIds.length === question.maxSelect;
   if (question.kind === "quick-cuts") return answer.selectedOptionIds.length === question.cuts.length;
+  if (question.kind === "trade-off") return answer.selectedOptionIds.length === question.pairs.length;
   return answer.selectedOptionIds.length >= 1;
 }
 
@@ -441,6 +444,78 @@ function QuickCutsList({
 }
 
 // ============================================================
+// v2.2 PAGE 03 — TradeOffPairGroup. QUICK CUTS의 left/right 이지선다와
+// 골격은 같지만(둘 중 하나), "일반 설문 matrix처럼 보이면 안 된다"는
+// 지시에 따라 pair 하나하나를 큰 카드 + "DECISION 0N" eyebrow로 독립된
+// editorial 결정처럼 보여준다(QuickCutRow의 촘촘한 표 형태와 의도적으로
+// 다르게 만들었다).
+// ============================================================
+function TradeOffPairCard({
+  pair,
+  index,
+  selectedOptionId,
+  onSelect,
+}: {
+  pair: TradeOffPair;
+  index: number;
+  selectedOptionId?: string;
+  onSelect: (optionId: string) => void;
+}) {
+  return (
+    <div className="border border-border-strong p-4">
+      <p className="font-serif text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">
+        DECISION {String(index + 1).padStart(2, "0")} OF 03
+      </p>
+      <div className="mt-3 flex flex-col gap-3">
+        {[pair.a, pair.b].map((option) => {
+          const selected = selectedOptionId === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onSelect(option.id)}
+              className={cx(
+                "flex flex-col gap-1 border p-4 text-left transition-all duration-normal",
+                selected ? "border-text-primary bg-text-primary text-background" : "border-border-strong text-text-primary"
+              )}
+            >
+              <p className="whitespace-pre-line text-base font-black leading-5">{option.label}</p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TradeOffPairGroup({
+  question,
+  selectedIds,
+  onSelect,
+}: {
+  question: TradeOffQuestion;
+  selectedIds: string[];
+  onSelect: (pair: TradeOffPair, optionId: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      {question.pairs.map((pair, index) => {
+        const selectedOptionId = selectedIds.find((id) => id === pair.a.id || id === pair.b.id);
+        return (
+          <TradeOffPairCard
+            key={pair.id}
+            pair={pair}
+            index={index}
+            selectedOptionId={selectedOptionId}
+            onSelect={(optionId) => onSelect(pair, optionId)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================
 // PAGE 06 — SignatureChoiceGroup
 // ============================================================
 function SignatureCard({
@@ -570,6 +645,20 @@ export function TasteQuestionnaireFlow({ questions, onComplete }: { questions: T
     }));
   }
 
+  // pair 하나를 바꿔도 다른 두 pair의 선택은 그대로 유지된다 — 이
+  // pair(a/b)에 속한 기존 선택만 제거하고 새 선택으로 교체한다.
+  function handleTradeOffSelect(question: TradeOffQuestion, pair: TradeOffPair, optionId: string) {
+    setAnswers((prev) => {
+      const current = prev[question.id]?.selectedOptionIds ?? [];
+      const otherPairSelections = current.filter((id) => id !== pair.a.id && id !== pair.b.id);
+      const selectedOptionIds = [...otherPairSelections, optionId];
+      return {
+        ...prev,
+        [question.id]: { questionId: question.id, interactionType: question.kind, selectedOptionIds, timestamp: Date.now() },
+      };
+    });
+  }
+
   if (stage === "intro") {
     return <QuizIntro chapterNumber={TASTE_CHAPTER.number} chapterTitle={TASTE_CHAPTER.title} onStart={handleStart} />;
   }
@@ -628,6 +717,13 @@ export function TasteQuestionnaireFlow({ questions, onComplete }: { questions: T
           question={currentQuestion}
           selectedId={currentAnswer?.selectedOptionIds[0] ?? null}
           onSelect={(optionId) => handleSingleSelect(currentQuestion, optionId)}
+        />
+      )}
+      {currentQuestion.kind === "trade-off" && (
+        <TradeOffPairGroup
+          question={currentQuestion}
+          selectedIds={currentAnswer?.selectedOptionIds ?? []}
+          onSelect={(pair, optionId) => handleTradeOffSelect(currentQuestion, pair, optionId)}
         />
       )}
     </QuestionShell>

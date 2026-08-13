@@ -174,9 +174,9 @@ export function buildTasteObservationsV2(result: TasteAnalysisResult, sources: S
 // 목적 그대로다. 더 이상 threshold(≥15 같은 크기 기준)나 raw answer id
 // 예외를 쓰지 않는다 — 방향(부호)과 페이지 수만 본다.
 // ============================================================
-type RelationshipAxis = { key: TasteSignalKey; direction: "high" | "low" };
+export type RelationshipAxis = { key: TasteSignalKey; direction: "high" | "low" };
 
-type RelationshipDef = {
+export type RelationshipDef = {
   id: string;
   headline: string;
   interestingPart?: TasteNarrativeFeature;
@@ -186,8 +186,10 @@ type RelationshipDef = {
 
 // §5(2026-08 GPT 승인 카피) 그대로 — headline/interestingPart/pullQuote
 // 전부 이번에 완결된 문장으로 내려받아, 더 이상 v1 profile 카피를
-// 빌려 쓰지 않는다.
-const RELATIONSHIP_DEFS: RelationshipDef[] = [
+// 빌려 쓰지 않는다. v2.2(tasteNarrativeV22.ts)가 이 6개를 그대로
+// import해서 신규 relationship 4개와 합친다 — v2.1 카피는 삭제/수정
+// 하지 않는다.
+export const RELATIONSHIP_DEFS_V21: RelationshipDef[] = [
   {
     id: "discover-fast-choose-slow",
     headline: "새로운 것은 잘 발견하지만,\n내 것으로 남기는 기준은 꽤 까다로운 사람.",
@@ -266,13 +268,16 @@ const RELATIONSHIP_DEFS: RelationshipDef[] = [
   },
 ];
 
-function axisDirectionMatches(result: TasteAnalysisResult, axis: RelationshipAxis): boolean {
+// v2.2(tasteNarrativeV22.ts)도 그대로 재사용할 수 있도록 export한다 —
+// "관련 signal 축 2개의 방향이 맞고, 그 evidence가 서로 다른 page
+// 최소 2곳에서 나와야 한다"는 규칙 자체를 다시 구현하지 않기 위함이다.
+export function axisDirectionMatches(result: TasteAnalysisResult, axis: RelationshipAxis): boolean {
   const value = result.signals[axis.key];
   return axis.direction === "high" ? value > 0 : value < 0;
 }
 
 // 해당 축·방향에 실제로 신호를 보탠 source들의 questionId(=페이지) 집합.
-function axisEvidencePages(sources: SignalSource[], axis: RelationshipAxis): Set<string> {
+export function axisEvidencePages(sources: SignalSource[], axis: RelationshipAxis): Set<string> {
   const pages = new Set<string>();
   for (const source of sources) {
     const value = source.signals[axis.key] ?? 0;
@@ -282,7 +287,7 @@ function axisEvidencePages(sources: SignalSource[], axis: RelationshipAxis): Set
   return pages;
 }
 
-function axisEvidenceLabels(sources: SignalSource[], axis: RelationshipAxis): string[] {
+export function axisEvidenceLabels(sources: SignalSource[], axis: RelationshipAxis): string[] {
   return sources
     .filter((s) => {
       const value = s.signals[axis.key] ?? 0;
@@ -291,9 +296,9 @@ function axisEvidenceLabels(sources: SignalSource[], axis: RelationshipAxis): st
     .map((s) => `${s.questionId}: ${s.answerId}`);
 }
 
-type RelationshipMatch = { def: RelationshipDef; strength: number; evidence: string[] };
+export type RelationshipMatch = { def: RelationshipDef; strength: number; evidence: string[] };
 
-function evaluateRelationship(def: RelationshipDef, result: TasteAnalysisResult, sources: SignalSource[]): RelationshipMatch | null {
+export function evaluateRelationship(def: RelationshipDef, result: TasteAnalysisResult, sources: SignalSource[]): RelationshipMatch | null {
   const directionOk = def.axes.every((axis) => axisDirectionMatches(result, axis));
   if (!directionOk) return null;
 
@@ -306,8 +311,21 @@ function evaluateRelationship(def: RelationshipDef, result: TasteAnalysisResult,
   return { def, strength, evidence };
 }
 
-function matchStrongestRelationship(result: TasteAnalysisResult, sources: SignalSource[]): RelationshipMatch | undefined {
-  const matches = RELATIONSHIP_DEFS.map((def) => evaluateRelationship(def, result, sources)).filter((m): m is RelationshipMatch => m !== null);
+// defs 배열을 파라미터로 받는다 — v2.1은 RELATIONSHIP_DEFS_V21만,
+// v2.2는 여기에 신규 4개를 더한 배열을 넘긴다. 동시에 strong으로
+// matched된 relationship이 여럿이면 strength(축 신호 크기 합) 기준으로
+// 가장 강한 것을 고른다 — strength까지 동일하면(예: v2.2의 BEAUTY/USE
+// vs SENSORY/PRACTICAL처럼 axes가 완전히 같은 경우) 배열에 먼저 나온
+// def가 이긴다. 이 "동률 시 배열 순서" 규칙은 스펙이 우선순위를
+// 명시하지 않은 상태에서 Claude가 정한 것이 아니라 Array.sort의
+// stable-sort 특성을 그대로 노출한 것일 뿐이다 — 실제로 동률이
+// 발생하면 완료 보고에서 "스펙 미정 상태"로 별도 보고한다.
+export function matchStrongestRelationship(
+  defs: RelationshipDef[],
+  result: TasteAnalysisResult,
+  sources: SignalSource[]
+): RelationshipMatch | undefined {
+  const matches = defs.map((def) => evaluateRelationship(def, result, sources)).filter((m): m is RelationshipMatch => m !== null);
   if (matches.length === 0) return undefined;
   matches.sort((a, b) => b.strength - a.strength);
   return matches[0];
@@ -356,9 +374,10 @@ function matchStrongestRelationship(result: TasteAnalysisResult, sources: Signal
 // fallback 엔진)로 그대로 넘어간다 — C와 D를 구분해서 구현하지 못한
 // 것은 스펙 부족이라 임의로 채우지 않고 이렇게 보고한다.
 // ============================================================
-const STRONG_CONTRADICTION_AXES: TasteSignalKey[] = ["stimulus", "socialDensity"];
+export const STRONG_CONTRADICTION_AXES: TasteSignalKey[] = ["stimulus", "socialDensity"];
 
-function hasStrongContradiction(result: TasteAnalysisResult, sources: SignalSource[]): boolean {
+// v2.2도 그대로 재사용한다(§D "v2.1의 기본 원칙 유지").
+export function hasStrongContradiction(result: TasteAnalysisResult, sources: SignalSource[]): boolean {
   return result.contradictions.some((c) => {
     if (!STRONG_CONTRADICTION_AXES.includes(c.axis)) return false;
     const positivePages = new Set(sources.filter((s) => (s.signals[c.axis] ?? 0) > 0).map((s) => s.questionId));
@@ -378,7 +397,7 @@ export function buildTasteMagazineNarrativeV2(result: TasteAnalysisResult, sourc
   }
 
   // B. strong relationship
-  const relationship = matchStrongestRelationship(result, sources);
+  const relationship = matchStrongestRelationship(RELATIONSHIP_DEFS_V21, result, sources);
   if (relationship) {
     const evidence: TasteMagazineNarrative["evidence"] = { ...v1Base.evidence, headline: relationship.evidence };
     return {

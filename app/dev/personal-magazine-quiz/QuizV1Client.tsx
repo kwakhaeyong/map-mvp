@@ -4,6 +4,7 @@ import { useState } from "react";
 import { analyzeTasteFromSources } from "../../../src/data/tasteAnalysis";
 import { TASTE_QUESTIONS_V1, mapTasteAnswersToSignalSources, type TasteQuestion, type TasteRawAnswers } from "../../../src/data/tasteQuestionnaire";
 import { TASTE_QUESTIONS_V2 } from "../../../src/data/tasteQuestionnaireV2";
+import { TASTE_QUESTIONS_V2_2 } from "../../../src/data/tasteQuestionnaireV22";
 import { TASTE_CHAPTER, TasteQuestionnaireFlow, YourPageStatus } from "./TasteQuestionnaireFlow";
 
 // TASTE QUESTIONNAIRE(2026-08) — GPT가 검증 완료한 실제 6 PAGE
@@ -19,10 +20,14 @@ import { TASTE_CHAPTER, TasteQuestionnaireFlow, YourPageStatus } from "./TasteQu
 // v2(2026-08) — v1은 삭제하지 않고 dev 비교용으로 그대로 둔다는 지시에
 // 따라 이 화면에 V1/V2 questionnaire 버전 토글을 추가한다.
 
-type QuestionnaireVersion = "v1" | "v2";
+type QuestionnaireVersion = "v1" | "v2" | "v2.2";
+
+const QUESTIONNAIRE_VERSIONS: QuestionnaireVersion[] = ["v1", "v2", "v2.2"];
 
 function questionsForVersion(version: QuestionnaireVersion): TasteQuestion[] {
-  return version === "v1" ? TASTE_QUESTIONS_V1 : TASTE_QUESTIONS_V2;
+  if (version === "v1") return TASTE_QUESTIONS_V1;
+  if (version === "v2") return TASTE_QUESTIONS_V2;
+  return TASTE_QUESTIONS_V2_2;
 }
 
 // ============================================================
@@ -92,7 +97,7 @@ export function TasteQuestionnaireV1Client() {
       </div>
 
       <div className="sticky top-[33px] z-40 flex justify-center gap-2 border-b border-border-strong bg-background px-5 py-3">
-        {(["v1", "v2"] as const).map((v) => (
+        {QUESTIONNAIRE_VERSIONS.map((v) => (
           <button
             key={v}
             type="button"
