@@ -8,6 +8,7 @@ import { TASTE_QUESTIONS_V2_2 } from "../../../src/data/tasteQuestionnaireV22";
 import { buildTasteMagazineNarrative } from "../../../src/data/tasteNarrative";
 import { buildTasteMagazineNarrativeV2 } from "../../../src/data/tasteNarrativeV2";
 import { buildTasteMagazineNarrativeV22 } from "../../../src/data/tasteNarrativeV22";
+import { buildTasteMagazineNarrativeV23 } from "../../../src/data/tasteNarrativeV23";
 import { TasteQuestionnaireFlow } from "../personal-magazine-quiz/TasteQuestionnaireFlow";
 import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMagazineResult";
 
@@ -35,13 +36,19 @@ import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMaga
 // 지시를 그대로 반영해 이미 제자리에서 수정됐다(파일/함수명은 v2
 // 그대로) — 그래서 버튼 라벨만 "V2.1"로 보여주고, 신규 v2.2 엔진
 // (buildTasteMagazineNarrativeV22)을 세 번째 옵션으로 추가한다.
+//
+// v2.3(2026-08) — "COLLISION RESOLUTION". Questionnaire는 이번에도
+// 손대지 않는다(v2.2 그대로) — Narrative만 winner-takes-all을 버리고
+// Opening/Interesting Part에 서로 다른 strong relationship 최대 2개를
+// 나눠 담는 buildTasteMagazineNarrativeV23()을 네 번째 옵션으로
+// 추가한다.
 
 type QuestionnaireVersion = "v1" | "v2" | "v2.2";
-type NarrativeVersion = "v1" | "v2" | "v2.2";
+type NarrativeVersion = "v1" | "v2" | "v2.2" | "v2.3";
 
 const QUESTIONNAIRE_VERSIONS: QuestionnaireVersion[] = ["v1", "v2", "v2.2"];
-const NARRATIVE_VERSIONS: NarrativeVersion[] = ["v1", "v2", "v2.2"];
-const VERSION_LABEL: Record<"v1" | "v2" | "v2.2", string> = { v1: "V1", v2: "V2.1", "v2.2": "V2.2" };
+const NARRATIVE_VERSIONS: NarrativeVersion[] = ["v1", "v2", "v2.2", "v2.3"];
+const VERSION_LABEL: Record<"v1" | "v2" | "v2.2" | "v2.3", string> = { v1: "V1", v2: "V2.1", "v2.2": "V2.2", "v2.3": "V2.3" };
 
 function questionsForVersion(version: QuestionnaireVersion): TasteQuestion[] {
   if (version === "v1") return TASTE_QUESTIONS_V1;
@@ -162,7 +169,9 @@ function JourneyResult({
       ? buildTasteMagazineNarrative(result, sources)
       : narrativeVersion === "v2"
         ? buildTasteMagazineNarrativeV2(result, sources)
-        : buildTasteMagazineNarrativeV22(result, sources);
+        : narrativeVersion === "v2.2"
+          ? buildTasteMagazineNarrativeV22(result, sources)
+          : buildTasteMagazineNarrativeV23(result, sources);
 
   return <TasteMagazineResult narrative={narrative} result={result} />;
 }

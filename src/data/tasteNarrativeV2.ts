@@ -40,8 +40,10 @@ export type TasteObservation = {
 
 // "신중하게 고른다"(deliberate purchase)는 신호 축이 아니라 raw answer
 // 조건이다 — TASTE_QUESTIONS_V1/V2가 공유하는 INSTINCT 옵션 id
-// (buy-if-lingers의 반대 selection) 그대로.
-const DELIBERATE_PURCHASE_ANSWER_IDS = ["wait-days", "compare", "budget-limit"];
+// (buy-if-lingers의 반대 selection) 그대로. v2.3(tasteNarrativeV23.ts)도
+// "가능하면 deliberate purchase evidence"(선택 보너스) 조건에 그대로
+// 재사용할 수 있도록 export한다 — 새 answer id를 만들지 않기 위함이다.
+export const DELIBERATE_PURCHASE_ANSWER_IDS = ["wait-days", "compare", "budget-limit"];
 
 function axisEvidence(sources: SignalSource[], axes: TasteSignalKey[]): string[] {
   const seen = new Set<string>();
