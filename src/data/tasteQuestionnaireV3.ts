@@ -89,6 +89,7 @@ export const TASTE_V3_Q1: TasteV3Question = {
       evidenceTag: "contained / lived-in / layered / warm familiarity",
       evidenceLabel: "빛이 부드럽게 들어오는, 손때 묻은 물건들이 놓인 작은 공간을 골랐다",
       axes: { space: -15, sensory: 10 },
+      assetKey: "quiz.tasteV3.q1.a",
     },
     {
       id: "open-ordered",
@@ -96,6 +97,7 @@ export const TASTE_V3_Q1: TasteV3Question = {
       evidenceTag: "open / ordered / visually quiet / spatial clarity",
       evidenceLabel: "시야가 트이고 선과 면이 정돈된 넓은 공간을 골랐다",
       axes: { space: 15, sensory: -10 },
+      assetKey: "quiz.tasteV3.q1.b",
     },
   ],
 };
@@ -259,6 +261,7 @@ export const TASTE_V3_Q5: TasteV3Question = {
       evidenceTag: "human trace / imperfection tolerance",
       evidenceLabel: "완벽히 정리되진 않았지만 사람의 흔적이 남은 장면을 더 오래 보고 싶다고 했다",
       axes: { sensory: 15, expression: -5 },
+      assetKey: "quiz.tasteV3.q5.a",
     },
     {
       id: "precision-restraint",
@@ -266,6 +269,7 @@ export const TASTE_V3_Q5: TasteV3Question = {
       evidenceTag: "precision / visual restraint",
       evidenceLabel: "불필요한 것이 없고 선과 비율이 정확한 장면을 더 오래 보고 싶다고 했다",
       axes: { sensory: -15, expression: 5 },
+      assetKey: "quiz.tasteV3.q5.b",
     },
   ],
 };
@@ -432,6 +436,7 @@ export const TASTE_V3_Q9: TasteV3Question = {
       evidenceTag: "visible life / accessible layers",
       evidenceLabel: "지금 쓰는 것들이 어느 정도 보이는 테이블이 편하다고 했다",
       axes: { space: -15, expression: 10 },
+      assetKey: "quiz.tasteV3.q9.a",
     },
     {
       id: "controlled-field",
@@ -439,6 +444,7 @@ export const TASTE_V3_Q9: TasteV3Question = {
       evidenceTag: "controlled field / reduced noise",
       evidenceLabel: "쓰지 않는 것은 대부분 치워진 테이블이 편하다고 했다",
       axes: { space: 15, expression: -10 },
+      assetKey: "quiz.tasteV3.q9.b",
     },
   ],
 };
@@ -648,6 +654,7 @@ export const TASTE_V3_Q14: TasteV3Question = {
       evidenceTag: "continuity with evolution",
       evidenceLabel: "익숙한 분위기는 남겨두고 조금씩 달라지는 쪽이 더 마음에 든다고 했다",
       axes: { space: -10, exploration: 5 },
+      assetKey: "quiz.tasteV3.q14.a",
     },
     {
       id: "transformation-appetite",
@@ -655,6 +662,7 @@ export const TASTE_V3_Q14: TasteV3Question = {
       evidenceTag: "transformation appetite",
       evidenceLabel: "전혀 다른 모습으로 새롭게 바뀌는 쪽이 더 마음에 든다고 했다",
       axes: { exploration: 15, space: 5 },
+      assetKey: "quiz.tasteV3.q14.b",
     },
   ],
 };

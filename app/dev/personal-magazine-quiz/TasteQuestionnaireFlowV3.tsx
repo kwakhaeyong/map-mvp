@@ -11,10 +11,10 @@ import { TASTE_QUESTIONS_V3, type TasteV3Option, type TasteV3Question, type Tast
 // migration/feature boundary 요구). 시각 언어(테두리/타이포/여백/버튼)는
 // 기존 flow에서 그대로 가져왔다 — 새 디자인 시스템을 만들지 않았다.
 //
-// 이미지 문항(Q1/Q5/Q9/Q14)은 아직 실사 이미지가 없다 — 이번 라운드는
-// 이미지 생성을 하지 않으므로(오너 지시 이력상 신규 asset은 별도 승인
-// 필요), 기존 관례대로 EditorialImageFrame placeholder로 렌더링한다.
-// Q15만 기존 PAGE06 실사 이미지를 그대로 재사용한다(FREEZE 명시).
+// 이미지 문항(Q1/Q5/Q9/Q14)은 Q1/Q5/Q9/Q14 VISUAL QUESTION FINALIZATION
+// 라운드(2026-08)에서 오너가 전달한 실사 이미지로 교체했다 —
+// magazineVisualAssets.quiz.tasteV3.q1/q5/q9/q14. Q15만 기존 PAGE06
+// 실사 이미지를 그대로 재사용한다(FREEZE 명시).
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -23,6 +23,14 @@ function cx(...classes: Array<string | false | null | undefined>) {
 function resolveAsset(assetKey?: string): MagazineVisualAsset | null {
   if (assetKey === "quiz.taste.q06.a") return magazineVisualAssets.quiz.taste.q06.a;
   if (assetKey === "quiz.taste.q06.b") return magazineVisualAssets.quiz.taste.q06.b;
+  if (assetKey === "quiz.tasteV3.q1.a") return magazineVisualAssets.quiz.tasteV3.q1.a;
+  if (assetKey === "quiz.tasteV3.q1.b") return magazineVisualAssets.quiz.tasteV3.q1.b;
+  if (assetKey === "quiz.tasteV3.q5.a") return magazineVisualAssets.quiz.tasteV3.q5.a;
+  if (assetKey === "quiz.tasteV3.q5.b") return magazineVisualAssets.quiz.tasteV3.q5.b;
+  if (assetKey === "quiz.tasteV3.q9.a") return magazineVisualAssets.quiz.tasteV3.q9.a;
+  if (assetKey === "quiz.tasteV3.q9.b") return magazineVisualAssets.quiz.tasteV3.q9.b;
+  if (assetKey === "quiz.tasteV3.q14.a") return magazineVisualAssets.quiz.tasteV3.q14.a;
+  if (assetKey === "quiz.tasteV3.q14.b") return magazineVisualAssets.quiz.tasteV3.q14.b;
   return null;
 }
 
