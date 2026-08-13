@@ -34,7 +34,7 @@ export const RELATIONSHIP_DEFS_V3: V3RelationshipDef[] = [
     reqId: "R1",
     headline: "돌아갈 곳이 분명해서,\n더 멀리 가볼 수 있는 사람.",
     interestingPartBody:
-      "머무는 공간에서는 밀도 있고 손에 익은 쪽을 고르면서도, 새로운 장소 앞에서는 주저하지 않습니다. 익숙한 공간을 좋아하는 것과 새로운 장면을 찾아 나서는 것은, 당신 안에서는 서로 다른 두 개의 규칙이 아니라 하나로 이어진 태도에 가깝습니다.",
+      "머무는 공간에서는 밀도 있고 손에 익은 쪽이 편안하면서도, 새로운 장소 앞에서는 주저하지 않습니다. 익숙한 공간을 좋아하는 것과 새로운 장면을 찾아 나서는 것은, 당신 안에서는 서로 다른 두 개의 규칙이 아니라 하나로 이어진 태도에 가깝습니다.",
     pullQuote: "익숙한 방이 있어서, 낯선 거리를 걸을 수 있다.",
     axes: [
       { key: "space", direction: "low" },
@@ -56,10 +56,10 @@ export const RELATIONSHIP_DEFS_V3: V3RelationshipDef[] = [
   {
     id: "r3-rhythm-exploration",
     reqId: "R3",
-    headline: "발견은 빠르지만,\n선택은 천천히 하는 사람.",
+    headline: "발견은 빠르지만,\n결정은 천천히 하는 사람.",
     interestingPartBody:
       "새로운 것 앞에서 망설이는 시간은 짧지만, 그것을 실제로 내 것으로 정할 때는 시간을 들입니다. 발견의 속도와 결정의 속도가 다르다는 것은 성급함과 신중함이 뒤섞인 게 아니라, 두 순간에 각자 다른 기준을 쓰고 있다는 뜻에 가깝습니다.",
-    pullQuote: "발견은 빠르게, 선택은 천천히.",
+    pullQuote: "발견은 빠르게, 결정은 천천히.",
     axes: [
       { key: "exploration", direction: "high" },
       { key: "rhythm", direction: "low" },
@@ -70,7 +70,7 @@ export const RELATIONSHIP_DEFS_V3: V3RelationshipDef[] = [
     reqId: "R4",
     headline: "좋은 것은 함께 나누지만,\n전부를 보여주지는 않는 사람.",
     interestingPartBody:
-      "정말 마음에 드는 것을 발견했을 때 가까운 사람과는 나누고 싶어하면서도, 그 취향을 모두에게 설명하거나 널리 알려야 할 필요는 느끼지 않습니다. 관계는 열려 있어도 표현은 선택적인 편에 가깝습니다.",
+      "정말 마음에 드는 것을 발견했을 때 가까운 사람과는 나누고 싶어하면서도, 그 취향을 모두에게 설명하거나 널리 알려야 할 필요는 느끼지 않습니다. 관계는 열려 있어도 표현은 절제된 편에 가깝습니다.",
     pullQuote: "가까운 사람과는 나누고, 나머지는 내 몫으로 둔다.",
     axes: [
       { key: "relation", direction: "high" },

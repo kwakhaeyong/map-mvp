@@ -15,11 +15,31 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function ImageFrame({ asset, className }: { asset: MagazineVisualAsset; className?: string }) {
-  const [w, h] = asset.aspectRatio.split(":").map(Number);
+function ImageFrame({
+  asset,
+  className,
+  aspectRatioOverride,
+  fit = "contain",
+}: {
+  asset: MagazineVisualAsset;
+  className?: string;
+  /**
+   * "w:h" 형식. 넘기면 asset 원본 비율 대신 이 비율로 프레임 높이를
+   * 정한다 — PLACE/OBJECT 이미지의 모바일 세로 공간을 줄이기 위한
+   * 용도(cover 프로 함께 씀). hero에는 절대 넘기지 않는다.
+   */
+  aspectRatioOverride?: string;
+  fit?: "contain" | "cover";
+}) {
+  const [w, h] = (aspectRatioOverride ?? asset.aspectRatio).split(":").map(Number);
   return (
     <div className={cx("relative w-full overflow-hidden", className)} style={{ aspectRatio: `${w} / ${h}` }}>
-      <img src={asset.src} alt={asset.alt} className="size-full object-contain" style={{ objectPosition: asset.objectPositionMobile }} />
+      <img
+        src={asset.src}
+        alt={asset.alt}
+        className={cx("size-full", fit === "cover" ? "object-cover" : "object-contain")}
+        style={{ objectPosition: asset.objectPositionMobile }}
+      />
     </div>
   );
 }
@@ -85,9 +105,13 @@ function FeatureSection({
   return (
     <section className="pt-14">
       <div className={imagePaddingClass ?? "px-6"}>
-        <ImageFrame asset={asset} />
+        {/* PLACE/OBJECT 전용 — hero보다 낮은 프레임 비율(9:5, 원본 대비
+            세로 약 22% 축소)로 잘라 모바일 스크롤 길이를 줄인다. 이미지
+            바로 아래 문단이 이어지는 느낌을 주기 위해 여백도 함께
+            좁혔다(pt-6 → pt-4). */}
+        <ImageFrame asset={asset} aspectRatioOverride="9:5" fit="cover" />
       </div>
-      <div className="px-5 pt-6 lg:mx-auto lg:max-w-3xl lg:px-0">
+      <div className="px-5 pt-4 lg:mx-auto lg:max-w-3xl lg:px-0">
         <SectionMarker index={index} label={label} />
         <h2 className={cx("mt-2 whitespace-pre-line font-black leading-tight tracking-[-0.015em] text-text-primary", headlineScale)}>{headline}</h2>
         <p className={cx("mt-3 text-sm font-semibold leading-6 text-text-secondary", bodyWidth)}>{body}</p>
@@ -162,7 +186,7 @@ export function TasteMagazineResultV3({ narrative, hideDebugPanel = false }: { n
 
       <FeatureSection
         index="01"
-        label={`CORE TASTE · ${narrative.coreTaste.axisLabel}`}
+        label="CORE TASTE"
         asset={magazineVisualAssets.taste.place}
         headline={narrative.coreTaste.headline}
         body={narrative.coreTaste.body}
@@ -172,7 +196,7 @@ export function TasteMagazineResultV3({ narrative, hideDebugPanel = false }: { n
 
       <FeatureSection
         index="02"
-        label={`HOW IT SHOWS UP · ${narrative.howItShowsUp.axisLabel}`}
+        label="HOW IT SHOWS UP"
         asset={magazineVisualAssets.taste.object}
         headline={narrative.howItShowsUp.headline}
         body={narrative.howItShowsUp.body}

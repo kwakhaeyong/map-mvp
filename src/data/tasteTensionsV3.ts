@@ -30,7 +30,7 @@ export const TENSION_DEFS_V3: V3TensionDef[] = [
     label: "T1",
     headline: "돌아갈 곳이 분명해서,\n더 멀리 가볼 수 있는 취향.",
     interestingPartBody:
-      "머무는 공간과 테이블은 손에 익고 밀도 있는 쪽을 고르면서도, 정작 낯선 동네나 하루 앞에서는 새로운 쪽을 망설임 없이 고릅니다. 안정된 자기 공간이 있다는 것이 오히려 더 멀리 나가볼 수 있는 이유가 되는 편입니다.",
+      "머무는 공간과 테이블은 손에 익고 밀도 있는 쪽이 편안하면서도, 정작 낯선 동네나 하루 앞에서는 새로운 쪽으로 망설임 없이 향합니다. 안정된 자기 공간이 있다는 것이 오히려 더 멀리 나가볼 수 있는 이유가 되는 편입니다.",
     pullQuote: "돌아갈 곳이 있어서, 더 멀리 갈 수 있다.",
     relatedQNumbers: [1, 9, 7, 15],
     match: (byQ) => {
@@ -56,10 +56,10 @@ export const TENSION_DEFS_V3: V3TensionDef[] = [
   {
     id: "t3-fast-discovery-slow-choice",
     label: "T3",
-    headline: "발견은 빠르고,\n선택은 느린 취향.",
+    headline: "발견은 빠르고,\n결정은 느린 취향.",
     interestingPartBody:
       "처음 가는 동네에서는 걷다가 눈에 들어오는 곳으로 망설임 없이 들어가지만, 마음에 든 물건 앞에서는 며칠을 두고 다시 생각합니다. 새로운 것을 만나는 속도와 그것을 내 것으로 정하는 속도는, 당신에게는 전혀 다른 두 개의 시계로 움직입니다.",
-    pullQuote: "발견은 빠르게, 선택은 천천히.",
+    pullQuote: "발견은 빠르게, 결정은 천천히.",
     relatedQNumbers: [7, 8],
     match: (byQ) => selected(byQ, 7, "intuitive-discovery") && selected(byQ, 8, "slow-desire-validation", "comparative-search"),
   },
