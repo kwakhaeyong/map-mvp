@@ -585,8 +585,22 @@ function SignatureChoiceGroup({
 // ============================================================
 type Stage = "intro" | "question";
 
-export function TasteQuestionnaireFlow({ questions, onComplete }: { questions: TasteQuestion[]; onComplete: (answers: TasteRawAnswers) => void }) {
-  const [stage, setStage] = useState<Stage>("intro");
+// startAtQuestion(기본 false, 기존 3곳 호출부는 그대로 intro부터
+// 시작한다) — Private Beta 라운드(personal-magazine-beta)처럼 이
+// 컴포넌트 밖에 이미 자체 "챕터 시작" 화면(TASTE INTRO)이 있는
+// 경우에만 true로 넘겨 내부 QuizIntro(중복 "챕터 만들기 시작" 화면)를
+// 건너뛴다. 문항/선택지/signal/interaction 로직은 전혀 건드리지
+// 않는다 — 시작 지점 하나만 옵션으로 열어준 것뿐이다.
+export function TasteQuestionnaireFlow({
+  questions,
+  onComplete,
+  startAtQuestion = false,
+}: {
+  questions: TasteQuestion[];
+  onComplete: (answers: TasteRawAnswers) => void;
+  startAtQuestion?: boolean;
+}) {
+  const [stage, setStage] = useState<Stage>(startAtQuestion ? "question" : "intro");
   const [pageIndex, setPageIndex] = useState(0);
   const [answers, setAnswers] = useState<TasteRawAnswers>({});
   const [quickCutSelections, setQuickCutSelections] = useState<Record<string, string>>({});
