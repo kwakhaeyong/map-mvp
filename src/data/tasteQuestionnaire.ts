@@ -575,13 +575,13 @@ export const TASTE_V1_MOCK_PROFILES: TasteV1MockProfile[] = [
   {
     id: "quiet-explorer",
     label: "QUIET EXPLORER",
-    description: "조용한 창가 + 빛과 분위기 + different/instant-pull + 비교 탐색 — 낮은 자극·사교이면서 새로움은 높음(같은 축이 아니라 서로 다른 축의 조합).",
+    description: "조용한 창가 + 빛과 분위기 + different/storied + 비교 탐색 — 낮은 자극이면서 새로움·큐레이션·감각·애착이 모두 높음(같은 축이 아니라 서로 다른 축의 조합).",
     answers: {
       scene: rawAnswer(TASTE_V1_PAGE_01_SCENE, ["window-afternoon"]),
       "what-matters": rawAnswer(TASTE_V1_PAGE_02_WHAT_MATTERS, ["light-mood"]),
-      keep: rawAnswer(TASTE_V1_PAGE_03_KEEP, ["different", "instant-pull"]),
+      keep: rawAnswer(TASTE_V1_PAGE_03_KEEP, ["different", "storied"]),
       instinct: rawAnswer(TASTE_V1_PAGE_04_INSTINCT, ["compare"]),
-      "quick-cuts": rawAnswer(TASTE_V1_PAGE_05_QUICK_CUTS, ["new-place", "swap-fun", "keep-private", "mood-matters"]),
+      "quick-cuts": rawAnswer(TASTE_V1_PAGE_05_QUICK_CUTS, ["new-place", "keep-long", "keep-private", "mood-matters"]),
       "your-day": rawAnswer(TASTE_V1_PAGE_06_YOUR_DAY, ["discover-day"]),
     },
   },
