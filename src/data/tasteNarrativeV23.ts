@@ -32,6 +32,20 @@
 // headline/interestingPart/pullQuote 카피는 전혀 건드리지 않는다(지시
 // 7번) — tasteNarrativeV22.ts의 RELATIONSHIP_DEFS_V22(10개)를 그대로
 // import해서 "어떻게 고르는가"만 다시 짠다.
+//
+// ------------------------------------------------------------
+// "OPENING ARBITRATION" 추가 라운드(2026-08, 같은 파일/함수명 유지) —
+// 위 winner-takes-all 제거 이후 20-profile 검증에서 "무엇을 발견했는가"
+// 자체는 다층적이었지만 Opening headline 분포가 일부에 쏠리는 문제가
+// 남았다. 이번 지시는 "새 relationship/기능 추가"가 아니라 "여러
+// strong 후보 중 무엇을 Opening/Interesting Part로 보여줄지 고르는
+// 방법"만 다시 짜는 것이다 — matchAllRelationshipsV23()의 strength/
+// evidencePageCount 계산은 그대로 재사용하고, buildOpeningArbitration()
+// 이하만 새로 추가했다. buildTasteMagazineNarrativeV23()라는 이름과
+// 시그니처는 그대로 유지해 TasteJourneyClient.tsx의 기존 V2.3 토글이
+// 코드 변경 없이 개선된 arbitration을 그대로 쓰게 했다(지시 "Narrative
+// v2.5 같은 추가 버전 생성 금지"·"Continuation UI 개발 금지"에 따라
+// 새 파일/새 토글을 만들지 않았다).
 
 import { type SignalSource, type TasteAnalysisResult } from "./tasteAnalysis";
 import { buildTasteMagazineNarrative, type TasteMagazineNarrative } from "./tasteNarrative";
@@ -159,64 +173,189 @@ export function matchAllRelationshipsV23(result: TasteAnalysisResult, sources: S
 }
 
 // ============================================================
-// 2번 — 출력 구조. Opening/Interesting Part.
+// "OPENING ARBITRATION" (2026-08 추가 라운드) — 위 matchAllRelationshipsV23()
+// 까지는 "무엇이 strong한가"를 찾는 단계였다. 이 아래는 그 결과가
+// 여러 개일 때 "그중 무엇을 Opening 문장으로 보여줄 것인가"를
+// 결정하는 별도 단계다. 기존 signal/strength/evidence 계산은 전혀
+// 새로 만들지 않고, 이미 있는 값들을 후보(OpeningCandidate)로 모아
+// 우선순위 규칙으로 고르기만 한다.
 //
-//   A. strong contradiction — 지시 5번대로 Opening 우선권을 유지한다
-//      (v2.1/v2.2와 동일하게 v1Base의 headline/summary를 그대로 쓴다).
-//      Interesting Part는 matchAllRelationshipsV23()의 1등 relationship
-//      (있으면)으로 채운다 — contradiction은 relationship 목록에
-//      들어있지 않으므로 지시 6번("같은 relationship을 Opening과
-//      Interesting Part에 중복 사용하지 않는다")과 자동으로 충돌하지
-//      않는다.
-//   B. strong contradiction이 아니면 — 1등 relationship이 Opening,
-//      2등 relationship(있고 자기 자신과 다르면)이 Interesting Part.
-//      relationship이 하나만 strong이면 Interesting Part는 비운다 —
-//      6번 지시대로 "같은 relationship을 두 번 쓰지 않는다"를 그대로
-//      따른 결과다(v2.1/v2.2는 1등 relationship 자신의 interestingPart를
-//      재사용했지만, 이번 지시는 그 재사용 자체를 금지한다).
-//   C/D. relationship이 하나도 strong하지 않으면 v1Base 그대로 — v2.1/
-//      v2.2와 동일하게 이번에도 새 fallback 카피가 없어 손대지 않는다.
-//
-// Feature(place/object/detail/ritual)는 "남은 relationship evidence를
-// 필요 시 활용"(지시 2번)이라고 돼 있지만, 이번에도 feature 문구
-// 자체는 새로 전달되지 않았다 — 새 카피를 짓지 말라는 지시 7번과
-// 충돌하지 않도록 이번 라운드에서는 손대지 않고 v1Base 그대로 둔다.
-// 이 스코프 선택은 완료 보고에서 그대로 공유한다.
+// 후보 소스 3가지(지시 §3):
+//   A. strong contradiction — v1Base가 이미 계산한 headline/evidence.
+//   B. matched relationship — matchAllRelationshipsV23()의 결과.
+//   C. v1Base fallback — 위 둘 다 없을 때만.
+// ============================================================
+export type OpeningCandidateSourceType = "contradiction" | "relationship" | "fallback";
+
+export type OpeningCandidate = {
+  sourceType: OpeningCandidateSourceType;
+  sourceId: string;
+  headline: string;
+  pullQuote: string;
+  interestingPart?: TasteMagazineNarrative["interestingPart"];
+  evidence: string[];
+  // strength는 contradiction/fallback에는 존재하지 않는다(§4① — 이
+  // 둘은 strength 비교 대상이 아니라 우선권 게이트다). 리포트용으로만
+  // -1을 채워 "비교 대상 아님"을 표시한다 — 실제 arbitration 비교
+  // 로직(compareRelationshipCandidates)은 relationship 후보끼리만 쓴다.
+  strength: number;
+  evidencePageCount: number;
+  evidenceAnswerCount: number;
+  axisCount: number;
+};
+
+function pageIdFromEvidenceLabel(label: string): string {
+  const idx = label.indexOf(": ");
+  return idx === -1 ? label : label.slice(0, idx);
+}
+
+function pagesFromEvidence(evidence: string[]): Set<string> {
+  return new Set(evidence.map(pageIdFromEvidenceLabel));
+}
+
+// §4④ deterministic tie-break — strength → evidencePageCount →
+// evidenceAnswerCount → sourceId(알파벳, 배열 선언 순서와 무관). axisCount는
+// §3에 나열된 후보 정보이지만 §4③이 "축 개수가 많다고 무조건 우선하지
+// 않는다"고 명시해 비교 키에서 제외했다 — 리포트에만 노출한다.
+function compareRelationshipCandidates(a: OpeningCandidate, b: OpeningCandidate): number {
+  if (b.strength !== a.strength) return b.strength - a.strength;
+  if (b.evidencePageCount !== a.evidencePageCount) return b.evidencePageCount - a.evidencePageCount;
+  if (b.evidenceAnswerCount !== a.evidenceAnswerCount) return b.evidenceAnswerCount - a.evidenceAnswerCount;
+  return a.sourceId.localeCompare(b.sourceId);
+}
+
+function relationshipMatchToCandidate(m: RelationshipMatchV23): OpeningCandidate {
+  return {
+    sourceType: "relationship",
+    sourceId: m.def.id,
+    headline: m.def.headline,
+    pullQuote: m.def.pullQuote,
+    interestingPart: m.def.interestingPart,
+    evidence: m.evidence,
+    strength: m.strength,
+    evidencePageCount: m.evidencePageCount,
+    evidenceAnswerCount: m.evidence.length,
+    axisCount: m.def.axes.length,
+  };
+}
+
+// Interesting Part 제외 규칙(지시 §6 "Opening과 사실상 동일한 이야기를
+// 반복하는 경우는 제외") — 판별 가능한 기존 구조는 evidence page
+// 집합뿐이라 그것으로 판단했다: 후보의 evidence page가 전부 Opening의
+// evidence page에 이미 포함돼 있으면(새로운 근거를 하나도 더하지
+// 못하면) "같은 이야기의 반복"으로 보고 제외한다. 반대로 축이 같아도
+// (BEAUTY/USE·SENSORY/PRACTICAL처럼) 서로 다른 page/answer 근거로
+// 성립한 경우는 여기 해당하지 않아 그대로 Interesting Part 후보가
+// 될 수 있다 — v2.3의 §3 동시생존 동작을 깨지 않는다(지시 §6 마지막
+// 문장 그대로).
+function isRedundantWithOpening(candidate: OpeningCandidate, opening: OpeningCandidate): boolean {
+  const candidatePages = pagesFromEvidence(candidate.evidence);
+  if (candidatePages.size === 0) return false;
+  const openingPages = pagesFromEvidence(opening.evidence);
+  return Array.from(candidatePages).every((p) => openingPages.has(p));
+}
+
+export type OpeningArbitrationResult = {
+  candidates: OpeningCandidate[]; // 검토된 전체 후보(리포트용) — contradiction/relationship 전부
+  winner: OpeningCandidate;
+  runnerUp?: OpeningCandidate;
+  reason: string;
+  interestingPartCandidate?: OpeningCandidate;
+};
+
+function describeReason(sortedRelationships: OpeningCandidate[], winnerIsContradiction: boolean): string {
+  if (winnerIsContradiction) return "strong contradiction protection(§4①) — relationship strength와 무관하게 Opening 우선권 유지";
+  if (sortedRelationships.length === 0) return "매칭된 relationship 없음 — v1Base fallback";
+  if (sortedRelationships.length === 1) return "strong relationship 1개뿐 — arbitration 불필요, 그대로 채택(§8 Edge Case E)";
+  const [winner, next] = sortedRelationships;
+  if (winner.strength !== next.strength) return `strength 우위(${winner.strength.toFixed(3)} > ${next.strength.toFixed(3)})`;
+  if (winner.evidencePageCount !== next.evidencePageCount) return `strength 동률 → evidencePageCount 우위(${winner.evidencePageCount} > ${next.evidencePageCount})`;
+  if (winner.evidenceAnswerCount !== next.evidenceAnswerCount) return `strength·evidencePageCount 동률 → evidenceAnswerCount 우위(${winner.evidenceAnswerCount} > ${next.evidenceAnswerCount})`;
+  return `strength·evidencePageCount·evidenceAnswerCount 전부 동률 → sourceId 알파벳 순 tie-break("${winner.sourceId}" < "${next.sourceId}")`;
+}
+
+export function buildOpeningArbitration(result: TasteAnalysisResult, sources: SignalSource[]): OpeningArbitrationResult {
+  const v1Base = buildTasteMagazineNarrative(result, sources);
+  const relationshipMatches = matchAllRelationshipsV23(result, sources);
+  const relationshipCandidates = relationshipMatches.map(relationshipMatchToCandidate);
+  const sortedRelationships = [...relationshipCandidates].sort(compareRelationshipCandidates);
+
+  const strongContradiction = hasStrongContradiction(result, sources);
+  const contradictionCandidate: OpeningCandidate | undefined = strongContradiction
+    ? {
+        sourceType: "contradiction",
+        sourceId: `contradiction-${result.contradictions[0]?.axis ?? "unknown"}`,
+        headline: v1Base.opening.headline,
+        pullQuote: v1Base.pullQuote,
+        interestingPart: undefined,
+        evidence: v1Base.evidence.headline,
+        strength: -1,
+        evidencePageCount: pagesFromEvidence(v1Base.evidence.headline).size,
+        evidenceAnswerCount: v1Base.evidence.headline.length,
+        axisCount: 1,
+      }
+    : undefined;
+
+  const fallbackCandidate: OpeningCandidate = {
+    sourceType: "fallback",
+    sourceId: "v1Base",
+    headline: v1Base.opening.headline,
+    pullQuote: v1Base.pullQuote,
+    interestingPart: v1Base.interestingPart,
+    evidence: v1Base.evidence.headline,
+    strength: -1,
+    evidencePageCount: pagesFromEvidence(v1Base.evidence.headline).size,
+    evidenceAnswerCount: v1Base.evidence.headline.length,
+    axisCount: 0,
+  };
+
+  // §4① strong contradiction protection — 존재하면 무조건 Opening.
+  const winner = contradictionCandidate ?? sortedRelationships[0] ?? fallbackCandidate;
+  const runnerUp = contradictionCandidate ? sortedRelationships[0] : winner.sourceType === "relationship" ? sortedRelationships[1] : undefined;
+  const reason = describeReason(sortedRelationships, Boolean(contradictionCandidate));
+
+  // Interesting Part — winner로 쓰인 relationship 자신은 제외하고,
+  // 승인된 interestingPart 카피가 있고, winner와 evidence page가
+  // 겹치기만 하지 않는(=새 근거를 더하는) 후보 중 가장 순위가 높은
+  // 것을 쓴다(§6).
+  const interestingPool = relationshipCandidates
+    .filter((c) => !(winner.sourceType === "relationship" && c.sourceId === winner.sourceId))
+    .filter((c) => Boolean(c.interestingPart))
+    .filter((c) => !isRedundantWithOpening(c, winner))
+    .sort(compareRelationshipCandidates);
+
+  const candidates = contradictionCandidate ? [contradictionCandidate, ...relationshipCandidates] : relationshipCandidates;
+
+  return {
+    candidates,
+    winner,
+    runnerUp,
+    reason,
+    interestingPartCandidate: interestingPool[0],
+  };
+}
+
+// ============================================================
+// TOP-LEVEL — buildOpeningArbitration()의 winner/interestingPartCandidate를
+// 그대로 TasteMagazineNarrative로 옮긴다. Feature(place/object/detail/
+// ritual)는 이번에도 새 카피가 오지 않아 v1Base 그대로 둔다(지시
+// "Magazine 디자인/카피 개선 금지"와 일치) — v2.3과 동일한 스코프
+// 선택이다.
 // ============================================================
 export function buildTasteMagazineNarrativeV23(result: TasteAnalysisResult, sources: SignalSource[]): TasteMagazineNarrative {
   const v1Base = buildTasteMagazineNarrative(result, sources);
-  const matches = matchAllRelationshipsV23(result, sources);
+  const { winner, interestingPartCandidate } = buildOpeningArbitration(result, sources);
 
-  // A. strong contradiction — Opening 우선권 유지.
-  if (hasStrongContradiction(result, sources)) {
-    const top = matches[0];
-    if (!top) return v1Base;
+  if (winner.sourceType === "fallback") return v1Base;
 
-    const evidence: TasteMagazineNarrative["evidence"] = { ...v1Base.evidence };
-    if (top.def.interestingPart) evidence.interestingPart = top.evidence;
-
-    return {
-      opening: { headline: v1Base.opening.headline, summary: v1Base.opening.summary },
-      features: v1Base.features,
-      interestingPart: top.def.interestingPart,
-      pullQuote: v1Base.pullQuote,
-      keywords: v1Base.keywords,
-      evidence,
-    };
-  }
-
-  // B. strong relationship — 1등=Opening, 2등(다른 relationship)=Interesting Part.
-  const [first, second] = matches;
-  if (!first) return v1Base;
-
-  const evidence: TasteMagazineNarrative["evidence"] = { ...v1Base.evidence, headline: first.evidence };
-  if (second && second.def.interestingPart) evidence.interestingPart = second.evidence;
+  const evidence: TasteMagazineNarrative["evidence"] = { ...v1Base.evidence, headline: winner.evidence };
+  if (interestingPartCandidate) evidence.interestingPart = interestingPartCandidate.evidence;
 
   return {
-    opening: { headline: first.def.headline, summary: v1Base.opening.summary },
+    opening: { headline: winner.headline, summary: v1Base.opening.summary },
     features: v1Base.features,
-    interestingPart: second?.def.interestingPart,
-    pullQuote: first.def.pullQuote,
+    interestingPart: interestingPartCandidate?.interestingPart,
+    pullQuote: winner.pullQuote,
     keywords: v1Base.keywords,
     evidence,
   };
