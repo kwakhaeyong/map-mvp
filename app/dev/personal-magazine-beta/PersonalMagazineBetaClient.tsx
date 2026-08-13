@@ -6,8 +6,10 @@ import { analyzeTasteFromSources } from "../../../src/data/tasteAnalysis";
 import { mapTasteAnswersToSignalSources, type TasteRawAnswers } from "../../../src/data/tasteQuestionnaire";
 import { TASTE_QUESTIONS_V2_2 } from "../../../src/data/tasteQuestionnaireV22";
 import { buildTasteMagazineNarrativeV23 } from "../../../src/data/tasteNarrativeV23";
+import { getSavedTasteIssue, type SavedTasteIssue } from "../../../src/data/tasteIssueStorage";
 import { TasteQuestionnaireFlow } from "../personal-magazine-quiz/TasteQuestionnaireFlow";
 import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMagazineResult";
+import { MyMagazineScreen } from "./MyMagazineScreen";
 import { OwnershipSection } from "./OwnershipSection";
 
 // PRIVATE BETA 0.9 ROUND 1(2026-08) — HOME → TASTE INTRO → 기존 TASTE
@@ -24,7 +26,7 @@ import { OwnershipSection } from "./OwnershipSection";
 // 파이프라인(TasteJourneyClient.tsx와 동일 조합)을 그대로 연결해
 // 두었다 — 새 Result 화면을 만들지 않았다.
 
-type Stage = "home" | "intro" | "flow" | "editing" | "result";
+type Stage = "home" | "intro" | "flow" | "editing" | "result" | "my-magazine";
 
 // EDITING PRODUCTIZATION(2026-08, Round 2) — §3 확정 4개 processing line
 // 그대로. 각 줄이 LINE_STAGGER_MS 간격으로 순서대로 나타난 뒤,
@@ -196,14 +198,14 @@ function EditingTransition() {
 // 그대로 두고(Ending까지 기존 layout 무변경), 그 아래 형제로
 // OwnershipSection만 이어붙인다. Result 내부 spacing/구조에는 diff가
 // 없다.
-function JourneyResult({ answers }: { answers: TasteRawAnswers }) {
+function JourneyResult({ answers, onViewMyMagazine }: { answers: TasteRawAnswers; onViewMyMagazine: () => void }) {
   const sources = mapTasteAnswersToSignalSources(TASTE_QUESTIONS_V2_2, answers);
   const result = analyzeTasteFromSources(sources);
   const narrative = buildTasteMagazineNarrativeV23(result, sources);
   return (
     <>
       <TasteMagazineResult narrative={narrative} result={result} hideDebugPanel />
-      <OwnershipSection answers={answers} narrative={narrative} />
+      <OwnershipSection answers={answers} narrative={narrative} onViewMyMagazine={onViewMyMagazine} />
     </>
   );
 }
@@ -218,6 +220,25 @@ function JourneyResult({ answers }: { answers: TasteRawAnswers }) {
 // 남지 않는다(§12 fresh session — 별도 persistence를 새로 만들지
 // 않고 React state 초기화만으로 충족한다).
 // ============================================================
+// MY MAGAZINE / CONTINUATION LAYER(2026-08, Round 4) — §16 "직접
+// 접근/새로고침"을 지키기 위해 my-magazine 진입만 URL의 ?view=
+// 쿼리에 얕게 반영해둔다(라우터/새 페이지 없이 history.replaceState만
+// 사용). 그래서 이 화면에 있는 상태로 새로고침해도 같은 화면으로
+// 돌아온다 — 데이터 자체는 항상 localStorage에서 다시 읽으므로,
+// 여기서 굳이 answers/narrative 같은 React state를 별도 저장하지
+// 않는다.
+function updateViewQueryParam(view: "my-magazine" | null) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (view) {
+    url.searchParams.set("view", view);
+  } else {
+    url.searchParams.delete("view");
+  }
+  const qs = url.searchParams.toString();
+  window.history.replaceState(null, "", `${url.pathname}${qs ? `?${qs}` : ""}`);
+}
+
 export function PersonalMagazineBetaClient() {
   const [stage, setStage] = useState<Stage>("home");
   const [answers, setAnswers] = useState<TasteRawAnswers | null>(null);
@@ -228,9 +249,29 @@ export function PersonalMagazineBetaClient() {
     return () => clearTimeout(timer);
   }, [stage]);
 
+  // 최초 mount(=새로고침 포함) 시 URL에 ?view=my-magazine이 남아있으면
+  // 그 화면으로 바로 진입한다. 서버 렌더/hydration 시점엔 window가
+  // 없으므로 항상 "home"으로 시작한 뒤, mount 후 client에서만 전환한다.
+  useEffect(() => {
+    const view = new URLSearchParams(window.location.search).get("view");
+    if (view === "my-magazine") setStage("my-magazine");
+  }, []);
+
   function handleRestart() {
+    updateViewQueryParam(null);
     setAnswers(null);
     setStage("home");
+  }
+
+  function handleViewMyMagazine() {
+    updateViewQueryParam("my-magazine");
+    setStage("my-magazine");
+  }
+
+  function handleOpenSavedIssue(issue: SavedTasteIssue) {
+    updateViewQueryParam(null);
+    setAnswers(issue.answers);
+    setStage("result");
   }
 
   return (
@@ -255,7 +296,11 @@ export function PersonalMagazineBetaClient() {
 
       {stage === "editing" && <EditingTransition />}
 
-      {stage === "result" && answers && <JourneyResult answers={answers} />}
+      {stage === "result" && answers && <JourneyResult answers={answers} onViewMyMagazine={handleViewMyMagazine} />}
+
+      {stage === "my-magazine" && (
+        <MyMagazineScreen savedIssue={getSavedTasteIssue()} onGoHome={handleRestart} onOpenSavedIssue={handleOpenSavedIssue} />
+      )}
     </div>
   );
 }

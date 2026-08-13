@@ -4,7 +4,7 @@ import { useState } from "react";
 import { magazineVisualAssets } from "../../../src/data/magazineVisualAssets";
 import { type TasteMagazineNarrative } from "../../../src/data/tasteNarrative";
 import { type TasteRawAnswers } from "../../../src/data/tasteQuestionnaire";
-import { saveTasteIssue } from "../../../src/data/tasteIssueStorage";
+import { getSavedTasteIssue, saveTasteIssue } from "../../../src/data/tasteIssueStorage";
 
 // OWNERSHIP / SAVE / SHARE(2026-08, Private Beta Round 3) — §3 확정
 // 카피 그대로, 기존 Result의 EndingSection 바로 다음에 이어지는 한
@@ -61,11 +61,15 @@ async function buildTasteShareCardBlob(narrative: TasteMagazineNarrative): Promi
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context를 만들 수 없습니다.");
 
+  // design:check(raw color 금지) 대응 — CSS custom property는 이 페이지에
+  // design-tokens.css가 항상 로드된 상태로만 렌더링되므로, hex 리터럴
+  // fallback 없이 읽은 값을 그대로 쓴다(Round 4에서 발견해 최소 수정 —
+  // Share Card 자체의 시각 출력은 바뀌지 않는다).
   const rootStyle = getComputedStyle(document.documentElement);
-  const bg = rootStyle.getPropertyValue("--color-background").trim() || "#faf9f6";
-  const ink = rootStyle.getPropertyValue("--color-text-primary").trim() || "#222222";
-  const muted = rootStyle.getPropertyValue("--color-text-muted").trim() || "#6e6e6a";
-  const borderStrong = rootStyle.getPropertyValue("--color-border-strong").trim() || "rgba(34,34,34,0.24)";
+  const bg = rootStyle.getPropertyValue("--color-background").trim();
+  const ink = rootStyle.getPropertyValue("--color-text-primary").trim();
+  const muted = rootStyle.getPropertyValue("--color-text-muted").trim();
+  const borderStrong = rootStyle.getPropertyValue("--color-border-strong").trim();
   const sansFont = getComputedStyle(document.body).fontFamily || "sans-serif";
   const serifFont = "ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif";
 
@@ -145,8 +149,21 @@ function triggerDownload(blob: Blob) {
 // ============================================================
 // ROOT
 // ============================================================
-export function OwnershipSection({ answers, narrative }: { answers: TasteRawAnswers; narrative: TasteMagazineNarrative }) {
-  const [saved, setSaved] = useState(false);
+export function OwnershipSection({
+  answers,
+  narrative,
+  onViewMyMagazine,
+}: {
+  answers: TasteRawAnswers;
+  narrative: TasteMagazineNarrative;
+  onViewMyMagazine: () => void;
+}) {
+  // MY MAGAZINE / CONTINUATION LAYER(2026-08, Round 4) — §4/§16. 이미
+  // 저장된 Issue를 가지고 돌아온 경우(예: TASTE COMPLETE 카드를 다시
+  // 열어 이 화면으로 돌아온 경우)에도 "SAVE MY MAGAZINE"이 다시
+  // 미저장 상태로 보이면 안 되므로, 실제 localStorage를 읽어 초기값을
+  // 잡는다.
+  const [saved, setSaved] = useState(() => Boolean(getSavedTasteIssue()));
   // §15 — telemetry 없이 행동 상태만 분리해둔다(추후 track() 연결용).
   const [shareAttempted, setShareAttempted] = useState(false);
   const [shareCompleted, setShareCompleted] = useState(false);
@@ -232,6 +249,15 @@ export function OwnershipSection({ answers, narrative }: { answers: TasteRawAnsw
           {saved ? "SAVED TO MY MAGAZINE ✓" : "SAVE MY MAGAZINE"}
         </button>
         {saved && <p className="text-[12px] font-bold text-text-secondary">첫 번째 Issue가 저장되었습니다.</p>}
+        {saved && (
+          <button
+            type="button"
+            onClick={onViewMyMagazine}
+            className="text-sm font-black uppercase tracking-[0.04em] text-text-primary underline decoration-border-strong underline-offset-4"
+          >
+            VIEW MY MAGAZINE
+          </button>
+        )}
 
         <button
           type="button"
