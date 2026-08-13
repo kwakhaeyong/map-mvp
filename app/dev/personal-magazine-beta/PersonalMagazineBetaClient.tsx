@@ -7,6 +7,7 @@ import { mapTasteAnswersToSignalSources, type TasteRawAnswers } from "../../../s
 import { TASTE_QUESTIONS_V2_2 } from "../../../src/data/tasteQuestionnaireV22";
 import { buildTasteMagazineNarrativeV23 } from "../../../src/data/tasteNarrativeV23";
 import { getSavedTasteIssue, TASTE_ISSUE_ID, type SavedTasteIssue } from "../../../src/data/tasteIssueStorage";
+import { sendBetaEvent } from "../../../src/data/personalMagazineBetaTelemetry";
 import { TasteQuestionnaireFlow } from "../personal-magazine-quiz/TasteQuestionnaireFlow";
 import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMagazineResult";
 import { FeedbackSection } from "./FeedbackSection";
@@ -315,7 +316,18 @@ export function PersonalMagazineBetaClient() {
 
   return (
     <div className="min-h-dvh bg-background text-text-primary">
-      {stage === "home" && <Home onStart={() => setStage("intro")} />}
+      {stage === "home" && (
+        <Home
+          onStart={() => {
+            // §3 magazine_started — "BEGIN"이 아니라 HOME의 첫 CTA를
+            // 누른 시점을 시작으로 본다. 이 라운드가 요구하는 건 계측
+            // hook뿐이라 화면 전환 로직(stage 변경)은 전혀 건드리지
+            // 않았다.
+            sendBetaEvent(TASTE_ISSUE_ID, { event: "magazine_started" });
+            setStage("intro");
+          }}
+        />
+      )}
 
       {stage === "intro" && <TasteIntro onBegin={() => setStage("flow")} onBack={handleRestart} />}
 
@@ -327,6 +339,9 @@ export function PersonalMagazineBetaClient() {
             startAtQuestion
             onExitToIntro={() => setStage("intro")}
             onComplete={(completedAnswers) => {
+              // §3 taste_completed — Questionnaire 전체 답변은 절대
+              // 전송하지 않는다(§4). issueId만 남긴다.
+              sendBetaEvent(TASTE_ISSUE_ID, { event: "taste_completed" });
               setAnswers(completedAnswers);
               setStage("editing");
             }}

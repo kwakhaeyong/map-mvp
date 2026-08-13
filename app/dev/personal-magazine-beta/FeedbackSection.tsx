@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getFeedback, saveFeedback, type FeedbackScore } from "../../../src/data/feedbackStorage";
+import { sendBetaEvent } from "../../../src/data/personalMagazineBetaTelemetry";
 
 // R-D-C FEEDBACK(2026-08, Private Beta Round 5) — §6 확정 카피 그대로.
 // Ownership(SAVE/SHARE) 바로 다음, VIEW MY MAGAZINE 바로 앞에 이어지는
@@ -108,6 +109,17 @@ export function FeedbackSection({
   function handleSubmit() {
     if (resonance === null || desire === null || continuation === null) return;
     saveFeedback(issueId, { resonance, desire, continuation, mostLikeMe });
+    // §4 — Questionnaire 전체 답변·signal debug는 여기 관여하지 않는다.
+    // R/D/C 점수와 한 줄 comment만, 딱 이 화면이 갖고 있는 값 그대로
+    // 중앙에 보낸다. 빈 문자열은 "응답 없음"이지 "빈 문자열"이라는
+    // 별도 의미가 없으므로 null로 정규화한다.
+    sendBetaEvent(issueId, {
+      event: "feedback_submitted",
+      resonance,
+      desire,
+      continuation,
+      mostLikeMe: mostLikeMe.trim() ? mostLikeMe.trim() : null,
+    });
     setSubmitted(true);
   }
 

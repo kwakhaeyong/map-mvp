@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { magazineVisualAssets } from "../../../src/data/magazineVisualAssets";
 import { getContinuationIntent, saveContinuationIntent, type NextChapterId } from "../../../src/data/continuationStorage";
-import type { SavedTasteIssue } from "../../../src/data/tasteIssueStorage";
+import { TASTE_ISSUE_ID, type SavedTasteIssue } from "../../../src/data/tasteIssueStorage";
+import { sendBetaEvent } from "../../../src/data/personalMagazineBetaTelemetry";
 
 // MY MAGAZINE / CONTINUATION LAYER(2026-08, Private Beta Round 4) — §5~§13
 // 확정. TASTE COMPLETE는 항상 localStorage의 실제 저장 데이터
@@ -36,6 +37,12 @@ export function MyMagazineScreen({
 }) {
   const [selectedNextChapter, setSelectedNextChapter] = useState<NextChapterId | null>(null);
   const [confirmedNextChapter, setConfirmedNextChapter] = useState<NextChapterId | null>(null);
+  // §8 "my_magazine_viewed × 5 같은 데이터가 생기면 안 된다" — 실제
+  // 행동(이 화면을 보러 옴) 1회와 컴포넌트 rerender를 구분하기 위한
+  // 가드. useEffect([]) 자체가 이미 mount당 1번만 실행되지만, 이
+  // ref로 한 번 더 명시적으로 막아 StrictMode 이중 호출 등 어떤
+  // 이유로든 같은 mount 안에서 두 번 불리는 상황까지 막는다.
+  const viewedFired = useRef(false);
 
   // §16 — mount 시 localStorage의 continuation intent를 읽어 선택
   // 상태를 복원한다. 저장된 값은 항상 "확정된" 선택이었으므로 두
@@ -48,8 +55,15 @@ export function MyMagazineScreen({
     }
   }, []);
 
+  useEffect(() => {
+    if (viewedFired.current) return;
+    viewedFired.current = true;
+    sendBetaEvent(TASTE_ISSUE_ID, { event: "my_magazine_viewed" });
+  }, []);
+
   function handleSelectChapter(chapter: NextChapterId) {
     setSelectedNextChapter(chapter);
+    sendBetaEvent(TASTE_ISSUE_ID, { event: "next_chapter_selected", chapter });
     if (confirmedNextChapter && confirmedNextChapter !== chapter) {
       setConfirmedNextChapter(null);
     }
@@ -58,6 +72,7 @@ export function MyMagazineScreen({
   function handleConfirmChapter() {
     if (!selectedNextChapter) return;
     saveContinuationIntent(selectedNextChapter);
+    sendBetaEvent(TASTE_ISSUE_ID, { event: "next_chapter_confirmed", chapter: selectedNextChapter });
     setConfirmedNextChapter(selectedNextChapter);
   }
 

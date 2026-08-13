@@ -24,11 +24,11 @@ export function BetaFeedbackSummaryClient() {
   const [continuation] = useState(() => getContinuationIntent());
 
   return (
-    <div className="mx-auto max-w-lg px-6 py-14">
+    <div className="mx-auto max-w-lg">
       <p className="text-xs font-black uppercase tracking-[0.14em] text-text-muted">DEV ONLY · NOT PUBLIC</p>
-      <h1 className="mt-3 text-2xl font-black text-text-primary">BETA FEEDBACK SUMMARY</h1>
+      <h1 className="mt-3 text-2xl font-black text-text-primary">THIS BROWSER'S LOCAL DATA</h1>
       <p className="mt-2 text-sm font-bold text-text-secondary">
-        지금 이 브라우저의 localStorage 값만 그대로 읽습니다. 서버로 전송되거나 어딘가에 집계되지 않습니다.
+        지금 이 브라우저의 localStorage 값만 그대로 읽습니다 — 위 CENTRAL BETA DATA(모든 참가자, 중앙 저장소)와는 별개입니다. 참고용으로 남겨둡니다.
       </p>
 
       <div className="mt-8">
@@ -51,7 +51,7 @@ export function BetaFeedbackSummaryClient() {
       </div>
 
       <p className="mt-10 text-xs font-bold leading-5 text-text-muted">
-        Share 실행 여부는 이 화면에서 확인할 수 없습니다 — Share 시도/완료 상태는 지금 코드에서 React state에만 있고 localStorage에 저장되지 않아, 새로고침하거나 이 페이지로 넘어오면 값이 남지 않습니다.
+        Share 실행 여부는 여전히 이 브라우저의 localStorage에는 남지 않습니다(React state뿐). 다만 중앙 저장소에는 남습니다 — 위 CENTRAL BETA DATA 표의 Shared 열을 참고하세요.
       </p>
     </div>
   );
