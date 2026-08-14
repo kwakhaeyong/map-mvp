@@ -6,13 +6,31 @@ import { analyzeTasteFromSources } from "../../../src/data/tasteAnalysis";
 import { mapTasteAnswersToSignalSources, type TasteRawAnswers } from "../../../src/data/tasteQuestionnaire";
 import { TASTE_QUESTIONS_V2_2 } from "../../../src/data/tasteQuestionnaireV22";
 import { buildTasteMagazineNarrativeV23 } from "../../../src/data/tasteNarrativeV23";
-import { getSavedTasteIssue, TASTE_ISSUE_ID, type SavedTasteIssue } from "../../../src/data/tasteIssueStorage";
+import { buildTasteMagazineNarrativeV3 } from "../../../src/data/tasteNarrativeV3";
+import type { TasteV3RawAnswers } from "../../../src/data/tasteQuestionnaireV3";
+import {
+  getSavedTasteIssue,
+  saveTasteIssueV3,
+  TASTE_ISSUE_ID,
+  type AnySavedTasteIssue,
+} from "../../../src/data/tasteIssueStorage";
 import { sendBetaEvent } from "../../../src/data/personalMagazineBetaTelemetry";
-import { TasteQuestionnaireFlow } from "../personal-magazine-quiz/TasteQuestionnaireFlow";
+import { TasteQuestionnaireFlowV3 } from "../personal-magazine-quiz/TasteQuestionnaireFlowV3";
 import { TasteMagazineResult } from "../personal-magazine-taste-result/TasteMagazineResult";
+import { TasteMagazineResultV3 } from "../personal-magazine-taste-result/TasteMagazineResultV3";
 import { FeedbackSection } from "./FeedbackSection";
 import { MyMagazineScreen } from "./MyMagazineScreen";
 import { OwnershipSection } from "./OwnershipSection";
+// ISSUE 02 TRAVEL(2026-08, PR #261 Round I) — TASTE 파이프라인과 나란한
+// 두 번째 완전 독립 파이프라인. TASTE 쪽 import/컴포넌트는 이 라운드에서
+// 한 글자도 건드리지 않았다(§1).
+import { TravelQuestionnaireFlowV1 } from "../personal-magazine-quiz/TravelQuestionnaireFlowV1";
+import { TravelMagazineResultV1 } from "../personal-magazine-travel-result/TravelMagazineResultV1";
+import { buildTravelMagazineNarrativeV1 } from "../../../src/data/travelNarrativeV1";
+import type { TravelV1RawAnswers } from "../../../src/data/travelQuestionnaireV1";
+import { getSavedTravelIssue, saveTravelIssue, TRAVEL_ISSUE_ID } from "../../../src/data/travelIssueStorage";
+import { computeCrossIssueForSavedIssues } from "../../../src/data/crossIssueSupport";
+import { TravelOwnershipSection } from "./TravelOwnershipSection";
 
 // PRIVATE BETA 0.9 ROUND 1(2026-08) — HOME → TASTE INTRO → 기존 TASTE
 // JOURNEY(Questionnaire v2.2 + Narrative v2.3 Final/Opening Arbitration)
@@ -28,7 +46,17 @@ import { OwnershipSection } from "./OwnershipSection";
 // 파이프라인(TasteJourneyClient.tsx와 동일 조합)을 그대로 연결해
 // 두었다 — 새 Result 화면을 만들지 않았다.
 
-type Stage = "home" | "intro" | "flow" | "editing" | "result" | "my-magazine";
+type Stage =
+  | "home"
+  | "intro"
+  | "flow"
+  | "editing"
+  | "result"
+  | "my-magazine"
+  | "travel-intro"
+  | "travel-flow"
+  | "travel-editing"
+  | "travel-result";
 
 // EDITING PRODUCTIZATION(2026-08, Round 2) — §3 확정 4개 processing line
 // 그대로. 각 줄이 LINE_STAGGER_MS 간격으로 순서대로 나타난 뒤,
@@ -44,7 +72,7 @@ type Stage = "home" | "intro" | "flow" | "editing" | "result" | "my-magazine";
 // 방식"을 고르라고 했는데, 기존 TasteJourneyClient.tsx의 EDITING
 // 단계도 이미 CTA 없이 타이머로 자동 전환하는 방식이라 그 관례를
 // 그대로 따랐다.
-const PROCESSING_LINES = ["READING YOUR CHOICES", "FINDING CONNECTIONS", "EDITING YOUR STORY", "MAKING YOUR ISSUE"];
+const PROCESSING_LINES = ["READING YOUR CHOICES", "FINDING THE PATTERNS", "EDITING YOUR ISSUE"];
 const LINE_STAGGER_MS = 550;
 const READY_APPEAR_MS = LINE_STAGGER_MS * PROCESSING_LINES.length + 450; // 마지막 줄이 뜨고서 여유 0.45초 후 READY
 const AUTO_ADVANCE_AFTER_READY_MS = 800;
@@ -64,31 +92,39 @@ function HeroFrame({ asset, className }: { asset: MagazineVisualAsset; className
 }
 
 // ============================================================
-// HOME — §4/§5 확정 카피 그대로. TASTE Hero를 "미리보기"로 작게,
-// 여백을 넉넉히 둬서 INTRO의 풀블리드 프레젠테이션과 구분한다.
+// HOME — PUBLISH FRAMING PROTOTYPE(2026-08). "테스트를 시작한다"가
+// 아니라 "내 Issue를 만든다"로 읽히도록 동사만 바꿨다(§1) — 레이아웃/
+// 이미지/CTA 위치는 그대로다. taste.hero는 이미 COVER 콜라주(제목+
+// PLACE/OBJECT/DETAIL/RITUAL 4컷)를 담은 단일 asset이라, 이 프레임
+// 자체가 이미 "완성된 Issue 미리보기"로 읽힌다(§3) — 새 컴포넌트를
+// 만들지 않고 PREVIEW 캡션 한 줄만 얹었다.
 // ============================================================
 function Home({ onStart }: { onStart: () => void }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col px-6 pb-10 pt-14 text-center">
-      <p className="text-xs font-black uppercase tracking-[0.14em] text-text-muted">PERSONAL MAGAZINE</p>
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-text-muted">PERSONAL MAGAZINE · ISSUE 01</p>
 
-      <h1 className="mt-5 whitespace-pre-line text-[2.25rem] font-black leading-[1.15] tracking-[-0.02em] text-text-primary">나를 한 권으로 만든다.</h1>
+      <h1 className="mt-5 whitespace-pre-line text-[2.25rem] font-black leading-[1.15] tracking-[-0.02em] text-text-primary">
+        {"나를 유형에 넣지 말고,\n한 권으로\n만들어주세요."}
+      </h1>
 
       <p className="mt-4 whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
-        {"몇 가지 선택을 따라가면\n나의 취향과 장면이\n한 권의 Magazine으로 편집됩니다."}
+        {"15개의 장면을 고르면\n당신의 취향을 첫 번째 Issue로 편집합니다."}
       </p>
 
       <div className="relative mx-auto mt-8 w-full max-w-[16rem] overflow-hidden border border-border-strong">
         <HeroFrame asset={magazineVisualAssets.taste.hero} />
       </div>
+      <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted">PREVIEW · YOUR ISSUE</p>
 
       <div className="mt-auto flex flex-col items-center gap-4 pt-10">
+        <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">약 3분 · 15개의 선택 · ISSUE 01</p>
         <button
           type="button"
           onClick={onStart}
           className="inline-flex h-12 w-full max-w-xs items-center justify-center bg-text-primary px-8 text-sm font-black uppercase tracking-[0.04em] text-background"
         >
-          MAKE MY FIRST ISSUE
+          내 첫 Issue 만들기
         </button>
         <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">ISSUE 01 · TASTE</p>
         <p className="font-serif text-xs italic text-text-muted">What you notice, keep, and come back to.</p>
@@ -119,11 +155,11 @@ function TasteIntro({ onBegin, onBack }: { onBegin: () => void; onBack: () => vo
       </div>
 
       <div className="flex flex-col px-6 pt-8 text-center">
-        <p className="font-serif text-xs font-bold uppercase tracking-[0.14em] text-text-muted">YOUR FIRST CHAPTER</p>
+        <p className="font-serif text-xs font-bold uppercase tracking-[0.14em] text-text-muted">ISSUE 01 · TASTE</p>
         <h1 className="mt-2 text-4xl font-black tracking-[-0.02em] text-text-primary">TASTE</h1>
 
         <p className="mt-5 whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
-          {"좋아하는 것은\n생각보다 많은 것을 말합니다.\n\n눈이 먼저 가는 장면,\n오래 두고 싶은 것,\n익숙함과 새로움 사이에서 하는 선택.\n\n몇 번의 선택을 지나\n당신의 TASTE를\n하나의 Magazine으로 편집합니다."}
+          {"좋아하는 것은\n생각보다 많은 것을 말합니다.\n\n15개의 선택은 따로 남지 않습니다.\n반복되는 감각과 의외의 조합을 골라,\n당신의 첫 번째 Issue로 편집합니다."}
         </p>
 
         <button
@@ -131,7 +167,7 @@ function TasteIntro({ onBegin, onBack }: { onBegin: () => void; onBack: () => vo
           onClick={onBegin}
           className="mt-8 inline-flex h-12 items-center justify-center self-center bg-text-primary px-10 text-sm font-black uppercase tracking-[0.04em] text-background"
         >
-          BEGIN
+          ISSUE 01 시작하기
         </button>
         <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">About 3 minutes · No right answers</p>
       </div>
@@ -196,33 +232,169 @@ function EditingTransition() {
   );
 }
 
+// ============================================================
+// ISSUE 02 TRAVEL(2026-08, PR #261 Round I) — TASTE의 TasteIntro/
+// EditingTransition과 같은 시각 문법을 그대로 재사용하되, TASTE
+// 컴포넌트 자체는 건드리지 않기 위해 독립 함수로 새로 작성했다.
+// ============================================================
+function TravelIntro({ onBegin, onBack }: { onBegin: () => void; onBack: () => void }) {
+  return (
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col pb-10">
+      <div className="px-5 pt-6">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted underline decoration-border-strong underline-offset-4"
+        >
+          ← MY MAGAZINE
+        </button>
+      </div>
+
+      <div className="mt-4">
+        <HeroFrame asset={magazineVisualAssets.travel.hero} />
+      </div>
+
+      <div className="flex flex-col px-6 pt-8 text-center">
+        <p className="font-serif text-xs font-bold uppercase tracking-[0.14em] text-text-muted">ISSUE 02 · TRAVEL</p>
+        <h1 className="mt-2 text-4xl font-black tracking-[-0.02em] text-text-primary">TRAVEL</h1>
+
+        <p className="mt-5 whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
+          {"낯선 환경에서 당신의 선택 방식은\n어떻게 달라집니까?\n\n14개의 선택은 따로 남지 않습니다.\nTASTE에서 이미 드러난 것과\n여기서 새로 드러나는 것을 이어,\n당신의 두 번째 Issue로 편집합니다."}
+        </p>
+
+        <button
+          type="button"
+          onClick={onBegin}
+          className="mt-8 inline-flex h-12 items-center justify-center self-center bg-text-primary px-10 text-sm font-black uppercase tracking-[0.04em] text-background"
+        >
+          ISSUE 02 시작하기
+        </button>
+        <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">About 3 minutes · No right answers</p>
+      </div>
+    </div>
+  );
+}
+
+const TRAVEL_PROCESSING_LINES = ["READING YOUR CHOICES", "FINDING WHAT CHANGES", "EDITING YOUR ISSUE"];
+
+function TravelEditingTransition() {
+  const [visibleCount, setVisibleCount] = useState(0);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const timers = TRAVEL_PROCESSING_LINES.map((_, i) => setTimeout(() => setVisibleCount((c) => Math.max(c, i + 1)), i * LINE_STAGGER_MS));
+    timers.push(setTimeout(() => setReady(true), READY_APPEAR_MS));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center px-6 text-center">
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-text-muted">PERSONAL MAGAZINE</p>
+
+      <h1 className="mt-5 text-3xl font-black leading-[1.15] tracking-[-0.02em] text-text-primary">
+        EDITING
+        <br />
+        YOUR TRAVEL
+      </h1>
+
+      <p className="mt-4 whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
+        {"낯선 곳에서 당신이 고른 선택 사이에서\nTASTE와 이어지는 지점을\n찾고 있습니다."}
+      </p>
+
+      <div className="mt-10 flex flex-col gap-3">
+        {TRAVEL_PROCESSING_LINES.map((line, i) => (
+          <p
+            key={line}
+            className={cx(
+              "text-[11px] font-bold uppercase tracking-[0.1em] transition-all duration-500 ease-out",
+              i < visibleCount ? "translate-y-0 text-text-primary opacity-100" : "translate-y-1 text-text-muted opacity-0"
+            )}
+          >
+            {line}
+          </p>
+        ))}
+      </div>
+
+      <p
+        className={cx(
+          "mt-8 text-sm font-black uppercase tracking-[0.04em] text-text-primary transition-all duration-500 ease-out",
+          ready ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+        )}
+      >
+        YOUR ISSUE IS READY.
+      </p>
+    </div>
+  );
+}
+
+function TravelJourneyResult({
+  answers,
+  onViewMyMagazine,
+  scrollTarget,
+}: {
+  answers: TravelV1RawAnswers;
+  onViewMyMagazine: () => void;
+  scrollTarget?: "cross-issue" | null;
+}) {
+  const narrative = buildTravelMagazineNarrativeV1(answers);
+  const [saved, setSaved] = useState(() => Boolean(getSavedTravelIssue()));
+  // Cross-Issue는 저장 전에도 미리보기로 계산한다 — TASTE가 이미
+  // 저장돼 있으면 TRAVEL을 SAVE하기 전에도 TASTE×TRAVEL을 볼 수 있어야
+  // "결과를 보여주지 않고 저장부터 강요"하지 않는다.
+  const crossIssue = computeCrossIssueForSavedIssues(getSavedTasteIssue(), answers);
+
+  return (
+    <>
+      <TravelMagazineResultV1 narrative={narrative} crossIssue={crossIssue} scrollTarget={scrollTarget} hideDebugPanel />
+      <TravelOwnershipSection answers={answers} narrative={narrative} onSaved={() => setSaved(true)} />
+      <FeedbackSection issueId={TRAVEL_ISSUE_ID} savedIssueExists={saved} onViewMyMagazine={onViewMyMagazine} />
+    </>
+  );
+}
+
 // OWNERSHIP / SAVE / SHARE(2026-08, Round 3) — TasteMagazineResult는
 // 그대로 두고(Ending까지 기존 layout 무변경), 그 아래 형제로
 // OwnershipSection만 이어붙인다. Result 내부 spacing/구조에는 diff가
 // 없다.
 //
-// R-D-C FEEDBACK(2026-08, Round 5) — §5 권장 순서(SAVE/SHARE →
-// FEEDBACK → VIEW MY MAGAZINE)에 맞춰 FeedbackSection을 Ownership
-// 다음 형제로 이어붙인다. "VIEW MY MAGAZINE" CTA는 Round 4에서
-// OwnershipSection 안에 있었지만, 이번 라운드 요구대로 FeedbackSection
-// 끝으로 옮겼다 — OwnershipSection(SAVE/SHARE)은 그 자체로는 변경
-// 없이 그대로다.
-function JourneyResult({ answers, onViewMyMagazine }: { answers: TasteRawAnswers; onViewMyMagazine: () => void }) {
+// PRIVATE BETA FEEDBACK CLEANUP(2026-08) — Result narrative →
+// Ownership → 끝이어야 한다는 지시에 따라, Ownership 아래에 별도
+// Closing section을 두지 않는다. VIEW MY MAGAZINE은 OwnershipSection
+// 안(저장 완료 문구 다음, ISSUE 01 · TASTE 바로 위)에서 그 컴포넌트가
+// 이미 갖고 있는 saved state로 직접 노출한다 — onViewMyMagazine을
+// prop으로 내려주기만 하면 된다.
+//
+// LEGACY(v2.2/v2.3) — §18 호환 요구. 기존 저장된 v2.2 Issue를 다시 열
+// 때만 이 경로로 렌더링한다. 새 완료 흐름은 더 이상 이 경로를 타지
+// 않지만, 로직/문구를 전혀 바꾸지 않고 그대로 남겨둔다.
+function LegacyJourneyResult({ answers, onViewMyMagazine }: { answers: TasteRawAnswers; onViewMyMagazine: () => void }) {
   const sources = mapTasteAnswersToSignalSources(TASTE_QUESTIONS_V2_2, answers);
   const result = analyzeTasteFromSources(sources);
   const narrative = buildTasteMagazineNarrativeV23(result, sources);
-  // "SAVE 여부"를 여기서 들고 있다가 FeedbackSection에 내려준다 —
-  // OwnershipSection과 FeedbackSection은 형제라 서로의 state를 직접
-  // 볼 수 없다. FeedbackSection이 자체적으로 mount 시점에만
-  // localStorage를 읽으면, 이 둘이 동시에 mount되는 화면 구조상 SAVE
-  // 버튼을 누르기 "전" 값이 굳어버리는 문제가 있어(검증 중 발견)
-  // 이렇게 끌어올렸다.
-  const [saved, setSaved] = useState(() => Boolean(getSavedTasteIssue()));
   return (
     <>
       <TasteMagazineResult narrative={narrative} result={result} hideDebugPanel />
-      <OwnershipSection answers={answers} narrative={narrative} onSaved={() => setSaved(true)} />
-      <FeedbackSection issueId={TASTE_ISSUE_ID} savedIssueExists={saved} onViewMyMagazine={onViewMyMagazine} />
+      <OwnershipSection answers={answers} narrative={narrative} onViewMyMagazine={onViewMyMagazine} />
+    </>
+  );
+}
+
+// TASTE v3(PRODUCT FREEZE, 2026-08) — 새 15문항 완료 흐름은 전부 이
+// 경로를 탄다. Compositional Narrative Engine(tasteNarrativeV3)이
+// 만든 7-section 결과를 TasteMagazineResultV3로 렌더링하고, SAVE는
+// onSaveIssue로 saveTasteIssueV3를 호출한다 — OwnershipSection의
+// SAVE/SHARE UI·PNG Share Card 로직은 전혀 바꾸지 않았다.
+function JourneyResultV3({ answers, onViewMyMagazine }: { answers: TasteV3RawAnswers; onViewMyMagazine: () => void }) {
+  const narrative = buildTasteMagazineNarrativeV3(answers);
+  return (
+    <>
+      <TasteMagazineResultV3 narrative={narrative} hideDebugPanel />
+      <OwnershipSection
+        answers={answers}
+        narrative={narrative}
+        onSaveIssue={() => saveTasteIssueV3({ answers, narrative })}
+        onViewMyMagazine={onViewMyMagazine}
+      />
     </>
   );
 }
@@ -252,7 +424,7 @@ function JourneyResult({ answers, onViewMyMagazine }: { answers: TasteRawAnswers
 // 이 복원은 "이미 저장된 Issue"에 한해서만 동작한다 — 저장 전에
 // 새로고침하면 기존과 동일하게 처음부터 다시 시작한다(새 state를 만들지
 // 않았다).
-function updateViewQueryParam(view: "my-magazine" | "result" | null) {
+function updateViewQueryParam(view: "my-magazine" | "result" | "travel-intro" | "travel-result" | null) {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
   if (view) {
@@ -264,15 +436,30 @@ function updateViewQueryParam(view: "my-magazine" | "result" | null) {
   window.history.replaceState(null, "", `${url.pathname}${qs ? `?${qs}` : ""}`);
 }
 
+type Session = { version: "v2.2"; answers: TasteRawAnswers } | { version: "v3"; answers: TasteV3RawAnswers };
+
 export function PersonalMagazineBetaClient() {
   const [stage, setStage] = useState<Stage>("home");
-  const [answers, setAnswers] = useState<TasteRawAnswers | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  // ISSUE 02 TRAVEL(2026-08, PR #261 Round I) — TASTE의 session state와
+  // 나란한 독립 state. TASTE session을 전혀 건드리지 않는다.
+  const [travelAnswers, setTravelAnswers] = useState<TravelV1RawAnswers | null>(null);
+  const [travelScrollTarget, setTravelScrollTarget] = useState<"cross-issue" | null>(null);
 
   useEffect(() => {
     if (stage !== "editing") return;
     const timer = setTimeout(() => {
       updateViewQueryParam("result");
       setStage("result");
+    }, EDITING_TOTAL_MS);
+    return () => clearTimeout(timer);
+  }, [stage]);
+
+  useEffect(() => {
+    if (stage !== "travel-editing") return;
+    const timer = setTimeout(() => {
+      updateViewQueryParam("travel-result");
+      setStage("travel-result");
     }, EDITING_TOTAL_MS);
     return () => clearTimeout(timer);
   }, [stage]);
@@ -284,14 +471,35 @@ export function PersonalMagazineBetaClient() {
   // 조용히 home에 머문다.
   useEffect(() => {
     const view = new URLSearchParams(window.location.search).get("view");
+    // VIRAL LOOP PROTOTYPE(2026-08) — Share Recipient Landing의
+    // "내 Issue 만들기" CTA가 여기로 온다. 공유 유입 사용자는 HOME을
+    // 한 번 생략하고 곧장 TASTE INTRO에서 시작한다(§3-4).
+    if (view === "intro") {
+      setStage("intro");
+      return;
+    }
     if (view === "my-magazine") {
       setStage("my-magazine");
+      return;
+    }
+    if (view === "travel-intro") {
+      setStage("travel-intro");
+      return;
+    }
+    if (view === "travel-result") {
+      const savedTravel = getSavedTravelIssue();
+      if (savedTravel) {
+        setTravelAnswers(savedTravel.answers);
+        setStage("travel-result");
+      }
       return;
     }
     if (view === "result") {
       const saved = getSavedTasteIssue();
       if (saved) {
-        setAnswers(saved.answers);
+        setSession(
+          saved.questionnaireVersion === "v3" ? { version: "v3", answers: saved.answers } : { version: "v2.2", answers: saved.answers }
+        );
         setStage("result");
       }
     }
@@ -299,7 +507,7 @@ export function PersonalMagazineBetaClient() {
 
   function handleRestart() {
     updateViewQueryParam(null);
-    setAnswers(null);
+    setSession(null);
     setStage("home");
   }
 
@@ -308,10 +516,31 @@ export function PersonalMagazineBetaClient() {
     setStage("my-magazine");
   }
 
-  function handleOpenSavedIssue(issue: SavedTasteIssue) {
+  // §18 — 저장된 Issue를 다시 열 때, v2.2로 저장된 Issue는 레거시 엔진
+  // 그대로, v3로 저장된 Issue는 새 엔진으로 렌더링한다. 저장된 answers를
+  // 강제로 다른 버전 구조로 재해석하지 않는다.
+  function handleOpenSavedIssue(issue: AnySavedTasteIssue) {
     updateViewQueryParam("result");
-    setAnswers(issue.answers);
+    setSession(issue.questionnaireVersion === "v3" ? { version: "v3", answers: issue.answers } : { version: "v2.2", answers: issue.answers });
     setStage("result");
+  }
+
+  function handleStartTravel() {
+    updateViewQueryParam("travel-intro");
+    setStage("travel-intro");
+  }
+
+  function handleOpenSavedTravelIssue(issue: { answers: TravelV1RawAnswers }, options?: { scrollTo?: "cross-issue" }) {
+    // ROUND J SCROLL FIX — 이전에는 window.location.hash="cross-issue"로
+    // 목표를 표시했는데, 바로 다음 줄의 updateViewQueryParam()이
+    // history.replaceState를 pathname+search로만 다시 만들면서 hash를
+    // 그대로 지워버렸다(재현 확인) — OPEN CONNECTION을 눌러도 스크롤이
+    // 전혀 동작하지 않던 진짜 원인이었다. URL에 상태를 실어 보내는 대신
+    // React state로 직접 넘긴다.
+    updateViewQueryParam("travel-result");
+    setTravelAnswers(issue.answers);
+    setTravelScrollTarget(options?.scrollTo ?? null);
+    setStage("travel-result");
   }
 
   return (
@@ -333,16 +562,14 @@ export function PersonalMagazineBetaClient() {
 
       {stage === "flow" && (
         <div className="mx-auto max-w-md">
-          <TasteQuestionnaireFlow
-            key="beta-flow"
-            questions={TASTE_QUESTIONS_V2_2}
-            startAtQuestion
+          <TasteQuestionnaireFlowV3
+            key="beta-flow-v3"
             onExitToIntro={() => setStage("intro")}
             onComplete={(completedAnswers) => {
               // §3 taste_completed — Questionnaire 전체 답변은 절대
-              // 전송하지 않는다(§4). issueId만 남긴다.
+              // 전송하지 않는다(§4/§17). issueId만 남긴다.
               sendBetaEvent(TASTE_ISSUE_ID, { event: "taste_completed" });
-              setAnswers(completedAnswers);
+              setSession({ version: "v3", answers: completedAnswers });
               setStage("editing");
             }}
           />
@@ -351,10 +578,44 @@ export function PersonalMagazineBetaClient() {
 
       {stage === "editing" && <EditingTransition />}
 
-      {stage === "result" && answers && <JourneyResult answers={answers} onViewMyMagazine={handleViewMyMagazine} />}
+      {stage === "result" && session && session.version === "v3" && (
+        <JourneyResultV3 answers={session.answers} onViewMyMagazine={handleViewMyMagazine} />
+      )}
+      {stage === "result" && session && session.version === "v2.2" && (
+        <LegacyJourneyResult answers={session.answers} onViewMyMagazine={handleViewMyMagazine} />
+      )}
+
+      {stage === "travel-intro" && <TravelIntro onBegin={() => setStage("travel-flow")} onBack={handleViewMyMagazine} />}
+
+      {stage === "travel-flow" && (
+        <div className="mx-auto max-w-md">
+          <TravelQuestionnaireFlowV1
+            key="beta-flow-travel-v1"
+            onExitToIntro={() => setStage("travel-intro")}
+            onComplete={(completedAnswers) => {
+              sendBetaEvent(TRAVEL_ISSUE_ID, { event: "taste_completed" });
+              setTravelAnswers(completedAnswers);
+              setStage("travel-editing");
+            }}
+          />
+        </div>
+      )}
+
+      {stage === "travel-editing" && <TravelEditingTransition />}
+
+      {stage === "travel-result" && travelAnswers && (
+        <TravelJourneyResult answers={travelAnswers} onViewMyMagazine={handleViewMyMagazine} scrollTarget={travelScrollTarget} />
+      )}
 
       {stage === "my-magazine" && (
-        <MyMagazineScreen savedIssue={getSavedTasteIssue()} onGoHome={handleRestart} onOpenSavedIssue={handleOpenSavedIssue} />
+        <MyMagazineScreen
+          savedIssue={getSavedTasteIssue()}
+          savedTravelIssue={getSavedTravelIssue()}
+          onGoHome={handleRestart}
+          onOpenSavedIssue={handleOpenSavedIssue}
+          onStartTravel={handleStartTravel}
+          onOpenSavedTravelIssue={handleOpenSavedTravelIssue}
+        />
       )}
     </div>
   );

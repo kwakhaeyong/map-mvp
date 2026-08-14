@@ -11,6 +11,17 @@ export type MagazineVisualAsset = {
   objectPositionMobile: string;
   objectPositionDesktop: string;
   role: string;
+  // 선택 필드 — 이 이미지 안에 실제로 무엇이 담겨 있는지에 대한 최소
+  // 정보(TASTE Result의 Narrative가 이 asset을 "몰라도 되는 배경"이
+  // 아니라 실제 장면으로 취급하도록, visual-cue 문장을 여기서 만든다).
+  // 지금은 asset마다 하나뿐이라 값이 고정돼 있지만, 나중에 asset이
+  // variant별로 늘어나도 이 필드만 채우면 Narrative는 그대로 동작한다.
+  scene?: {
+    light: string;
+    setting: string;
+    mood: string;
+    details: string[];
+  };
 };
 
 export const magazineVisualAssets = {
@@ -62,6 +73,12 @@ export const magazineVisualAssets = {
       objectPositionMobile: "center center",
       objectPositionDesktop: "center center",
       role: "taste-place-feature",
+      scene: {
+        light: "부드럽게 스며드는 낮의 빛",
+        setting: "손에 익은 카페 창가 테이블",
+        mood: "조용하고 편안한",
+        details: ["펼쳐 둔 책", "커피잔"],
+      },
     } satisfies MagazineVisualAsset,
     // OBJECT — 취향을 드러내는 소지품 스틸라이프(라이카 카메라, Kinfolk,
     // 향수병).
@@ -72,6 +89,12 @@ export const magazineVisualAssets = {
       objectPositionMobile: "center center",
       objectPositionDesktop: "center center",
       role: "taste-object-feature",
+      scene: {
+        light: "정갈하게 내려앉은 정물의 빛",
+        setting: "책상 위에 나란히 놓인 물건들",
+        mood: "취향이 조용히 드러나는",
+        details: ["라이카 카메라", "Kinfolk 매거진", "향수병"],
+      },
     } satisfies MagazineVisualAsset,
     // DETAIL — 챕터의 마지막 이미지. 커피·다이어리·초·안경 같은 일상의
     // 작은 순간들.
@@ -145,6 +168,90 @@ export const magazineVisualAssets = {
         b: {
           src: "/magazine/quiz/taste/taste-quiz-06-b.png",
           alt: "해질녘 골목길, 동네 서점과 카페 불빛이 늘어선 낯선 거리를 걸어가는 여성의 뒷모습. 처음 가보는 장소를 마주하는 분위기.",
+          aspectRatio: "1536:1024",
+          objectPositionMobile: "center center",
+          objectPositionDesktop: "center center",
+          role: "taste-quiz-choice",
+        } satisfies MagazineVisualAsset,
+      },
+    },
+    // TASTE v3(PR #261) — Q1/Q5/Q9/Q14 image-2 문항 실사 이미지. q01/q06은
+    // v1 설문(다른 질문·다른 사진)이 이미 쓰고 있어, v3는 별도
+    // `tasteV3` 네임스페이스로 분리해 기존 asset을 덮어쓰지 않는다.
+    // Q15(v3의 마지막 image-2 문항)는 FREEZE에 따라 기존 q06을 그대로
+    // 재사용하므로 여기 새로 추가하지 않는다. 전부 Q15와 동일한 3:2
+    // 컨벤션(1536:1024, object-cover)이라 crop/비율 보정이 필요 없었다.
+    tasteV3: {
+      // Q1 · THE PLACE — 잠깐 머물 곳(space/sensory).
+      q1: {
+        a: {
+          src: "/magazine/quiz/taste/taste-quiz-01v3-a.png",
+          alt: "부드러운 낮빛이 드는 창가, 손때 묻은 책과 화분이 놓인 작은 원형 테이블과 책장이 있는 아늑한 공간.",
+          aspectRatio: "1536:1024",
+          objectPositionMobile: "center center",
+          objectPositionDesktop: "center center",
+          role: "taste-quiz-choice",
+        } satisfies MagazineVisualAsset,
+        b: {
+          src: "/magazine/quiz/taste/taste-quiz-01v3-b.png",
+          alt: "시야가 트인 통창 너머 도심 풍경이 보이는, 선이 정돈된 미니멀한 원형 테이블과 의자 두 개가 놓인 공간.",
+          aspectRatio: "1536:1024",
+          objectPositionMobile: "center center",
+          objectPositionDesktop: "center center",
+          role: "taste-quiz-choice",
+        } satisfies MagazineVisualAsset,
+      },
+      // Q5 · DETAIL — 더 오래 보고 싶은 장면(sensory/expression).
+      q5: {
+        a: {
+          src: "/magazine/quiz/taste/taste-quiz-05-a.png",
+          alt: "나무 선반 위 연필꽂이, 황동 알람시계, 손글씨 메모 카드가 자연스럽게 놓인 사람의 흔적이 남은 근접 장면.",
+          aspectRatio: "1536:1024",
+          objectPositionMobile: "center center",
+          objectPositionDesktop: "center center",
+          role: "taste-quiz-choice",
+        } satisfies MagazineVisualAsset,
+        b: {
+          src: "/magazine/quiz/taste/taste-quiz-05-b.png",
+          alt: "회색 톤 책 더미 위에 작은 돌 하나, 옆에는 나뭇가지가 꽂힌 투명 유리병만 놓인 선과 비율이 정확한 근접 장면.",
+          aspectRatio: "1536:1024",
+          objectPositionMobile: "center center",
+          objectPositionDesktop: "center center",
+          role: "taste-quiz-choice",
+        } satisfies MagazineVisualAsset,
+      },
+      // Q9 · YOUR TABLE — 자주 쓰는 테이블(space/expression).
+      q9: {
+        a: {
+          src: "/magazine/quiz/taste/taste-quiz-09-a.png",
+          alt: "노트, 안경, 커피잔, 사진책, 화분 등 지금 쓰는 것들이 그대로 보이는 부감 책상.",
+          aspectRatio: "1536:1024",
+          objectPositionMobile: "center center",
+          objectPositionDesktop: "center center",
+          role: "taste-quiz-choice",
+        } satisfies MagazineVisualAsset,
+        b: {
+          src: "/magazine/quiz/taste/taste-quiz-09-b.png",
+          alt: "커피잔, 안경을 올려둔 노트 한 권, 쌓아둔 책 몇 권만 남기고 대부분 치워진 부감 책상.",
+          aspectRatio: "1536:1024",
+          objectPositionMobile: "center center",
+          objectPositionDesktop: "center center",
+          role: "taste-quiz-choice",
+        } satisfies MagazineVisualAsset,
+      },
+      // Q14 · KEEP OR CHANGE — 오래 좋아해온 장소의 변화(space/exploration).
+      q14: {
+        a: {
+          src: "/magazine/quiz/taste/taste-quiz-14-a.png",
+          alt: "익숙한 베이지 톤 거실 분위기는 그대로 남기고, 담요와 화분 같은 작은 디테일만 조금씩 달라진 공간.",
+          aspectRatio: "1536:1024",
+          objectPositionMobile: "center center",
+          objectPositionDesktop: "center center",
+          role: "taste-quiz-choice",
+        } satisfies MagazineVisualAsset,
+        b: {
+          src: "/magazine/quiz/taste/taste-quiz-14-b.png",
+          alt: "어두운 콘크리트 톤과 가죽 소파로 전혀 다른 인더스트리얼 분위기로 완전히 바뀐 거실 공간.",
           aspectRatio: "1536:1024",
           objectPositionMobile: "center center",
           objectPositionDesktop: "center center",

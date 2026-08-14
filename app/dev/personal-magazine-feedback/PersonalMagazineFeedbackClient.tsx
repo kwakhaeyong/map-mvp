@@ -3,20 +3,18 @@
 import { useState } from "react";
 import { getFeedback, saveFeedback, type FeedbackScore } from "../../../src/data/feedbackStorage";
 import { sendBetaEvent } from "../../../src/data/personalMagazineBetaTelemetry";
+import { TASTE_ISSUE_ID } from "../../../src/data/tasteIssueStorage";
 
-// R-D-C FEEDBACK(2026-08, Private Beta Round 5) — §6 확정 카피 그대로.
-// Ownership(SAVE/SHARE) 바로 다음, VIEW MY MAGAZINE 바로 앞에 이어지는
-// 조용한 한 섹션으로 배치한다(§5 권장 순서: SAVE/SHARE → FEEDBACK →
-// VIEW MY MAGAZINE). VIEW MY MAGAZINE CTA를 이 섹션 안으로 옮겨왔다 —
-// Round 4에서는 OwnershipSection(SAVE 버튼 바로 아래)에 있었지만, 이번
-// 라운드 브리프가 명시적으로 그 위치를 Feedback 다음으로 재배치하라고
-// 요구했다.
+// PRIVATE BETA FEEDBACK(2026-08) — Result에서 완전히 분리된 독립 조사
+// 화면. §5 지시대로 기존 저장/전송 로직(feedbackStorage.ts/
+// personalMagazineBetaTelemetry.ts)을 그대로 재사용한다 — 새 저장
+// 방식을 만들지 않았다. issueId는 "첫 Issue"(TASTE, ISSUE 01)를
+// 가리키는 기존 TASTE_ISSUE_ID를 그대로 쓴다 — 이 화면의 문구
+// 자체가 "첫 Issue를 읽고 난 느낌"이라 새 상수를 만들 이유가 없다.
 //
-// R/D/C 점수는 "말한 의향"이고 SAVE/SHARE/VIEW MY MAGAZINE/Next Chapter
-// 선택은 "실제 행동"이다(§10) — 이 컴포넌트는 그 둘을 절대 서로
-// 자동으로 채우거나 연결하지 않는다. VIEW MY MAGAZINE 노출 여부도
-// Feedback 제출 여부가 아니라 오직 저장된 Issue 존재 여부(saved
-// 행동)로만 결정한다.
+// 정성 질문 2개(§4) — 기존 자유의견 한 칸(mostLikeMe)은 그대로 두고,
+// notLikeMe 필드 하나만 feedbackStorage.ts/personalMagazineBetaTelemetry.ts
+// 양쪽에 추가해 저장/전송했다(완료 보고에 명시).
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -82,65 +80,91 @@ function FeedbackQuestion({
   );
 }
 
-export function FeedbackSection({
-  issueId,
-  savedIssueExists,
-  onViewMyMagazine,
+function TextNote({
+  eyebrow,
+  question,
+  placeholder,
+  value,
+  onChange,
 }: {
-  issueId: string;
-  // VIEW MY MAGAZINE 노출 조건(§4/§15 — SAVE 이후에만, Feedback 제출
-  // 여부와 무관). 이 값은 부모(JourneyResult)가 실시간 SAVE 상태로
-  // 들고 있다가 내려준다 — 이 컴포넌트가 mount 시점에 한 번만
-  // localStorage를 읽으면, Feedback과 Ownership이 같은 순간에 함께
-  // mount되는 이 화면 구조상 SAVE 버튼을 누르기 "전"의 값이 그대로
-  // 굳어버린다(실제로 이 문제를 검증 중 발견해 prop으로 바꿨다).
-  savedIssueExists: boolean;
-  onViewMyMagazine: () => void;
+  eyebrow: string;
+  question: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
 }) {
-  const [existing] = useState(() => getFeedback(issueId));
+  return (
+    <div className="mx-auto mt-10 max-w-xs text-left">
+      <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">{eyebrow}</p>
+      <p className="mt-2 text-center text-sm font-bold text-text-secondary">{question}</p>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={2}
+        className="mt-3 w-full resize-none border border-border-strong bg-transparent px-3 py-2 text-center text-sm font-bold text-text-primary placeholder:text-text-muted"
+      />
+    </div>
+  );
+}
+
+export function PersonalMagazineFeedbackClient() {
+  const [existing] = useState(() => getFeedback(TASTE_ISSUE_ID));
   const [resonance, setResonance] = useState<FeedbackScore | null>(() => existing?.resonance ?? null);
   const [desire, setDesire] = useState<FeedbackScore | null>(() => existing?.desire ?? null);
   const [continuation, setContinuation] = useState<FeedbackScore | null>(() => existing?.continuation ?? null);
   const [mostLikeMe, setMostLikeMe] = useState(existing?.mostLikeMe ?? "");
+  const [notLikeMe, setNotLikeMe] = useState(existing?.notLikeMe ?? "");
   const [submitted, setSubmitted] = useState(() => Boolean(existing));
 
   const canSubmit = resonance !== null && desire !== null && continuation !== null;
 
   function handleSubmit() {
     if (resonance === null || desire === null || continuation === null) return;
-    saveFeedback(issueId, { resonance, desire, continuation, mostLikeMe });
-    // §4 — Questionnaire 전체 답변·signal debug는 여기 관여하지 않는다.
-    // R/D/C 점수와 한 줄 comment만, 딱 이 화면이 갖고 있는 값 그대로
-    // 중앙에 보낸다. 빈 문자열은 "응답 없음"이지 "빈 문자열"이라는
-    // 별도 의미가 없으므로 null로 정규화한다.
-    sendBetaEvent(issueId, {
+    saveFeedback(TASTE_ISSUE_ID, {
+      resonance,
+      desire,
+      continuation,
+      mostLikeMe,
+      notLikeMe,
+    });
+    sendBetaEvent(TASTE_ISSUE_ID, {
       event: "feedback_submitted",
       resonance,
       desire,
       continuation,
       mostLikeMe: mostLikeMe.trim() ? mostLikeMe.trim() : null,
-      // 이 화면(TRAVEL Result에 남아있는 기존 Feedback)은 notLikeMe를
-      // 수집하지 않는다 — Private Beta 전용 화면에서만 새로 추가된
-      // 필드다(PERSONAL MAGAZINE — Private Beta Feedback 분리, 2026-08).
-      notLikeMe: null,
+      notLikeMe: notLikeMe.trim() ? notLikeMe.trim() : null,
     });
     setSubmitted(true);
   }
 
   return (
-    <section className="border-t border-dashed border-border-strong px-6 pb-20 pt-16 text-center">
-      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">A QUICK NOTE</p>
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col px-6 pb-20 pt-14 text-center">
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-text-muted">PERSONAL MAGAZINE</p>
+      <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">PRIVATE BETA</p>
 
       {submitted ? (
-        <>
-          <h2 className="mx-auto mt-4 text-2xl font-black tracking-[-0.02em] text-text-primary">THANK YOU.</h2>
+        <div className="flex flex-1 flex-col items-center justify-center">
+          <h1 className="text-2xl font-black tracking-[-0.02em] text-text-primary">THANK YOU.</h1>
           <p className="mx-auto mt-4 max-w-[22rem] text-sm font-bold leading-6 text-text-secondary">
-            당신의 다음 Chapter를 더 잘 만들기 위해 참고할게요.
+            첫 Issue를 함께 읽어주셔서 감사합니다.
           </p>
-        </>
+          <a
+            href="/dev/personal-magazine-beta?view=my-magazine"
+            className="mx-auto mt-12 block text-sm font-black uppercase tracking-[0.04em] text-text-primary underline decoration-border-strong underline-offset-4"
+          >
+            MY MAGAZINE으로 돌아가기
+          </a>
+        </div>
       ) : (
         <>
-          <p className="mx-auto mt-4 max-w-[22rem] text-sm font-bold leading-6 text-text-secondary">이 Magazine을 어떻게 느꼈는지 알려주세요.</p>
+          <h1 className="mt-5 whitespace-pre-line text-[1.75rem] font-black leading-[1.2] tracking-[-0.02em] text-text-primary">
+            {"첫 Issue를 읽고 난 느낌을\n들려주세요."}
+          </h1>
+          <p className="mx-auto mt-4 max-w-[22rem] whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
+            {"더 좋은 Personal Magazine을 만들기 위한\n짧은 기록입니다."}
+          </p>
 
           <FeedbackQuestion
             eyebrow="R · RESONANCE"
@@ -160,22 +184,27 @@ export function FeedbackSection({
 
           <FeedbackQuestion
             eyebrow="C · CONTINUATION"
-            question="다른 Chapter도 만들어보고 싶나요?"
+            question="다른 Issue도 만들어보고 싶나요?"
             value={continuation}
             onChange={setContinuation}
             captions={{ 1: "전혀 그렇지 않다", 3: "어느 정도 그렇다", 5: "매우 그렇다" }}
           />
 
-          <div className="mx-auto mt-10 max-w-xs text-left">
-            <p className="text-center text-sm font-bold text-text-secondary">가장 나 같았던 부분이 있다면 알려주세요.</p>
-            <textarea
-              value={mostLikeMe}
-              onChange={(e) => setMostLikeMe(e.target.value)}
-              placeholder="한 줄이면 충분해요."
-              rows={2}
-              className="mt-3 w-full resize-none border border-border-strong bg-transparent px-3 py-2 text-center text-sm font-bold text-text-primary placeholder:text-text-muted"
-            />
-          </div>
+          <TextNote
+            eyebrow="MOST LIKE ME"
+            question="가장 '나 같다'고 느낀 부분이 있었다면 알려주세요."
+            placeholder="한 줄이면 충분해요."
+            value={mostLikeMe}
+            onChange={setMostLikeMe}
+          />
+
+          <TextNote
+            eyebrow="NOT LIKE ME"
+            question="가장 '나와 다르다'고 느낀 부분이 있었다면 알려주세요."
+            placeholder="없었다면 비워두셔도 됩니다."
+            value={notLikeMe}
+            onChange={setNotLikeMe}
+          />
 
           <button
             type="button"
@@ -190,16 +219,6 @@ export function FeedbackSection({
           </button>
         </>
       )}
-
-      {savedIssueExists && (
-        <button
-          type="button"
-          onClick={onViewMyMagazine}
-          className="mx-auto mt-12 block text-sm font-black uppercase tracking-[0.04em] text-text-primary underline decoration-border-strong underline-offset-4"
-        >
-          VIEW MY MAGAZINE
-        </button>
-      )}
-    </section>
+    </div>
   );
 }

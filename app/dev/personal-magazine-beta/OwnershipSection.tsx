@@ -6,6 +6,30 @@ import { type TasteMagazineNarrative } from "../../../src/data/tasteNarrative";
 import { type TasteRawAnswers } from "../../../src/data/tasteQuestionnaire";
 import { getSavedTasteIssue, saveTasteIssue, TASTE_ISSUE_ID } from "../../../src/data/tasteIssueStorage";
 import { sendBetaEvent } from "../../../src/data/personalMagazineBetaTelemetry";
+import type { TasteMagazineNarrativeV3 } from "../../../src/data/tasteNarrativeV3";
+import type { TasteV3RawAnswers } from "../../../src/data/tasteQuestionnaireV3";
+
+// TASTE v3(2026-08) — §17/§18 "SAVE/SHARE UX 그대로 유지" 요구에 따라
+// 이 컴포넌트의 화면/문구/PNG 생성 로직은 전혀 바꾸지 않았다. 다만
+// v2.2/v3 두 questionnaire 버전 모두에서 재사용할 수 있도록 narrative/
+// answers 타입만 "실제로 이 컴포넌트가 읽는 필드"로 좁혔고(구조적
+// 타이핑 — 두 실제 타입 모두 이 최소 shape를 만족한다), 저장 동작은
+// onSaveIssue가 주어지면 그것을 쓰고, 없으면 기존 saveTasteIssue(v2.2)
+// 그대로 호출한다 — 기존 호출부(JourneyResult)는 prop을 넘기지 않으므로
+// 동작이 전혀 바뀌지 않는다.
+type ShareableNarrative = {
+  opening: { headline: string; summary: string };
+  // PUBLISH FRAMING FINAL POLISH(2026-08) §3 — Share Card의 italic
+  // 인용구는 더 이상 pullQuote(opening.headline과 같은 문장의 echo)만
+  // 쓰지 않는다. interestingPart.headline은 buildInterestingPart()가
+  // Opening에서 이미 쓴 Relationship/Tension def를 제외하고 고르므로
+  // (tasteNarrativeV3.ts 주석 참고) opening.headline과 항상 다른
+  // 문장이다 — v3는 이 필드를 우선 쓴다. legacy v2.2 저장 Issue는
+  // interestingPart가 없을 수 있어(§18 FREEZE, 이 타입 그대로 유지)
+  // 그 경우에만 기존 pullQuote로 폴백한다.
+  interestingPart?: { headline: string };
+  pullQuote: string;
+};
 
 // OWNERSHIP / SAVE / SHARE(2026-08, Private Beta Round 3) — §3 확정
 // 카피 그대로, 기존 Result의 EndingSection 바로 다음에 이어지는 한
@@ -55,7 +79,7 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
   return lines;
 }
 
-async function buildTasteShareCardBlob(narrative: TasteMagazineNarrative): Promise<Blob> {
+async function buildTasteShareCardBlob(narrative: ShareableNarrative): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = SHARE_CARD_WIDTH;
   canvas.height = SHARE_CARD_HEIGHT;
@@ -111,7 +135,16 @@ async function buildTasteShareCardBlob(narrative: TasteMagazineNarrative): Promi
   ctx.font = `700 22px ${sansFont}`;
   ctx.fillText("ISSUE 01 · TASTE", centerX, y);
 
-  y += 96;
+  // PUBLISH FRAMING PROTOTYPE(2026-08) §9 — "성향 테스트 결과" 라벨로
+  // 안 읽히게, 실제로 지금 만들어진 시점("PUBLISHED · 월 연도")을
+  // 한 줄 더 얹는다. Share Card의 레이아웃/생성 로직은 그대로다 —
+  // y 누적 위치만 이 줄만큼 밀렸다.
+  y += 40;
+  ctx.font = `700 20px ${sansFont}`;
+  const publishedLabel = `PUBLISHED · ${new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }).toUpperCase()}`;
+  ctx.fillText(publishedLabel, centerX, y);
+
+  y += 88;
   ctx.fillStyle = ink;
   ctx.font = `900 56px ${sansFont}`;
   for (const line of wrapLines(ctx, narrative.opening.headline, SHARE_CARD_WIDTH - 160)) {
@@ -122,14 +155,19 @@ async function buildTasteShareCardBlob(narrative: TasteMagazineNarrative): Promi
   y += 64;
   ctx.fillStyle = ink;
   ctx.font = `italic 500 40px ${serifFont}`;
-  for (const line of wrapLines(ctx, narrative.pullQuote, SHARE_CARD_WIDTH - 220)) {
+  // §3 — pullQuote(headline과 같은 문장)를 그대로 반복하지 않고,
+  // THE INTERESTING PART의 headline(다른 축에서 나온 문장)을 supporting
+  // line으로 쓴다. legacy v2.2 Issue처럼 interestingPart가 없으면만
+  // 기존 pullQuote로 폴백한다.
+  const supportingLine = (narrative.interestingPart?.headline ?? narrative.pullQuote).replace(/\n/g, " ");
+  for (const line of wrapLines(ctx, supportingLine, SHARE_CARD_WIDTH - 220)) {
     ctx.fillText(line, centerX, y);
     y += 54;
   }
 
   ctx.fillStyle = muted;
   ctx.font = `700 22px ${sansFont}`;
-  ctx.fillText("MY PERSONAL MAGAZINE", centerX, SHARE_CARD_HEIGHT - 80);
+  ctx.fillText("MAKE YOUR ISSUE", centerX, SHARE_CARD_HEIGHT - 80);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("PNG 생성에 실패했습니다."))), "image/png");
@@ -154,10 +192,21 @@ export function OwnershipSection({
   answers,
   narrative,
   onSaved,
+  onSaveIssue,
+  onViewMyMagazine,
 }: {
-  answers: TasteRawAnswers;
-  narrative: TasteMagazineNarrative;
+  answers: TasteRawAnswers | TasteV3RawAnswers;
+  narrative: TasteMagazineNarrative | TasteMagazineNarrativeV3;
   onSaved?: () => void;
+  // v3(§18)에서만 넘긴다 — 없으면 기존 saveTasteIssue(v2.2)를 그대로 쓴다.
+  onSaveIssue?: () => void;
+  // PRIVATE BETA FEEDBACK CLEANUP(2026-08) — Result는 "Result narrative
+  // → Ownership → 끝"이어야 한다는 지시에 따라, 별도 Closing
+  // section을 만드는 대신 이 영역 안(저장 완료 문구 다음, ISSUE 01 ·
+  // TASTE 바로 위)에서 VIEW MY MAGAZINE으로 화면을 닫는다. 저장 전에는
+  // 노출하지 않는 기존 조건(§4/§15) 그대로, 이 컴포넌트가 이미 갖고
+  // 있는 saved state로 판단한다.
+  onViewMyMagazine?: () => void;
 }) {
   // MY MAGAZINE / CONTINUATION LAYER(2026-08, Round 4) — §4/§16. 이미
   // 저장된 Issue를 가지고 돌아온 경우(예: TASTE COMPLETE 카드를 다시
@@ -178,7 +227,11 @@ export function OwnershipSection({
     // 사용자 행동(localStorage 저장) 먼저, 중앙 전송은 그다음 —
     // §7 순서 그대로. sendBetaEvent는 실패해도 던지지 않으므로 아래
     // 두 줄(setSaved/onSaved)은 항상 정상 실행된다.
-    saveTasteIssue({ answers, narrative });
+    if (onSaveIssue) {
+      onSaveIssue();
+    } else {
+      saveTasteIssue({ answers: answers as TasteRawAnswers, narrative: narrative as TasteMagazineNarrative });
+    }
     sendBetaEvent(TASTE_ISSUE_ID, { event: "issue_saved" });
     setSaved(true);
     onSaved?.();
@@ -199,7 +252,16 @@ export function OwnershipSection({
     try {
       const blob = await ensureShareCard();
       const file = new File([blob], "taste-issue-share-card.png", { type: "image/png" });
-      const shareData = { files: [file], title: "나의 TASTE Issue", text: "나의 TASTE Issue" };
+      // VIRAL LOOP PROTOTYPE(2026-08) §4 — Share Card 생성 로직/PNG는
+      // 그대로 두고, native share sheet에 함께 실리는 url만 Recipient
+      // Landing(§3)을 가리키게 한다. 서버 저장 없이 이 사용자의 실제
+      // headline/발행 시각만 query param으로 담는다 — §4-1 "최소
+      // payload"(전체 Narrative/answers/score 금지)를 그대로 지킨다.
+      const shareUrl =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/dev/personal-magazine-shared?headline=${encodeURIComponent(narrative.opening.headline.replace(/\n/g, " "))}&published=${encodeURIComponent(new Date().toISOString())}`
+          : undefined;
+      const shareData = { files: [file], title: "나의 TASTE Issue", text: "나의 TASTE Issue", ...(shareUrl ? { url: shareUrl } : {}) };
       const canShareFiles = typeof navigator !== "undefined" && Boolean(navigator.share) && Boolean(navigator.canShare) && navigator.canShare(shareData);
       // §5 "share method을 알 수 있으면 native | fallback 정도만" —
       // canShareFiles 판정 시점에 이미 어느 경로로 갈지 알 수 있다.
@@ -235,7 +297,7 @@ export function OwnershipSection({
     }
   }
 
-  const shareButtonLabel = isGeneratingCard ? "PREPARING…" : shareCompleted ? "SHARED ✓" : shareDownloaded ? "SHARE CARD SAVED ✓" : "SHARE";
+  const shareButtonLabel = isGeneratingCard ? "PREPARING…" : shareCompleted ? "SHARED ✓" : shareDownloaded ? "SHARE CARD SAVED ✓" : "SHARE MY COVER";
 
   return (
     <section className="border-t border-dashed border-border-strong px-6 pb-20 pt-16 text-center">
@@ -259,7 +321,7 @@ export function OwnershipSection({
             saved ? "border border-border-strong bg-tag-fill text-text-secondary" : "bg-text-primary text-background"
           )}
         >
-          {saved ? "SAVED TO MY MAGAZINE ✓" : "SAVE MY MAGAZINE"}
+          {saved ? "SAVED TO MY MAGAZINE ✓" : "ADD TO MY MAGAZINE"}
         </button>
         {saved && <p className="text-[12px] font-bold text-text-secondary">첫 번째 Issue가 저장되었습니다.</p>}
 
@@ -284,6 +346,16 @@ export function OwnershipSection({
           </div>
         )}
       </div>
+
+      {saved && onViewMyMagazine && (
+        <button
+          type="button"
+          onClick={onViewMyMagazine}
+          className="mx-auto mt-10 block text-sm font-black uppercase tracking-[0.04em] text-text-primary underline decoration-border-strong underline-offset-4"
+        >
+          VIEW MY MAGAZINE
+        </button>
+      )}
 
       <p className="mt-10 text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">ISSUE 01 · TASTE</p>
     </section>

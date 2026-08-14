@@ -12,6 +12,12 @@ export type TasteFeedback = {
   desire: FeedbackScore;
   continuation: FeedbackScore;
   mostLikeMe: string;
+  // PRIVATE BETA FEEDBACK 분리(2026-08) — 기존 자유의견 한 칸을 "가장
+  // 나 같았던 부분"/"가장 나와 달랐던 부분" 두 칸으로 나누면서 추가한
+  // 필드. 기존 저장소(STORAGE_KEY/구조/overwrite 규칙)는 그대로 두고
+  // 필드 하나만 늘렸다 — 이전에 저장된 항목엔 이 필드가 없을 수
+  // 있어 optional로 둔다.
+  notLikeMe?: string;
   submittedAt: string;
 };
 
@@ -39,7 +45,7 @@ function writeStore(store: FeedbackStore): void {
 // 않는다(§8 "중복 응답을 만들지 않는다").
 export function saveFeedback(
   issueId: string,
-  params: { resonance: FeedbackScore; desire: FeedbackScore; continuation: FeedbackScore; mostLikeMe: string }
+  params: { resonance: FeedbackScore; desire: FeedbackScore; continuation: FeedbackScore; mostLikeMe: string; notLikeMe?: string }
 ): TasteFeedback {
   const feedback: TasteFeedback = { issueId, ...params, submittedAt: new Date().toISOString() };
   const store = readStore();
