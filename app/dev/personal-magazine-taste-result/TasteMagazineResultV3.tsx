@@ -82,7 +82,6 @@ function FeatureSection({
   headline,
   body,
   variant,
-  imagePaddingClass,
 }: {
   index: string;
   label: string;
@@ -90,7 +89,6 @@ function FeatureSection({
   headline: string;
   body: string;
   variant: FeatureVariant;
-  imagePaddingClass?: string;
 }) {
   if (variant === "text-only" || !asset) {
     return (
@@ -102,10 +100,17 @@ function FeatureSection({
     );
   }
   const headlineScale = variant === "dominant" ? "text-2xl" : variant === "balanced" ? "text-xl" : "text-lg";
-  const bodyWidth = variant === "dominant" ? "max-w-[30rem]" : "max-w-[26rem]";
+  // RESULT LAYOUT POLISH(2026-08) — 이미지 래퍼와 텍스트 래퍼가 서로
+  // 다른 좌우 padding(px-4/px-8 vs px-5)을 쓰던 것이 PLACE/OBJECT
+  // 이미지와 CORE TASTE/HOW IT SHOWS UP 본문의 좌측 기준선이 어긋나
+  // 보이는 원인이었다 — 두 래퍼 모두 같은 px-5로 통일해 하나의
+  // editorial grid column처럼 보이게 했다. 본문에 따로 붙어 있던
+  // max-w-[30rem]/[26rem]도 이미지 폭과 무관한 임의 값이라 제거하고,
+  // 같은 grid column(모바일은 px-5 폭 그대로, 데스크톱은 위 이미지와
+  // 동일한 lg:max-w-3xl)을 그대로 상속하게 했다.
   return (
     <section className="pt-14">
-      <div className={imagePaddingClass ?? "px-6"}>
+      <div className="px-5">
         {/* PLACE/OBJECT 전용 — hero보다 낮은 프레임 비율(9:5, 원본 대비
             세로 약 22% 축소)로 잘라 모바일 스크롤 길이를 줄인다. 이미지
             바로 아래 문단이 이어지는 느낌을 주기 위해 여백도 함께
@@ -115,18 +120,24 @@ function FeatureSection({
       <div className="px-5 pt-4 lg:mx-auto lg:max-w-3xl lg:px-0">
         <SectionMarker index={index} label={label} />
         <h2 className={cx("mt-2 whitespace-pre-line font-black leading-tight tracking-[-0.015em] text-text-primary", headlineScale)}>{headline}</h2>
-        <p className={cx("mt-3 text-sm font-semibold leading-6 text-text-secondary", bodyWidth)}>{body}</p>
+        <p className="mt-3 text-sm font-semibold leading-6 text-text-secondary">{body}</p>
       </div>
     </section>
   );
 }
 
+// RESULT LAYOUT POLISH(2026-08) — 이전엔 회색 배경(bg-tag-fill) +
+// 상하 border로 "카드"처럼 도드라졌는데, 이게 잡지 페이지가 아니라
+// "AI 분석 결과 박스"로 읽히는 원인이었다. 색/테두리로 구획하는 대신
+// 나머지 섹션보다 큰 headline scale과 넉넉한 여백만으로 이 페이지가
+// 이 Issue에서 가장 중요한 문장이라는 걸 드러낸다 — 배경은 페이지
+// 전체와 같은 ivory 그대로, 새 색은 하나도 추가하지 않았다.
 function InterestingPartSection({ headline, body }: { headline: string; body: string }) {
   return (
-    <section className="border-y border-border-strong bg-tag-fill px-5 py-16">
+    <section className="px-5 py-20">
       <p className="font-serif text-[11px] font-bold uppercase tracking-[0.14em] text-primary">THE INTERESTING PART</p>
-      <h2 className="mt-4 whitespace-pre-line text-[1.75rem] font-black leading-[1.15] tracking-[-0.02em] text-text-primary">{headline}</h2>
-      <p className="mt-5 max-w-[28rem] text-sm font-semibold leading-6 text-text-secondary">{body}</p>
+      <h2 className="mt-5 whitespace-pre-line text-[2.25rem] font-black leading-[1.15] tracking-[-0.02em] text-text-primary">{headline}</h2>
+      <p className="mt-6 max-w-[28rem] text-sm font-semibold leading-6 text-text-secondary">{body}</p>
     </section>
   );
 }
@@ -192,7 +203,6 @@ export function TasteMagazineResultV3({ narrative, hideDebugPanel = false }: { n
         headline={narrative.coreTaste.headline}
         body={narrative.coreTaste.body}
         variant="dominant"
-        imagePaddingClass="px-4"
       />
 
       <FeatureSection
@@ -202,7 +212,6 @@ export function TasteMagazineResultV3({ narrative, hideDebugPanel = false }: { n
         headline={narrative.howItShowsUp.headline}
         body={narrative.howItShowsUp.body}
         variant="balanced"
-        imagePaddingClass="px-8"
       />
 
       <InterestingPartSection headline={narrative.interestingPart.headline} body={narrative.interestingPart.body} />
