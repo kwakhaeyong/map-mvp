@@ -357,30 +357,13 @@ function TravelJourneyResult({
 // OwnershipSection만 이어붙인다. Result 내부 spacing/구조에는 diff가
 // 없다.
 //
-// PRIVATE BETA FEEDBACK 분리(2026-08) — TASTE Result의 마지막 경험은
-// "설문을 끝냈다"가 아니라 "내 Issue가 만들어졌다"여야 한다는 지시에
-// 따라, R-D-C Feedback 전체(A QUICK NOTE 이하)를 Result에서 뗐다.
-// Feedback은 이제 별도 Private Beta 전용 화면
-// (/dev/personal-magazine-feedback)에서만 수집한다. 다만 Feedback
-// 섹션 안에 함께 있던 "VIEW MY MAGAZINE" CTA는 Result의 유일한 다음
-// 행동 동선이라 없앨 수 없어, 최소한의 형태로만(같은 문구/같은 버튼
-// 스타일) OwnershipSection 바로 다음에 남겨둔다 — Result 본문/
-// Ownership 영역 디자인은 건드리지 않았다.
-function ViewMyMagazineClosing({ visible, onViewMyMagazine }: { visible: boolean; onViewMyMagazine: () => void }) {
-  if (!visible) return null;
-  return (
-    <section className="border-t border-dashed border-border-strong px-6 pb-20 pt-16 text-center">
-      <button
-        type="button"
-        onClick={onViewMyMagazine}
-        className="mx-auto block text-sm font-black uppercase tracking-[0.04em] text-text-primary underline decoration-border-strong underline-offset-4"
-      >
-        VIEW MY MAGAZINE
-      </button>
-    </section>
-  );
-}
-
+// PRIVATE BETA FEEDBACK CLEANUP(2026-08) — Result narrative →
+// Ownership → 끝이어야 한다는 지시에 따라, Ownership 아래에 별도
+// Closing section을 두지 않는다. VIEW MY MAGAZINE은 OwnershipSection
+// 안(저장 완료 문구 다음, ISSUE 01 · TASTE 바로 위)에서 그 컴포넌트가
+// 이미 갖고 있는 saved state로 직접 노출한다 — onViewMyMagazine을
+// prop으로 내려주기만 하면 된다.
+//
 // LEGACY(v2.2/v2.3) — §18 호환 요구. 기존 저장된 v2.2 Issue를 다시 열
 // 때만 이 경로로 렌더링한다. 새 완료 흐름은 더 이상 이 경로를 타지
 // 않지만, 로직/문구를 전혀 바꾸지 않고 그대로 남겨둔다.
@@ -388,12 +371,10 @@ function LegacyJourneyResult({ answers, onViewMyMagazine }: { answers: TasteRawA
   const sources = mapTasteAnswersToSignalSources(TASTE_QUESTIONS_V2_2, answers);
   const result = analyzeTasteFromSources(sources);
   const narrative = buildTasteMagazineNarrativeV23(result, sources);
-  const [saved, setSaved] = useState(() => Boolean(getSavedTasteIssue()));
   return (
     <>
       <TasteMagazineResult narrative={narrative} result={result} hideDebugPanel />
-      <OwnershipSection answers={answers} narrative={narrative} onSaved={() => setSaved(true)} />
-      <ViewMyMagazineClosing visible={saved} onViewMyMagazine={onViewMyMagazine} />
+      <OwnershipSection answers={answers} narrative={narrative} onViewMyMagazine={onViewMyMagazine} />
     </>
   );
 }
@@ -405,17 +386,15 @@ function LegacyJourneyResult({ answers, onViewMyMagazine }: { answers: TasteRawA
 // SAVE/SHARE UI·PNG Share Card 로직은 전혀 바꾸지 않았다.
 function JourneyResultV3({ answers, onViewMyMagazine }: { answers: TasteV3RawAnswers; onViewMyMagazine: () => void }) {
   const narrative = buildTasteMagazineNarrativeV3(answers);
-  const [saved, setSaved] = useState(() => Boolean(getSavedTasteIssue()));
   return (
     <>
       <TasteMagazineResultV3 narrative={narrative} hideDebugPanel />
       <OwnershipSection
         answers={answers}
         narrative={narrative}
-        onSaved={() => setSaved(true)}
         onSaveIssue={() => saveTasteIssueV3({ answers, narrative })}
+        onViewMyMagazine={onViewMyMagazine}
       />
-      <ViewMyMagazineClosing visible={saved} onViewMyMagazine={onViewMyMagazine} />
     </>
   );
 }

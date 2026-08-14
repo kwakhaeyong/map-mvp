@@ -193,12 +193,20 @@ export function OwnershipSection({
   narrative,
   onSaved,
   onSaveIssue,
+  onViewMyMagazine,
 }: {
   answers: TasteRawAnswers | TasteV3RawAnswers;
   narrative: TasteMagazineNarrative | TasteMagazineNarrativeV3;
   onSaved?: () => void;
   // v3(§18)에서만 넘긴다 — 없으면 기존 saveTasteIssue(v2.2)를 그대로 쓴다.
   onSaveIssue?: () => void;
+  // PRIVATE BETA FEEDBACK CLEANUP(2026-08) — Result는 "Result narrative
+  // → Ownership → 끝"이어야 한다는 지시에 따라, 별도 Closing
+  // section을 만드는 대신 이 영역 안(저장 완료 문구 다음, ISSUE 01 ·
+  // TASTE 바로 위)에서 VIEW MY MAGAZINE으로 화면을 닫는다. 저장 전에는
+  // 노출하지 않는 기존 조건(§4/§15) 그대로, 이 컴포넌트가 이미 갖고
+  // 있는 saved state로 판단한다.
+  onViewMyMagazine?: () => void;
 }) {
   // MY MAGAZINE / CONTINUATION LAYER(2026-08, Round 4) — §4/§16. 이미
   // 저장된 Issue를 가지고 돌아온 경우(예: TASTE COMPLETE 카드를 다시
@@ -338,6 +346,16 @@ export function OwnershipSection({
           </div>
         )}
       </div>
+
+      {saved && onViewMyMagazine && (
+        <button
+          type="button"
+          onClick={onViewMyMagazine}
+          className="mx-auto mt-10 block text-sm font-black uppercase tracking-[0.04em] text-text-primary underline decoration-border-strong underline-offset-4"
+        >
+          VIEW MY MAGAZINE
+        </button>
+      )}
 
       <p className="mt-10 text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">ISSUE 01 · TASTE</p>
     </section>
