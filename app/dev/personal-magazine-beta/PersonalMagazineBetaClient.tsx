@@ -98,7 +98,7 @@ function Home({ onStart }: { onStart: () => void }) {
       <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted">PREVIEW · YOUR ISSUE</p>
 
       <div className="mt-auto flex flex-col items-center gap-4 pt-10">
-        <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">약 3분 · 유형 없음 · 정답 없음</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">약 3분 · 15개의 선택 · ISSUE 01</p>
         <button
           type="button"
           onClick={onStart}
@@ -139,7 +139,7 @@ function TasteIntro({ onBegin, onBack }: { onBegin: () => void; onBack: () => vo
         <h1 className="mt-2 text-4xl font-black tracking-[-0.02em] text-text-primary">TASTE</h1>
 
         <p className="mt-5 whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
-          {"좋아하는 것은\n생각보다 많은 것을 말합니다.\n\n눈이 먼저 가는 장면,\n오래 두고 싶은 것,\n익숙함과 새로움 사이에서 하는 선택.\n\n15개의 선택을 지나\n당신의 TASTE를\n첫 번째 Issue로 편집합니다."}
+          {"좋아하는 것은\n생각보다 많은 것을 말합니다.\n\n15개의 선택은 따로 남지 않습니다.\n반복되는 감각과 의외의 조합을 골라,\n당신의 첫 번째 Issue로 편집합니다."}
         </p>
 
         <button

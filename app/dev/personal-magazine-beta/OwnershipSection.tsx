@@ -17,7 +17,19 @@ import type { TasteV3RawAnswers } from "../../../src/data/tasteQuestionnaireV3";
 // onSaveIssue가 주어지면 그것을 쓰고, 없으면 기존 saveTasteIssue(v2.2)
 // 그대로 호출한다 — 기존 호출부(JourneyResult)는 prop을 넘기지 않으므로
 // 동작이 전혀 바뀌지 않는다.
-type ShareableNarrative = { opening: { headline: string; summary: string }; pullQuote: string; keywords: string[] };
+type ShareableNarrative = {
+  opening: { headline: string; summary: string };
+  // PUBLISH FRAMING FINAL POLISH(2026-08) §3 — Share Card의 italic
+  // 인용구는 더 이상 pullQuote(opening.headline과 같은 문장의 echo)만
+  // 쓰지 않는다. interestingPart.headline은 buildInterestingPart()가
+  // Opening에서 이미 쓴 Relationship/Tension def를 제외하고 고르므로
+  // (tasteNarrativeV3.ts 주석 참고) opening.headline과 항상 다른
+  // 문장이다 — v3는 이 필드를 우선 쓴다. legacy v2.2 저장 Issue는
+  // interestingPart가 없을 수 있어(§18 FREEZE, 이 타입 그대로 유지)
+  // 그 경우에만 기존 pullQuote로 폴백한다.
+  interestingPart?: { headline: string };
+  pullQuote: string;
+};
 
 // OWNERSHIP / SAVE / SHARE(2026-08, Private Beta Round 3) — §3 확정
 // 카피 그대로, 기존 Result의 EndingSection 바로 다음에 이어지는 한
@@ -143,7 +155,12 @@ async function buildTasteShareCardBlob(narrative: ShareableNarrative): Promise<B
   y += 64;
   ctx.fillStyle = ink;
   ctx.font = `italic 500 40px ${serifFont}`;
-  for (const line of wrapLines(ctx, narrative.pullQuote, SHARE_CARD_WIDTH - 220)) {
+  // §3 — pullQuote(headline과 같은 문장)를 그대로 반복하지 않고,
+  // THE INTERESTING PART의 headline(다른 축에서 나온 문장)을 supporting
+  // line으로 쓴다. legacy v2.2 Issue처럼 interestingPart가 없으면만
+  // 기존 pullQuote로 폴백한다.
+  const supportingLine = (narrative.interestingPart?.headline ?? narrative.pullQuote).replace(/\n/g, " ");
+  for (const line of wrapLines(ctx, supportingLine, SHARE_CARD_WIDTH - 220)) {
     ctx.fillText(line, centerX, y);
     y += 54;
   }
