@@ -327,6 +327,13 @@ export function PersonalMagazineBetaClient() {
   // 조용히 home에 머문다.
   useEffect(() => {
     const view = new URLSearchParams(window.location.search).get("view");
+    // VIRAL LOOP PROTOTYPE(2026-08) — Share Recipient Landing의
+    // "내 Issue 만들기" CTA가 여기로 온다. 공유 유입 사용자는 HOME을
+    // 한 번 생략하고 곧장 TASTE INTRO에서 시작한다(§3-4).
+    if (view === "intro") {
+      setStage("intro");
+      return;
+    }
     if (view === "my-magazine") {
       setStage("my-magazine");
       return;

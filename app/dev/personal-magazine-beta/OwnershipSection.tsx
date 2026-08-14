@@ -244,7 +244,16 @@ export function OwnershipSection({
     try {
       const blob = await ensureShareCard();
       const file = new File([blob], "taste-issue-share-card.png", { type: "image/png" });
-      const shareData = { files: [file], title: "나의 TASTE Issue", text: "나의 TASTE Issue" };
+      // VIRAL LOOP PROTOTYPE(2026-08) §4 — Share Card 생성 로직/PNG는
+      // 그대로 두고, native share sheet에 함께 실리는 url만 Recipient
+      // Landing(§3)을 가리키게 한다. 서버 저장 없이 이 사용자의 실제
+      // headline/발행 시각만 query param으로 담는다 — §4-1 "최소
+      // payload"(전체 Narrative/answers/score 금지)를 그대로 지킨다.
+      const shareUrl =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/dev/personal-magazine-shared?headline=${encodeURIComponent(narrative.opening.headline.replace(/\n/g, " "))}&published=${encodeURIComponent(new Date().toISOString())}`
+          : undefined;
+      const shareData = { files: [file], title: "나의 TASTE Issue", text: "나의 TASTE Issue", ...(shareUrl ? { url: shareUrl } : {}) };
       const canShareFiles = typeof navigator !== "undefined" && Boolean(navigator.share) && Boolean(navigator.canShare) && navigator.canShare(shareData);
       // §5 "share method을 알 수 있으면 native | fallback 정도만" —
       // canShareFiles 판정 시점에 이미 어느 경로로 갈지 알 수 있다.
