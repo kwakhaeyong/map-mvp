@@ -62,6 +62,7 @@ type BetaEventData =
       desire: 1 | 2 | 3 | 4 | 5;
       continuation: 1 | 2 | 3 | 4 | 5;
       mostLikeMe: string | null;
+      notLikeMe: string | null;
     }
   | { event: Exclude<BetaEventName, "share_attempted" | "next_chapter_selected" | "next_chapter_confirmed" | "feedback_submitted"> };
 

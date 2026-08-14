@@ -357,12 +357,30 @@ function TravelJourneyResult({
 // OwnershipSection만 이어붙인다. Result 내부 spacing/구조에는 diff가
 // 없다.
 //
-// R-D-C FEEDBACK(2026-08, Round 5) — §5 권장 순서(SAVE/SHARE →
-// FEEDBACK → VIEW MY MAGAZINE)에 맞춰 FeedbackSection을 Ownership
-// 다음 형제로 이어붙인다. "VIEW MY MAGAZINE" CTA는 Round 4에서
-// OwnershipSection 안에 있었지만, 이번 라운드 요구대로 FeedbackSection
-// 끝으로 옮겼다 — OwnershipSection(SAVE/SHARE)은 그 자체로는 변경
-// 없이 그대로다.
+// PRIVATE BETA FEEDBACK 분리(2026-08) — TASTE Result의 마지막 경험은
+// "설문을 끝냈다"가 아니라 "내 Issue가 만들어졌다"여야 한다는 지시에
+// 따라, R-D-C Feedback 전체(A QUICK NOTE 이하)를 Result에서 뗐다.
+// Feedback은 이제 별도 Private Beta 전용 화면
+// (/dev/personal-magazine-feedback)에서만 수집한다. 다만 Feedback
+// 섹션 안에 함께 있던 "VIEW MY MAGAZINE" CTA는 Result의 유일한 다음
+// 행동 동선이라 없앨 수 없어, 최소한의 형태로만(같은 문구/같은 버튼
+// 스타일) OwnershipSection 바로 다음에 남겨둔다 — Result 본문/
+// Ownership 영역 디자인은 건드리지 않았다.
+function ViewMyMagazineClosing({ visible, onViewMyMagazine }: { visible: boolean; onViewMyMagazine: () => void }) {
+  if (!visible) return null;
+  return (
+    <section className="border-t border-dashed border-border-strong px-6 pb-20 pt-16 text-center">
+      <button
+        type="button"
+        onClick={onViewMyMagazine}
+        className="mx-auto block text-sm font-black uppercase tracking-[0.04em] text-text-primary underline decoration-border-strong underline-offset-4"
+      >
+        VIEW MY MAGAZINE
+      </button>
+    </section>
+  );
+}
+
 // LEGACY(v2.2/v2.3) — §18 호환 요구. 기존 저장된 v2.2 Issue를 다시 열
 // 때만 이 경로로 렌더링한다. 새 완료 흐름은 더 이상 이 경로를 타지
 // 않지만, 로직/문구를 전혀 바꾸지 않고 그대로 남겨둔다.
@@ -370,18 +388,12 @@ function LegacyJourneyResult({ answers, onViewMyMagazine }: { answers: TasteRawA
   const sources = mapTasteAnswersToSignalSources(TASTE_QUESTIONS_V2_2, answers);
   const result = analyzeTasteFromSources(sources);
   const narrative = buildTasteMagazineNarrativeV23(result, sources);
-  // "SAVE 여부"를 여기서 들고 있다가 FeedbackSection에 내려준다 —
-  // OwnershipSection과 FeedbackSection은 형제라 서로의 state를 직접
-  // 볼 수 없다. FeedbackSection이 자체적으로 mount 시점에만
-  // localStorage를 읽으면, 이 둘이 동시에 mount되는 화면 구조상 SAVE
-  // 버튼을 누르기 "전" 값이 굳어버리는 문제가 있어(검증 중 발견)
-  // 이렇게 끌어올렸다.
   const [saved, setSaved] = useState(() => Boolean(getSavedTasteIssue()));
   return (
     <>
       <TasteMagazineResult narrative={narrative} result={result} hideDebugPanel />
       <OwnershipSection answers={answers} narrative={narrative} onSaved={() => setSaved(true)} />
-      <FeedbackSection issueId={TASTE_ISSUE_ID} savedIssueExists={saved} onViewMyMagazine={onViewMyMagazine} />
+      <ViewMyMagazineClosing visible={saved} onViewMyMagazine={onViewMyMagazine} />
     </>
   );
 }
@@ -403,7 +415,7 @@ function JourneyResultV3({ answers, onViewMyMagazine }: { answers: TasteV3RawAns
         onSaved={() => setSaved(true)}
         onSaveIssue={() => saveTasteIssueV3({ answers, narrative })}
       />
-      <FeedbackSection issueId={TASTE_ISSUE_ID} savedIssueExists={saved} onViewMyMagazine={onViewMyMagazine} />
+      <ViewMyMagazineClosing visible={saved} onViewMyMagazine={onViewMyMagazine} />
     </>
   );
 }
