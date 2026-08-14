@@ -52,7 +52,7 @@ type Stage = "home" | "intro" | "flow" | "editing" | "result" | "my-magazine";
 // 방식"을 고르라고 했는데, 기존 TasteJourneyClient.tsx의 EDITING
 // 단계도 이미 CTA 없이 타이머로 자동 전환하는 방식이라 그 관례를
 // 그대로 따랐다.
-const PROCESSING_LINES = ["READING YOUR CHOICES", "FINDING CONNECTIONS", "EDITING YOUR STORY", "MAKING YOUR ISSUE"];
+const PROCESSING_LINES = ["READING YOUR CHOICES", "FINDING THE PATTERNS", "EDITING YOUR ISSUE"];
 const LINE_STAGGER_MS = 550;
 const READY_APPEAR_MS = LINE_STAGGER_MS * PROCESSING_LINES.length + 450; // 마지막 줄이 뜨고서 여유 0.45초 후 READY
 const AUTO_ADVANCE_AFTER_READY_MS = 800;
@@ -72,31 +72,39 @@ function HeroFrame({ asset, className }: { asset: MagazineVisualAsset; className
 }
 
 // ============================================================
-// HOME — §4/§5 확정 카피 그대로. TASTE Hero를 "미리보기"로 작게,
-// 여백을 넉넉히 둬서 INTRO의 풀블리드 프레젠테이션과 구분한다.
+// HOME — PUBLISH FRAMING PROTOTYPE(2026-08). "테스트를 시작한다"가
+// 아니라 "내 Issue를 만든다"로 읽히도록 동사만 바꿨다(§1) — 레이아웃/
+// 이미지/CTA 위치는 그대로다. taste.hero는 이미 COVER 콜라주(제목+
+// PLACE/OBJECT/DETAIL/RITUAL 4컷)를 담은 단일 asset이라, 이 프레임
+// 자체가 이미 "완성된 Issue 미리보기"로 읽힌다(§3) — 새 컴포넌트를
+// 만들지 않고 PREVIEW 캡션 한 줄만 얹었다.
 // ============================================================
 function Home({ onStart }: { onStart: () => void }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col px-6 pb-10 pt-14 text-center">
-      <p className="text-xs font-black uppercase tracking-[0.14em] text-text-muted">PERSONAL MAGAZINE</p>
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-text-muted">PERSONAL MAGAZINE · ISSUE 01</p>
 
-      <h1 className="mt-5 whitespace-pre-line text-[2.25rem] font-black leading-[1.15] tracking-[-0.02em] text-text-primary">나를 한 권으로 만든다.</h1>
+      <h1 className="mt-5 whitespace-pre-line text-[2.25rem] font-black leading-[1.15] tracking-[-0.02em] text-text-primary">
+        {"나를 유형에 넣지 말고,\n한 권으로\n만들어주세요."}
+      </h1>
 
       <p className="mt-4 whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
-        {"몇 가지 선택을 따라가면\n나의 취향과 장면이\n한 권의 Magazine으로 편집됩니다."}
+        {"15개의 장면을 고르면\n당신의 취향을 첫 번째 Issue로 편집합니다."}
       </p>
 
       <div className="relative mx-auto mt-8 w-full max-w-[16rem] overflow-hidden border border-border-strong">
         <HeroFrame asset={magazineVisualAssets.taste.hero} />
       </div>
+      <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted">PREVIEW · YOUR ISSUE</p>
 
       <div className="mt-auto flex flex-col items-center gap-4 pt-10">
+        <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">약 3분 · 유형 없음 · 정답 없음</p>
         <button
           type="button"
           onClick={onStart}
           className="inline-flex h-12 w-full max-w-xs items-center justify-center bg-text-primary px-8 text-sm font-black uppercase tracking-[0.04em] text-background"
         >
-          MAKE MY FIRST ISSUE
+          내 첫 Issue 만들기
         </button>
         <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">ISSUE 01 · TASTE</p>
         <p className="font-serif text-xs italic text-text-muted">What you notice, keep, and come back to.</p>
@@ -127,11 +135,11 @@ function TasteIntro({ onBegin, onBack }: { onBegin: () => void; onBack: () => vo
       </div>
 
       <div className="flex flex-col px-6 pt-8 text-center">
-        <p className="font-serif text-xs font-bold uppercase tracking-[0.14em] text-text-muted">YOUR FIRST CHAPTER</p>
+        <p className="font-serif text-xs font-bold uppercase tracking-[0.14em] text-text-muted">ISSUE 01 · TASTE</p>
         <h1 className="mt-2 text-4xl font-black tracking-[-0.02em] text-text-primary">TASTE</h1>
 
         <p className="mt-5 whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
-          {"좋아하는 것은\n생각보다 많은 것을 말합니다.\n\n눈이 먼저 가는 장면,\n오래 두고 싶은 것,\n익숙함과 새로움 사이에서 하는 선택.\n\n몇 번의 선택을 지나\n당신의 TASTE를\n하나의 Magazine으로 편집합니다."}
+          {"좋아하는 것은\n생각보다 많은 것을 말합니다.\n\n눈이 먼저 가는 장면,\n오래 두고 싶은 것,\n익숙함과 새로움 사이에서 하는 선택.\n\n15개의 선택을 지나\n당신의 TASTE를\n첫 번째 Issue로 편집합니다."}
         </p>
 
         <button
@@ -139,7 +147,7 @@ function TasteIntro({ onBegin, onBack }: { onBegin: () => void; onBack: () => vo
           onClick={onBegin}
           className="mt-8 inline-flex h-12 items-center justify-center self-center bg-text-primary px-10 text-sm font-black uppercase tracking-[0.04em] text-background"
         >
-          BEGIN
+          ISSUE 01 시작하기
         </button>
         <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">About 3 minutes · No right answers</p>
       </div>

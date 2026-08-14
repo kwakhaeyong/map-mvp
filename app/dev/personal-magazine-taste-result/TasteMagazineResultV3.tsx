@@ -56,7 +56,8 @@ function OpeningSection({ narrative }: { narrative: TasteMagazineNarrativeV3 }) 
   return (
     <section className="pb-4">
       <div className="px-5 pt-6">
-        <p className="font-serif text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">CHAPTER 02 · TASTE</p>
+        <p className="font-serif text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">PERSONAL MAGAZINE</p>
+        <p className="mt-0.5 font-serif text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">ISSUE 01 · TASTE</p>
       </div>
       <div className="mt-4">
         <ImageFrame asset={magazineVisualAssets.taste.hero} />

@@ -123,7 +123,16 @@ async function buildTasteShareCardBlob(narrative: ShareableNarrative): Promise<B
   ctx.font = `700 22px ${sansFont}`;
   ctx.fillText("ISSUE 01 · TASTE", centerX, y);
 
-  y += 96;
+  // PUBLISH FRAMING PROTOTYPE(2026-08) §9 — "성향 테스트 결과" 라벨로
+  // 안 읽히게, 실제로 지금 만들어진 시점("PUBLISHED · 월 연도")을
+  // 한 줄 더 얹는다. Share Card의 레이아웃/생성 로직은 그대로다 —
+  // y 누적 위치만 이 줄만큼 밀렸다.
+  y += 40;
+  ctx.font = `700 20px ${sansFont}`;
+  const publishedLabel = `PUBLISHED · ${new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }).toUpperCase()}`;
+  ctx.fillText(publishedLabel, centerX, y);
+
+  y += 88;
   ctx.fillStyle = ink;
   ctx.font = `900 56px ${sansFont}`;
   for (const line of wrapLines(ctx, narrative.opening.headline, SHARE_CARD_WIDTH - 160)) {
@@ -141,7 +150,7 @@ async function buildTasteShareCardBlob(narrative: ShareableNarrative): Promise<B
 
   ctx.fillStyle = muted;
   ctx.font = `700 22px ${sansFont}`;
-  ctx.fillText("MY PERSONAL MAGAZINE", centerX, SHARE_CARD_HEIGHT - 80);
+  ctx.fillText("MAKE YOUR ISSUE", centerX, SHARE_CARD_HEIGHT - 80);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("PNG 생성에 실패했습니다."))), "image/png");
@@ -254,7 +263,7 @@ export function OwnershipSection({
     }
   }
 
-  const shareButtonLabel = isGeneratingCard ? "PREPARING…" : shareCompleted ? "SHARED ✓" : shareDownloaded ? "SHARE CARD SAVED ✓" : "SHARE";
+  const shareButtonLabel = isGeneratingCard ? "PREPARING…" : shareCompleted ? "SHARED ✓" : shareDownloaded ? "SHARE CARD SAVED ✓" : "SHARE MY COVER";
 
   return (
     <section className="border-t border-dashed border-border-strong px-6 pb-20 pt-16 text-center">
@@ -278,7 +287,7 @@ export function OwnershipSection({
             saved ? "border border-border-strong bg-tag-fill text-text-secondary" : "bg-text-primary text-background"
           )}
         >
-          {saved ? "SAVED TO MY MAGAZINE ✓" : "SAVE MY MAGAZINE"}
+          {saved ? "SAVED TO MY MAGAZINE ✓" : "ADD TO MY MAGAZINE"}
         </button>
         {saved && <p className="text-[12px] font-bold text-text-secondary">첫 번째 Issue가 저장되었습니다.</p>}
 

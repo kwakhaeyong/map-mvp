@@ -22,8 +22,8 @@ function cx(...classes: Array<string | false | null | undefined>) {
 }
 
 const NEXT_CHAPTERS: Array<{ id: NextChapterId; number: string; title: string }> = [
-  { id: "travel", number: "02", title: "TRAVEL" },
-  { id: "style", number: "03", title: "STYLE" },
+  { id: "travel", number: "ISSUE 02", title: "TRAVEL" },
+  { id: "style", number: "ISSUE 03", title: "STYLE" },
 ];
 
 export function MyMagazineScreen({
@@ -86,7 +86,7 @@ export function MyMagazineScreen({
           onClick={onGoHome}
           className="mt-8 inline-flex h-12 items-center justify-center bg-text-primary px-8 text-sm font-black uppercase tracking-[0.04em] text-background"
         >
-          MAKE MY FIRST ISSUE
+          내 첫 Issue 만들기
         </button>
       </div>
     );
@@ -102,9 +102,9 @@ export function MyMagazineScreen({
       <p className="text-xs font-black uppercase tracking-[0.14em] text-text-muted">PERSONAL MAGAZINE</p>
       <h1 className="mt-5 text-[2.25rem] font-black leading-[1.15] tracking-[-0.02em] text-text-primary">MY MAGAZINE</h1>
       <p className="mt-4 whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
-        {"당신에 관한 이야기가\n한 Chapter씩 쌓입니다."}
+        {"당신에 관한 이야기가\n한 Issue씩 쌓입니다."}
       </p>
-      <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">1 CHAPTER COMPLETE</p>
+      <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">1 ISSUE PUBLISHED</p>
 
       <button type="button" onClick={() => onOpenSavedIssue(savedIssue)} className="mt-8 block w-full overflow-hidden border border-border-strong text-left">
         <div className="relative w-full overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
@@ -116,7 +116,7 @@ export function MyMagazineScreen({
           />
         </div>
         <div className="px-5 py-5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted">01 / TASTE / COMPLETE</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted">ISSUE 01 · TASTE · PUBLISHED</p>
           <p className="mt-2 whitespace-pre-line text-lg font-black leading-snug tracking-[-0.01em] text-text-primary">{savedIssue.opening.headline}</p>
           <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">
             {new Date(savedIssue.createdAt).toLocaleDateString("ko-KR")}
@@ -125,9 +125,9 @@ export function MyMagazineScreen({
       </button>
 
       <div className="mt-16 border-t border-dashed border-border-strong pt-12">
-        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">YOUR NEXT CHAPTER</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">YOUR NEXT ISSUE</p>
         <h2 className="mx-auto mt-4 whitespace-pre-line text-[1.5rem] font-black leading-[1.25] tracking-[-0.02em] text-text-primary">
-          {"한 Chapter가\n당신 전부를 설명하지 않습니다."}
+          {"한 Issue가\n당신 전부를 설명하지 않습니다."}
         </h2>
         <p className="mx-auto mt-4 whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
           {"하나씩 채워질수록,\n당신의 Magazine은 조금 더\n당신다워집니다."}
@@ -158,25 +158,36 @@ export function MyMagazineScreen({
 
         {selectedNextChapter && (
           <div className="mt-10 border-t border-dashed border-border-strong pt-10 text-center">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">NEXT CHAPTER</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">NEXT ISSUE</p>
             <h3 className="mt-3 text-2xl font-black tracking-[-0.01em] text-text-primary">{selectedNextChapter === "travel" ? "TRAVEL" : "STYLE"}</h3>
             <p className="mx-auto mt-4 whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
-              {"이 Chapter가 준비되면\n당신의 Magazine을 계속 이어갈 수 있습니다."}
+              {"이 Issue가 준비되면\n당신의 Magazine을 계속 이어갈 수 있습니다."}
             </p>
 
             {confirmedNextChapter === selectedNextChapter ? (
-              <p className="mt-6 text-sm font-black uppercase tracking-[0.04em] text-text-primary">NEXT CHAPTER SAVED ✓</p>
+              <p className="mt-6 text-sm font-black uppercase tracking-[0.04em] text-text-primary">NEXT ISSUE SAVED ✓</p>
             ) : (
               <button
                 type="button"
                 onClick={handleConfirmChapter}
                 className="mt-6 inline-flex h-12 items-center justify-center bg-text-primary px-8 text-sm font-black uppercase tracking-[0.04em] text-background"
               >
-                KEEP THIS AS MY NEXT CHAPTER
+                KEEP THIS AS MY NEXT ISSUE
               </button>
             )}
           </div>
         )}
+      </div>
+
+      {/* PUBLISH FRAMING PROTOTYPE(2026-08) §12 — YOUR EDITION teaser.
+          CTA/가격/잠금 없음, 왜 이 서비스가 계속 쌓이는지만 짧게
+          설명한다. 새 기능이 아니라 순수 설명 문구라 기존 섹션과 같은
+          border-dashed 구분선 패턴을 그대로 재사용했다. */}
+      <div className="mt-16 border-t border-dashed border-border-strong pt-12 text-center">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">YOUR EDITION</p>
+        <p className="mx-auto mt-3 max-w-[22rem] whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
+          {"여러 Issue가 쌓이면\n서로 다른 취향과 선택 사이의 패턴을\n하나의 Edition으로 다시 읽습니다."}
+        </p>
       </div>
     </div>
   );
