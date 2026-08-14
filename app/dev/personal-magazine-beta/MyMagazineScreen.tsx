@@ -46,7 +46,7 @@ function NewConnectionCard({
 }: {
   savedIssue: AnySavedTasteIssue;
   savedTravelIssue: SavedTravelIssue;
-  onOpenSavedTravelIssue: (issue: SavedTravelIssue) => void;
+  onOpenSavedTravelIssue: (issue: SavedTravelIssue, options?: { scrollTo?: "cross-issue" }) => void;
 }) {
   const crossIssue = computeCrossIssueForSavedIssues(savedIssue, savedTravelIssue.answers);
   if (!crossIssue.primary) return null;
@@ -59,10 +59,7 @@ function NewConnectionCard({
       </h3>
       <button
         type="button"
-        onClick={() => {
-          if (typeof window !== "undefined") window.location.hash = "cross-issue";
-          onOpenSavedTravelIssue(savedTravelIssue);
-        }}
+        onClick={() => onOpenSavedTravelIssue(savedTravelIssue, { scrollTo: "cross-issue" })}
         className="mt-4 text-[11px] font-black uppercase tracking-[0.06em] text-text-primary underline decoration-border-strong underline-offset-4"
       >
         OPEN CONNECTION →
@@ -84,7 +81,7 @@ export function MyMagazineScreen({
   onGoHome: () => void;
   onOpenSavedIssue: (issue: AnySavedTasteIssue) => void;
   onStartTravel: () => void;
-  onOpenSavedTravelIssue: (issue: SavedTravelIssue) => void;
+  onOpenSavedTravelIssue: (issue: SavedTravelIssue, options?: { scrollTo?: "cross-issue" }) => void;
 }) {
   const [selectedNextChapter, setSelectedNextChapter] = useState<NextChapterId | null>(null);
   const [confirmedNextChapter, setConfirmedNextChapter] = useState<NextChapterId | null>(null);

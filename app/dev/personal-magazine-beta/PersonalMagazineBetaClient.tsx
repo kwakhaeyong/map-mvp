@@ -327,7 +327,15 @@ function TravelEditingTransition() {
   );
 }
 
-function TravelJourneyResult({ answers, onViewMyMagazine }: { answers: TravelV1RawAnswers; onViewMyMagazine: () => void }) {
+function TravelJourneyResult({
+  answers,
+  onViewMyMagazine,
+  scrollTarget,
+}: {
+  answers: TravelV1RawAnswers;
+  onViewMyMagazine: () => void;
+  scrollTarget?: "cross-issue" | null;
+}) {
   const narrative = buildTravelMagazineNarrativeV1(answers);
   const [saved, setSaved] = useState(() => Boolean(getSavedTravelIssue()));
   // Cross-Issue는 저장 전에도 미리보기로 계산한다 — TASTE가 이미
@@ -337,7 +345,7 @@ function TravelJourneyResult({ answers, onViewMyMagazine }: { answers: TravelV1R
 
   return (
     <>
-      <TravelMagazineResultV1 narrative={narrative} crossIssue={crossIssue} hideDebugPanel />
+      <TravelMagazineResultV1 narrative={narrative} crossIssue={crossIssue} scrollTarget={scrollTarget} hideDebugPanel />
       <TravelOwnershipSection answers={answers} narrative={narrative} onSaved={() => setSaved(true)} />
       <FeedbackSection issueId={TRAVEL_ISSUE_ID} savedIssueExists={saved} onViewMyMagazine={onViewMyMagazine} />
     </>
@@ -445,6 +453,7 @@ export function PersonalMagazineBetaClient() {
   // ISSUE 02 TRAVEL(2026-08, PR #261 Round I) — TASTE의 session state와
   // 나란한 독립 state. TASTE session을 전혀 건드리지 않는다.
   const [travelAnswers, setTravelAnswers] = useState<TravelV1RawAnswers | null>(null);
+  const [travelScrollTarget, setTravelScrollTarget] = useState<"cross-issue" | null>(null);
 
   useEffect(() => {
     if (stage !== "editing") return;
@@ -530,9 +539,16 @@ export function PersonalMagazineBetaClient() {
     setStage("travel-intro");
   }
 
-  function handleOpenSavedTravelIssue(issue: { answers: TravelV1RawAnswers }) {
+  function handleOpenSavedTravelIssue(issue: { answers: TravelV1RawAnswers }, options?: { scrollTo?: "cross-issue" }) {
+    // ROUND J SCROLL FIX — 이전에는 window.location.hash="cross-issue"로
+    // 목표를 표시했는데, 바로 다음 줄의 updateViewQueryParam()이
+    // history.replaceState를 pathname+search로만 다시 만들면서 hash를
+    // 그대로 지워버렸다(재현 확인) — OPEN CONNECTION을 눌러도 스크롤이
+    // 전혀 동작하지 않던 진짜 원인이었다. URL에 상태를 실어 보내는 대신
+    // React state로 직접 넘긴다.
     updateViewQueryParam("travel-result");
     setTravelAnswers(issue.answers);
+    setTravelScrollTarget(options?.scrollTo ?? null);
     setStage("travel-result");
   }
 
@@ -597,7 +613,7 @@ export function PersonalMagazineBetaClient() {
       {stage === "travel-editing" && <TravelEditingTransition />}
 
       {stage === "travel-result" && travelAnswers && (
-        <TravelJourneyResult answers={travelAnswers} onViewMyMagazine={handleViewMyMagazine} />
+        <TravelJourneyResult answers={travelAnswers} onViewMyMagazine={handleViewMyMagazine} scrollTarget={travelScrollTarget} />
       )}
 
       {stage === "my-magazine" && (

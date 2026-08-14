@@ -13,11 +13,9 @@ import type { CrossIssueCandidate } from "../../../src/data/travelCrossIssueV1";
 // (TASTE 미완료 포함) 완전히 숨긴다 — "먼저 TASTE를 해보세요" 같은
 // 광고성 빈 상태를 두지 않는다.
 //
-// §19 — 아직 TRAVEL 전용 실사 이미지가 없어(hero는 CHAPTER 03이
-// 박혀 있어 프로덕션에 쓸 수 없다는 §Round I §0 감사 결과, 나머지는
-// 아예 없음) 모든 이미지 프레임을 taste 이미지로 대체하지 않고
-// 텍스트 전용(variant="text-only")로 렌더링한다 — 없는 자산을 다른
-// 자산으로 억지로 채우지 않는다.
+// §19 — hero는 실제 TRAVEL 이미지지만 CHAPTER 03이 박혀 있어(§Round I
+// §0 감사 결과) 프로덕션에는 쓸 수 없다 — dev 화면에서는 그대로
+// 노출하고, 완료 보고에 프로덕션 블로커로 명시한다.
 
 function SectionMarker({ index, label }: { index: string; label: string }) {
   return (
@@ -140,22 +138,67 @@ function DebugPanel({ narrative, crossIssue }: { narrative: TravelMagazineNarrat
 export function TravelMagazineResultV1({
   narrative,
   crossIssue,
+  scrollTarget,
   hideDebugPanel = false,
 }: {
   narrative: TravelMagazineNarrativeV1;
   crossIssue: { primary: CrossIssueCandidate | null; secondary: CrossIssueCandidate | null };
+  scrollTarget?: "cross-issue" | null;
   hideDebugPanel?: boolean;
 }) {
   // MY MAGAZINE의 NEW CONNECTION "OPEN CONNECTION" CTA(§17)가 이
-  // 화면으로 들어올 때 #cross-issue 해시를 남긴다 — mount 후 그
-  // 섹션으로 바로 스크롤한다(primary가 없어 섹션 자체가 없으면
-  // 아무 일도 하지 않는다).
+  // 화면으로 들어올 때 scrollTarget="cross-issue"를 React state로
+  // 내려받는다 — mount 후 그 섹션으로 스크롤한다(primary가 없어 섹션
+  // 자체가 없으면 target 엘리먼트가 null이라 아무 일도 하지 않는다).
+  //
+  // ROUND J SCROLL FIX(1) — 원래는 window.location.hash="cross-issue"를
+  // 남기고 이 컴포넌트가 그 해시를 읽는 방식이었는데, 그사이에
+  // PersonalMagazineBetaClient.tsx의 updateViewQueryParam()이
+  // history.replaceState를 pathname+search로만 다시 만들면서 hash를
+  // 그대로 지워버리는 게 진짜 원인이었다(재현 확인, OPEN CONNECTION을
+  // 눌러도 스크롤이 아예 시작되지 않았다) — URL을 거치지 않고 React
+  // state(scrollTarget prop)로 직접 넘기도록 바꿨다.
+  //
+  // ROUND J SCROLL FIX(2) — 좌표를 mount 시점에 한 번만 계산해
+  // scrollIntoView를 단발로 호출하는 대신, 문서 높이가 바뀔 때마다
+  // (ResizeObserver) 짧은 시간 동안 반복해서 다시 scrollIntoView를
+  // 호출해 "최종적으로 안정된 위치"에 자연스럽게 도달하게 한다(hero
+  // 이미지처럼 늦게 로드되는 자산에 대비).
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.location.hash !== "#cross-issue") return;
-    const el = document.getElementById("cross-issue");
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+    if (scrollTarget !== "cross-issue") return;
+
+    const scrollToTarget = () => {
+      document.getElementById("cross-issue")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    scrollToTarget();
+
+    let settleTimer: ReturnType<typeof setTimeout> | null = null;
+    const rescheduleSettle = () => {
+      if (settleTimer) clearTimeout(settleTimer);
+      // 마지막 레이아웃 변화 이후 250ms 동안 조용하면(이미지 로딩이
+      // 끝났다고 보고) 최종 위치로 한 번 더 스크롤한다.
+      settleTimer = setTimeout(scrollToTarget, 250);
+    };
+
+    const observer = new ResizeObserver(() => rescheduleSettle());
+    observer.observe(document.body);
+
+    // 관찰을 무한히 열어두지 않는다 — 2.5초 뒤에는 정리한다(그 이후
+    // 발생하는 레이아웃 변화는 이미지 로딩이 아니라 사용자 스크롤일
+    // 가능성이 높다).
+    const stopTimer = setTimeout(() => {
+      observer.disconnect();
+      if (settleTimer) clearTimeout(settleTimer);
+    }, 2500);
+
+    return () => {
+      observer.disconnect();
+      if (settleTimer) clearTimeout(settleTimer);
+      clearTimeout(stopTimer);
+    };
+  }, [scrollTarget]);
 
   return (
     <div className="mx-auto max-w-lg">

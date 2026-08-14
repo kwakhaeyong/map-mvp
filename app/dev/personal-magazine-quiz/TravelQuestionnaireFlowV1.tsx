@@ -222,7 +222,7 @@ export function TravelQuestionnaireFlowV1({
       {currentQuestion.kind === "image-2" && (
         <ImageChoiceGroup question={currentQuestion} selectedId={selectedId} onSelect={(id) => handleSelect(currentQuestion, id)} />
       )}
-      {(currentQuestion.kind === "text-4" || currentQuestion.kind === "scenario-4") && (
+      {(currentQuestion.kind === "text-4" || currentQuestion.kind === "scenario-4" || currentQuestion.kind === "text-2") && (
         <TextChoiceGrid question={currentQuestion} selectedId={selectedId} onSelect={(id) => handleSelect(currentQuestion, id)} />
       )}
     </QuestionShell>
