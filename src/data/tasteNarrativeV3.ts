@@ -247,6 +247,78 @@ const AXIS_STAKES: Record<TasteV3AxisKey, { positive: string; negative: string }
   },
 };
 
+// ============================================================
+// NARRATIVE CONSISTENCY GUARD (PR #261 Final QA #1 대응, 2026-08).
+//
+// 문제: BEHAVIOR_SCENE/BEHAVIOR_SCENE_SECONDARY의 일부 문장은 자기
+// 축(axis) domain을 넘어 "다른 축의 방향"까지 함께 단정한다 — 예를
+// 들어 exploration+ 문장 하나가 "계획이 틀어지는 것을 오히려
+// 반깁니다"처럼 RHYTHM+ 까지 암묵적으로 전제한다. 사용자가 실제로는
+// 그 축에서 강하게 반대 방향(rhythm 강한 음수 = 신중/계획적)이면,
+// 이 문장은 사용자가 고르지 않은, 심지어 반대되는 행동을 사실처럼
+// 서술하게 된다(Final QA에서 발견한 축 간 확장 문제).
+//
+// 이 guard는 "A라고 답했으니 반드시 A 문장을 써라"가 아니라,
+// "명백한 반대 증거가 있는데 정반대 행동을 단정하지는 마라"만
+// 막는다(contradiction prevention). 15문항/scoring/6축/Evidence/
+// Relationship/Tension 계산은 전혀 바꾸지 않았다 — 여기서는 이미 계산된
+// aggregate[axis].score만 "충돌 여부 판정"에 읽기 전용으로 참조한다.
+// ============================================================
+type CrossDomainRequirement = { axis: TasteV3AxisKey; direction: "positive" | "negative" };
+
+// 옵션 하나의 strong evidence 가중치(±15)와 같은 크기 — 그 축에 strong
+// evidence 하나 분량 이상 반대로 쌓여 있어야 "명백한 충돌"로 본다.
+// 약한/중립 신호(0~10)까지는 충돌로 보지 않는다(과잉 검열 방지).
+const CONTRADICTION_THRESHOLD = 15;
+
+function isContradicted(aggregate: V3AxisAggregate, requirement: CrossDomainRequirement): boolean {
+  const score = aggregate[requirement.axis].score;
+  return requirement.direction === "positive" ? score <= -CONTRADICTION_THRESHOLD : score >= CONTRADICTION_THRESHOLD;
+}
+
+// BEHAVIOR_SCENE/BEHAVIOR_SCENE_SECONDARY 전수 감사 결과, 다른 축까지
+// 단정하는 항목만 최소로 표시한다 — 여기 없는 항목(대부분)은 이미 자기
+// 축 domain 안에서만 말하므로 guard가 필요 없다고 판단했다(예:
+// "이사할 때도 넓이보다 빨리 손에 익을지"는 space만 말하지 다른 축을
+// 끌어오지 않는다). PRACTICAL_CONSEQUENCE(THE INTERESTING PART)는 이미
+// Relationship/Tension 정의 자체가 "두 축이 동시에 강함"을 검증한 뒤에만
+// 만들어지므로 같은 문제가 구조적으로 발생하지 않는다 — 별도
+// requirement 없이 그대로 통과시킨다(감사 완료, 새 guard 불필요).
+const BEHAVIOR_SCENE_REQUIRES: Partial<Record<TasteV3AxisKey, Partial<Record<"positive" | "negative", CrossDomainRequirement>>>> = {
+  // "계획이 틀어지는 것을 오히려 반깁니다" → RHYTHM+(즉흥) 전제.
+  exploration: { positive: { axis: "rhythm", direction: "positive" } },
+};
+
+const BEHAVIOR_SCENE_SECONDARY_REQUIRES: Partial<Record<TasteV3AxisKey, Partial<Record<"positive" | "negative", CrossDomainRequirement>>>> = {
+  // "그 순간 마음이 맞으면 바로 만나는 쪽을 더 좋아합니다" → RELATION+
+  // (사람과의 즉흥 만남을 반긴다) 전제.
+  rhythm: { positive: { axis: "relation", direction: "positive" } },
+  // "먼저 알리고 함께 나누고 싶어합니다" → EXPRESSION+(드러내는 쪽) 전제.
+  relation: { positive: { axis: "expression", direction: "positive" } },
+  // "시간이 지나며 자연스러워지는 모습에 더 마음이 갑니다"(사람에 대한
+  // 판단) → RHYTHM-(천천히 확인) 전제. RHYTHM+(즉흥적으로 빨리 판단)와
+  // 충돌한다.
+  sensory: { positive: { axis: "rhythm", direction: "negative" } },
+};
+
+type AxisDirectionText = Record<TasteV3AxisKey, { positive: string; negative: string }>;
+
+// 후보 문장이 충돌하면 §9 우선순위대로: ① 같은 축의 다른(guard를 통과한)
+// behavior 문장 → ② 없으면 생략. 새 filler 문장을 만들어 채워 넣지
+// 않는다(§15) — 분량이 줄어드는 쪽이 틀린 단정보다 낫다.
+function guardedBehaviorLine(
+  pool: AxisDirectionText,
+  requires: Partial<Record<TasteV3AxisKey, Partial<Record<"positive" | "negative", CrossDomainRequirement>>>>,
+  axis: TasteV3AxisKey,
+  direction: "positive" | "negative",
+  aggregate: V3AxisAggregate
+): string {
+  const text = pool[axis][direction];
+  const requirement = requires[axis]?.[direction];
+  if (requirement && isContradicted(aggregate, requirement)) return "";
+  return text;
+}
+
 // CORE TASTE/HOW IT SHOWS UP의 visual cue(이미지 asset의 scene에서 온
 // 문장) 바로 뒤에 붙는 한 문장 — 같은 이미지를 쓰더라도 그 장면을
 // "어떻게 읽는가"는 축마다 달라야 하므로, visual cue가 혼자 서 있지
@@ -404,7 +476,10 @@ function buildAxisSection(
   const content =
     role === "why"
       ? [AXIS_INTERPRETATION[axis][direction], AXIS_MEANING[axis][direction], AXIS_STAKES[axis][direction]]
-      : [BEHAVIOR_SCENE[axis][direction], BEHAVIOR_SCENE_SECONDARY[axis][direction]];
+      : [
+          guardedBehaviorLine(BEHAVIOR_SCENE, BEHAVIOR_SCENE_REQUIRES, axis, direction, aggregate),
+          guardedBehaviorLine(BEHAVIOR_SCENE_SECONDARY, BEHAVIOR_SCENE_SECONDARY_REQUIRES, axis, direction, aggregate),
+        ];
 
   const body = [visualOpening, personalScene, bridge, ...content].filter(Boolean).join(" ");
   return { headline, body, axisLabel };
@@ -620,13 +695,20 @@ function buildInterestingPart(
   const labelB = AXIS_LABEL_KO[b.key];
   const directionA = a.score >= 0 ? "positive" : "negative";
   const directionB = b.score >= 0 ? "positive" : "negative";
-  const firstSentence = (text: string) => text.split(". ")[0]?.trim() + ".";
-  const behaviorA = firstSentence(BEHAVIOR_SCENE[a.key][directionA]);
-  const behaviorB = firstSentence(BEHAVIOR_SCENE[b.key][directionB]);
+  const firstSentence = (text: string) => (text ? text.split(". ")[0]?.trim() + "." : "");
+  // guard: 이 fallback도 BEHAVIOR_SCENE을 직접 인용하므로 HOW IT SHOWS UP과
+  // 같은 축 간 확장 위험이 그대로 있다 — 같은 guard를 통과한 문장만 쓴다.
+  const behaviorA = firstSentence(guardedBehaviorLine(BEHAVIOR_SCENE, BEHAVIOR_SCENE_REQUIRES, a.key, directionA, aggregate));
+  const behaviorB = firstSentence(guardedBehaviorLine(BEHAVIOR_SCENE, BEHAVIOR_SCENE_REQUIRES, b.key, directionB, aggregate));
+  // 대비 문장("그래서 A. 그런데 B.")은 양쪽이 다 있어야 성립한다 — 한쪽이
+  // guard에 걸려 사라지면 "그런데" 대비를 억지로 유지하지 않고 남은
+  // 한쪽만 진술하거나(§9 우선순위 ①), 둘 다 사라지면 그 문장 자체를
+  // 생략한다(§9 우선순위 ④, 새 filler 금지).
+  const consequenceLine = behaviorA && behaviorB ? `그래서 ${behaviorA} 그런데 ${behaviorB}` : behaviorA ? `그래서 ${behaviorA}` : behaviorB ? `그래서 ${behaviorB}` : "";
   const body = [
     scene.length > 0 ? sceneList(scene) : "",
     `${labelA}${gwaWa(labelA)} ${labelB}${eunNeun(labelB)} 이렇게 다른 크기로 나타났다는 것은, 이 둘을 애초에 같은 무게로 쓰고 있지 않다는 뜻입니다.`,
-    `그래서 ${behaviorA} 그런데 ${behaviorB}`,
+    consequenceLine,
   ]
     .filter(Boolean)
     .join(" ");
