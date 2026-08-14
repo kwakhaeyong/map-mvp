@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { magazineVisualAssets } from "../../../src/data/magazineVisualAssets";
 import { getContinuationIntent, saveContinuationIntent, type NextChapterId } from "../../../src/data/continuationStorage";
 import { TASTE_ISSUE_ID, type AnySavedTasteIssue } from "../../../src/data/tasteIssueStorage";
+import type { SavedTravelIssue } from "../../../src/data/travelIssueStorage";
+import { computeCrossIssueForSavedIssues } from "../../../src/data/crossIssueSupport";
 import { sendBetaEvent } from "../../../src/data/personalMagazineBetaTelemetry";
 
 // MY MAGAZINE / CONTINUATION LAYER(2026-08, Private Beta Round 4) — §5~§13
@@ -21,19 +23,68 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-const NEXT_CHAPTERS: Array<{ id: NextChapterId; number: string; title: string }> = [
-  { id: "travel", number: "ISSUE 02", title: "TRAVEL" },
-  { id: "style", number: "ISSUE 03", title: "STYLE" },
-];
+// ISSUE 02 TRAVEL(2026-08, PR #261 Round I) — TRAVEL은 실제로 구현된
+// 뒤부터는 더 이상 "선택 의도"만 기록하는 대상이 아니라, TASTE COMPLETE
+// 카드와 동일하게 진짜 시작/재열람이 가능한 Issue다. 그래서
+// NEXT_CHAPTERS(§11 "실제 설문으로 이어지지 않는 상태 기록") 목록에서는
+// 빠지고, TASTE COMPLETE 카드 바로 아래 독립 섹션으로 옮겼다. STYLE은
+// 이번 라운드에서 구현하지 않으므로 기존 "선택 의도 기록" 동작 그대로
+// NEXT_CHAPTERS에 남는다.
+const NEXT_CHAPTERS: Array<{ id: NextChapterId; number: string; title: string }> = [{ id: "style", number: "ISSUE 03", title: "STYLE" }];
+
+// NEW CONNECTION(2026-08, PR #261 Round I §17) — primary candidate가
+// 없으면(TASTE가 legacy v2.2거나, 두 축 모두에서 evidence/신뢰도
+// 조건을 만족하지 못하면) 카드 자체를 렌더링하지 않는다 — "먼저
+// 연결을 찾아보세요" 같은 광고성 빈 상태를 만들지 않는다(§15와 같은
+// 원칙). 카드에는 primary 요약만 보여주고, 전체 설명은 OPEN
+// CONNECTION을 눌러 TRAVEL Result의 TASTE×TRAVEL 섹션으로 이동해야만
+// 볼 수 있다.
+function NewConnectionCard({
+  savedIssue,
+  savedTravelIssue,
+  onOpenSavedTravelIssue,
+}: {
+  savedIssue: AnySavedTasteIssue;
+  savedTravelIssue: SavedTravelIssue;
+  onOpenSavedTravelIssue: (issue: SavedTravelIssue) => void;
+}) {
+  const crossIssue = computeCrossIssueForSavedIssues(savedIssue, savedTravelIssue.answers);
+  if (!crossIssue.primary) return null;
+
+  return (
+    <div className="mt-10 border-t border-dashed border-border-strong pt-10 text-left">
+      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">NEW CONNECTION</p>
+      <h3 className="mt-3 whitespace-pre-line text-xl font-black leading-[1.25] tracking-[-0.015em] text-text-primary">
+        {crossIssue.primary.editorialHeadline}
+      </h3>
+      <button
+        type="button"
+        onClick={() => {
+          if (typeof window !== "undefined") window.location.hash = "cross-issue";
+          onOpenSavedTravelIssue(savedTravelIssue);
+        }}
+        className="mt-4 text-[11px] font-black uppercase tracking-[0.06em] text-text-primary underline decoration-border-strong underline-offset-4"
+      >
+        OPEN CONNECTION →
+      </button>
+    </div>
+  );
+}
 
 export function MyMagazineScreen({
   savedIssue,
+  savedTravelIssue,
   onGoHome,
   onOpenSavedIssue,
+  onStartTravel,
+  onOpenSavedTravelIssue,
 }: {
   savedIssue: AnySavedTasteIssue | null;
+  savedTravelIssue: SavedTravelIssue | null;
   onGoHome: () => void;
   onOpenSavedIssue: (issue: AnySavedTasteIssue) => void;
+  onStartTravel: () => void;
+  onOpenSavedTravelIssue: (issue: SavedTravelIssue) => void;
 }) {
   const [selectedNextChapter, setSelectedNextChapter] = useState<NextChapterId | null>(null);
   const [confirmedNextChapter, setConfirmedNextChapter] = useState<NextChapterId | null>(null);
@@ -104,7 +155,9 @@ export function MyMagazineScreen({
       <p className="mt-4 whitespace-pre-line text-sm font-bold leading-6 text-text-secondary">
         {"당신에 관한 이야기가\n한 Issue씩 쌓입니다."}
       </p>
-      <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">1 ISSUE PUBLISHED</p>
+      <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">
+        {savedTravelIssue ? "2 ISSUES PUBLISHED" : "1 ISSUE PUBLISHED"}
+      </p>
 
       <button type="button" onClick={() => onOpenSavedIssue(savedIssue)} className="mt-8 block w-full overflow-hidden border border-border-strong text-left">
         <div className="relative w-full overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
@@ -123,6 +176,51 @@ export function MyMagazineScreen({
           </p>
         </div>
       </button>
+
+      {/* ISSUE 02 TRAVEL(2026-08, PR #261 Round I) — savedTravelIssue가
+          있으면 TASTE와 동일한 PUBLISHED 카드로, 없으면 실제 시작
+          가능한 진입 카드로 보여준다. */}
+      {savedTravelIssue ? (
+        <button
+          type="button"
+          onClick={() => onOpenSavedTravelIssue(savedTravelIssue)}
+          className="mt-3 block w-full overflow-hidden border border-border-strong text-left"
+        >
+          <div className="relative w-full overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
+            <img
+              src={magazineVisualAssets.travel.hero.src}
+              alt={magazineVisualAssets.travel.hero.alt}
+              className="size-full object-cover"
+              style={{ objectPosition: magazineVisualAssets.travel.hero.objectPositionMobile }}
+            />
+          </div>
+          <div className="px-5 py-5">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted">ISSUE 02 · TRAVEL · PUBLISHED</p>
+            <p className="mt-2 whitespace-pre-line text-lg font-black leading-snug tracking-[-0.01em] text-text-primary">
+              {savedTravelIssue.opening.headline}
+            </p>
+            <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">
+              {new Date(savedTravelIssue.createdAt).toLocaleDateString("ko-KR")}
+            </p>
+          </div>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onStartTravel}
+          className="mt-3 flex w-full items-center justify-between border border-border-strong px-5 py-5 text-left"
+        >
+          <span className="flex items-baseline gap-3">
+            <span className="text-xs font-black text-text-muted">ISSUE 02</span>
+            <span className="text-base font-black tracking-[-0.01em] text-text-primary">TRAVEL</span>
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-text-primary underline underline-offset-4">시작하기</span>
+        </button>
+      )}
+
+      {savedTravelIssue && (
+        <NewConnectionCard savedIssue={savedIssue} savedTravelIssue={savedTravelIssue} onOpenSavedTravelIssue={onOpenSavedTravelIssue} />
+      )}
 
       <div className="mt-16 border-t border-dashed border-border-strong pt-12">
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-text-muted">YOUR NEXT ISSUE</p>
